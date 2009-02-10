@@ -8,42 +8,7 @@ import os, sys, re, time, socket
 from threading import Thread
 import EC2
 from spinner import Spinner
-from ssh import ssh, scp
-
-def ec2ssh():
-    """ I don't believe this is necessary anymore...plus it's ugly as hell"""
-    homedir = os.path.expanduser( '~' )
-    id_rsa_location = homedir+'/.ssh/id_rsa'
-
-    # Prep client machine: the following adds the Amazon getting started guide (gsg) private key in your client machine's id_rsa file for passwordless login to the master node,
-    # you can replace this key with whatever you want, just make sure it matches what you used in your config file for launching the images.
-
-    id_rsa_file = open(id_rsa_location,'r')
-    key_file = open(KEY_LOCATION,'r')
-
-    id_rsa_contents = id_rsa_file.read().replace('+','')
-    key_contents = key_file.read().replace('+','')
-
-    # done reading, reopen in case we need to append the key
-    id_rsa_file.close()
-    id_rsa_file = open(id_rsa_location,'a')
-
-    regexp = re.compile(key_contents)
-
-    if not regexp.search(id_rsa_contents):
-        print '>>> ssh key is not in id_rsa.  adding it now...'
-        # key not in id_rsa, add it
-        key_file.seek(0)
-        for line in key_file.readlines():
-            id_rsa_file.writelines(line)
-    else: 
-        print '>>> ssh key in id_rsa file'
-
-    id_rsa_file.close()
-    key_file.close()
-
-    # fix id_rsa permissions, regardless
-    os.chmod(id_rsa_location,0600)
+from ssh import Connection
 
 def is_cluster_up():
     running_instances = get_running_instances()
