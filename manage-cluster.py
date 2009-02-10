@@ -25,6 +25,8 @@ def main():
         ssh_to_master()
     elif options.list_nodes:
         list_instances()
+    else:
+        parser.print_help()
     
 if __name__ == "__main__":
     main()

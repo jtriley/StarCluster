@@ -23,6 +23,9 @@ MASTER_IMAGE_ID = "ami-3f927556"
 #ami for nodes
 IMAGE_ID = "ami-3f927556"
 
+#instance type
+INSTANCE_TYPE='m1.small'
+
 # cluster size
 DEFAULT_CLUSTER_SIZE = 2 
 

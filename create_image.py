@@ -13,7 +13,6 @@ class CreateEC2Image(object):
         self.conn = None
         self.env_variables = None
 
-
     def removeimage(self):
             #deregister the image
             self.conn.deregister_image(self.config_dict['image_to_remove'])
@@ -89,8 +88,6 @@ class CreateEC2Image(object):
         self.transferfiles()
         self.bundleandregister()
 
-        
-
     def pickleconfig(self):
         # Pickle the config dictionary so we can scp it to the host for prepare-instance.py to use
         self.pickle_file = 'config.pkl'
@@ -120,7 +117,6 @@ class CreateEC2Image(object):
         scp(image_host, cmd="python /mnt/prepare-instance.py", credential = credentials)
         # register compute node image we just created
         self.conn.register_image("%(bucket)s/%(prefix)s.manifest.xml" % self.config_dict)
-
     
     def getimagehost(self):
         # get name of host to image

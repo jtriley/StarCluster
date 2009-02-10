@@ -62,7 +62,8 @@ def get_running_instances():
     parsed_response = get_instance_response() 
     running_instances=[]
     for chunk in parsed_response:
-        if chunk[0]=='INSTANCE' and chunk[-1]=='running':
+        #if chunk[0]=='INSTANCE' and chunk[-1]=='running':
+        if chunk[0]=='INSTANCE' and chunk[5]=='running':
             if chunk[2] == IMAGE_ID or chunk[2] == MASTER_IMAGE_ID:
                 running_instances.append(chunk[1])
     return running_instances
@@ -84,7 +85,8 @@ def get_external_hostnames():
         return None        
     external_hostnames = []
     for chunk in parsed_response:
-        if chunk[0]=='INSTANCE' and chunk[-1]=='running':
+        #if chunk[0]=='INSTANCE' and chunk[-1]=='running':
+        if chunk[0]=='INSTANCE' and chunk[5]=='running':
             external_hostnames.append(chunk[3])
     return external_hostnames
                 
@@ -95,7 +97,8 @@ def get_internal_hostnames():
         return None
     internal_hostnames = []    
     for chunk in parsed_response:
-        if chunk[0]=='INSTANCE' and chunk[-1]=='running' :
+        #if chunk[0]=='INSTANCE' and chunk[-1]=='running' :
+        if chunk[0]=='INSTANCE' and chunk[5]=='running' :
             internal_hostnames.append(chunk[4])
     return internal_hostnames
 
@@ -103,9 +106,10 @@ def list_instances():
     parsed_response = get_instance_response()
     if len(parsed_response) != 0:
         print ">>> EC2 Instances:"
-        print parsed_response
+        for instance in parsed_response:
+            if instance[0] == 'INSTANCE':
+                print ' '.join(instance)
     
-
 def terminate_instances(instances=None):
     if instances is not None:
         conn = EC2.AWSAuthConnection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
@@ -121,11 +125,13 @@ def get_master_node():
     machine_state=[]
     for chunk in parsed_response:
         if chunk[0]=='INSTANCE':
-            if chunk[-1]=='running' or chunk[-1]=='pending':
+            #if chunk[-1]=='running' or chunk[-1]=='pending':
+            if chunk[5]=='running' or chunk[5]=='pending':
                 instances.append(chunk[1])
                 hostnames.append(chunk[4])
                 externalnames.append(chunk[3])              
-                machine_state.append(chunk[-1])
+                #machine_state.append(chunk[-1])
+                machine_state.append(chunk[5])
     try:
         master_node  = externalnames[0]
     except:
@@ -136,7 +142,7 @@ def ssh_to_master():
     master_node = get_master_node()
     if master_node is not None:
         print "\n>>> MASTER NODE: %s" % master_node
-        ssh(master_node)
+        ssh(master_node, credential=KEY_LOCATION)
     else: 
         print ">>> No master node found..."
 
@@ -161,13 +167,14 @@ def start_cluster():
 
     # upload the gsg private key (or whatever you named it) , copy over create_hosts.py, and execute the script all on the master node.  The script 
     # will then, using AWS internal network, setup passwordless ssh between the nodes as well as setup /etc/hosts, nfs, sge, mpi, etc
-    scp(master_node, user=CLUSTER_USER, src=KEY_LOCATION, dest="~/.ssh/id_rsa")
-    scp(master_node, src=hosts_file, dest="/etc/")
+    scp(master_node, user=CLUSTER_USER, src=KEY_LOCATION, dest="~/.ssh/id_rsa", credential=KEY_LOCATION)
+    scp(master_node, src=hosts_file, dest="/etc/", credential=KEY_LOCATION)
 
     print ">>> Creating hosts file on master node and copying hosts file to compute nodes..."
-    scp(master_node, src="ssh.py", dest="/home/")
-    scp(master_node, src="create_hosts.py", dest="/home/")
-    ssh(master_node, cmd="python /home/create_hosts.py")
+    scp(master_node, src="EC2config.py", dest="/home/", credential=KEY_LOCATION)
+    scp(master_node, src="ssh.py", dest="/home/", credential=KEY_LOCATION)
+    scp(master_node, src="create_hosts.py", dest="/home/", credential=KEY_LOCATION)
+    ssh(master_node, cmd="python /home/create_hosts.py", credential=KEY_LOCATION)
         
     print "\n>>> The cluster has been started. ssh into the master node as %s by running:" % CLUSTER_USER
     print "$ ssh %s@%s " % (CLUSTER_USER,master_node)
@@ -177,19 +184,19 @@ def create_cluster():
     if globals().has_key("MASTER_IMAGE_ID"):
         print ">>> Launching master node..."
         print ">>> MASTER AMI: ",MASTER_IMAGE_ID
-        master_response = conn.run_instances(imageId=MASTER_IMAGE_ID, minCount=1, maxCount=1, keyName= KEYNAME )
+        master_response = conn.run_instances(imageId=MASTER_IMAGE_ID, instanceType=INSTANCE_TYPE, minCount=1, maxCount=1, keyName= KEYNAME )
         print master_response
 
         print ">>> Launching worker nodes..."
         print ">>> NODE AMI: ",IMAGE_ID
-        instances_response = conn.run_instances(imageId=IMAGE_ID, minCount=max((DEFAULT_CLUSTER_SIZE-1)/2, 1), maxCount=max(DEFAULT_CLUSTER_SIZE-1,1), keyName= KEYNAME )
+        instances_response = conn.run_instances(imageId=IMAGE_ID, instanceType=INSTANCE_TYPE, minCount=max((DEFAULT_CLUSTER_SIZE-1)/2, 1), maxCount=max(DEFAULT_CLUSTER_SIZE-1,1), keyName= KEYNAME )
         print instances_response
         # if the workers failed, what should we do about the master?
     else:
         print ">>> Launching master and worker nodes..."
         print ">>> MASTER AMI: ",IMAGE_ID
         print ">>> NODE AMI: ",IMAGE_ID
-        instances_response = conn.run_instances(imageId=IMAGE_ID, minCount=max(DEFAULT_CLUSTER_SIZE/2,1), maxCount=max(DEFAULT_CLUSTER_SIZE,1), keyName= KEYNAME )
+        instances_response = conn.run_instances(imageId=IMAGE_ID, instanceType=INSTANCE_TYPE, minCount=max(DEFAULT_CLUSTER_SIZE/2,1), maxCount=max(DEFAULT_CLUSTER_SIZE,1), keyName= KEYNAME )
         # instances_response is a list: [["RESERVATION", reservationId, ownerId, ",".join(groups)],["INSTANCE", instanceId, imageId, dnsName, instanceState], [ "INSTANCE"etc])
         # same as "describe instance"
         print instances_response

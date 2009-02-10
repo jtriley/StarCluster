@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 import os
-from EC2config import KEY_LOCATION
 
 """Convenience methods for calling ssh/scp and creating ssh tunnels"""
 
-def ssh(host, cmd = None, user='root', credential=KEY_LOCATION, silent=False, test=False):
+def ssh(host, cmd = None, user='root', credential=None, silent=False, test=False):
 
     """ A simple ssh wrapper to execute a command on a remote host """
 
@@ -28,7 +27,7 @@ def ssh(host, cmd = None, user='root', credential=KEY_LOCATION, silent=False, te
     if not test:
         os.system(cmdline)
 
-def scp(host, user='root', src=None, dest=None, credential=KEY_LOCATION, copyfrom = False, hostchecking=False, silent=False, test=False):
+def scp(host, user='root', src=None, dest=None, recursive=False, credential=None, copyfrom = False, hostchecking=False, silent=False, test=False):
 
     """ A simple scp wrapper to copy files to and from a remote host """
 
@@ -46,6 +45,8 @@ def scp(host, user='root', src=None, dest=None, credential=KEY_LOCATION, copyfro
     d['switches'] = ''
     if credential:
         d['switches'] = '-i %s' % credential
+    if recursive:
+        d['switches'] = d['switches'] + ' -r'
 
     if copyfrom:
         template = 'scp %(switches)s %(hostchecking)s %(user)s@%(host)s:%(src)s %(dest)s' 
