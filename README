@@ -1,0 +1,9 @@
+molsim-cluster
+--------------
+Author: Justin Riley (justin.t.riley@gmail.com)
+
+Description:
+------------
+Python library for launching a StarMolsim EC2 cluster 
+
+see LICENSE
