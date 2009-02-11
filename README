@@ -6,4 +6,12 @@ Description:
 ------------
 Python library for launching a StarMolsim EC2 cluster 
 
+Dependencies:
+-------------
+Paramiko 1.7.4 
+
+Installation:
+-------------
+python setup.py install
+
 see LICENSE

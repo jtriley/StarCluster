@@ -7,7 +7,7 @@ create_hosts.py
 import os
 import tempfile
 
-from molsim.molsimcfg import CLUSTER_USER
+from molsim.molsimcfg import CLUSTER_USER, KEY_LOCATION
 
 def setup_etc_hosts(nodes):
     host_file = tempfile.NamedTemporaryFile()
@@ -19,9 +19,15 @@ def setup_etc_hosts(nodes):
     fd.close()
     for node in nodes:
         node['CONNECTION'].put(host_file.name,'/etc/hosts')
-    host_file.unlink(host_file.name)
+    #host_file.unlink(host_file.name)
 
 def setup_passwordless_ssh(nodes):
+    print ">>> Configuring passwordless ssh for root"
+    for node in nodes:
+        conn = node['CONNECTION']
+        conn.put(KEY_LOCATION,'/root/.ssh/id_rsa')
+        conn.execute('chmod 400 /root/.ssh/id_rsa')
+
     print ">>> Configuring passwordless ssh for user: %s" % CLUSTER_USER
     # only needed on master, nfs takes care of the rest
     master = nodes[0]
@@ -62,8 +68,9 @@ def setup_nfs(nodes):
             nconn = node['CONNECTION']
             print nconn.execute('/etc/init.d/portmap start')
             print nconn.execute('echo "%s:/home /home nfs user,rw,exec 0 0" >> /etc/fstab' % master['INTERNAL_NAME'])
-            print nconn.execute('mount /home', user=CLUSTER_USER)
-            print nconn.execute('mount /opt/sge6', user=CLUSTER_USER)
+            print nconn.execute('echo "%s:/opt/sge6 /opt/sge6 nfs user,rw,exec 0 0" >> /etc/fstab' % master['INTERNAL_NAME'])
+            print nconn.execute('mount /home')
+            print nconn.execute('mount /opt/sge6')
             print nconn.execute('mount -t devpts none /dev/pts') # fix for xterm
 
 
@@ -125,7 +132,7 @@ CSP_MAIL_ADDRESS="star@mit.edu"
     ec2_sge_conf.close()
 
     # installs sge in /opt/sge6 and starts qmaster and schedd on master node
-    mconn.execute('TERM=rxvt /opt/sge6/inst_sge -m -x -auto ec2_sge.conf')
+    mconn.execute('cd /opt/sge6 && TERM=rxvt ./inst_sge -m -x -auto ec2_sge.conf')
 
 def main(nodes):
     setup_etc_hosts(nodes)

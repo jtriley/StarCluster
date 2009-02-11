@@ -69,6 +69,8 @@ def list_instances():
         for instance in parsed_response:
             if instance[0] == 'INSTANCE':
                 print ' '.join(instance)
+    else:
+        print ">>> No instances found..."
     
 def terminate_instances(instances=None):
     if instances is not None:
@@ -85,8 +87,8 @@ def get_master_node():
     machine_state=[]
     for chunk in parsed_response:
         if chunk[0]=='INSTANCE':
-            #if chunk[-1]=='running' or chunk[-1]=='pending':
-            if chunk[5]=='running' or chunk[5]=='pending':
+            #if chunk[5]=='running' or chunk[5]=='pending':
+            if chunk[5]=='running':
                 instances.append(chunk[1])
                 hostnames.append(chunk[4])
                 externalnames.append(chunk[3])              
@@ -116,7 +118,7 @@ def get_nodes():
     for ihost, ehost in  zip(internal_hostnames,external_hostnames):
         node = {}
         print '>>> Creating persistent connection to %s' % ehost
-        node['CONNECTION'] = Connection(node, 'root', KEY_LOCATION)
+        node['CONNECTION'] = Connection(ehost, 'root', KEY_LOCATION)
         node['NODE_ID'] = nodeid
         node['EXTERNAL_NAME'] = ehost
         node['INTERNAL_NAME'] = ihost
@@ -125,14 +127,14 @@ def get_nodes():
         if nodeid == 0:
             node['INTERNAL_ALIAS'] = 'master'
         else:
-            node['INTERNAL_ALIAS'] = 'node%.3d' % i
+            node['INTERNAL_ALIAS'] = 'node%.3d' % nodeid
         nodes.append(node)
         nodeid += 1
     return nodes
 
 def start_cluster():
     print ">>> Starting cluster..."
-    create_cluster()
+    #create_cluster()
     s = Spinner()
     print ">>> Waiting for cluster to start...",
     s.start()

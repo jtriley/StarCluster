@@ -12,3 +12,5 @@ config.read(os.path.expanduser('~/.molsimcfg'))
 for section in config.sections():
     for option in config.options(section):
         globals()[option.upper()] = config.get(section,option)
+
+DEFAULT_CLUSTER_SIZE=int(DEFAULT_CLUSTER_SIZE)
