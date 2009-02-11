@@ -8,7 +8,6 @@ import os
 import tempfile
 
 from molsim.molsimcfg import CLUSTER_USER
-from molsim.ec2utils import get_nodes
 
 def setup_etc_hosts(nodes):
     host_file = tempfile.NamedTemporaryFile()
@@ -128,8 +127,7 @@ CSP_MAIL_ADDRESS="star@mit.edu"
     # installs sge in /opt/sge6 and starts qmaster and schedd on master node
     mconn.execute('TERM=rxvt /opt/sge6/inst_sge -m -x -auto ec2_sge.conf')
 
-def main():
-    nodes = get_nodes() 
+def main(nodes):
     setup_etc_hosts(nodes)
     setup_passwordless_ssh(nodes)
     setup_nfs(nodes)

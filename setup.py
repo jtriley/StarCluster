@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(
-    Name = 'molsim-cluster',
+    name = 'molsim-cluster',
     version = '0.0.1',
     packages = ['molsim'],
     package_dir = {'cuda':'cuda'},

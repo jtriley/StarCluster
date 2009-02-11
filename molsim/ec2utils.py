@@ -147,7 +147,7 @@ def start_cluster():
     print ">>> The master node is %s" % master_node
 
     print ">>> Setting up the cluster..."
-    cluster_setup.main()
+    cluster_setup.main(get_nodes())
         
     print ">>> The cluster has been started and configured."
     print ">>> ssh into the master node as root by running:" 
