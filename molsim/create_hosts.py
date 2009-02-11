@@ -4,82 +4,69 @@
 create_hosts.py
 """
 
-import sys
 import os
-import socket
-from EC2config import *
-from ssh import ssh,scp
 
-def setup_nfs(nodes = None):
-    print ">>> SETTING UP NFS"
-    if nodes is None:
-        return
+from molsim.molsimcfg import CLUSTER_USER
+from molsim.ec2utils import get_nodes
 
-    master = socket.getfqdn()
+def setup_nfs(nodes):
+    print ">>> Configuring NFS..."
 
-    os.system('rm -rf /opt/sge6')
-    os.system('cp -r /opt/sge6-fresh /opt/sge6')
+    master = nodes[0]
+    mconn = master['CONNECTION']
 
-    print ">>> changing ownership of /opt/sge6 to %s" % CLUSTER_USER
-    os.system('chown -R %(user)s:%(user)s /opt/sge6' % {'user': CLUSTER_USER})
+    print mconn.execute('rm -rf /opt/sge6')
+    print mconn.execute('cp -r /opt/sge6-fresh /opt/sge6')
+
+    print mconn.execute('chown -R %(user)s:%(user)s /opt/sge6' % {'user': CLUSTER_USER})
 
     # setup /etc/exports and start nfsd on master node
     nfs_export_settings = "(async,no_root_squash,no_subtree_check,rw)"
-    etc_exports = open('/etc/exports','w')
-
+    etc_exports = mconn.remote_file('/etc/exports')
     for node in nodes:
-        etc_exports.write('/home/ ' + node + nfs_export_settings + '\n')
-        etc_exports.write('/opt/sge6 ' + node + nfs_export_settings + '\n')
+        if node['NODE_ID'] != 0:
+            etc_exports.write('/home/ ' + node['INTERNAL_NAME'] + nfs_export_settings + '\n')
+            etc_exports.write('/opt/sge6 ' + node['INTERNAL_NAME'] + nfs_export_settings + '\n')
     etc_exports.close()
     
-    os.system('/etc/init.d/portmap start')
-    os.system('mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs/')
-    os.system('/etc/init.d/nfs start')
-    os.system('/usr/sbin/exportfs -r')
-    os.system('mount -t devpts none /dev/pts')
+    mconn.execute('/etc/init.d/portmap start')
+    mconn.execute('mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs/')
+    mconn.execute('/etc/init.d/nfs start')
+    mconn.execute('/usr/sbin/exportfs -r')
+    mconn.execute('mount -t devpts none /dev/pts')
 
     # setup /etc/fstab and mount /opt/sge6 on each node
-
     for node in nodes:
-        ssh(node, cmd='/etc/init.d/portmap start')
-        ssh(node, cmd='echo "%s:/home /home nfs user,rw,exec 0 0" >> /etc/fstab' % master)
-        ssh(node, cmd='mount /home', user=CLUSTER_USER)
-        ssh(node, cmd='mount /opt/sge6', user=CLUSTER_USER)
+        if node['NODE_ID'] != 0:
+            nconn = node['CONNECTION']
+            print nconn.execute('/etc/init.d/portmap start')
+            print nconn.execute('echo "%s:/home /home nfs user,rw,exec 0 0" >> /etc/fstab' % master['INTERNAL_NAME'])
+            print nconn.execute('mount /home', user=CLUSTER_USER)
+            print nconn.execute('mount /opt/sge6', user=CLUSTER_USER)
+            print nconn.execute('mount -t devpts none /dev/pts') # fix for xterm
 
-        # fix xterm as well
-        ssh(node, cmd='mount -t devpts none /dev/pts')
+def setup_passwordless_ssh(nodes):
+    print ">>> Configuring passwordless ssh for user: %s" % CLUSTER_USER
+    # only needed on master, nfs takes care of the rest
+    master = nodes[0]
+    conn = master['CONNECTION']
+    print conn.execute('cp -r /root/.ssh /home/%s/' % CLUSTER_USER)
+    conn.put(KEY_LOCATION, '/home/%s/%s' % (CLUSTER_USER,os.path.basename(KEY_LOCATION)))
+    print conn.execute('chown -R %(user)s:%(user)s /home/%(user)s/.ssh' % {'user':CLUSTER_USER})
 
-def setup_nodes(nodes = None):
-    print ">>> SETTING UP NODES"
-    if nodes is None:
-        return
+def setup_sge(nodes):
+    print ">>> Configuring Sun Grid Engine..."
 
-    #send a copy of the hosts file to each of the compute nodes...
-    for host in nodes:
-        # copy over the ssh folder and host config to all machines in cluster (both /root and /home/USER)
-        scp(host, src='/home/%s/.ssh' % CLUSTER_USER, dest="/home/%s/" % CLUSTER_USER, recursive=True)
-        ssh(host, cmd="chown -R %(user)s:%(user)s /home/%(user)s/.ssh" % {'user':CLUSTER_USER})
-        scp(host, src='/etc/mpd.hosts', dest="/etc/")
-        scp(host, src='/etc/mpd.hosts', dest="/usr/local/etc/openmpi-default-hostfile")
+    master = nodes[0]
+    mconn = master['CONNECTION']
 
-        # copy /etc/hosts to node at /etc and /home/%s
-        scp(host, src='/etc/hosts', dest='/etc/')
-
-def setup_sge(nodes = None):
-    print ">>> SETTING UP SGE"
-    if nodes is None:
-        return
-
-    master = socket.getfqdn()
-    slaves = nodes
-
-    admin_list = master
-    for slave in slaves:
-        admin_list = admin_list + " " +slave
+    admin_list = ''
+    for node in nodes:
+        admin_list = admin_list + " " +node['INTERNAL_NAME']
 
     exec_list = admin_list
     submit_list = admin_list
-    ec2_sge_conf = open("/opt/sge6/ec2_sge.conf","w")
+    ec2_sge_conf = mconn.remote_file("/opt/sge6/ec2_sge.conf")
 
     print >> ec2_sge_conf, """
 SGE_ROOT="/opt/sge6"
@@ -123,62 +110,28 @@ CSP_ORGA_UNIT="Office of Educational Innovation and Technology"
 CSP_MAIL_ADDRESS="star@mit.edu"
     """ % (admin_list, exec_list, submit_list)
     ec2_sge_conf.close()
-    print "SGE_CONF(): changing ownership of /opt/sge6 to %s" % CLUSTER_USER
-    os.system('chown -R %(user)s:%(user)s /opt/sge6/' % {'user':CLUSTER_USER})
 
     # installs sge in /opt/sge6 and starts qmaster and schedd on master node
-    cwd = os.getcwd()
-    os.chdir('/opt/sge6/')
-    os.system('TERM=rxvt ./inst_sge -m -x -auto ec2_sge.conf')
-    os.chdir(cwd)
+    mconn.execute('TERM=rxvt /opt/sge6/inst_sge -m -x -auto ec2_sge.conf')
+
+def setup_etc_hosts(nodes):
+    host_file = tempfile.NamedTemporaryFile()
+    fd = host_file.file
+    print >> fd, "# Do not remove the following line or programs that require network functionality will fail"
+    print >> fd, "127.0.0.1 localhost.localdomain localhost"
+    for node in nodes:
+        print >> fd, "%(INTERNAL_IP)s %(INTERNAL_NAME)s %(INTERNAL_NAME_SHORT)s %(INTERNAL_ALIAS)s" % node 
+    fd.close()
+    for node in nodes:
+        node['CONNECTION'].put(host_file.name,'/etc/hosts')
+    host_file.unlink(host_file.name)
 
 def main():
-    print 'RUNNING AS:'
-    os.system('whoami')
-    # run master node commands locally, below we do this on each node
-    os.system('cp /etc/mpd.hosts /home/%s/' % CLUSTER_USER)
-    os.system('cp /etc/mpd.hosts /usr/local/etc/openmpi-default-hostfile')
-
-    os.system("cp /etc/hosts /home/%s/" % CLUSTER_USER)
-    os.system("chown -R %(user)s:%(user)s /home/%(user)s/" % {'user':CLUSTER_USER})
-
-    # Configure /etc/hosts file...
-    # read the internal domain names listed in mpd.hosts to construct this file
-    name_file = open("/etc/mpd.hosts", 'r')
-    h_output=open("/etc/hosts",'w') 
-    
-    workernames=[]
-    i=0
-    
-    for line in name_file.readlines():
-        host = line.strip()
-        #host example: domU-12-31-35-00-1C-A4.z-2.compute-1.internal
-        ip = socket.gethostbyname(host)     
-        shortname = host.split('.')[0]
-        print host
-
-        if i == 0:
-            print >> h_output, "# Do not remove the following line or programs that require network functionality will fail"
-            print >> h_output, "127.0.0.1 localhost.localdomain localhost"  
-            print >> h_output, "%s %s %s master" % (ip, host, shortname)    
-            print >> h_output, ""
-            print >> h_output, "# Compute Nodes"    
-        else:
-            workernames.append(host)
-            print >> h_output, "%s %s %s %s" % (ip, host, shortname, 'node%.3d' % i)   
-        i+=1    
-    
-    name_file.close()
-    h_output.close()
-
-    #copy hosts file to %s directory
-    os.system('cp /etc/hosts /home/%s/' % CLUSTER_USER)
-    os.system("chown -R %(user)s:%(user)s /home/%(user)s" % {'user':CLUSTER_USER}) 
-    
-    setup_nodes(workernames)
-    setup_nfs(workernames)
-    setup_sge(workernames)
-    os.system('rm /home/*.py*')
+    nodes = get_nodes() 
+    setup_etc_hosts(nodes)
+    setup_passwordless_ssh(nodes)
+    setup_nfs(nodes)
+    setup_sge(nodes)
 
 if __name__ == '__main__':
     main()

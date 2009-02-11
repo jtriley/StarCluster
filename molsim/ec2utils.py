@@ -4,10 +4,16 @@
 EC2 Utils
 """
 
-import os, sys, re, time, socket
+import os
+import re
+import sys
+import time
+import socket
 from threading import Thread
+
 import EC2
-from spinner import Spinner
+
+from molsim.molsimcfg import *
 from ssh import Connection
 
 def is_cluster_up():
@@ -33,17 +39,6 @@ def get_running_instances():
                 running_instances.append(chunk[1])
     return running_instances
 
-def create_mpd_hosts_file():
-    # Configure mpd.hosts: write out the hostnames to a mpd.hosts file
-    hosts_file= "mpd.hosts"
-    output=open(hosts_file,'w')
-    internal_hostnames = get_internal_hostnames()
-    for host in internal_hostnames:
-        print >> output, "%s" % host
-    output.close()
-    return hosts_file
-
-
 def get_external_hostnames():
     parsed_response=get_instance_response() 
     if len(parsed_response) == 0:
@@ -54,7 +49,6 @@ def get_external_hostnames():
         if chunk[0]=='INSTANCE' and chunk[5]=='running':
             external_hostnames.append(chunk[3])
     return external_hostnames
-                
 
 def get_internal_hostnames():
     parsed_response=get_instance_response() 
@@ -107,9 +101,34 @@ def ssh_to_master():
     master_node = get_master_node()
     if master_node is not None:
         print "\n>>> MASTER NODE: %s" % master_node
-        ssh(master_node, credential=KEY_LOCATION)
+        os.system('ssh -i %s root@%s' % (KEY_LOCATION, master_node)) 
     else: 
         print ">>> No master node found..."
+
+def get_nodes():
+    master_node = get_master_node()
+    internal_hostnames = get_internal_hostnames()
+    external_hostnames = get_external_hostnames()
+    
+    nodes = []
+    nodeid = 0
+    for ihost, ehost in  zip(internal_hostnames,external_hostnames):
+        node = {}
+        print '>>> Creating persistent connection to %s' % ehost
+        node['CONNECTION'] = Connection(node, 'root', KEY_LOCATION)
+        node['NODE_ID'] = nodeid
+        node['EXTERNAL_NAME'] = ehost
+        node['INTERNAL_NAME'] = ihost
+        node['INTERNAL_IP'] =  
+            node['CONNECTION'].execute('python -c "import socket; print socket.gethostbyname(\'%s\')"' % ihost)[0].strip()
+        node['INTERNAL_NAME_SHORT'] = ihost.split('.')[0]
+        if nodeid == 0:
+            node['INTERNAL_ALIAS'] = 'master'
+        else:
+            node['INTERNAL_ALIAS'] = 'node%.3d' % i
+        nodes.append(node)
+        nodeid += 1
+    return nodes
 
 def start_cluster():
     print ">>> Starting cluster..."
@@ -125,23 +144,17 @@ def start_cluster():
             time.sleep(15)
 
     master_node = get_master_node()
-    print "\n>>> The master node is %s" % master_node
+    print ">>> The master node is %s" % master_node
 
-    print "\n>>> Writing out mpd.hosts file (MPI)"
-    hosts_file = create_mpd_hosts_file()
-
-    # upload the gsg private key (or whatever you named it) , copy over create_hosts.py, and execute the script all on the master node.  The script 
-    # will then, using AWS internal network, setup passwordless ssh between the nodes as well as setup /etc/hosts, nfs, sge, mpi, etc
-    scp(master_node, user=CLUSTER_USER, src=KEY_LOCATION, dest="~/.ssh/id_rsa", credential=KEY_LOCATION)
-    scp(master_node, src=hosts_file, dest="/etc/", credential=KEY_LOCATION)
-
-    print ">>> Creating hosts file on master node and copying hosts file to compute nodes..."
-    scp(master_node, src="EC2config.py", dest="/home/", credential=KEY_LOCATION)
-    scp(master_node, src="ssh.py", dest="/home/", credential=KEY_LOCATION)
-    scp(master_node, src="create_hosts.py", dest="/home/", credential=KEY_LOCATION)
-    ssh(master_node, cmd="python /home/create_hosts.py", credential=KEY_LOCATION)
+    print 'TODO: create_hosts.py main() here'
         
-    print "\n>>> The cluster has been started. ssh into the master node as %s by running:" % CLUSTER_USER
+    print ">>> The cluster has been started and configured."
+    print ">>> ssh into the master node as root by running:" 
+    print ""
+    print "$ manage-cluster.py -m"
+    print ""
+    print ">>> or as %s directly:" % CLUSTER_USER
+    print ""
     print "$ ssh %s@%s " % (CLUSTER_USER,master_node)
 
 def create_cluster():

@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 
 from optparse import OptionParser
-from EC2config import *
-from ec2utils import start_cluster, stop_cluster, ssh_to_master, list_instances
+from molsim.ec2utils import start_cluster, stop_cluster, ssh_to_master, list_instances
 
 def main():
     usage = "usage: %prog [options] "
