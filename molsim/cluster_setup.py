@@ -33,7 +33,6 @@ def setup_passwordless_ssh(nodes):
     master = nodes[0]
     conn = master['CONNECTION']
     print conn.execute('cp -r /root/.ssh /home/%s/' % CLUSTER_USER)
-    conn.put(KEY_LOCATION, '/home/%s/%s' % (CLUSTER_USER,os.path.basename(KEY_LOCATION)))
     print conn.execute('chown -R %(user)s:%(user)s /home/%(user)s/.ssh' % {'user':CLUSTER_USER})
 
 def setup_nfs(nodes):
