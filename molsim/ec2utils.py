@@ -14,6 +14,7 @@ from threading import Thread
 import EC2
 
 from molsim.molsimcfg import *
+from molsim import cluster_setup
 from ssh import Connection
 
 def is_cluster_up():
@@ -119,8 +120,7 @@ def get_nodes():
         node['NODE_ID'] = nodeid
         node['EXTERNAL_NAME'] = ehost
         node['INTERNAL_NAME'] = ihost
-        node['INTERNAL_IP'] =  
-            node['CONNECTION'].execute('python -c "import socket; print socket.gethostbyname(\'%s\')"' % ihost)[0].strip()
+        node['INTERNAL_IP'] = node['CONNECTION'].execute('python -c "import socket; print socket.gethostbyname(\'%s\')"' % ihost)[0].strip()
         node['INTERNAL_NAME_SHORT'] = ihost.split('.')[0]
         if nodeid == 0:
             node['INTERNAL_ALIAS'] = 'master'
@@ -146,7 +146,8 @@ def start_cluster():
     master_node = get_master_node()
     print ">>> The master node is %s" % master_node
 
-    print 'TODO: create_hosts.py main() here'
+    print ">>> Setting up the cluster..."
+    cluster_setup.main()
         
     print ">>> The cluster has been started and configured."
     print ">>> ssh into the master node as root by running:" 

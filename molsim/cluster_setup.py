@@ -5,9 +5,31 @@ create_hosts.py
 """
 
 import os
+import tempfile
 
 from molsim.molsimcfg import CLUSTER_USER
 from molsim.ec2utils import get_nodes
+
+def setup_etc_hosts(nodes):
+    host_file = tempfile.NamedTemporaryFile()
+    fd = host_file.file
+    print >> fd, "# Do not remove the following line or programs that require network functionality will fail"
+    print >> fd, "127.0.0.1 localhost.localdomain localhost"
+    for node in nodes:
+        print >> fd, "%(INTERNAL_IP)s %(INTERNAL_NAME)s %(INTERNAL_NAME_SHORT)s %(INTERNAL_ALIAS)s" % node 
+    fd.close()
+    for node in nodes:
+        node['CONNECTION'].put(host_file.name,'/etc/hosts')
+    host_file.unlink(host_file.name)
+
+def setup_passwordless_ssh(nodes):
+    print ">>> Configuring passwordless ssh for user: %s" % CLUSTER_USER
+    # only needed on master, nfs takes care of the rest
+    master = nodes[0]
+    conn = master['CONNECTION']
+    print conn.execute('cp -r /root/.ssh /home/%s/' % CLUSTER_USER)
+    conn.put(KEY_LOCATION, '/home/%s/%s' % (CLUSTER_USER,os.path.basename(KEY_LOCATION)))
+    print conn.execute('chown -R %(user)s:%(user)s /home/%(user)s/.ssh' % {'user':CLUSTER_USER})
 
 def setup_nfs(nodes):
     print ">>> Configuring NFS..."
@@ -29,11 +51,11 @@ def setup_nfs(nodes):
             etc_exports.write('/opt/sge6 ' + node['INTERNAL_NAME'] + nfs_export_settings + '\n')
     etc_exports.close()
     
-    mconn.execute('/etc/init.d/portmap start')
-    mconn.execute('mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs/')
-    mconn.execute('/etc/init.d/nfs start')
-    mconn.execute('/usr/sbin/exportfs -r')
-    mconn.execute('mount -t devpts none /dev/pts')
+    print mconn.execute('/etc/init.d/portmap start')
+    print mconn.execute('mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs/')
+    print mconn.execute('/etc/init.d/nfs start')
+    print mconn.execute('/usr/sbin/exportfs -r')
+    print mconn.execute('mount -t devpts none /dev/pts')
 
     # setup /etc/fstab and mount /opt/sge6 on each node
     for node in nodes:
@@ -45,14 +67,6 @@ def setup_nfs(nodes):
             print nconn.execute('mount /opt/sge6', user=CLUSTER_USER)
             print nconn.execute('mount -t devpts none /dev/pts') # fix for xterm
 
-def setup_passwordless_ssh(nodes):
-    print ">>> Configuring passwordless ssh for user: %s" % CLUSTER_USER
-    # only needed on master, nfs takes care of the rest
-    master = nodes[0]
-    conn = master['CONNECTION']
-    print conn.execute('cp -r /root/.ssh /home/%s/' % CLUSTER_USER)
-    conn.put(KEY_LOCATION, '/home/%s/%s' % (CLUSTER_USER,os.path.basename(KEY_LOCATION)))
-    print conn.execute('chown -R %(user)s:%(user)s /home/%(user)s/.ssh' % {'user':CLUSTER_USER})
 
 def setup_sge(nodes):
     print ">>> Configuring Sun Grid Engine..."
@@ -114,24 +128,9 @@ CSP_MAIL_ADDRESS="star@mit.edu"
     # installs sge in /opt/sge6 and starts qmaster and schedd on master node
     mconn.execute('TERM=rxvt /opt/sge6/inst_sge -m -x -auto ec2_sge.conf')
 
-def setup_etc_hosts(nodes):
-    host_file = tempfile.NamedTemporaryFile()
-    fd = host_file.file
-    print >> fd, "# Do not remove the following line or programs that require network functionality will fail"
-    print >> fd, "127.0.0.1 localhost.localdomain localhost"
-    for node in nodes:
-        print >> fd, "%(INTERNAL_IP)s %(INTERNAL_NAME)s %(INTERNAL_NAME_SHORT)s %(INTERNAL_ALIAS)s" % node 
-    fd.close()
-    for node in nodes:
-        node['CONNECTION'].put(host_file.name,'/etc/hosts')
-    host_file.unlink(host_file.name)
-
 def main():
     nodes = get_nodes() 
     setup_etc_hosts(nodes)
     setup_passwordless_ssh(nodes)
     setup_nfs(nodes)
     setup_sge(nodes)
-
-if __name__ == '__main__':
-    main()
