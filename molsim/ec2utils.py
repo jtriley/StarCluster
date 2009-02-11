@@ -134,7 +134,7 @@ def get_nodes():
 
 def start_cluster():
     print ">>> Starting cluster..."
-    #create_cluster()
+    create_cluster()
     s = Spinner()
     print ">>> Waiting for cluster to start...",
     s.start()
