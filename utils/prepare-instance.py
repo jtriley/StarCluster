@@ -8,7 +8,7 @@ file.close()
 os.system('rm -f /mnt/config.pkl')
 
 print '>>> Protecting ami from private data...'
-#os.system('find /home -maxdepth 1 -type d -exec ls {}/.ssh/ \;') #remove all user's .ssh dir
+os.system('find /home -maxdepth 1 -type d -exec rm -rf {}/.ssh \;') #remove all user's .ssh dir
 os.system('rm -rf ~/.ssh/*')
 os.system('rm -f /var/log/secure')
 os.system('rm -f /var/log/lastlog')

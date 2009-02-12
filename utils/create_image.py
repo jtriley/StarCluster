@@ -2,8 +2,8 @@
 import os, pickle
 from optparse import OptionParser
 import EC2
-from EC2config import *
-from ssh import scp
+from molsim.molsimcfg import *
+from molsim.ssh import Connection
 
 class CreateEC2Image(object):
 
@@ -87,6 +87,7 @@ class CreateEC2Image(object):
         self.pickleconfig()
         self.transferfiles()
         self.bundleandregister()
+        print 'exiting'
 
     def pickleconfig(self):
         # Pickle the config dictionary so we can scp it to the host for prepare-instance.py to use
@@ -103,18 +104,20 @@ class CreateEC2Image(object):
         # copy keys over to host along with the config pickle 
         EC2_PRIVATE_KEY = self.env_variables['EC2_PRIVATE_KEY']
         EC2_CERT = self.env_variables['EC2_CERT']
-        scp(image_host, src=EC2_PRIVATE_KEY, dest="/mnt/", credential = credentials)
-        scp(image_host, src=EC2_CERT, dest="/mnt/", credential = credentials)
-        scp(image_host, src=self.pickle_file, dest="/mnt", credential = credentials)
+        conn = Connection(image_host,'root', credentials)
+        conn.put(EC2_PRIVATE_KEY, "/mnt/" + os.path.basename(EC2_PRIVATE_KEY))
+        conn.put(EC2_CERT, "/mnt/" + os.path.basename(EC2_CERT))
+        conn.put(self.pickle_file, "/mnt/" + os.path.basename(self.pickle_file))
 
         # copy over script to host that will take care of creating the image and cleaning up properly
-        scp(image_host, src="prepare-instance.py", dest="/mnt", credential = credentials)
+        conn.put("prepare-instance.py", "/mnt/prepare-instance.py")
 
     def bundleandregister(self):
         # run script to prepare the host
         image_host = self.config_dict['image_host']
         credentials = self.config_dict['credentials']
-        scp(image_host, cmd="python /mnt/prepare-instance.py", credential = credentials)
+        conn = Connection(image_host,'root', credentials)
+        print conn.execute("python /mnt/prepare-instance.py")
         # register compute node image we just created
         self.conn.register_image("%(bucket)s/%(prefix)s.manifest.xml" % self.config_dict)
     
