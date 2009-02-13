@@ -3,6 +3,7 @@ ssh.py
 Friendly Python SSH2 interface.
 From http://commandline.org.uk/code/
 License: http://creativecommons.org/licenses/by-sa/2.0/uk/
+modified by justin riley (jtriley@mit.edu)
 """
 
 import os
@@ -75,15 +76,18 @@ class Connection(object):
         self._sftp_connect()
         self._sftp.put(localpath, remotepath)
 
-    def execute(self, command):
+    def execute(self, command,silent = False):
         """Execute the given commands on a remote machine."""
         channel = self._transport.open_session()
         channel.exec_command(command)
-        output = channel.makefile('rb', -1).readlines()
-        if output:
-            return output
-        else:
-            return channel.makefile_stderr('rb', -1).readlines()
+        stdout = channel.makefile('rb', -1).readlines()
+        stderr = channel.makefile_stderr('rb', -1).readlines()
+        output = stdout+stderr
+
+        if not silent:
+            for line in output:
+                print line.strip()
+        return output
 
     def close(self):
         """Closes the connection and cleans up."""

@@ -134,7 +134,7 @@ def get_nodes():
 
 def start_cluster():
     print ">>> Starting cluster..."
-    create_cluster()
+    #create_cluster()
     s = Spinner()
     print ">>> Waiting for cluster to start...",
     s.start()
@@ -144,6 +144,9 @@ def start_cluster():
             break
         else:  
             time.sleep(15)
+    
+    print ">>> Nodes are alive, sleeping for 5 secs for ssh..."
+    time.sleep(5)
 
     master_node = get_master_node()
     print ">>> The master node is %s" % master_node
@@ -151,14 +154,14 @@ def start_cluster():
     print ">>> Setting up the cluster..."
     cluster_setup.main(get_nodes())
         
-    print ">>> The cluster has been started and configured."
-    print ">>> ssh into the master node as root by running:" 
+    print "\n>>> The cluster has been started and configured. ssh into the master node as root by running:" 
     print ""
     print "$ manage-cluster.py -m"
     print ""
     print ">>> or as %s directly:" % CLUSTER_USER
     print ""
     print "$ ssh %s@%s " % (CLUSTER_USER,master_node)
+    print ""
 
 def create_cluster():
     conn = EC2.AWSAuthConnection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
@@ -259,7 +262,7 @@ class Spinner(Thread):
         while True:
             if self.stop:
                 self.done()
-                break
+                return
             self.char_index_pos = self.Print(self.char_index_pos)
 
 if __name__ == "__main__":

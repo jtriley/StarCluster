@@ -32,8 +32,8 @@ def setup_passwordless_ssh(nodes):
     # only needed on master, nfs takes care of the rest
     master = nodes[0]
     conn = master['CONNECTION']
-    print conn.execute('cp -r /root/.ssh /home/%s/' % CLUSTER_USER)
-    print conn.execute('chown -R %(user)s:%(user)s /home/%(user)s/.ssh' % {'user':CLUSTER_USER})
+    conn.execute('cp -r /root/.ssh /home/%s/' % CLUSTER_USER)
+    conn.execute('chown -R %(user)s:%(user)s /home/%(user)s/.ssh' % {'user':CLUSTER_USER})
 
 def setup_nfs(nodes):
     print ">>> Configuring NFS..."
@@ -41,10 +41,10 @@ def setup_nfs(nodes):
     master = nodes[0]
     mconn = master['CONNECTION']
 
-    print mconn.execute('rm -rf /opt/sge6')
-    print mconn.execute('cp -r /opt/sge6-fresh /opt/sge6')
+    mconn.execute('rm -rf /opt/sge6')
+    mconn.execute('cp -r /opt/sge6-fresh /opt/sge6')
 
-    print mconn.execute('chown -R %(user)s:%(user)s /opt/sge6' % {'user': CLUSTER_USER})
+    mconn.execute('chown -R %(user)s:%(user)s /opt/sge6' % {'user': CLUSTER_USER})
 
     # setup /etc/exports and start nfsd on master node
     nfs_export_settings = "(async,no_root_squash,no_subtree_check,rw)"
@@ -55,22 +55,22 @@ def setup_nfs(nodes):
             etc_exports.write('/opt/sge6 ' + node['INTERNAL_NAME'] + nfs_export_settings + '\n')
     etc_exports.close()
     
-    print mconn.execute('/etc/init.d/portmap start')
-    print mconn.execute('mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs/')
-    print mconn.execute('/etc/init.d/nfs start')
-    print mconn.execute('/usr/sbin/exportfs -r')
-    print mconn.execute('mount -t devpts none /dev/pts')
+    mconn.execute('/etc/init.d/portmap start')
+    mconn.execute('mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs/')
+    mconn.execute('/etc/init.d/nfs start')
+    mconn.execute('/usr/sbin/exportfs -r')
+    mconn.execute('mount -t devpts none /dev/pts')
 
     # setup /etc/fstab and mount /opt/sge6 on each node
     for node in nodes:
         if node['NODE_ID'] != 0:
             nconn = node['CONNECTION']
-            print nconn.execute('/etc/init.d/portmap start')
-            print nconn.execute('echo "%s:/home /home nfs user,rw,exec 0 0" >> /etc/fstab' % master['INTERNAL_NAME'])
-            print nconn.execute('echo "%s:/opt/sge6 /opt/sge6 nfs user,rw,exec 0 0" >> /etc/fstab' % master['INTERNAL_NAME'])
-            print nconn.execute('mount /home')
-            print nconn.execute('mount /opt/sge6')
-            print nconn.execute('mount -t devpts none /dev/pts') # fix for xterm
+            nconn.execute('/etc/init.d/portmap start')
+            nconn.execute('echo "%s:/home /home nfs user,rw,exec 0 0" >> /etc/fstab' % master['INTERNAL_NAME'])
+            nconn.execute('echo "%s:/opt/sge6 /opt/sge6 nfs user,rw,exec 0 0" >> /etc/fstab' % master['INTERNAL_NAME'])
+            nconn.execute('mount /home')
+            nconn.execute('mount /opt/sge6')
+            nconn.execute('mount -t devpts none /dev/pts') # fix for xterm
 
 
 def setup_sge(nodes):
@@ -131,7 +131,8 @@ CSP_MAIL_ADDRESS="star@mit.edu"
     ec2_sge_conf.close()
 
     # installs sge in /opt/sge6 and starts qmaster and schedd on master node
-    mconn.execute('cd /opt/sge6 && TERM=rxvt ./inst_sge -m -x -auto ec2_sge.conf')
+    mconn.execute('cd /opt/sge6 && TERM=rxvt ./inst_sge -m -x -auto ec2_sge.conf', silent=True)
+    print ">>> Done Configuring Sun Grid Engine"
 
 def main(nodes):
     setup_etc_hosts(nodes)

@@ -111,13 +111,16 @@ class CreateEC2Image(object):
 
         # copy over script to host that will take care of creating the image and cleaning up properly
         conn.put("prepare-instance.py", "/mnt/prepare-instance.py")
+        conn.close()
 
     def bundleandregister(self):
         # run script to prepare the host
         image_host = self.config_dict['image_host']
         credentials = self.config_dict['credentials']
-        conn = Connection(image_host,'root', credentials)
-        print conn.execute("python /mnt/prepare-instance.py")
+        #conn = Connection(image_host,'root', credentials)
+        #print conn.execute("python /mnt/prepare-instance.py")
+        # using system ssh here since it's better to see the output realtime than after the fact
+        os.system('ssh -i %s root@%s python /mnt/prepare-instance.py' % (credentials, image_host))
         # register compute node image we just created
         self.conn.register_image("%(bucket)s/%(prefix)s.manifest.xml" % self.config_dict)
     
