@@ -9,6 +9,14 @@ import tempfile
 
 from molsim.molsimcfg import CLUSTER_USER, KEY_LOCATION
 
+def setup_scratch(nodes):
+    for node in nodes:
+        nconn = node['CONNECTION']
+        nconn.execute('mkdir /mnt/sgeadmin')
+        nconn.execute('chown -R %(user)s:%(user)s /mnt/sgeadmin' % {'user':CLUSTER_USER})
+        nconn.execute('mkdir /scratch')
+        nconn.execute('ln -s /mnt/sgeadmin /scratch')
+
 def setup_etc_hosts(nodes):
     host_file = tempfile.NamedTemporaryFile()
     fd = host_file.file
@@ -19,7 +27,6 @@ def setup_etc_hosts(nodes):
     fd.close()
     for node in nodes:
         node['CONNECTION'].put(host_file.name,'/etc/hosts')
-    #host_file.unlink(host_file.name)
 
 def setup_passwordless_ssh(nodes):
     print ">>> Configuring passwordless ssh for root"
@@ -71,7 +78,6 @@ def setup_nfs(nodes):
             nconn.execute('mount /home')
             nconn.execute('mount /opt/sge6')
             nconn.execute('mount -t devpts none /dev/pts') # fix for xterm
-
 
 def setup_sge(nodes):
     print ">>> Configuring Sun Grid Engine..."
