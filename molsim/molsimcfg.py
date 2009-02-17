@@ -7,6 +7,7 @@ import ConfigParser
 Reads all variables defined in .molsimcfg config file into molsimcfg module's namespace
 """
 
+# TODO: Make this better still...this at least gets the job done for now
 if not os.path.exists(os.path.expanduser('~/.molsimcfg')):
     print '>>> please create ~/.molsimcfg...template is below'
     print """
