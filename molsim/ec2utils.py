@@ -211,9 +211,17 @@ def ssh_to_master():
         print ">>> No master node found..."
 
 def ssh_to_node(node_number):
-    node = get_external_hostnames()[int(node_number)]
-    print ">>> Logging into node: %s" % node
-    os.system('ssh -i %s root@%s' % (KEY_LOCATION, node))
+    nodes = get_external_hostnames()
+    if len(nodes) == 0:
+        print '>>> No instances to connect to...exiting'
+        return
+
+    try:
+        node = nodes[int(node_number)]
+        print ">>> Logging into node: %s" % node
+        os.system('ssh -i %s root@%s' % (KEY_LOCATION, node))
+    except:
+        print ">>> Invalid node_number. Please select a node number from the output of manage-cluster.py -l"
 
 def get_nodes():
     internal_hostnames = get_internal_hostnames()

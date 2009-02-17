@@ -9,9 +9,9 @@ def main():
 
     parser.add_option("-s","--start-cluster", dest="start_cluster", action="store_true", default=False, help="start an amazon ec2 cluster")
     parser.add_option("-t","--terminate-cluster", dest="terminate_cluster", action="store_true", default=False, help="shutdown ec2 cluster")
-    parser.add_option("-m","--login-master", dest="login_master", action="store_true", default=False, help="ssh to ec2 cluster master node")
+    parser.add_option("-m","--login-master", dest="login_master", action="store_true", default=False, help="ssh to ec2 cluster master node (equivalent to -n 0")
     parser.add_option("-l","--list-nodes", dest="list_nodes", action="store_true", default=False, help="list all ec2 cluster nodes")
-    parser.add_option("-n","--login-node", dest="login_node",  default=None, help="list all ec2 cluster nodes")
+    parser.add_option("-n","--login-node", dest="login_node",  default=None, help="node number to connect to. (from output of -l option)")
 
     (options,args) = parser.parse_args() 
 
