@@ -58,9 +58,9 @@ class Connection(object):
             self._sftp = paramiko.SFTPClient.from_transport(self._transport)
             self._sftp_live = True
 
-    def remote_file(self, file):
+    def remote_file(self, file, mode='w'):
         self._sftp_connect()
-        return self._sftp.open(file, 'w')
+        return self._sftp.open(file, mode)
 
     def get(self, remotepath, localpath = None):
         """Copies a file between the remote host and the local host."""
