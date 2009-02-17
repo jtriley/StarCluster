@@ -101,6 +101,11 @@ def remove_image(image_name, pretend=True):
         conn = get_conn()
         conn.deregister_image(image['AMI'])
 
+def list_image_files(image_name, bucket=None):
+    files = get_image_files(image_name, bucket)
+    for file in files:
+        print file
+
 def get_image_files(image_name, bucket=None):
     if bucket:
         bucket_files = get_bucket_files(bucket)
