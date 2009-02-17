@@ -1,14 +1,17 @@
 #!/usr/bin/env python
-import os, re, sys
-import commands, socket
-import EC2
-from EC2config import *
+import os
+import re
+import sys
+import commands
+import socket
 from optparse import OptionParser
 
-class sshTunnel(object):
-    
-    def __init__(self, target, dest_host = 'localhost', ssh_port = 22, forward_port = 5901, mode = 'open', reverse = False):
+from molsim import EC2
+from molsim.molsimcfg import *
 
+
+class sshTunnel(object):
+    def __init__(self, target, dest_host = 'localhost', ssh_port = 22, forward_port = 5901, mode = 'open', reverse = False):
         self.config = {}
         config = self.config
         config['mode'] = mode
@@ -20,7 +23,6 @@ class sshTunnel(object):
 
         if reverse:
             config['tunnel_option'] = '-R'
-        
 
     def remote(self, cmd = None):
         config = self.config
@@ -37,10 +39,8 @@ class sshTunnel(object):
         # Initialize tunnel to run in the background.
         cmd = 'ssh %(tunnel_option)s %(forward_port)s:%(dest_host)s:%(forward_port)s -p %(ssh_port)s %(target)s -f -N' % self.config 
         os.system(cmd)
-        
 
     def kill(self):
-
         cmd = 'ssh %(tunnel_option)s %(forward_port)s:%(dest_host)s:%(forward_port)s -p %(ssh_port)s %(target)s -f -N' % self.config 
         print 'Attempting to kill process: %s' % cmd
 
@@ -52,8 +52,8 @@ class sshTunnel(object):
                 print 'tunnel found.  killing pid: %s ' % pid
                 os.kill(pid,3)
 
+
 class HostFactory(object):
-    
     def __init__(self):
         self.conn = EC2.AWSAuthConnection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
         self.ec2_hosts = []
@@ -73,10 +73,7 @@ class HostFactory(object):
     def get_ec2_hosts(self):
         return self.ec2_hosts
 
-
-
 def main():
-
     usage = "usage: %prog [options]"
     parser = OptionParser(usage)
     parser.add_option("-m","--mode", dest="mode", type="choice", choices = ['open','view', 'kill'], help="(open | kill)")
@@ -175,6 +172,7 @@ def main():
        parser.print_usage() 
        print '>>> Invalid/no mode specified \n'
        print 'Use --help to get a full list of options'
+
 
 if __name__ == "__main__":
     main()

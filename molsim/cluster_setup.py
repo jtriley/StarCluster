@@ -141,6 +141,7 @@ CSP_MAIL_ADDRESS="star@mit.edu"
     print ">>> Done Configuring Sun Grid Engine"
 
 def main(nodes):
+    setup_scratch(nodes)
     setup_etc_hosts(nodes)
     setup_passwordless_ssh(nodes)
     setup_nfs(nodes)

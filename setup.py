@@ -7,7 +7,7 @@ setup(
     version = '0.0.1',
     packages = ['molsim'],
     package_dir = {'cuda':'cuda'},
-    scripts=['bin/manage-cluster.py'],
+    scripts=['bin/manage-cluster.py', 'bin/manage-images.py'],
     install_requires=[
         "paramiko",
     ],

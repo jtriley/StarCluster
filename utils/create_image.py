@@ -1,7 +1,9 @@
-#!/usr/bin/python2.4
-import os, pickle
+#!/usr/bin/env python
+import os
+import pickle
 from optparse import OptionParser
-import EC2
+
+from molsim import EC2
 from molsim.molsimcfg import *
 from molsim.ssh import Connection
 
@@ -87,6 +89,7 @@ class CreateEC2Image(object):
         self.pickleconfig()
         self.transferfiles()
         self.bundleandregister()
+        os.unlink('config.pkl') 
         print 'exiting'
 
     def pickleconfig(self):

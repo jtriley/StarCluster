@@ -11,18 +11,107 @@ import time
 import socket
 from threading import Thread
 
-import EC2
+from molsim import EC2
 
 from molsim.molsimcfg import *
+from molsim.s3utils import get_bucket_files, remove_file
 from molsim import cluster_setup
 from ssh import Connection
+
+def get_conn():
+    return EC2.AWSAuthConnection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+
+def is_ssh_up():
+    external_hostnames = get_external_hostnames()
+    for ehost in external_hostnames:
+        s = socket.socket()
+        s.settimeout(0.25)
+        try:
+            s.connect((ehost, 22))
+            s.close()
+        except socket.error:
+            return False
+    return True
 
 def is_cluster_up():
     running_instances = get_running_instances()
     if len(running_instances) == DEFAULT_CLUSTER_SIZE:
-        return True
+        if is_ssh_up():
+            return True
+        else:
+            return False
     else:
         return False
+
+def get_registered_images():
+    conn = EC2.AWSAuthConnection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+    image_list = conn.describe_images(owners=["self"]).parse()
+    images = {}
+    for image in image_list:
+        image_name = os.path.basename(image[2]).split('.manifest.xml')[0]
+        images[image_name] = {}
+        img_dict = images[image_name]
+        img_dict['NAME'] = image_name
+        img_dict['AMI'] = image[1]
+        img_dict['MANIFEST'] = image[2] 
+        img_dict['BUCKET'] = os.path.dirname(image[2])
+        img_dict['STATUS'] = image[4] 
+        img_dict['PRIVACY'] = image[5] 
+    return images
+
+def get_image(image_name):
+    return get_registered_images()[image_name]
+
+def list_registered_images():
+    images = get_registered_images()
+    for image in images.keys():
+        print "%(NAME)s AMI=%(AMI)s BUCKET=%(BUCKET)s MANIFEST=%(MANIFEST)s" % images[image]
+
+def remove_image_files(image_name, bucket = None, pretend=True):
+    files = get_image_files(image_name, bucket)
+    if not bucket:
+        bucket = get_image(image_name)['BUCKET']
+    for file in files:
+        if pretend:
+            print file
+        else:
+            print 'removing file %s' % file
+            remove_file(bucket, file)
+
+    # recursive double check
+    files = get_image_files(image_name, bucket)
+    if len(files) != 0:
+        if pretend:
+            print 'not all files deleted, would recurse'
+        else:
+            print 'not all files deleted, recursing'
+            remove_image_files(image_name, bucket, pretend)
+    
+
+def remove_image(image_name, pretend=True):
+    # first remove image files
+    remove_image_files(image_name, pretend)
+
+    # then deregister ami
+    image = get_image(image_name)
+    print 'removing %s (ami: %s)' % (image['NAME'],image['AMI'])
+    if pretend:
+        print 'would run conn.deregister_image()'
+    else:
+        conn = get_conn()
+        conn.deregister_image(image['AMI'])
+
+def get_image_files(image_name, bucket=None):
+    if bucket:
+        bucket_files = get_bucket_files(bucket)
+    else:
+        image = get_image(image_name)
+        bucket_files = get_bucket_files(image['BUCKET'])
+    image_files = []
+    for file in bucket_files:
+        if file.split('.')[0] == image_name:
+            image_files.append(file)
+    return image_files
 
 def get_instance_response():
     conn = EC2.AWSAuthConnection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
@@ -30,14 +119,17 @@ def get_instance_response():
     parsed_response=instance_response.parse()  
     return parsed_response
 
-def get_running_instances():
+def get_running_instances(strict=True):
     parsed_response = get_instance_response() 
     running_instances=[]
     for chunk in parsed_response:
-        #if chunk[0]=='INSTANCE' and chunk[-1]=='running':
         if chunk[0]=='INSTANCE' and chunk[5]=='running':
-            if chunk[2] == IMAGE_ID or chunk[2] == MASTER_IMAGE_ID:
+            if strict:
+                if chunk[2] == IMAGE_ID or chunk[2] == MASTER_IMAGE_ID:
+                    running_instances.append(chunk[1])
+            else:
                 running_instances.append(chunk[1])
+                
     return running_instances
 
 def get_external_hostnames():
@@ -62,13 +154,23 @@ def get_internal_hostnames():
             internal_hostnames.append(chunk[4])
     return internal_hostnames
 
-def list_instances():
+def get_instances():
     parsed_response = get_instance_response()
+    instances = []
     if len(parsed_response) != 0:
-        print ">>> EC2 Instances:"
         for instance in parsed_response:
             if instance[0] == 'INSTANCE':
-                print ' '.join(instance)
+                instances.append(instance)
+    return instances
+
+def list_instances():
+    instances = get_instances()
+    if len(instances) != 0:
+        counter = 0
+        print ">>> EC2 Instances:"
+        for instance in instances:
+            print "[%s] %s %s (%s)" % (counter, instance[3], instance[5],instance[2])
+            counter +=1
     else:
         print ">>> No instances found..."
     
@@ -108,8 +210,12 @@ def ssh_to_master():
     else: 
         print ">>> No master node found..."
 
+def ssh_to_node(node_number):
+    node = get_external_hostnames()[int(node_number)]
+    print ">>> Logging into node: %s" % node
+    os.system('ssh -i %s root@%s' % (KEY_LOCATION, node))
+
 def get_nodes():
-    master_node = get_master_node()
     internal_hostnames = get_internal_hostnames()
     external_hostnames = get_external_hostnames()
     
@@ -134,7 +240,7 @@ def get_nodes():
 
 def start_cluster():
     print ">>> Starting cluster..."
-    #create_cluster()
+    create_cluster()
     s = Spinner()
     print ">>> Waiting for cluster to start...",
     s.start()
