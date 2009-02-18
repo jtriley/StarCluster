@@ -138,9 +138,9 @@ def get_running_instances(strict=True):
 
 def get_external_hostnames():
     parsed_response=get_instance_response() 
-    if len(parsed_response) == 0:
-        return None        
     external_hostnames = []
+    if len(parsed_response) == 0:
+        return external_hostnames        
     for chunk in parsed_response:
         #if chunk[0]=='INSTANCE' and chunk[-1]=='running':
         if chunk[0]=='INSTANCE' and chunk[5]=='running':
