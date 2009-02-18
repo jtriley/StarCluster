@@ -390,6 +390,7 @@ class Spinner(Thread):
 
     def __init__(self, type=spin_type):
         Thread.__init__(self)
+        self.setDaemon(True)
         self.stop = False
         if type == 0:
             self.char = ['O', 'o', '-', 'o','0']

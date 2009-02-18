@@ -18,7 +18,7 @@ def main():
 
     if options.start_cluster:
         if options.no_create:
-            start_cluster(create=options.no_create)
+            start_cluster(create=False)
         else:
             start_cluster()
         if options.login_master:
