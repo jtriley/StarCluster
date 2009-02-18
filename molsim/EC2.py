@@ -23,8 +23,10 @@ except ImportError:
 
 DEFAULT_HOST = 'ec2.amazonaws.com'
 PORTS_BY_SECURITY = { True: 443, False: 80 }
-API_VERSION = '2008-02-01'
-RELEASE_VERSION = "22395"
+#API_VERSION = '2008-02-01'
+#RELEASE_VERSION = "22395"
+API_VERSION='2008-12-01'
+RELEASE_VERSION = "30349"
 
 class AWSAuthConnection(object):
 
@@ -270,6 +272,42 @@ class AWSAuthConnection(object):
             
         return RunInstancesResponse(self.make_request("RunInstances", params))
 
+    def attach_volume(self, volumeId, instanceId, device):
+        """Makes a C{AttachVolume} call.
+
+        @param volumeId: The ID of the Amazon EBS volume
+
+        @param instanceId: The ID of the instance from which the volume will detach
+
+        @param device:  The device name
+        """ 
+        params = {'VolumeId': volumeId, 'InstanceId': instanceId, 'Device': device}
+        return AttachVolumeResponse(self.make_request("AttachVolume", params))
+
+    def detach_volume(self, volumeId, instanceId = '', device = '', force = False):
+        """Makes a C{DetachVolume} call.
+
+        @param volumeId: The ID of the Amazon EBS volume
+
+        @param instanceId: The ID of the instance from which the volume will detach
+
+        @param device:  The device name
+
+        @param force: Forces detachment if the previous detachment attempt 
+        did not occur cleanly (logging into an instance, unmounting the volume, 
+        and detaching normally). This option can lead to data loss or a corrupted 
+        file system. Use this option only as a last resort to detach a volume from 
+        a failed instance. The instance will not have an opportunity to flush file
+        system caches nor file system meta data. If you use this option, you must 
+        perform file system check and repair procedures.
+        """ 
+        params = {'VolumeId': volumeId, 'InstanceId': instanceId, 'Device':device}
+        
+        if force:
+            params['Force'] = 'true'
+        return DetachVolumeResponse(self.make_request("DetachVolume", params))
+    
+
     def describe_instances(self, instanceIds=[]):
         """Makes a C{DescribeInstances} call.
 
@@ -279,6 +317,17 @@ class AWSAuthConnection(object):
         """
         params = self.pathlist("InstanceId", instanceIds)
         return DescribeInstancesResponse(self.make_request("DescribeInstances", params))
+
+    def describe_volumes(self, volumeIds=[]):
+        """Makes a C{DescribeVolumes} call.
+
+        @param volumeIds: List of volumes.  If empty
+        or omitted, all volumes will be returned.
+
+        """
+        params = self.pathlist("VolumeId", volumeIds)
+        return DescribeVolumesResponse(self.make_request("DescribeVolumes", params))
+        
 
     def get_console_output(self, instanceId):
         """Makes a C{GetConsoleOutput} call.
@@ -632,6 +681,35 @@ class DeleteKeyPairResponse(Response):
         # If we don't get an error, the deletion succeeded.
         return [["Keypair deleted."]]
 
+class AttachmentSetResponse(Response):
+    """ Response containing attachment set items """
+    def parseAttachmentSet(self, root):
+        """ Parse a set of attachmentSet/item nodes """
+        lines = []
+        for element in self.findall(root, "attachmentSet/item"):
+            lines.append(["ATTACHMENT",
+                          self.findtext(element, "volumeId"),
+                          self.findtext(element, "instanceId"),
+                          self.fixnone(self.findtext(element, "device")),
+                          self.fixnone(self.findtext(element, "size")),
+                          self.findtext(element, "status"),
+                          self.findtext(element, "attachTime"),
+                          ])
+        return lines
+
+class AttachmentResponse(Response):
+    def parseAttachment(self):
+        doc = ET.XML(self.http_xml)
+        lines = []
+        lines.append(["ATTACHMENT",
+                      self.findtext(doc, "volumeId"),
+                      self.findtext(doc, "instanceId"),
+                      self.fixnone(self.findtext(doc, "device")),
+                      self.fixnone(self.findtext(doc, "size")),
+                      self.findtext(doc, "status"),
+                      self.findtext(doc, "attachTime"),
+                      ])
+        return lines
 
 class InstanceSetResponse(Response):
     """ Response containing instance set items """
@@ -668,6 +746,16 @@ class RunInstancesResponse(InstanceSetResponse):
         lines.extend(self.parseInstanceSet(doc))
         return lines
 
+class DetachVolumeResponse(AttachmentResponse):
+    """Response parser class for C{DetachVolume} API call."""
+    def parse(self):
+        return self.parseAttachment()
+
+class AttachVolumeResponse(AttachmentResponse):
+    """Response parser class for C{AttachVolume} API call."""
+    def parse(self):
+        return self.parseAttachment()
+        
 
 class DescribeInstancesResponse(InstanceSetResponse):
     """Response parser class for C{DescribeInstances} API call."""
@@ -681,6 +769,22 @@ class DescribeInstancesResponse(InstanceSetResponse):
             groups = [g.text for g in self.findall(rootelement, "groupSet/item/groupId")]
             lines.append(["RESERVATION", reservationId, ownerId, ",".join(groups)])
             lines.extend(self.parseInstanceSet(rootelement))
+        return lines
+
+class DescribeVolumesResponse(AttachmentSetResponse):
+    """Response parser class for C{DescribeVolumes} API call."""
+    ELEMENT_XPATH = "volumeSet/item"
+    def parse(self):
+        doc = ET.XML(self.http_xml)
+        lines = []
+        for rootelement in self.findall(doc, self.ELEMENT_XPATH):
+            volumeId = self.findtext(rootelement, "volumeId")
+            size = self.findtext(rootelement, "size")
+            status = self.findtext(rootelement, "status")
+            availability_zone = self.findtext(rootelement,"availabilityZone")
+            create_time = self.findtext(rootelement,"createTime")
+            lines.append(["VOLUME", volumeId, size, availability_zone, status, create_time])
+            lines.extend(self.parseAttachmentSet(rootelement))
         return lines
 
     

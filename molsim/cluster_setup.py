@@ -7,7 +7,7 @@ create_hosts.py
 import os
 import tempfile
 
-from molsim.molsimcfg import CLUSTER_USER, KEY_LOCATION
+from molsim.molsimcfg import *
 
 def setup_scratch(nodes):
     for node in nodes:
@@ -53,6 +53,13 @@ def setup_nfs(nodes):
 
     mconn.execute('chown -R %(user)s:%(user)s /opt/sge6' % {'user': CLUSTER_USER})
 
+    # setup /etc/fstab on master to use block device if specified
+    if globals().has_key('ATTACH_VOLUME') and globals().has_key('VOLUME_PARTITION'):
+        master_fstab = mconn.remote_file('/etc/fstab', mode='a')
+        print >> master_fstab, "%s /home ext3 noauto,defaults 0 0 " % VOLUME_PARTITION
+        master_fstab.close()
+        mconn.execute('mount /home')
+
     # setup /etc/exports and start nfsd on master node
     nfs_export_settings = "(async,no_root_squash,no_subtree_check,rw)"
     etc_exports = mconn.remote_file('/etc/exports')
@@ -68,7 +75,7 @@ def setup_nfs(nodes):
     mconn.execute('/usr/sbin/exportfs -r')
     mconn.execute('mount -t devpts none /dev/pts')
 
-    # setup /etc/fstab and mount /opt/sge6 on each node
+    # setup /etc/fstab and mount /home and /opt/sge6 on each node
     for node in nodes:
         if node['NODE_ID'] != 0:
             nconn = node['CONNECTION']
@@ -143,6 +150,6 @@ CSP_MAIL_ADDRESS="star@mit.edu"
 def main(nodes):
     setup_scratch(nodes)
     setup_etc_hosts(nodes)
-    setup_passwordless_ssh(nodes)
     setup_nfs(nodes)
+    setup_passwordless_ssh(nodes)
     setup_sge(nodes)

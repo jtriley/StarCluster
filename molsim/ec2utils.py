@@ -134,7 +134,6 @@ def get_running_instances(strict=True):
                     running_instances.append(chunk[1])
             else:
                 running_instances.append(chunk[1])
-                
     return running_instances
 
 def get_external_hostnames():
@@ -207,6 +206,14 @@ def get_master_node():
         master_node = None
     return master_node
 
+def get_master_instance():
+    instances = get_running_instances()
+    try:
+        master_instance = instances[0] 
+    except:
+        master_instance = None
+    return master_instance
+
 def ssh_to_master():
     master_node = get_master_node()
     if master_node is not None:
@@ -264,8 +271,12 @@ def start_cluster():
         else:  
             time.sleep(15)
     
-    print ">>> Nodes are alive, sleeping for 5 secs for ssh..."
-    time.sleep(5)
+    if globals().has_key('ATTACH_VOLUME'):
+        print ">>> Attaching volume to master node..."
+        if attach_volume_to_master():
+            print ">>> Finished attaching volume %s to master node" % ATTACH_VOLUME
+        else:
+            print ">>> Failed to attach volume %s to master node" % ATTACH_VOLUME
 
     master_node = get_master_node()
     print ">>> The master node is %s" % master_node
@@ -287,19 +298,19 @@ def create_cluster():
     if globals().has_key("MASTER_IMAGE_ID"):
         print ">>> Launching master node..."
         print ">>> MASTER AMI: ",MASTER_IMAGE_ID
-        master_response = conn.run_instances(imageId=MASTER_IMAGE_ID, instanceType=INSTANCE_TYPE, minCount=1, maxCount=1, keyName= KEYNAME )
+        master_response = conn.run_instances(imageId=MASTER_IMAGE_ID, instanceType=INSTANCE_TYPE, minCount=1, maxCount=1, keyName= KEYNAME, availabilityZone = AVAILABILITY_ZONE)
         print master_response
 
         print ">>> Launching worker nodes..."
         print ">>> NODE AMI: ",IMAGE_ID
-        instances_response = conn.run_instances(imageId=IMAGE_ID, instanceType=INSTANCE_TYPE, minCount=max((DEFAULT_CLUSTER_SIZE-1)/2, 1), maxCount=max(DEFAULT_CLUSTER_SIZE-1,1), keyName= KEYNAME )
+        instances_response = conn.run_instances(imageId=IMAGE_ID, instanceType=INSTANCE_TYPE, minCount=max((DEFAULT_CLUSTER_SIZE-1)/2, 1), maxCount=max(DEFAULT_CLUSTER_SIZE-1,1), keyName= KEYNAME, availabilityZone = AVAILABILITY_ZONE)
         print instances_response
         # if the workers failed, what should we do about the master?
     else:
         print ">>> Launching master and worker nodes..."
         print ">>> MASTER AMI: ",IMAGE_ID
         print ">>> NODE AMI: ",IMAGE_ID
-        instances_response = conn.run_instances(imageId=IMAGE_ID, instanceType=INSTANCE_TYPE, minCount=max(DEFAULT_CLUSTER_SIZE/2,1), maxCount=max(DEFAULT_CLUSTER_SIZE,1), keyName= KEYNAME )
+        instances_response = conn.run_instances(imageId=IMAGE_ID, instanceType=INSTANCE_TYPE, minCount=max(DEFAULT_CLUSTER_SIZE/2,1), maxCount=max(DEFAULT_CLUSTER_SIZE,1), keyName= KEYNAME ,availabilityZone = AVAILABILITY_ZONE)
         # instances_response is a list: [["RESERVATION", reservationId, ownerId, ",".join(groups)],["INSTANCE", instanceId, imageId, dnsName, instanceState], [ "INSTANCE"etc])
         # same as "describe instance"
         print instances_response
@@ -307,7 +318,9 @@ def create_cluster():
 def stop_cluster():
     resp = raw_input(">>> This will shutdown all EC2 instances. Are you sure (yes/no)? ")
     if resp == 'yes':
-        print ">>>  Listing instances ..."
+        print ">>> Detaching EBS devices (if any)"
+        detach_volume()
+        print ">>> Listing instances ..."
         list_instances()
         running_instances = get_running_instances()
         if len(running_instances) > 0:
@@ -336,6 +349,37 @@ def stop_slaves():
     print ">>> Listing new state of slave instances"
     print list_instances()
 
+def attach_volume_to_node(node):
+    conn = get_conn()
+    return conn.attach_volume(ATTACH_VOLUME, node, VOLUME_DEVICE).parse()
+
+def get_volumes():
+    conn = get_conn()
+    return conn.describe_volumes([ATTACH_VOLUME]).parse()
+
+def list_volumes():
+    vols = get_volumes()
+    for vol in vols:
+        print vol
+
+def detach_volume():
+    conn = get_conn()
+    return conn.detach_volume(ATTACH_VOLUME).parse()
+
+def attach_volume_to_master():
+    master_instance = get_master_instance()
+    if master_instance is not None:
+        attach_volume_to_node(master_instance)
+        while True:
+            vol = get_volumes()[0]
+            if vol[0] == 'VOLUME':
+                if vol[1] == ATTACH_VOLUME and vol[4] == 'in-use':
+                    return True
+                else:
+                    time.sleep(5)
+                    continue
+            else:
+                return False
 
 class Spinner(Thread):
     spin_screen_pos = 0     #Set the screen position of the spinner (chars from the left).

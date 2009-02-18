@@ -34,6 +34,14 @@ IMAGE_ID = ami-11111111
 # instance type
 INSTANCE_TYPE = m1.small
 
+# availability zone
+AVAILABILITY_ZONE = us-east-1c
+
+# attach volume to /home on master node
+ATTACH_VOLUME = vol-abcdefgh
+VOLUME_DEVICE = /dev/sdd
+VOLUME_PARTITION = /dev/sdd1
+
 # cluster size
 DEFAULT_CLUSTER_SIZE = 2
 

@@ -2,3 +2,4 @@
 molsim_cluster.egg-info
 build
 *.swp
+*.pkl
