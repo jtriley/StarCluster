@@ -258,9 +258,10 @@ def get_nodes():
         nodeid += 1
     return nodes
 
-def start_cluster():
+def start_cluster(create=True):
     print ">>> Starting cluster..."
-    create_cluster()
+    if create:
+        create_cluster()
     s = Spinner()
     print ">>> Waiting for cluster to start...",
     s.start()
