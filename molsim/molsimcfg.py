@@ -2,15 +2,14 @@
 import os
 import sys
 import ConfigParser
+from ConfigParser import NoOptionError
 
 """
 Reads all variables defined in .molsimcfg config file into molsimcfg module's namespace
 """
 
-# TODO: Make this better still...this at least gets the job done for now
-if not os.path.exists(os.path.expanduser('~/.molsimcfg')):
-    print '>>> please create ~/.molsimcfg...template is below'
-    print """
+class MolsimCfg:
+    config_template = """
 [section ec2]
 #replace these with your AWS keys
 AWS_ACCESS_KEY_ID = #your_aws_access_key_id
@@ -47,14 +46,65 @@ DEFAULT_CLUSTER_SIZE = 2
 
 # create the following user on the cluster
 CLUSTER_USER = sgeadmin
-"""
-    sys.exit()
+    """
+    def __init__(self):
+        # TODO: Make this better still...this at least gets the job done for now
+        if not os.path.exists(os.path.expanduser('~/.molsimcfg')):
+            print '>>> please create ~/.molsimcfg...template is below'
+            print self.config_template
+            sys.exit()
 
-config = ConfigParser.ConfigParser()
-config.read(os.path.expanduser('~/.molsimcfg'))
+        self.config = ConfigParser.ConfigParser()
+        self.config.read(os.path.expanduser('~/.molsimcfg'))
 
-for section in config.sections():
-    for option in config.options(section):
-        globals()[option.upper()] = config.get(section,option)
+        ec2_options = [
+            ('AWS_ACCESS_KEY_ID',self.get_string),
+            ('AWS_SECRET_ACCESS_KEY', self.get_string),
+            ('AWS_USERID', self.get_string),
+            ('KEYNAME', self.get_string),
+            ('KEY_LOCATION', self.get_string),
+        ]
 
-DEFAULT_CLUSTER_SIZE=int(DEFAULT_CLUSTER_SIZE)
+        molsim_options = [
+            ('MASTER_IMAGE_ID', self.get_string),
+            ('IMAGE_ID', self.get_string),
+            ('INSTANCE_TYPE', self.get_string),
+            ('AVAILABILITY_ZONE', self.get_string),
+            ('ATTACH_VOLUME', self.get_string),
+            ('VOLUME_DEVICE', self.get_string),
+            ('VOLUME_PARTITION', self.get_string),
+            ('DEFAULT_CLUSTER_SIZE', self.get_int),
+            ('CLUSTER_USER', self.get_string)
+        ]
+        section = "section ec2"
+        for opt in ec2_options:
+            globals()[opt[0]] = opt[1](section, opt[0])
+
+        section = "section molsim"
+        for opt in molsim_options:
+            globals()[opt[0]] = opt[1](section, opt[0])
+
+        if DEFAULT_CLUSTER_SIZE is None:
+            print '>>> Required option DEFAULT_CLUSTER_SIZE missing from ~/.molsimcfg'
+            sys.exit()
+    
+    def load_everything(self):
+        for section in self.config.sections():
+            for option in self.config.options(section):
+                globals()[option.upper()] = self.config.get(section,option)
+
+    def get_int(self, section,option):
+        try:
+            opt = self.config.getint(section,option)
+        except (NoOptionError):
+            opt = None
+        return opt
+
+    def get_string(self, section, option):
+        try:
+            opt = self.config.get(section,option)
+        except (NoOptionError):
+            opt = None
+        return opt
+
+MolsimCfg()
