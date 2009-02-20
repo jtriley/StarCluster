@@ -11,7 +11,8 @@ import base64
 import hmac
 import httplib
 import re
-import sha
+#import sha
+from hashlib import sha1 as sha
 import sys
 import time
 import urllib
@@ -539,8 +540,15 @@ class AWSAuthConnection(object):
             'User-Agent': 'ec2-python-query 1.2-%s' % (RELEASE_VERSION)
             }
 
-        self.connection.request("GET", "/%s" % path, data, headers)
-        return self.connection.getresponse()
+        try:
+            self.connection.request("GET", "/%s" % path, data, headers)
+            return self.connection.getresponse()
+        except Exception,e:
+            print 'Error making request. Check your internet connection?'
+            sys.exit(1)
+            #from IPython.Shell import IPShellEmbed
+            #ipshell = IPShellEmbed(user_ns = dict(self=self))
+            #ipshell()
 
     def get_aws_auth_param(self, params, aws_secret_access_key):
         canonical_string = "".join(["".join(param) for param in params])

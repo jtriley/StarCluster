@@ -18,6 +18,15 @@ from molsim.s3utils import get_bucket_files, remove_file
 from molsim import cluster_setup
 from ssh import Connection
 
+def print_timing(func):
+    def wrapper(*arg, **kargs):
+        t1 = time.time()
+        res = func(*arg, **kargs)
+        t2 = time.time()
+        print '%s took %0.3f ms' % (func.func_name, (t2-t1)*1000.0)
+        return res
+    return wrapper
+
 def get_conn():
     return EC2.AWSAuthConnection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
 
@@ -68,9 +77,9 @@ def list_registered_images():
         print "%(NAME)s AMI=%(AMI)s BUCKET=%(BUCKET)s MANIFEST=%(MANIFEST)s" % images[image]
 
 def remove_image_files(image_name, bucket = None, pretend=True):
-    files = get_image_files(image_name, bucket)
     if not bucket:
         bucket = get_image(image_name)['BUCKET']
+    files = get_image_files(image_name, bucket)
     for file in files:
         if pretend:
             print file
@@ -90,7 +99,7 @@ def remove_image_files(image_name, bucket = None, pretend=True):
 
 def remove_image(image_name, pretend=True):
     # first remove image files
-    remove_image_files(image_name, pretend)
+    remove_image_files(image_name, pretend = pretend)
 
     # then deregister ami
     image = get_image(image_name)
@@ -258,6 +267,7 @@ def get_nodes():
         nodeid += 1
     return nodes
 
+@print_timing
 def start_cluster(create=True):
     print ">>> Starting cluster..."
     if create:

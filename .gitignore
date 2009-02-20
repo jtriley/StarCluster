@@ -1,5 +1,6 @@
 *.pyc
-molsim_cluster.egg-info
-build
 *.swp
 *.pkl
+molsim_cluster.egg-info
+build
+dist

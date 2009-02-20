@@ -13,7 +13,8 @@ import base64
 import hmac
 import httplib
 import re
-import sha
+#import sha
+from hashlib import sha1 as sha
 import sys
 import time
 import urllib
