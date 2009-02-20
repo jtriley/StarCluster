@@ -9,10 +9,11 @@ def main():
     parser = OptionParser(usage)
 
     parser.add_option("-l","--list-images", dest="list_images", action="store_true", default=False, help="list all registered ec2 images")
-    parser.add_option("-f","--show-image-files", dest="show_image", default=None, help="show all files on s3 for the an ec2 image")
+    parser.add_option("-f","--show-image-files", dest="show_image", default=None, help="show all files on s3 for an ec2 image")
     parser.add_option("-b","--list-buckets", dest="list_buckets", action="store_true", default=False, help="list all s3 buckets")
     parser.add_option("-s","--show-bucket-files", dest="show_bucket", default=None, help="show all files in bucket")
     parser.add_option("-r","--remove-image", dest="remove_image", default=None, help="deregister an ec2 image and remove it from s3")
+    parser.add_option("-p","--pretend", dest="pretend", default=False, action="store_true", help="pretend run, don't really do anything (useful with -r option)")
 
     (options,args) = parser.parse_args() 
 
@@ -23,7 +24,7 @@ def main():
     elif options.show_bucket:
         show_bucket_files(options.show_bucket)
     elif options.remove_image:
-        remove_image(options.remove_image, pretend=True)
+        remove_image(options.remove_image, pretend=options.pretend)
     elif options.show_image:
         list_image_files(options.show_image)
     else:

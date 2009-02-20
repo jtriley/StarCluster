@@ -68,9 +68,9 @@ def list_registered_images():
         print "%(NAME)s AMI=%(AMI)s BUCKET=%(BUCKET)s MANIFEST=%(MANIFEST)s" % images[image]
 
 def remove_image_files(image_name, bucket = None, pretend=True):
-    files = get_image_files(image_name, bucket)
     if not bucket:
         bucket = get_image(image_name)['BUCKET']
+    files = get_image_files(image_name, bucket)
     for file in files:
         if pretend:
             print file
@@ -90,7 +90,7 @@ def remove_image_files(image_name, bucket = None, pretend=True):
 
 def remove_image(image_name, pretend=True):
     # first remove image files
-    remove_image_files(image_name, pretend)
+    remove_image_files(image_name, pretend = pretend)
 
     # then deregister ami
     image = get_image(image_name)
