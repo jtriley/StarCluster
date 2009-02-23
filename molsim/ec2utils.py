@@ -18,6 +18,15 @@ from molsim.s3utils import get_bucket_files, remove_file
 from molsim import cluster_setup
 from ssh import Connection
 
+def print_timing(func):
+    def wrapper(*arg):
+        t1 = time.time()
+        res = func(*arg)
+        t2 = time.time()
+        print '%s took %0.3f ms' % (func.func_name, (t2-t1)*1000.0)
+        return res
+    return wrapper
+
 def get_conn():
     return EC2.AWSAuthConnection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
 
@@ -258,6 +267,7 @@ def get_nodes():
         nodeid += 1
     return nodes
 
+@print_timing
 def start_cluster(create=True):
     print ">>> Starting cluster..."
     if create:
