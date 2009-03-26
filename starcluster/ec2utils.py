@@ -11,11 +11,11 @@ import time
 import socket
 from threading import Thread
 
-from molsim import EC2
+from starcluster import EC2
 
-from molsim.molsimcfg import *
-from molsim.s3utils import get_bucket_files, remove_file
-from molsim import cluster_setup
+from starcluster.starclustercfg import *
+from starcluster.s3utils import get_bucket_files, remove_file
+from starcluster import cluster_setup
 from ssh import Connection
 
 def print_timing(func):

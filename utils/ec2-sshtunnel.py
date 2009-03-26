@@ -6,8 +6,8 @@ import commands
 import socket
 from optparse import OptionParser
 
-from molsim import EC2
-from molsim.molsimcfg import *
+from starcluster import EC2
+from starcluster.starclustercfg import *
 
 
 class sshTunnel(object):

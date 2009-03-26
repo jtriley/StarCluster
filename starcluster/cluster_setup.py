@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
 """
-create_hosts.py
+cluster_setup.py
 """
 
 import os
 import tempfile
 
-from molsim.molsimcfg import *
+from starcluster.starclustercfg import *
 
 def setup_scratch(nodes):
     for node in nodes:

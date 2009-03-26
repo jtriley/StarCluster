@@ -5,10 +5,10 @@ import ConfigParser
 from ConfigParser import NoOptionError
 
 """
-Reads all variables defined in .molsimcfg config file into molsimcfg module's namespace
+Reads all variables defined in .starclustercfg config file into starclustercfg module's namespace
 """
 
-class MolsimCfg:
+class StarClusterCfg:
     config_template = """
 [section ec2]
 #replace these with your AWS keys
@@ -23,7 +23,7 @@ AWS_USERID= #your userid
 KEYNAME = #your keypair name
 KEY_LOCATION = #/path/to/your/keypair
 
-[section molsim]
+[section starcluster]
 # ami for master
 MASTER_IMAGE_ID = ami-00000000
 
@@ -49,13 +49,13 @@ CLUSTER_USER = sgeadmin
     """
     def __init__(self):
         # TODO: Make this better still...this at least gets the job done for now
-        if not os.path.exists(os.path.expanduser('~/.molsimcfg')):
-            print '>>> please create ~/.molsimcfg...template is below'
+        if not os.path.exists(os.path.expanduser('~/.starclustercfg')):
+            print '>>> please create ~/.starclustercfg...template is below'
             print self.config_template
             sys.exit()
 
         self.config = ConfigParser.ConfigParser()
-        self.config.read(os.path.expanduser('~/.molsimcfg'))
+        self.config.read(os.path.expanduser('~/.starclustercfg'))
 
         ec2_options = [
             ('AWS_ACCESS_KEY_ID',self.get_string),
@@ -65,7 +65,7 @@ CLUSTER_USER = sgeadmin
             ('KEY_LOCATION', self.get_string),
         ]
 
-        molsim_options = [
+        starcluster_options = [
             ('MASTER_IMAGE_ID', self.get_string),
             ('IMAGE_ID', self.get_string),
             ('INSTANCE_TYPE', self.get_string),
@@ -80,12 +80,12 @@ CLUSTER_USER = sgeadmin
         for opt in ec2_options:
             globals()[opt[0]] = opt[1](section, opt[0])
 
-        section = "section molsim"
-        for opt in molsim_options:
+        section = "section starcluster"
+        for opt in starcluster_options:
             globals()[opt[0]] = opt[1](section, opt[0])
 
         if DEFAULT_CLUSTER_SIZE is None:
-            print '>>> Required option DEFAULT_CLUSTER_SIZE missing from ~/.molsimcfg'
+            print '>>> Required option DEFAULT_CLUSTER_SIZE missing from ~/.starclustercfg'
             sys.exit()
     
     def load_everything(self):
@@ -107,4 +107,4 @@ CLUSTER_USER = sgeadmin
             opt = None
         return opt
 
-MolsimCfg()
+StarClusterCfg()

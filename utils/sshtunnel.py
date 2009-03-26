@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import os,sys
 from optparse import OptionParser
-from ssh import SSHTunnel
+from starcluster.ssh import SSHTunnel
 
 def main(args):
     usage = "usage: %prog [options]"

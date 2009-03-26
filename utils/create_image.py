@@ -3,9 +3,9 @@ import os
 import pickle
 from optparse import OptionParser
 
-from molsim import EC2
-from molsim.molsimcfg import *
-from molsim.ssh import Connection
+from starcluster import EC2
+from starcluster.starclustercfg import *
+from starcluster.ssh import Connection
 
 class CreateEC2Image(object):
 

@@ -1,6 +1,6 @@
 *.pyc
 *.swp
 *.pkl
-molsim_cluster.egg-info
+StarCluster.egg-info
 build
 dist

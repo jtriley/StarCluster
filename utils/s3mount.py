@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 import os
 
-from molsim import S3
-from molsim.molsimcfg import *
+from starcluster import S3
+from starcluster.starclustercfg import *
 
 print 'Simple wrapper script for s3fs (http://s3fs.googlecode.com/)'
 

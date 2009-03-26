@@ -2,8 +2,8 @@
 ssh.py
 Friendly Python SSH2 interface.
 From http://commandline.org.uk/code/
-License: http://creativecommons.org/licenses/by-sa/2.0/uk/
-modified by justin riley (jtriley@mit.edu)
+License: LGPL
+modified by justin riley (justin.t.riley@gmail.com)
 """
 
 import os
@@ -59,6 +59,7 @@ class Connection(object):
             self._sftp_live = True
 
     def remote_file(self, file, mode='w'):
+        """Returns a remote file descriptor"""
         self._sftp_connect()
         return self._sftp.open(file, mode)
 

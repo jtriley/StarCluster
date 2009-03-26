@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-from molsim.molsimcfg import *
-from molsim import S3
+from starcluster.starclustercfg import *
+from starcluster import S3
 
 def get_conn():
     return S3.AWSAuthConnection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
