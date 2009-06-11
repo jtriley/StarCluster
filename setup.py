@@ -60,6 +60,25 @@ setup(
     less nodes. With this model there is also the benefit that if hardware problems occur 
     it's easy to request a new set of machines in the cloud.
     """,
+
     download_url='http://web.mit.edu/stardev/starcluster',
     license='LGPL3',
+
+    classifiers=[
+        'Environment :: Console',
+        'Development Status :: 4 - Beta',
+        'Intended Audience :: Developers',
+        'Intended Audience :: Education',
+        'Intended Audience :: System Administrators',
+        'Intended Audience :: Other Audience',
+        'Intended Audience :: Science/Research',
+        'License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)',
+        'Natural Language :: English',
+        'Programming Language :: Python',
+        'Topic :: Education',
+        'Topic :: Scientific/Engineering',
+        'Topic :: System :: Distributed Computing',
+        'Topic :: System :: Clustering',
+    ],
+
 )
