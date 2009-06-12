@@ -89,7 +89,9 @@ class Connection(object):
     def remote_file(self, file, mode='w'):
         """Returns a remote file descriptor"""
         self._sftp_connect()
-        return self._sftp.open(file, mode)
+        rfile = self._sftp.open(file, mode)
+        rfile.name=file
+        return rfile
 
     def get(self, remotepath, localpath = None):
         """Copies a file between the remote host and the local host."""

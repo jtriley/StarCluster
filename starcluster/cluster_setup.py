@@ -165,11 +165,13 @@ CSP_MAIL_ADDRESS="none@none.edu"
     # installs sge in /opt/sge6 and starts qmaster and schedd on master node
     mconn.execute('cd /opt/sge6 && TERM=rxvt ./inst_sge -m -x -auto ./ec2_sge.conf', silent=True)
 
-    # generate /etc/profile.d/sge.sh
-    sge_profile = mconn.remote_file("/etc/profile.d/sge.sh")
-    arch = mconn.execute("/opt/sge6/util/arch")[0]
+    # generate /etc/profile.d/sge.sh for each node
+    for node in nodes:
+        conn = node['CONNECTION']
+        sge_profile = conn.remote_file("/etc/profile.d/sge.sh")
+        arch = conn.execute("/opt/sge6/util/arch")[0]
 
-    print >> sge_profile, """
+        print >> sge_profile, """
 export SGE_ROOT="/opt/sge6"
 export SGE_CELL="default"
 export SGE_CLUSTER_NAME="starcluster"
@@ -180,8 +182,8 @@ export MANPATH="$MANPATH/opt/sge6/man"
 export PATH="$PATH:/opt/sge6/bin/%(arch)s"
 export ROOTPATH="$ROOTPATH:/opt/sge6/bin/%(arch)s"
 export LDPATH="$LDPATH:/opt/sge6/lib/%(arch)s"
-    """ % {'arch': arch}
-    sge_profile.close()
+        """ % {'arch': arch}
+        sge_profile.close()
 
     # create sge parallel environment
     # first iterate through each machine and count the number of processors
@@ -210,7 +212,7 @@ accounting_summary FALSE
 
     mconn.execute("source /etc/profile && qconf -sq all.q > /tmp/allq.txt")
     allq_file = mconn.remote_file("/tmp/allq.txt","r")
-    allq_file_lines = all_queue_file.readlines()
+    allq_file_lines = allq_file.readlines()
     allq_file.close()
 
     new_allq_file_lines = []
