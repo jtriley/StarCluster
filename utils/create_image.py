@@ -25,7 +25,7 @@ class CreateEC2Image(object):
         usage = "usage: %prog [options] "
         parser = OptionParser(usage)
 
-        parser.add_option("-n","--host_number", dest="host_number", help="host number to use for making the image (required)")
+        parser.add_option("-n","--host_number", dest="host_number", help="host number to use for making the image, counting from 0 (required)")
         parser.add_option("-b","--bucket", dest="bucket", help="name of the bucket to put the image in (required)")
         parser.add_option("-p","--prefix", dest="prefix", help="prefix for image files (eg 'my-image'). Defaults to 'image' (optional)")
         parser.add_option("-d","--delete_image", dest="image_to_remove", help="ami to remove from bucket (optional)")
@@ -34,7 +34,7 @@ class CreateEC2Image(object):
         (options,args) = parser.parse_args() 
 
         if options.host_number is not None:
-            host_number = int(options.host_number) - 1
+            host_number = int(options.host_number)
         else: 
             host_number = None
 

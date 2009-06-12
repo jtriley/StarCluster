@@ -17,8 +17,9 @@ class Connection(object):
     def __init__(self,
                  host,
                  username = None,
-                 private_key = None,
                  password = None,
+                 private_key = None,
+                 private_key_pass = None,
                  port = 22,
                  ):
         self._sftp_live = False
@@ -39,18 +40,45 @@ class Connection(object):
             self._transport.connect(username = username, password = password)
         else:
             # Use Private Key.
-            if not private_key:
+            pkey = None
+            if private_key:
+                print 'private key specified'
+                if private_key.endswith('rsa'):
+                    pkey = self._load_rsa_key(private_key, private_key_pass)
+                elif private_key.endswith('dsa'):
+                    pkey = self._load_dsa_key(private_key, private_key_pass)
+                else:
+                    print "WARNING: specified key does not end in either rsa or dsa...trying both"
+                    pkey = self._load_rsa_key(private_key, private_key_pass)
+                    if pkey is None:
+                        pkey = self._load_dsa_key(private_key, private_key_pass)
+            else:
+                print 'no private_key specified'
                 # Try to use default key.
                 if os.path.exists(os.path.expanduser('~/.ssh/id_rsa')):
-                    private_key = '~/.ssh/id_rsa'
+                    pkey = self._load_rsa_key('~/.ssh/id_rsa')
                 elif os.path.exists(os.path.expanduser('~/.ssh/id_dsa')):
-                    private_key = '~/.ssh/id_dsa'
+                    pkey = self._load_dsa_key('~/.ssh/id_dsa')
                 else:
                     raise TypeError, "You have not specified a password or key."
 
-            private_key_file = os.path.expanduser(private_key)
-            rsa_key = paramiko.RSAKey.from_private_key_file(private_key_file)
-            self._transport.connect(username = username, pkey = rsa_key)
+            self._transport.connect(username = username, pkey = pkey)
+
+    def _load_rsa_key(self, private_key, private_key_pass=None):
+        private_key_file = os.path.expanduser(private_key)
+        try:
+            rsa_key = paramiko.RSAKey.from_private_key_file(private_key_file, private_key_pass)
+            return rsa_key
+        except paramiko.SSHException,e:
+            print 'invalid rsa key or password specified'
+
+    def _load_dsa_key(self, private_key, private_key_pass=None):
+        private_key_file = os.path.expanduser(private_key)
+        try:
+            dsa_key = paramiko.DSSKey.from_private_key_file(private_key_file, private_key_pass)
+            return dsa_key
+        except paramiko.SSHException,e:
+            print 'invalid dsa key or password specified'
     
     def _sftp_connect(self):
         """Establish the SFTP connection."""
@@ -84,6 +112,7 @@ class Connection(object):
         stdout = channel.makefile('rb', -1).readlines()
         stderr = channel.makefile_stderr('rb', -1).readlines()
         output = stdout+stderr
+        output = [ line.strip() for line in output ]
 
         if not silent:
             for line in output:

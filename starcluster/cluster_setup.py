@@ -9,15 +9,23 @@ import tempfile
 
 from starcluster.starclustercfg import *
 
-def setup_scratch(nodes):
+def setup_cluster_user(nodes):
+    print ">>> Creating cluster user: %s" % CLUSTER_USER
     for node in nodes:
         nconn = node['CONNECTION']
-        nconn.execute('mkdir /mnt/sgeadmin')
-        nconn.execute('chown -R %(user)s:%(user)s /mnt/sgeadmin' % {'user':CLUSTER_USER})
+        nconn.execute('useradd -m -s /bin/bash %s' % CLUSTER_USER)
+
+def setup_scratch(nodes):
+    print ">>> Configuring scratch space for user: %s" % CLUSTER_USER
+    for node in nodes:
+        nconn = node['CONNECTION']
+        nconn.execute('mkdir /mnt/%s' % CLUSTER_USER)
+        nconn.execute('chown -R %(user)s:%(user)s /mnt/%(user)s' % {'user':CLUSTER_USER})
         nconn.execute('mkdir /scratch')
-        nconn.execute('ln -s /mnt/sgeadmin /scratch')
+        nconn.execute('ln -s /mnt/%s /scratch' % CLUSTER_USER)
 
 def setup_etc_hosts(nodes):
+    print ">>> Configuring /etc/hosts on each node"
     host_file = tempfile.NamedTemporaryFile()
     fd = host_file.file
     print >> fd, "# Do not remove the following line or programs that require network functionality will fail"
@@ -35,12 +43,19 @@ def setup_passwordless_ssh(nodes):
         conn.put(KEY_LOCATION,'/root/.ssh/id_rsa')
         conn.execute('chmod 400 /root/.ssh/id_rsa')
 
+    master = nodes[0]
+    mconn = master['CONNECTION']
+
+    # make initial connections to all nodes to skip host key checking on first use
+    # this basically populates /root/.ssh/known_hosts which is copied to CLUSTER_USER below
+    for node in nodes:
+        mconn.execute('ssh -o "StrictHostKeyChecking=no" %(INTERNAL_NAME)s hostname' % node)
+
     print ">>> Configuring passwordless ssh for user: %s" % CLUSTER_USER
     # only needed on master, nfs takes care of the rest
-    master = nodes[0]
-    conn = master['CONNECTION']
-    conn.execute('cp -r /root/.ssh /home/%s/' % CLUSTER_USER)
-    conn.execute('chown -R %(user)s:%(user)s /home/%(user)s/.ssh' % {'user':CLUSTER_USER})
+    mconn.execute('cp -r /root/.ssh /home/%s/' % CLUSTER_USER)
+    mconn.execute('chown -R %(user)s:%(user)s /home/%(user)s/.ssh' % {'user':CLUSTER_USER})
+
 
 def setup_nfs(nodes):
     print ">>> Configuring NFS..."
@@ -48,17 +63,17 @@ def setup_nfs(nodes):
     master = nodes[0]
     mconn = master['CONNECTION']
 
-    mconn.execute('rm -rf /opt/sge6')
     mconn.execute('cp -r /opt/sge6-fresh /opt/sge6')
 
     mconn.execute('chown -R %(user)s:%(user)s /opt/sge6' % {'user': CLUSTER_USER})
 
     # setup /etc/fstab on master to use block device if specified
     if globals().has_key('ATTACH_VOLUME') and globals().has_key('VOLUME_PARTITION'):
-        master_fstab = mconn.remote_file('/etc/fstab', mode='a')
-        print >> master_fstab, "%s /home ext3 noauto,defaults 0 0 " % VOLUME_PARTITION
-        master_fstab.close()
-        mconn.execute('mount /home')
+        if ATTACH_VOLUME is not None and VOLUME_PARTITION is not None:
+            master_fstab = mconn.remote_file('/etc/fstab', mode='a')
+            print >> master_fstab, "%s /home ext3 noauto,defaults 0 0 " % VOLUME_PARTITION
+            master_fstab.close()
+            mconn.execute('mount /home')
 
     # setup /etc/exports and start nfsd on master node
     nfs_export_settings = "(async,no_root_squash,no_subtree_check,rw)"
@@ -73,13 +88,15 @@ def setup_nfs(nodes):
     mconn.execute('mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs/')
     mconn.execute('/etc/init.d/nfs start')
     mconn.execute('/usr/sbin/exportfs -r')
-    mconn.execute('mount -t devpts none /dev/pts')
+    mconn.execute('mount -t devpts none /dev/pts') # fix for xterm
 
     # setup /etc/fstab and mount /home and /opt/sge6 on each node
     for node in nodes:
         if node['NODE_ID'] != 0:
             nconn = node['CONNECTION']
             nconn.execute('/etc/init.d/portmap start')
+            nconn.execute('mkdir /opt/sge6')
+            nconn.execute('chown -R %(user)s:%(user)s /opt/sge6' % {'user':CLUSTER_USER})
             nconn.execute('echo "%s:/home /home nfs user,rw,exec 0 0" >> /etc/fstab' % master['INTERNAL_NAME'])
             nconn.execute('echo "%s:/opt/sge6 /opt/sge6 nfs user,rw,exec 0 0" >> /etc/fstab' % master['INTERNAL_NAME'])
             nconn.execute('mount /home')
@@ -100,7 +117,9 @@ def setup_sge(nodes):
     submit_list = admin_list
     ec2_sge_conf = mconn.remote_file("/opt/sge6/ec2_sge.conf")
 
+    # todo: add sge section to config values for some of the below
     print >> ec2_sge_conf, """
+SGE_CLUSTER_NAME="starcluster"
 SGE_ROOT="/opt/sge6"
 SGE_QMASTER_PORT="63231"
 SGE_EXECD_PORT="63232"
@@ -121,7 +140,7 @@ HOSTNAME_RESOLVING="true"
 SHELL_NAME="ssh"
 COPY_COMMAND="scp"
 DEFAULT_DOMAIN="none"
-ADMIN_MAIL="star@mit.edu"
+ADMIN_MAIL="none@none.edu"
 ADD_TO_RC="false"
 SET_FILE_PERMS="true"
 RESCHEDULE_JOBS="wait"
@@ -135,19 +154,81 @@ WIN_DOMAIN_ACCESS="false"
 CSP_RECREATE="false"
 CSP_COPY_CERTS="false"
 CSP_COUNTRY_CODE="US"
-CSP_STATE="Massachusetts"
-CSP_LOCATION="NE48"
-CSP_ORGA="Massachusetts Institute of Technology - MIT"
-CSP_ORGA_UNIT="Office of Educational Innovation and Technology"
-CSP_MAIL_ADDRESS="star@mit.edu"
+CSP_STATE="MA"
+CSP_LOCATION="BOSTON"
+CSP_ORGA="MIT"
+CSP_ORGA_UNIT="OEIT"
+CSP_MAIL_ADDRESS="none@none.edu"
     """ % (admin_list, exec_list, submit_list)
     ec2_sge_conf.close()
 
     # installs sge in /opt/sge6 and starts qmaster and schedd on master node
-    mconn.execute('cd /opt/sge6 && TERM=rxvt ./inst_sge -m -x -auto ec2_sge.conf', silent=True)
+    mconn.execute('cd /opt/sge6 && TERM=rxvt ./inst_sge -m -x -auto ./ec2_sge.conf', silent=True)
+
+    # generate /etc/profile.d/sge.sh
+    sge_profile = mconn.remote_file("/etc/profile.d/sge.sh")
+    arch = mconn.execute("/opt/sge6/util/arch")[0]
+
+    print >> sge_profile, """
+export SGE_ROOT="/opt/sge6"
+export SGE_CELL="default"
+export SGE_CLUSTER_NAME="starcluster"
+export SGE_QMASTER_PORT="63231"
+export SGE_EXECD_PORT="63232"
+export MANTYPE="man"
+export MANPATH="$MANPATH/opt/sge6/man"
+export PATH="$PATH:/opt/sge6/bin/%(arch)s"
+export ROOTPATH="$ROOTPATH:/opt/sge6/bin/%(arch)s"
+export LDPATH="$LDPATH:/opt/sge6/lib/%(arch)s"
+    """ % {'arch': arch}
+    sge_profile.close()
+
+    # create sge parallel environment
+    # first iterate through each machine and count the number of processors
+    num_processors = 0
+    for node in nodes:
+        conn = node['CONNECTION']
+        num_procs = int(conn.execute('cat /proc/cpuinfo | grep processor | wc -l')[0])
+        num_processors += num_procs
+
+    parallel_environment = mconn.remote_file("/tmp/pe.txt")
+    print >> parallel_environment, """
+pe_name           orte
+slots             %s
+user_lists        NONE
+xuser_lists       NONE
+start_proc_args   /bin/true
+stop_proc_args    /bin/true
+allocation_rule   $round_robin
+control_slaves    TRUE
+job_is_first_task FALSE
+urgency_slots     min
+accounting_summary FALSE
+    """ % num_processors
+    parallel_enviornment.close()
+    mconn.execute("source /etc/profile && qconf -Ap %s" % parallel_environment.name)
+
+    mconn.execute("source /etc/profile && qconf -sq all.q > /tmp/allq.txt")
+    allq_file = mconn.remote_file("/tmp/allq.txt","r")
+    allq_file_lines = all_queue_file.readlines()
+    allq_file.close()
+
+    new_allq_file_lines = []
+    for line in allq_file_lines:
+        if line.startswith('pe_list'):
+            line = 'pe_list make orte\n'
+        new_allq_file_lines.append(line)
+
+    allq_file = mconn.remote_file("/tmp/allq.txt","w")
+    allq_file.writelines(new_allq_file_lines)
+    allq_file.close()
+
+    mconn.execute("source /etc/profile && qconf -Mq %s" % allq_file.name)
+    #todo cleanup /tmp/pe.txt and /tmp/allq.txt
     print ">>> Done Configuring Sun Grid Engine"
 
 def main(nodes):
+    setup_cluster_user(nodes)
     setup_scratch(nodes)
     setup_etc_hosts(nodes)
     setup_nfs(nodes)

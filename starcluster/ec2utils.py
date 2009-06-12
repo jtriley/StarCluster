@@ -123,7 +123,7 @@ def get_image_files(image_name, bucket=None):
         bucket_files = get_bucket_files(image['BUCKET'])
     image_files = []
     for file in bucket_files:
-        if file.split('.')[0] == image_name:
+        if file.split('.part.')[0] == image_name:
             image_files.append(file)
     return image_files
 
@@ -253,7 +253,7 @@ def get_nodes():
     for ihost, ehost in  zip(internal_hostnames,external_hostnames):
         node = {}
         print '>>> Creating persistent connection to %s' % ehost
-        node['CONNECTION'] = Connection(ehost, 'root', KEY_LOCATION)
+        node['CONNECTION'] = Connection(ehost, username='root', private_key=KEY_LOCATION)
         node['NODE_ID'] = nodeid
         node['EXTERNAL_NAME'] = ehost
         node['INTERNAL_NAME'] = ihost
@@ -281,13 +281,8 @@ def start_cluster(create=True):
             break
         else:  
             time.sleep(15)
-    
-    if globals().has_key('ATTACH_VOLUME'):
-        print ">>> Attaching volume to master node..."
-        if attach_volume_to_master():
-            print ">>> Finished attaching volume %s to master node" % ATTACH_VOLUME
-        else:
-            print ">>> Failed to attach volume %s to master node" % ATTACH_VOLUME
+
+    attach_volume_to_master()
 
     master_node = get_master_node()
     print ">>> The master node is %s" % master_node
@@ -301,7 +296,7 @@ def start_cluster(create=True):
     print ""
     print ">>> or as %s directly:" % CLUSTER_USER
     print ""
-    print "$ ssh %s@%s " % (CLUSTER_USER,master_node)
+    print "$ ssh -i %s %s@%s " % (KEY_LOCATION, CLUSTER_USER, master_node)
     print ""
 
 def create_cluster():
@@ -329,7 +324,6 @@ def create_cluster():
 def stop_cluster():
     resp = raw_input(">>> This will shutdown all EC2 instances. Are you sure (yes/no)? ")
     if resp == 'yes':
-        print ">>> Detaching EBS devices (if any)"
         detach_volume()
         print ">>> Listing instances ..."
         list_instances()
@@ -360,37 +354,56 @@ def stop_slaves():
     print ">>> Listing new state of slave instances"
     print list_instances()
 
+def has_attach_volume():
+    if globals().has_key("ATTACH_VOLUME") and globals()["ATTACH_VOLUME"] is not None:
+        if globals().has_key("VOLUME_DEVICE") and globals()["VOLUME_DEVICE"] is not None:
+            return True
+        else:
+            print ">>> No VOLUME_DEVICE specified in config"
+    else:
+        print ">>> No ATTACH_VOLUME specified in config"
+    return False
+        
+
 def attach_volume_to_node(node):
-    conn = get_conn()
-    return conn.attach_volume(ATTACH_VOLUME, node, VOLUME_DEVICE).parse()
+    if has_attach_volume():
+        conn = get_conn()
+        return conn.attach_volume(ATTACH_VOLUME, node, VOLUME_DEVICE).parse()
 
 def get_volumes():
-    conn = get_conn()
-    return conn.describe_volumes([ATTACH_VOLUME]).parse()
+    if has_attach_volume():
+        conn = get_conn()
+        return conn.describe_volumes([ATTACH_VOLUME]).parse()
 
 def list_volumes():
     vols = get_volumes()
-    for vol in vols:
-        print vol
+    if vols is not None:
+        for vol in vols:
+            print vol
 
 def detach_volume():
-    conn = get_conn()
-    return conn.detach_volume(ATTACH_VOLUME).parse()
+    if has_attach_volume():
+        print ">>> Detaching EBS device..."
+        conn = get_conn()
+        return conn.detach_volume(ATTACH_VOLUME).parse()
+    else:
+        print ">>> No EBS device to detach"
 
 def attach_volume_to_master():
+    print ">>> Attaching volume to master node..."
     master_instance = get_master_instance()
     if master_instance is not None:
-        attach_volume_to_node(master_instance)
-        while True:
-            vol = get_volumes()[0]
-            if vol[0] == 'VOLUME':
-                if vol[1] == ATTACH_VOLUME and vol[4] == 'in-use':
-                    return True
+        if attach_volume_to_node(master_instance) is not None:
+            while True:
+                vol = get_volumes()[0]
+                if vol[0] == 'VOLUME':
+                    if vol[1] == ATTACH_VOLUME and vol[4] == 'in-use':
+                        return True
+                    else:
+                        time.sleep(5)
+                        continue
                 else:
-                    time.sleep(5)
-                    continue
-            else:
-                return False
+                    return False
 
 class Spinner(Thread):
     spin_screen_pos = 0     #Set the screen position of the spinner (chars from the left).
