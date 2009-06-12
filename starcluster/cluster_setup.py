@@ -205,7 +205,7 @@ job_is_first_task FALSE
 urgency_slots     min
 accounting_summary FALSE
     """ % num_processors
-    parallel_enviornment.close()
+    parallel_environment.close()
     mconn.execute("source /etc/profile && qconf -Ap %s" % parallel_environment.name)
 
     mconn.execute("source /etc/profile && qconf -sq all.q > /tmp/allq.txt")
