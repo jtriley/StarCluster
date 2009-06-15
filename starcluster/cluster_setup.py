@@ -49,7 +49,10 @@ def setup_passwordless_ssh(nodes):
     # make initial connections to all nodes to skip host key checking on first use
     # this basically populates /root/.ssh/known_hosts which is copied to CLUSTER_USER below
     for node in nodes:
+        mconn.execute('ssh -o "StrictHostKeyChecking=no" %(INTERNAL_IP)s hostname' % node)
         mconn.execute('ssh -o "StrictHostKeyChecking=no" %(INTERNAL_NAME)s hostname' % node)
+        mconn.execute('ssh -o "StrictHostKeyChecking=no" %(INTERNAL_NAME_SHORT)s hostname' % node)
+        mconn.execute('ssh -o "StrictHostKeyChecking=no" %(INTERNAL_ALIAS)s hostname' % node)
 
     print ">>> Configuring passwordless ssh for user: %s" % CLUSTER_USER
     # only needed on master, nfs takes care of the rest
@@ -106,6 +109,27 @@ def setup_nfs(nodes):
 def setup_sge(nodes):
     print ">>> Configuring Sun Grid Engine..."
 
+    # generate /etc/profile.d/sge.sh for each node
+    for node in nodes:
+        conn = node['CONNECTION']
+        sge_profile = conn.remote_file("/etc/profile.d/sge.sh")
+        arch = conn.execute("/opt/sge6/util/arch")[0]
+
+        print >> sge_profile, """
+export SGE_ROOT="/opt/sge6"
+export SGE_CELL="default"
+export SGE_CLUSTER_NAME="starcluster"
+export SGE_QMASTER_PORT="63231"
+export SGE_EXECD_PORT="63232"
+export MANTYPE="man"
+export MANPATH="$MANPATH/opt/sge6/man"
+export PATH="$PATH:/opt/sge6/bin/%(arch)s"
+export ROOTPATH="$ROOTPATH:/opt/sge6/bin/%(arch)s"
+export LDPATH="$LDPATH:/opt/sge6/lib/%(arch)s"
+        """ % {'arch': arch}
+        sge_profile.close()
+
+    # setup sge auto install file
     master = nodes[0]
     mconn = master['CONNECTION']
 
@@ -167,26 +191,6 @@ CSP_MAIL_ADDRESS="none@none.edu"
 
     # set all.q shell to bash
     mconn.execute('source /etc/profile && qconf -mattr queue shell "/bin/bash" all.q')
-
-    # generate /etc/profile.d/sge.sh for each node
-    for node in nodes:
-        conn = node['CONNECTION']
-        sge_profile = conn.remote_file("/etc/profile.d/sge.sh")
-        arch = conn.execute("/opt/sge6/util/arch")[0]
-
-        print >> sge_profile, """
-export SGE_ROOT="/opt/sge6"
-export SGE_CELL="default"
-export SGE_CLUSTER_NAME="starcluster"
-export SGE_QMASTER_PORT="63231"
-export SGE_EXECD_PORT="63232"
-export MANTYPE="man"
-export MANPATH="$MANPATH/opt/sge6/man"
-export PATH="$PATH:/opt/sge6/bin/%(arch)s"
-export ROOTPATH="$ROOTPATH:/opt/sge6/bin/%(arch)s"
-export LDPATH="$LDPATH:/opt/sge6/lib/%(arch)s"
-        """ % {'arch': arch}
-        sge_profile.close()
 
     # create sge parallel environment
     # first iterate through each machine and count the number of processors
