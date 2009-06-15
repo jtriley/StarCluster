@@ -165,6 +165,9 @@ CSP_MAIL_ADDRESS="none@none.edu"
     # installs sge in /opt/sge6 and starts qmaster and schedd on master node
     mconn.execute('cd /opt/sge6 && TERM=rxvt ./inst_sge -m -x -auto ./ec2_sge.conf', silent=True)
 
+    # set all.q shell to bash
+    mconn.execute("source /etc/profile && qconf -mattr queue shell "/bin/bash" all.q")
+
     # generate /etc/profile.d/sge.sh for each node
     for node in nodes:
         conn = node['CONNECTION']
@@ -210,22 +213,23 @@ accounting_summary FALSE
     parallel_environment.close()
     mconn.execute("source /etc/profile && qconf -Ap %s" % parallel_environment.name)
 
-    mconn.execute("source /etc/profile && qconf -sq all.q > /tmp/allq.txt")
-    allq_file = mconn.remote_file("/tmp/allq.txt","r")
-    allq_file_lines = allq_file.readlines()
-    allq_file.close()
+    mconn.execute("source /etc/profile && qconf -mattr queue pe_list "orte" all.q")
+    #mconn.execute("source /etc/profile && qconf -sq all.q > /tmp/allq.txt")
+    #allq_file = mconn.remote_file("/tmp/allq.txt","r")
+    #allq_file_lines = allq_file.readlines()
+    #allq_file.close()
 
-    new_allq_file_lines = []
-    for line in allq_file_lines:
-        if line.startswith('pe_list'):
-            line = 'pe_list make orte\n'
-        new_allq_file_lines.append(line)
+    #new_allq_file_lines = []
+    #for line in allq_file_lines:
+        #if line.startswith('pe_list'):
+            #line = 'pe_list make orte\n'
+        #new_allq_file_lines.append(line)
 
-    allq_file = mconn.remote_file("/tmp/allq.txt","w")
-    allq_file.writelines(new_allq_file_lines)
-    allq_file.close()
+    #allq_file = mconn.remote_file("/tmp/allq.txt","w")
+    #allq_file.writelines(new_allq_file_lines)
+    #allq_file.close()
+    #mconn.execute("source /etc/profile && qconf -Mq %s" % allq_file.name)
 
-    mconn.execute("source /etc/profile && qconf -Mq %s" % allq_file.name)
     #todo cleanup /tmp/pe.txt and /tmp/allq.txt
     print ">>> Done Configuring Sun Grid Engine"
 
