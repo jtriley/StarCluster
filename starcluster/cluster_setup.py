@@ -5,7 +5,7 @@ cluster_setup.py
 """
 
 import os
-import tempfile
+#import tempfile
 
 from starcluster.starclustercfg import *
 
@@ -26,15 +26,24 @@ def setup_scratch(nodes):
 
 def setup_etc_hosts(nodes):
     print ">>> Configuring /etc/hosts on each node"
-    host_file = tempfile.NamedTemporaryFile()
-    fd = host_file.file
-    print >> fd, "# Do not remove the following line or programs that require network functionality will fail"
-    print >> fd, "127.0.0.1 localhost.localdomain localhost"
+    #host_file = tempfile.NamedTemporaryFile()
+    #fd = host_file.file
+    #print >> fd, "# Do not remove the following line or programs that require network functionality will fail"
+    #print >> fd, "127.0.0.1 localhost.localdomain localhost"
+    #for node in nodes:
+        #print >> fd, "%(INTERNAL_IP)s %(INTERNAL_NAME)s %(INTERNAL_NAME_SHORT)s %(INTERNAL_ALIAS)s" % node 
+    #fd.close()
+    #for node in nodes:
+        #node['CONNECTION'].put(host_file.name,'/etc/hosts')
+
     for node in nodes:
-        print >> fd, "%(INTERNAL_IP)s %(INTERNAL_NAME)s %(INTERNAL_NAME_SHORT)s %(INTERNAL_ALIAS)s" % node 
-    fd.close()
-    for node in nodes:
-        node['CONNECTION'].put(host_file.name,'/etc/hosts')
+        conn = node['CONNECTION']
+        host_file = conn.remote_file('/etc/hosts')
+        print >> host_file, "# Do not remove the following line or programs that require network functionality will fail"
+        print >> host_file, "127.0.0.1 localhost.localdomain localhost"
+        for node in nodes:
+            print >> host_file, "%(INTERNAL_IP)s %(INTERNAL_NAME)s %(INTERNAL_NAME_SHORT)s %(INTERNAL_ALIAS)s" % node 
+        host_file.close()
 
 def setup_passwordless_ssh(nodes):
     print ">>> Configuring passwordless ssh for root"
@@ -59,6 +68,15 @@ def setup_passwordless_ssh(nodes):
     mconn.execute('cp -r /root/.ssh /home/%s/' % CLUSTER_USER)
     mconn.execute('chown -R %(user)s:%(user)s /home/%(user)s/.ssh' % {'user':CLUSTER_USER})
 
+def setup_ebs_volume(nodes):
+    # setup /etc/fstab on master to use block device if specified
+    if globals().has_key('ATTACH_VOLUME') and globals().has_key('VOLUME_PARTITION'):
+        if ATTACH_VOLUME is not None and VOLUME_PARTITION is not None:
+            mconn = nodes[0]['CONNECTION']
+            master_fstab = mconn.remote_file('/etc/fstab', mode='a')
+            print >> master_fstab, "%s /home ext3 noauto,defaults 0 0 " % VOLUME_PARTITION
+            master_fstab.close()
+            mconn.execute('mount /home')
 
 def setup_nfs(nodes):
     print ">>> Configuring NFS..."
@@ -66,17 +84,9 @@ def setup_nfs(nodes):
     master = nodes[0]
     mconn = master['CONNECTION']
 
+    # copy fresh sge installation files to /opt/sge6 and make CLUSTER_USER the owner
     mconn.execute('cp -r /opt/sge6-fresh /opt/sge6')
-
     mconn.execute('chown -R %(user)s:%(user)s /opt/sge6' % {'user': CLUSTER_USER})
-
-    # setup /etc/fstab on master to use block device if specified
-    if globals().has_key('ATTACH_VOLUME') and globals().has_key('VOLUME_PARTITION'):
-        if ATTACH_VOLUME is not None and VOLUME_PARTITION is not None:
-            master_fstab = mconn.remote_file('/etc/fstab', mode='a')
-            print >> master_fstab, "%s /home ext3 noauto,defaults 0 0 " % VOLUME_PARTITION
-            master_fstab.close()
-            mconn.execute('mount /home')
 
     # setup /etc/exports and start nfsd on master node
     nfs_export_settings = "(async,no_root_squash,no_subtree_check,rw)"
@@ -238,6 +248,7 @@ accounting_summary FALSE
     print ">>> Done Configuring Sun Grid Engine"
 
 def main(nodes):
+    setup_ebs_volume(nodes)
     setup_cluster_user(nodes)
     setup_scratch(nodes)
     setup_etc_hosts(nodes)
