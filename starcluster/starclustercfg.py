@@ -3,56 +3,19 @@ import os
 import sys
 import ConfigParser
 from ConfigParser import NoOptionError
+from templates.config import config_template
 
 """
 Reads all variables defined in .starclustercfg config file into starclustercfg module's namespace
 """
 
 class StarClusterCfg:
-    config_template = """
-[section ec2]
-#replace these with your AWS keys
-AWS_ACCESS_KEY_ID = #your_aws_access_key_id
-AWS_SECRET_ACCESS_KEY = #your_secret_access_key
-
-# replace this with your account number
-AWS_USERID= #your userid
-
-# change this to your keypair location 
-# (see the EC2 getting started guide tutorial on using ec2-add-keypair)
-KEYNAME = #your keypair name
-KEY_LOCATION = #/path/to/your/keypair
-
-[section starcluster]
-# ami for master
-MASTER_IMAGE_ID = ami-00000000
-
-# ami for nodes
-IMAGE_ID = ami-11111111
-
-# instance type
-INSTANCE_TYPE = m1.small
-
-# availability zone
-AVAILABILITY_ZONE = us-east-1c
-
-# attach volume to /home on master node
-ATTACH_VOLUME = vol-abcdefgh
-VOLUME_DEVICE = /dev/sdd
-VOLUME_PARTITION = /dev/sdd1
-
-# cluster size
-DEFAULT_CLUSTER_SIZE = 2
-
-# create the following user on the cluster
-CLUSTER_USER = sgeadmin
-    """
     def __init__(self):
         # TODO: Make this better still...this at least gets the job done for now
         if not os.path.exists(os.path.expanduser('~/.starclustercfg')):
             print '>>> please create ~/.starclustercfg...template is below'
-            print self.config_template
-            sys.exit()
+            print config_template
+            sys.exit(1)
 
         self.config = ConfigParser.ConfigParser()
         self.config.read(os.path.expanduser('~/.starclustercfg'))

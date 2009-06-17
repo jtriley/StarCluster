@@ -11,7 +11,7 @@ class MultipleFormatHandler(logging.StreamHandler):
     def format(self,record):
         return self.formatters[record.levelno].format(record)
 
-logger = logging.getLogger()
+logger = logging.getLogger('starcluster')
 logger.setLevel(logging.DEBUG)
 mfh = MultipleFormatHandler()
 mfh.setLevel(logging.DEBUG)

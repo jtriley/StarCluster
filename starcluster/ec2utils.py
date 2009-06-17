@@ -19,7 +19,7 @@ from starcluster import cluster_setup
 from ssh import Connection
 
 import logging
-log = logging.getLogger()
+log = logging.getLogger('starcluster')
 
 def print_timing(func):
     def wrapper(*arg, **kargs):

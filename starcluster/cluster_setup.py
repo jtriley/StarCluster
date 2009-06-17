@@ -6,11 +6,13 @@ cluster_setup.py
 
 import os
 import logging
-#import tempfile
 
 from starcluster.starclustercfg import *
+from templates.sgeprofile import sgeprofile_template
+from templates.sgeinstall import sgeinstall_template
+from templates.sge_pe import sge_pe_template
 
-log = logging.getLogger()
+log = logging.getLogger('starcluster')
 
 def setup_cluster_user(nodes):
     log.info(">>> Creating cluster user: %s" % CLUSTER_USER)
@@ -29,15 +31,6 @@ def setup_scratch(nodes):
 
 def setup_etc_hosts(nodes):
     log.info(">>> Configuring /etc/hosts on each node")
-    #host_file = tempfile.NamedTemporaryFile()
-    #fd = host_file.file
-    #print >> fd, "# Do not remove the following line or programs that require network functionality will fail"
-    #print >> fd, "127.0.0.1 localhost.localdomain localhost"
-    #for node in nodes:
-        #print >> fd, "%(INTERNAL_IP)s %(INTERNAL_NAME)s %(INTERNAL_NAME_SHORT)s %(INTERNAL_ALIAS)s" % node 
-    #fd.close()
-    #for node in nodes:
-        #node['CONNECTION'].put(host_file.name,'/etc/hosts')
 
     for node in nodes:
         conn = node['CONNECTION']
@@ -120,7 +113,7 @@ def setup_nfs(nodes):
             nconn.execute('mount -t devpts none /dev/pts') # fix for xterm
 
 def setup_sge(nodes):
-    log.info(">>> Configuring Sun Grid Engine...")
+    log.info(">>> Installing Sun Grid Engine...")
 
     # generate /etc/profile.d/sge.sh for each node
     for node in nodes:
@@ -128,18 +121,7 @@ def setup_sge(nodes):
         sge_profile = conn.remote_file("/etc/profile.d/sge.sh")
         arch = conn.execute("/opt/sge6/util/arch")[0]
 
-        print >> sge_profile, """
-export SGE_ROOT="/opt/sge6"
-export SGE_CELL="default"
-export SGE_CLUSTER_NAME="starcluster"
-export SGE_QMASTER_PORT="63231"
-export SGE_EXECD_PORT="63232"
-export MANTYPE="man"
-export MANPATH="$MANPATH/opt/sge6/man"
-export PATH="$PATH:/opt/sge6/bin/%(arch)s"
-export ROOTPATH="$ROOTPATH:/opt/sge6/bin/%(arch)s"
-export LDPATH="$LDPATH:/opt/sge6/lib/%(arch)s"
-        """ % {'arch': arch}
+        print >> sge_profile, sgeprofile_template  % {'arch': arch}
         sge_profile.close()
 
     # setup sge auto install file
@@ -155,48 +137,7 @@ export LDPATH="$LDPATH:/opt/sge6/lib/%(arch)s"
     ec2_sge_conf = mconn.remote_file("/opt/sge6/ec2_sge.conf")
 
     # todo: add sge section to config values for some of the below
-    print >> ec2_sge_conf, """
-SGE_CLUSTER_NAME="starcluster"
-SGE_ROOT="/opt/sge6"
-SGE_QMASTER_PORT="63231"
-SGE_EXECD_PORT="63232"
-CELL_NAME="default"
-ADMIN_USER=""
-QMASTER_SPOOL_DIR="/opt/sge6/default/spool/qmaster"
-EXECD_SPOOL_DIR="/opt/sge6/default/spool"
-GID_RANGE="20000-20100"
-SPOOLING_METHOD="classic"
-DB_SPOOLING_SERVER="none"
-DB_SPOOLING_DIR="/opt/sge6/default/spooldb"
-PAR_EXECD_INST_COUNT="20"
-ADMIN_HOST_LIST="%s"
-SUBMIT_HOST_LIST="%s"
-EXEC_HOST_LIST="%s"
-EXECD_SPOOL_DIR_LOCAL="/opt/sge6/default/spool/exec_spool_local"
-HOSTNAME_RESOLVING="true"
-SHELL_NAME="ssh"
-COPY_COMMAND="scp"
-DEFAULT_DOMAIN="none"
-ADMIN_MAIL="none@none.edu"
-ADD_TO_RC="false"
-SET_FILE_PERMS="true"
-RESCHEDULE_JOBS="wait"
-SCHEDD_CONF="1"
-SHADOW_HOST=""
-EXEC_HOST_LIST_RM=""
-REMOVE_RC="false"
-WINDOWS_SUPPORT="false"
-WIN_ADMIN_NAME="Administrator"
-WIN_DOMAIN_ACCESS="false"
-CSP_RECREATE="false"
-CSP_COPY_CERTS="false"
-CSP_COUNTRY_CODE="US"
-CSP_STATE="MA"
-CSP_LOCATION="BOSTON"
-CSP_ORGA="MIT"
-CSP_ORGA_UNIT="OEIT"
-CSP_MAIL_ADDRESS="none@none.edu"
-    """ % (admin_list, exec_list, submit_list)
+    print >> ec2_sge_conf, sgeinstall_template % (admin_list, exec_list, submit_list)
     ec2_sge_conf.close()
 
     # installs sge in /opt/sge6 and starts qmaster and schedd on master node
@@ -214,40 +155,13 @@ CSP_MAIL_ADDRESS="none@none.edu"
         num_processors += num_procs
 
     parallel_environment = mconn.remote_file("/tmp/pe.txt")
-    print >> parallel_environment, """
-pe_name           orte
-slots             %s
-user_lists        NONE
-xuser_lists       NONE
-start_proc_args   /bin/true
-stop_proc_args    /bin/true
-allocation_rule   $round_robin
-control_slaves    TRUE
-job_is_first_task FALSE
-urgency_slots     min
-accounting_summary FALSE
-    """ % num_processors
+    print >> parallel_environment, sge_pe_template % num_processors
     parallel_environment.close()
     mconn.execute("source /etc/profile && qconf -Ap %s" % parallel_environment.name)
 
     mconn.execute('source /etc/profile && qconf -mattr queue pe_list "orte" all.q')
-    #mconn.execute("source /etc/profile && qconf -sq all.q > /tmp/allq.txt")
-    #allq_file = mconn.remote_file("/tmp/allq.txt","r")
-    #allq_file_lines = allq_file.readlines()
-    #allq_file.close()
 
-    #new_allq_file_lines = []
-    #for line in allq_file_lines:
-        #if line.startswith('pe_list'):
-            #line = 'pe_list make orte\n'
-        #new_allq_file_lines.append(line)
-
-    #allq_file = mconn.remote_file("/tmp/allq.txt","w")
-    #allq_file.writelines(new_allq_file_lines)
-    #allq_file.close()
-    #mconn.execute("source /etc/profile && qconf -Mq %s" % allq_file.name)
-
-    #todo cleanup /tmp/pe.txt and /tmp/allq.txt
+    #todo cleanup /tmp/pe.txt 
     log.info(">>> Done Configuring Sun Grid Engine")
 
 def main(nodes):

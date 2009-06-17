@@ -1,0 +1,13 @@
+#!/usr/bin/env python
+sgeprofile_template="""
+export SGE_ROOT="/opt/sge6"
+export SGE_CELL="default"
+export SGE_CLUSTER_NAME="starcluster"
+export SGE_QMASTER_PORT="63231"
+export SGE_EXECD_PORT="63232"
+export MANTYPE="man"
+export MANPATH="$MANPATH/opt/sge6/man"
+export PATH="$PATH:/opt/sge6/bin/%(arch)s"
+export ROOTPATH="$ROOTPATH:/opt/sge6/bin/%(arch)s"
+export LDPATH="$LDPATH:/opt/sge6/lib/%(arch)s"
+"""
