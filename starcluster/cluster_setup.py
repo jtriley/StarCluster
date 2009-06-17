@@ -11,7 +11,6 @@ import logging
 from starcluster.starclustercfg import *
 
 log = logging.getLogger()
-log.debug('hi')
 
 def setup_cluster_user(nodes):
     log.info(">>> Creating cluster user: %s" % CLUSTER_USER)
