@@ -5,18 +5,22 @@ cluster_setup.py
 """
 
 import os
+import logging
 #import tempfile
 
 from starcluster.starclustercfg import *
 
+log = logging.getLogger()
+log.debug('hi')
+
 def setup_cluster_user(nodes):
-    print ">>> Creating cluster user: %s" % CLUSTER_USER
+    log.info(">>> Creating cluster user: %s" % CLUSTER_USER)
     for node in nodes:
         nconn = node['CONNECTION']
         nconn.execute('useradd -m -s /bin/bash %s' % CLUSTER_USER)
 
 def setup_scratch(nodes):
-    print ">>> Configuring scratch space for user: %s" % CLUSTER_USER
+    log.info(">>> Configuring scratch space for user: %s" % CLUSTER_USER)
     for node in nodes:
         nconn = node['CONNECTION']
         nconn.execute('mkdir /mnt/%s' % CLUSTER_USER)
@@ -25,7 +29,7 @@ def setup_scratch(nodes):
         nconn.execute('ln -s /mnt/%s /scratch' % CLUSTER_USER)
 
 def setup_etc_hosts(nodes):
-    print ">>> Configuring /etc/hosts on each node"
+    log.info(">>> Configuring /etc/hosts on each node")
     #host_file = tempfile.NamedTemporaryFile()
     #fd = host_file.file
     #print >> fd, "# Do not remove the following line or programs that require network functionality will fail"
@@ -46,7 +50,7 @@ def setup_etc_hosts(nodes):
         host_file.close()
 
 def setup_passwordless_ssh(nodes):
-    print ">>> Configuring passwordless ssh for root"
+    log.info(">>> Configuring passwordless ssh for root")
     for node in nodes:
         conn = node['CONNECTION']
         conn.put(KEY_LOCATION,'/root/.ssh/id_rsa')
@@ -63,7 +67,7 @@ def setup_passwordless_ssh(nodes):
         mconn.execute('ssh -o "StrictHostKeyChecking=no" %(INTERNAL_NAME_SHORT)s hostname' % node)
         mconn.execute('ssh -o "StrictHostKeyChecking=no" %(INTERNAL_ALIAS)s hostname' % node)
 
-    print ">>> Configuring passwordless ssh for user: %s" % CLUSTER_USER
+    log.info(">>> Configuring passwordless ssh for user: %s" % CLUSTER_USER)
     # only needed on master, nfs takes care of the rest
     mconn.execute('cp -r /root/.ssh /home/%s/' % CLUSTER_USER)
     mconn.execute('chown -R %(user)s:%(user)s /home/%(user)s/.ssh' % {'user':CLUSTER_USER})
@@ -79,7 +83,7 @@ def setup_ebs_volume(nodes):
             mconn.execute('mount /home')
 
 def setup_nfs(nodes):
-    print ">>> Configuring NFS..."
+    log.info(">>> Configuring NFS...")
 
     master = nodes[0]
     mconn = master['CONNECTION']
@@ -117,7 +121,7 @@ def setup_nfs(nodes):
             nconn.execute('mount -t devpts none /dev/pts') # fix for xterm
 
 def setup_sge(nodes):
-    print ">>> Configuring Sun Grid Engine..."
+    log.info(">>> Configuring Sun Grid Engine...")
 
     # generate /etc/profile.d/sge.sh for each node
     for node in nodes:
@@ -245,7 +249,7 @@ accounting_summary FALSE
     #mconn.execute("source /etc/profile && qconf -Mq %s" % allq_file.name)
 
     #todo cleanup /tmp/pe.txt and /tmp/allq.txt
-    print ">>> Done Configuring Sun Grid Engine"
+    log.info(">>> Done Configuring Sun Grid Engine")
 
 def main(nodes):
     setup_ebs_volume(nodes)

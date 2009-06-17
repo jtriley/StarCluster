@@ -18,12 +18,15 @@ from starcluster.s3utils import get_bucket_files, remove_file
 from starcluster import cluster_setup
 from ssh import Connection
 
+import logging
+log = logging.getLogger()
+
 def print_timing(func):
     def wrapper(*arg, **kargs):
         t1 = time.time()
         res = func(*arg, **kargs)
         t2 = time.time()
-        print '%s took %0.3f ms' % (func.func_name, (t2-t1)*1000.0)
+        log.info('%s took %0.3f ms' % (func.func_name, (t2-t1)*1000.0))
         return res
     return wrapper
 
