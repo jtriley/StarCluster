@@ -85,31 +85,22 @@ def is_valid():
         log.error('Please specify the required settings in ~/.starclustercfg')
         return False
 
-    #todo check for network connectivity
     if not _has_valid_credentials():
         log.error('Invalid AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY combination')
         return False
 
     if not _has_keypair(KEYNAME):
-        log.error('Could not find KEYNAME = %s. Please check your settings' % KEYNAME)
+        log.error('Account does not contain a key with KEYNAME = %s. Please check your settings' % KEYNAME)
         return False
     
     if not os.path.exists(KEY_LOCATION):
         log.error('KEY_LOCATION=%s does not exist' % KEY_LOCATION)
         return False
 
-    if IMAGE_ID is None:
-        log.error('You did not specify IMAGE_ID')
-        return False
-
     if not instance_types.has_key(INSTANCE_TYPE):
-        log.error('Missing or invalid INSTANCE_TYPE')
+        log.error("""You specified an invalid INSTANCE_TYPE\nPossible options are:\n%s %s %s %s %s""" % tuple(instance_types.keys()))
         return False
     
-    if DEFAULT_CLUSTER_SIZE is None:
-        log.error('>>> Required option DEFAULT_CLUSTER_SIZE missing from ~/.starclustercfg')
-        return False
-
     if DEFAULT_CLUSTER_SIZE < 0:
         log.error('>>> DEFAULT_CLUSTER_SIZE must be a positive integer')
         return False

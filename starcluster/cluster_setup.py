@@ -31,7 +31,6 @@ def setup_scratch(nodes):
 
 def setup_etc_hosts(nodes):
     log.info(">>> Configuring /etc/hosts on each node")
-
     for node in nodes:
         conn = node['CONNECTION']
         host_file = conn.remote_file('/etc/hosts')
