@@ -53,7 +53,7 @@ def is_ssh_up():
     return True
 
 def is_cluster_up():
-    running_instances = get_running_instances(refresh=True)
+    running_instances = get_running_instances()
     if len(running_instances) == cfg.DEFAULT_CLUSTER_SIZE:
         if is_ssh_up():
             return True
@@ -167,8 +167,8 @@ def get_keypair_response():
     #parsed_response = keypair_response.parse()
     #return parsed_response
 
-def get_running_instances(strict=True):
-    parsed_response = get_instance_response(refresh=True) 
+def get_running_instances(refresh=True, strict=True):
+    parsed_response = get_instance_response(refresh) 
     running_instances=[]
     for chunk in parsed_response:
         if chunk[0]=='INSTANCE' and chunk[5]=='running':
@@ -376,7 +376,7 @@ def stop_cluster():
         detach_volume()
         print ">>> Listing instances ..."
         list_instances()
-        running_instances = get_running_instances(refresh=True)
+        running_instances = get_running_instances()
         if len(running_instances) > 0:
             for instance in running_instances:
                 print ">>> Shutting down instance: %s " % instance
@@ -391,7 +391,7 @@ def stop_cluster():
 def stop_slaves():
     print ">>> Listing instances ..."
     list_instances()
-    running_instances = get_running_instances(refresh=True)
+    running_instances = get_running_instances()
     if len(running_instances) > 0:
         #exclude master node....
         running_instances=running_instances[1:len(running_instances)]
