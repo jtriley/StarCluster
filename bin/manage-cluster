@@ -2,6 +2,7 @@
 
 from optparse import OptionParser
 from starcluster.ec2utils import start_cluster, stop_cluster, ssh_to_master, ssh_to_node, list_instances
+from starcluster.starclustercfg import validate_or_exit
 
 def main():
     description = """
@@ -27,6 +28,8 @@ manage-cluster
     parser.add_option("-d","--debug", dest="debug", action="store_true", default=False, help="print debug messages (may be useful for diagnosing problems)")
 
     (options,args) = parser.parse_args() 
+
+    validate_or_exit()
 
     if options.start_cluster:
         start_cluster()
