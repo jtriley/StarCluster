@@ -5,20 +5,23 @@ EC2 Utils
 """
 
 import os
-import re
 import sys
 import time
 import socket
+import logging
 from threading import Thread
 
 from starcluster import EC2
-
-from starcluster.starclustercfg import *
-from starcluster.s3utils import get_bucket_files, remove_file
+from starcluster import starclustercfg as cfg
+from starcluster import s3utils
 from starcluster import cluster_setup
-from ssh import Connection
+from starcluster import ssh
 
-import logging
+#from starcluster.starclustercfg import *
+#from starcluster.s3utils import get_bucket_files, remove_file
+#from starcluster import cluster_setup
+#from starcluster.ssh import Connection
+
 log = logging.getLogger('starcluster')
 
 def print_timing(func):
@@ -30,8 +33,12 @@ def print_timing(func):
         return res
     return wrapper
 
+EC2_CONNECTION = None
+
 def get_conn():
-    return EC2.AWSAuthConnection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+    if EC2_CONNECTION is None:
+        globals()['EC2_CONNECTION'] = EC2.AWSAuthConnection(cfg.AWS_ACCESS_KEY_ID, cfg.AWS_SECRET_ACCESS_KEY)
+    return EC2_CONNECTION
 
 def is_ssh_up():
     external_hostnames = get_external_hostnames()
@@ -46,8 +53,8 @@ def is_ssh_up():
     return True
 
 def is_cluster_up():
-    running_instances = get_running_instances()
-    if len(running_instances) == DEFAULT_CLUSTER_SIZE:
+    running_instances = get_running_instances(refresh=True)
+    if len(running_instances) == cfg.DEFAULT_CLUSTER_SIZE:
         if is_ssh_up():
             return True
         else:
@@ -56,7 +63,7 @@ def is_cluster_up():
         return False
 
 def get_registered_images():
-    conn = EC2.AWSAuthConnection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+    conn = get_conn()
     image_list = conn.describe_images(owners=["self"]).parse()
     images = {}
     for image in image_list:
@@ -88,7 +95,7 @@ def remove_image_files(image_name, bucket = None, pretend=True):
             print file
         else:
             print 'removing file %s' % file
-            remove_file(bucket, file)
+            s3utils.remove_file(bucket, file)
 
     # recursive double check
     files = get_image_files(image_name, bucket)
@@ -120,29 +127,53 @@ def list_image_files(image_name, bucket=None):
 
 def get_image_files(image_name, bucket=None):
     if bucket:
-        bucket_files = get_bucket_files(bucket)
+        bucket_files = s3utils.get_bucket_files(bucket)
     else:
         image = get_image(image_name)
-        bucket_files = get_bucket_files(image['BUCKET'])
+        bucket_files = s3utils.get_bucket_files(image['BUCKET'])
     image_files = []
     for file in bucket_files:
         if file.split('.part.')[0] == image_name:
             image_files.append(file)
     return image_files
 
-def get_instance_response():
-    conn = EC2.AWSAuthConnection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
-    instance_response=conn.describe_instances()
-    parsed_response=instance_response.parse()  
-    return parsed_response
+INSTANCE_RESPONSE = None
+
+def get_instance_response(refresh=False):
+    if INSTANCE_RESPONSE is None or refresh:
+        conn = get_conn()
+        instance_response=conn.describe_instances()
+        globals()['INSTANCE_RESPONSE'] = instance_response.parse()  
+    return INSTANCE_RESPONSE
+        
+#def get_instance_response():
+    #conn = get_conn()
+    #instance_response=conn.describe_instances()
+    #parsed_response=instance_response.parse()  
+    #return parsed_response
+
+KEYPAIR_RESPONSE = None
+
+def get_keypair_response():
+    if KEYPAIR_RESPONSE is None:
+        conn = get_conn()
+        keypair_response = conn.describe_keypairs()
+        globals()['KEYPAIR_RESPONSE'] = keypair_response.parse()
+    return KEYPAIR_RESPONSE
+
+#def get_keypair_response():
+    #conn = get_conn()
+    #keypair_response = conn.describe_keypairs()
+    #parsed_response = keypair_response.parse()
+    #return parsed_response
 
 def get_running_instances(strict=True):
-    parsed_response = get_instance_response() 
+    parsed_response = get_instance_response(refresh=True) 
     running_instances=[]
     for chunk in parsed_response:
         if chunk[0]=='INSTANCE' and chunk[5]=='running':
             if strict:
-                if chunk[2] == IMAGE_ID or chunk[2] == MASTER_IMAGE_ID:
+                if chunk[2] == cfg.IMAGE_ID or chunk[2] == cfg.MASTER_IMAGE_ID:
                     running_instances.append(chunk[1])
             else:
                 running_instances.append(chunk[1])
@@ -170,8 +201,8 @@ def get_internal_hostnames():
             internal_hostnames.append(chunk[4])
     return internal_hostnames
 
-def get_instances():
-    parsed_response = get_instance_response()
+def get_instances(refresh=False):
+    parsed_response = get_instance_response(refresh)
     instances = []
     if len(parsed_response) != 0:
         for instance in parsed_response:
@@ -179,8 +210,8 @@ def get_instances():
                 instances.append(instance)
     return instances
 
-def list_instances():
-    instances = get_instances()
+def list_instances(refresh=False):
+    instances = get_instances(refresh)
     if len(instances) != 0:
         counter = 0
         print ">>> EC2 Instances:"
@@ -192,37 +223,40 @@ def list_instances():
     
 def terminate_instances(instances=None):
     if instances is not None:
-        conn = EC2.AWSAuthConnection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+        conn = get_conn()
         conn.terminate_instances(instances)
 
 def get_master_node():
-    parsed_response=get_instance_response() 
-    if len(parsed_response) == 0:
-        return None
-    instances=[]
-    hostnames=[]
-    externalnames=[]
-    machine_state=[]
-    for chunk in parsed_response:
-        if chunk[0]=='INSTANCE':
-            #if chunk[5]=='running' or chunk[5]=='pending':
-            if chunk[5]=='running':
-                instances.append(chunk[1])
-                hostnames.append(chunk[4])
-                externalnames.append(chunk[3])              
-                #machine_state.append(chunk[-1])
-                machine_state.append(chunk[5])
-    try:
-        master_node  = externalnames[0]
-    except:
-        master_node = None
-    return master_node
+    nodes = get_nodes()
+    return nodes[0]['EXTERNAL_NAME']
+
+    #parsed_response=get_instance_response() 
+    #if len(parsed_response) == 0:
+        #return None
+    #instances=[]
+    #hostnames=[]
+    #externalnames=[]
+    #machine_state=[]
+    #for chunk in parsed_response:
+        #if chunk[0]=='INSTANCE':
+            ##if chunk[5]=='running' or chunk[5]=='pending':
+            #if chunk[5]=='running':
+                #instances.append(chunk[1])
+                #hostnames.append(chunk[4])
+                #externalnames.append(chunk[3])              
+                ##machine_state.append(chunk[-1])
+                #machine_state.append(chunk[5])
+    #try:
+        #master_node  = externalnames[0]
+    #except:
+        #master_node = None
+    #return master_node
 
 def get_master_instance():
     instances = get_running_instances()
     try:
         master_instance = instances[0] 
-    except:
+    except Exception,e:
         master_instance = None
     return master_instance
 
@@ -230,7 +264,7 @@ def ssh_to_master():
     master_node = get_master_node()
     if master_node is not None:
         print "\n>>> MASTER NODE: %s" % master_node
-        os.system('ssh -i %s root@%s' % (KEY_LOCATION, master_node)) 
+        os.system('ssh -i %s root@%s' % (cfg.KEY_LOCATION, master_node)) 
     else: 
         print ">>> No master node found..."
 
@@ -239,36 +273,43 @@ def ssh_to_node(node_number):
     if len(nodes) == 0:
         print '>>> No instances to connect to...exiting'
         return
-
     try:
         node = nodes[int(node_number)]
         print ">>> Logging into node: %s" % node
-        os.system('ssh -i %s root@%s' % (KEY_LOCATION, node))
+        os.system('ssh -i %s root@%s' % (cfg.KEY_LOCATION, node))
     except:
         print ">>> Invalid node_number. Please select a node number from the output of manage-cluster.py -l"
 
-def get_nodes():
-    internal_hostnames = get_internal_hostnames()
-    external_hostnames = get_external_hostnames()
-    
-    nodes = []
-    nodeid = 0
-    for ihost, ehost in  zip(internal_hostnames,external_hostnames):
-        node = {}
-        print '>>> Creating persistent connection to %s' % ehost
-        node['CONNECTION'] = Connection(ehost, username='root', private_key=KEY_LOCATION)
-        node['NODE_ID'] = nodeid
-        node['EXTERNAL_NAME'] = ehost
-        node['INTERNAL_NAME'] = ihost
-        node['INTERNAL_IP'] = node['CONNECTION'].execute('python -c "import socket; print socket.gethostbyname(\'%s\')"' % ihost)[0].strip()
-        node['INTERNAL_NAME_SHORT'] = ihost.split('.')[0]
-        if nodeid == 0:
-            node['INTERNAL_ALIAS'] = 'master'
-        else:
-            node['INTERNAL_ALIAS'] = 'node%.3d' % nodeid
-        nodes.append(node)
-        nodeid += 1
-    return nodes
+NODES = None
+
+def get_nodes(refresh=False):
+    if NODES is None or refresh:
+        if NODES and refresh:
+            for node in NODES:
+                node['CONNECTION'].close()
+             
+        internal_hostnames = get_internal_hostnames()
+        external_hostnames = get_external_hostnames()
+        
+        nodes = []
+        nodeid = 0
+        for ihost, ehost in  zip(internal_hostnames,external_hostnames):
+            node = {}
+            print '>>> Creating persistent connection to %s' % ehost
+            node['CONNECTION'] = ssh.Connection(ehost, username='root', private_key=cfg.KEY_LOCATION)
+            node['NODE_ID'] = nodeid
+            node['EXTERNAL_NAME'] = ehost
+            node['INTERNAL_NAME'] = ihost
+            node['INTERNAL_IP'] = node['CONNECTION'].execute('python -c "import socket; print socket.gethostbyname(\'%s\')"' % ihost)[0].strip()
+            node['INTERNAL_NAME_SHORT'] = ihost.split('.')[0]
+            if nodeid == 0:
+                node['INTERNAL_ALIAS'] = 'master'
+            else:
+                node['INTERNAL_ALIAS'] = 'node%.3d' % nodeid
+            nodes.append(node)
+            nodeid += 1
+        globals()['NODES'] = nodes 
+    return NODES
 
 @print_timing
 def start_cluster(create=True):
@@ -297,29 +338,34 @@ def start_cluster(create=True):
     print ""
     print "$ manage-cluster.py -m"
     print ""
-    print ">>> or as %s directly:" % CLUSTER_USER
+    print ">>> or as %s directly:" % cfg.CLUSTER_USER
     print ""
-    print "$ ssh -i %s %s@%s " % (KEY_LOCATION, CLUSTER_USER, master_node)
+    print "$ ssh -i %s %s@%s " % (cfg.KEY_LOCATION, cfg.CLUSTER_USER, master_node)
     print ""
 
 def create_cluster():
-    conn = EC2.AWSAuthConnection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
-    if globals().has_key("MASTER_IMAGE_ID"):
+    conn = get_conn()
+    if cfg.MASTER_IMAGE_ID is not None:
         print ">>> Launching master node..."
-        print ">>> MASTER AMI: ",MASTER_IMAGE_ID
-        master_response = conn.run_instances(imageId=MASTER_IMAGE_ID, instanceType=INSTANCE_TYPE, minCount=1, maxCount=1, keyName= KEYNAME, availabilityZone = AVAILABILITY_ZONE)
+        print ">>> MASTER AMI: ", cfg.MASTER_IMAGE_ID
+        master_response = conn.run_instances(imageId=cfg.MASTER_IMAGE_ID, instanceType=cfg.INSTANCE_TYPE, \
+                                             minCount=1, maxCount=1, keyName=cfg.KEYNAME, availabilityZone=cfg.AVAILABILITY_ZONE)
         print master_response
 
         print ">>> Launching worker nodes..."
-        print ">>> NODE AMI: ",IMAGE_ID
-        instances_response = conn.run_instances(imageId=IMAGE_ID, instanceType=INSTANCE_TYPE, minCount=max((DEFAULT_CLUSTER_SIZE-1)/2, 1), maxCount=max(DEFAULT_CLUSTER_SIZE-1,1), keyName= KEYNAME, availabilityZone = AVAILABILITY_ZONE)
+        print ">>> NODE AMI: ", cfg.IMAGE_ID
+        instances_response = conn.run_instances(imageId=cfg.IMAGE_ID, instanceType=cfg.INSTANCE_TYPE, \
+                                                minCount=max((cfg.DEFAULT_CLUSTER_SIZE-1)/2, 1), maxCount=max(cfg.DEFAULT_CLUSTER_SIZE-1,1), \
+                                                keyName=cfg.KEYNAME, availabilityZone=cfg.AVAILABILITY_ZONE)
         print instances_response
         # if the workers failed, what should we do about the master?
     else:
         print ">>> Launching master and worker nodes..."
-        print ">>> MASTER AMI: ",IMAGE_ID
-        print ">>> NODE AMI: ",IMAGE_ID
-        instances_response = conn.run_instances(imageId=IMAGE_ID, instanceType=INSTANCE_TYPE, minCount=max(DEFAULT_CLUSTER_SIZE/2,1), maxCount=max(DEFAULT_CLUSTER_SIZE,1), keyName= KEYNAME ,availabilityZone = AVAILABILITY_ZONE)
+        print ">>> MASTER AMI: ", cfg.IMAGE_ID
+        print ">>> NODE AMI: ", cfg.IMAGE_ID
+        instances_response = conn.run_instances(imageId=cfg.IMAGE_ID, instanceType=cfg.INSTANCE_TYPE, \
+                                                minCount=max(cfg.DEFAULT_CLUSTER_SIZE/2,1), maxCount=max(cfg.DEFAULT_CLUSTER_SIZE,1), \
+                                                keyName=cfg.KEYNAME, availabilityZone=cfg.AVAILABILITY_ZONE)
         # instances_response is a list: [["RESERVATION", reservationId, ownerId, ",".join(groups)],["INSTANCE", instanceId, imageId, dnsName, instanceState], [ "INSTANCE"etc])
         # same as "describe instance"
         print instances_response
@@ -330,7 +376,7 @@ def stop_cluster():
         detach_volume()
         print ">>> Listing instances ..."
         list_instances()
-        running_instances = get_running_instances()
+        running_instances = get_running_instances(refresh=True)
         if len(running_instances) > 0:
             for instance in running_instances:
                 print ">>> Shutting down instance: %s " % instance
@@ -345,7 +391,7 @@ def stop_cluster():
 def stop_slaves():
     print ">>> Listing instances ..."
     list_instances()
-    running_instances = get_running_instances()
+    running_instances = get_running_instances(refresh=True)
     if len(running_instances) > 0:
         #exclude master node....
         running_instances=running_instances[1:len(running_instances)]
@@ -358,8 +404,8 @@ def stop_slaves():
     print list_instances()
 
 def has_attach_volume():
-    if globals().has_key("ATTACH_VOLUME") and globals()["ATTACH_VOLUME"] is not None:
-        if globals().has_key("VOLUME_DEVICE") and globals()["VOLUME_DEVICE"] is not None:
+    if cfg.ATTACH_VOLUME is not None and cfg.ATTACH_VOLUME is not None:
+        if cfg.VOLUME_DEVICE is not None:
             return True
         else:
             print ">>> No VOLUME_DEVICE specified in config"
@@ -371,12 +417,12 @@ def has_attach_volume():
 def attach_volume_to_node(node):
     if has_attach_volume():
         conn = get_conn()
-        return conn.attach_volume(ATTACH_VOLUME, node, VOLUME_DEVICE).parse()
+        return conn.attach_volume(cfg.ATTACH_VOLUME, node, cfg.VOLUME_DEVICE).parse()
 
 def get_volumes():
     if has_attach_volume():
         conn = get_conn()
-        return conn.describe_volumes([ATTACH_VOLUME]).parse()
+        return conn.describe_volumes([cfg.ATTACH_VOLUME]).parse()
 
 def list_volumes():
     vols = get_volumes()
@@ -388,7 +434,7 @@ def detach_volume():
     if has_attach_volume():
         print ">>> Detaching EBS device..."
         conn = get_conn()
-        return conn.detach_volume(ATTACH_VOLUME).parse()
+        return conn.detach_volume(cfg.ATTACH_VOLUME).parse()
     else:
         print ">>> No EBS device to detach"
 
@@ -400,7 +446,7 @@ def attach_volume_to_master():
             while True:
                 vol = get_volumes()[0]
                 if vol[0] == 'VOLUME':
-                    if vol[1] == ATTACH_VOLUME and vol[4] == 'in-use':
+                    if vol[1] == cfg.ATTACH_VOLUME and vol[4] == 'in-use':
                         return True
                     else:
                         time.sleep(5)
@@ -457,6 +503,7 @@ class Spinner(Thread):
             self.char_index_pos = self.Print(self.char_index_pos)
 
 if __name__ == "__main__":
+    # just test the spinner
     s = Spinner()
     print 'Waiting for cluster...',
     s.start()
