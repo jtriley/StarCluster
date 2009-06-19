@@ -7,6 +7,7 @@ EC2 Utils
 import os
 import sys
 import time
+import atexit
 import socket
 import logging
 from threading import Thread
@@ -30,7 +31,12 @@ def print_timing(func):
         res = func(*arg, **kargs)
         t2 = time.time()
         log.info('%s took %0.3f ms' % (func.func_name, (t2-t1)*1000.0))
+        log.debug('wrapper executing')
+        from IPython.Shell import IPShellEmbed
+        ipshell = IPShellEmbed(user_ns = dict(globals=globals()))
+        ipshell()
         return res
+    log.debug('returning wrapper')
     return wrapper
 
 EC2_CONNECTION = None
@@ -161,12 +167,6 @@ def get_keypair_response():
         globals()['KEYPAIR_RESPONSE'] = keypair_response.parse()
     return KEYPAIR_RESPONSE
 
-#def get_keypair_response():
-    #conn = get_conn()
-    #keypair_response = conn.describe_keypairs()
-    #parsed_response = keypair_response.parse()
-    #return parsed_response
-
 def get_running_instances(refresh=True, strict=True):
     parsed_response = get_instance_response(refresh) 
     running_instances=[]
@@ -227,8 +227,11 @@ def terminate_instances(instances=None):
         conn.terminate_instances(instances)
 
 def get_master_node():
-    nodes = get_nodes()
-    return nodes[0]['EXTERNAL_NAME']
+    external_hostnames = get_external_hostnames()
+    return external_hostnames[0]
+        
+    #nodes = get_nodes(connect=False)
+    #return nodes[0]['EXTERNAL_NAME']
 
     #parsed_response=get_instance_response() 
     #if len(parsed_response) == 0:
@@ -284,10 +287,11 @@ NODES = None
 
 def get_nodes(refresh=False):
     if NODES is None or refresh:
+        if NODES and not refresh:
+            return NODES     
         if NODES and refresh:
-            for node in NODES:
-                node['CONNECTION'].close()
-             
+            del globals()['NODES']
+
         internal_hostnames = get_internal_hostnames()
         external_hostnames = get_external_hostnames()
         
@@ -295,7 +299,7 @@ def get_nodes(refresh=False):
         nodeid = 0
         for ihost, ehost in  zip(internal_hostnames,external_hostnames):
             node = {}
-            print '>>> Creating persistent connection to %s' % ehost
+            log.debug('>>> Creating persistent connection to %s' % ehost)
             node['CONNECTION'] = ssh.Connection(ehost, username='root', private_key=cfg.KEY_LOCATION)
             node['NODE_ID'] = nodeid
             node['EXTERNAL_NAME'] = ehost
@@ -310,6 +314,13 @@ def get_nodes(refresh=False):
             nodeid += 1
         globals()['NODES'] = nodes 
     return NODES
+
+def close_node_connections():
+    if NODES is not None:
+        for node in NODES:
+            log.debug('closing ssh connection')
+            node['CONNECTION'].close()
+atexit.register(close_node_connections)
 
 @print_timing
 def start_cluster(create=True):
@@ -373,7 +384,8 @@ def create_cluster():
 def stop_cluster():
     resp = raw_input(">>> This will shutdown all EC2 instances. Are you sure (yes/no)? ")
     if resp == 'yes':
-        detach_volume()
+        detach_vol = detach_volume()
+        log.debug("detach_vol: \n%s" % detach_vol)
         print ">>> Listing instances ..."
         list_instances()
         running_instances = get_running_instances()
@@ -384,13 +396,13 @@ def stop_cluster():
             terminate_instances(running_instances)
             time.sleep(5)
         print ">>> Listing new state of instances" 
-        list_instances()
+        list_instances(refresh=True)
     else:
         print ">>> Exiting without shutting down instances...."
 
 def stop_slaves():
     print ">>> Listing instances ..."
-    list_instances()
+    list_instances(refresh=True)
     running_instances = get_running_instances()
     if len(running_instances) > 0:
         #exclude master node....
@@ -401,7 +413,7 @@ def stop_slaves():
         terminate_instances(running_instances)
         time.sleep(5)
     print ">>> Listing new state of slave instances"
-    print list_instances()
+    print list_instances(refresh=True)
 
 def has_attach_volume():
     if cfg.ATTACH_VOLUME is not None and cfg.ATTACH_VOLUME is not None:
