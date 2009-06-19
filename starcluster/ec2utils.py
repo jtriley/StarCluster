@@ -287,9 +287,9 @@ NODES = None
 
 def get_nodes(refresh=False):
     if NODES is None or refresh:
-        if NODES and not refresh:
+        if NODES is not None and not refresh:
             return NODES     
-        if NODES and refresh:
+        if NODES is not None and refresh:
             del globals()['NODES']
 
         internal_hostnames = get_internal_hostnames()
