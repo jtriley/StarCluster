@@ -65,8 +65,8 @@ sections = [
 def load_settings():
     # TODO: create the template file for them
     if not os.path.exists(os.path.expanduser('~/.starclustercfg')):
-        print '>>> It appears this is your first time using StarCluster.'
-        print '>>> Please create $HOME/.starclustercfg using the template below:'
+        log.info('It appears this is your first time using StarCluster.')
+        log.info('Please create $HOME/.starclustercfg using the template below:')
         print config_template
         sys.exit(1)
 

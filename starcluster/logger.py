@@ -2,8 +2,8 @@
 import logging
 
 class MultipleFormatHandler(logging.StreamHandler):
-    formatters = {  logging.INFO: logging.Formatter("%(levelname)s - %(message)s"),
-                    logging.DEBUG: logging.Formatter("DEBUG %(filename)s:%(lineno)d - %(levelname)s - %(message)s"),
+    formatters = {  logging.INFO: logging.Formatter(">>> %(message)s"),
+                    logging.DEBUG: logging.Formatter("%(filename)s:%(lineno)d - %(levelname)s - %(message)s"),
                     logging.WARN: logging.Formatter("%(filename)s:%(lineno)d - %(levelname)s - %(message)s"),
                     logging.CRITICAL: logging.Formatter("%(filename)s:%(lineno)d - %(levelname)s - %(message)s"),
                     logging.ERROR: logging.Formatter("%(filename)s:%(lineno)d - %(levelname)s - %(message)s")}

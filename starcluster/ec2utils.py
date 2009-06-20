@@ -7,7 +7,6 @@ EC2 Utils
 import os
 import sys
 import time
-import atexit
 import socket
 import logging
 from threading import Thread
@@ -18,11 +17,6 @@ from starcluster import s3utils
 from starcluster import cluster_setup
 from starcluster import ssh
 
-#from starcluster.starclustercfg import *
-#from starcluster.s3utils import get_bucket_files, remove_file
-#from starcluster import cluster_setup
-#from starcluster.ssh import Connection
-
 log = logging.getLogger('starcluster')
 
 def print_timing(func):
@@ -31,12 +25,7 @@ def print_timing(func):
         res = func(*arg, **kargs)
         t2 = time.time()
         log.info('%s took %0.3f ms' % (func.func_name, (t2-t1)*1000.0))
-        log.debug('wrapper executing')
-        from IPython.Shell import IPShellEmbed
-        ipshell = IPShellEmbed(user_ns = dict(globals=globals()))
-        ipshell()
         return res
-    log.debug('returning wrapper')
     return wrapper
 
 EC2_CONNECTION = None
@@ -152,12 +141,6 @@ def get_instance_response(refresh=False):
         globals()['INSTANCE_RESPONSE'] = instance_response.parse()  
     return INSTANCE_RESPONSE
         
-#def get_instance_response():
-    #conn = get_conn()
-    #instance_response=conn.describe_instances()
-    #parsed_response=instance_response.parse()  
-    #return parsed_response
-
 KEYPAIR_RESPONSE = None
 
 def get_keypair_response():
@@ -230,31 +213,6 @@ def get_master_node():
     external_hostnames = get_external_hostnames()
     return external_hostnames[0]
         
-    #nodes = get_nodes(connect=False)
-    #return nodes[0]['EXTERNAL_NAME']
-
-    #parsed_response=get_instance_response() 
-    #if len(parsed_response) == 0:
-        #return None
-    #instances=[]
-    #hostnames=[]
-    #externalnames=[]
-    #machine_state=[]
-    #for chunk in parsed_response:
-        #if chunk[0]=='INSTANCE':
-            ##if chunk[5]=='running' or chunk[5]=='pending':
-            #if chunk[5]=='running':
-                #instances.append(chunk[1])
-                #hostnames.append(chunk[4])
-                #externalnames.append(chunk[3])              
-                ##machine_state.append(chunk[-1])
-                #machine_state.append(chunk[5])
-    #try:
-        #master_node  = externalnames[0]
-    #except:
-        #master_node = None
-    #return master_node
-
 def get_master_instance():
     instances = get_running_instances()
     try:
@@ -283,52 +241,36 @@ def ssh_to_node(node_number):
     except:
         print ">>> Invalid node_number. Please select a node number from the output of manage-cluster.py -l"
 
-NODES = None
-
-def get_nodes(refresh=False):
-    if NODES is None or refresh:
-        if NODES is not None and not refresh:
-            return NODES     
-        if NODES is not None and refresh:
-            del globals()['NODES']
-
-        internal_hostnames = get_internal_hostnames()
-        external_hostnames = get_external_hostnames()
-        
-        nodes = []
-        nodeid = 0
-        for ihost, ehost in  zip(internal_hostnames,external_hostnames):
-            node = {}
-            log.debug('>>> Creating persistent connection to %s' % ehost)
-            node['CONNECTION'] = ssh.Connection(ehost, username='root', private_key=cfg.KEY_LOCATION)
-            node['NODE_ID'] = nodeid
-            node['EXTERNAL_NAME'] = ehost
-            node['INTERNAL_NAME'] = ihost
-            node['INTERNAL_IP'] = node['CONNECTION'].execute('python -c "import socket; print socket.gethostbyname(\'%s\')"' % ihost)[0].strip()
-            node['INTERNAL_NAME_SHORT'] = ihost.split('.')[0]
-            if nodeid == 0:
-                node['INTERNAL_ALIAS'] = 'master'
-            else:
-                node['INTERNAL_ALIAS'] = 'node%.3d' % nodeid
-            nodes.append(node)
-            nodeid += 1
-        globals()['NODES'] = nodes 
-    return NODES
-
-def close_node_connections():
-    if NODES is not None:
-        for node in NODES:
-            log.debug('closing ssh connection')
-            node['CONNECTION'].close()
-atexit.register(close_node_connections)
+def get_nodes():
+    internal_hostnames = get_internal_hostnames()
+    external_hostnames = get_external_hostnames()
+    
+    nodes = []
+    nodeid = 0
+    for ihost, ehost in  zip(internal_hostnames,external_hostnames):
+        node = {}
+        log.debug('>>> Creating persistent connection to %s' % ehost)
+        node['CONNECTION'] = ssh.Connection(ehost, username='root', private_key=cfg.KEY_LOCATION)
+        node['NODE_ID'] = nodeid
+        node['EXTERNAL_NAME'] = ehost
+        node['INTERNAL_NAME'] = ihost
+        node['INTERNAL_IP'] = node['CONNECTION'].execute('python -c "import socket; print socket.gethostbyname(\'%s\')"' % ihost)[0].strip()
+        node['INTERNAL_NAME_SHORT'] = ihost.split('.')[0]
+        if nodeid == 0:
+            node['INTERNAL_ALIAS'] = 'master'
+        else:
+            node['INTERNAL_ALIAS'] = 'node%.3d' % nodeid
+        nodes.append(node)
+        nodeid += 1
+    return nodes
 
 @print_timing
 def start_cluster(create=True):
-    print ">>> Starting cluster..."
+    log.info(">>> Starting cluster...")
     if create:
         create_cluster()
     s = Spinner()
-    print ">>> Waiting for cluster to start...",
+    log.info(">>> Waiting for cluster to start...",)
     s.start()
     while True:
         if is_cluster_up():

@@ -9,6 +9,10 @@ modified by justin riley (justin.t.riley@gmail.com)
 import os
 import tempfile
 import paramiko
+import logging
+
+
+log = logging.getLogger('starcluster')
 
 class Connection(object):
     """Connects and logs into the specified hostname. 
@@ -42,18 +46,18 @@ class Connection(object):
             # Use Private Key.
             pkey = None
             if private_key:
-                print 'private key specified'
+                log.debug('private key specified')
                 if private_key.endswith('rsa'):
                     pkey = self._load_rsa_key(private_key, private_key_pass)
                 elif private_key.endswith('dsa'):
                     pkey = self._load_dsa_key(private_key, private_key_pass)
                 else:
-                    print "WARNING: specified key does not end in either rsa or dsa...trying both"
+                    log.warn("specified key does not end in either rsa or dsa, trying both")
                     pkey = self._load_rsa_key(private_key, private_key_pass)
                     if pkey is None:
                         pkey = self._load_dsa_key(private_key, private_key_pass)
             else:
-                print 'no private_key specified'
+                log.debug('no private_key specified')
                 # Try to use default key.
                 if os.path.exists(os.path.expanduser('~/.ssh/id_rsa')):
                     pkey = self._load_rsa_key('~/.ssh/id_rsa')
@@ -70,7 +74,7 @@ class Connection(object):
             rsa_key = paramiko.RSAKey.from_private_key_file(private_key_file, private_key_pass)
             return rsa_key
         except paramiko.SSHException,e:
-            print 'invalid rsa key or password specified'
+            log.error('invalid rsa key or password specified')
 
     def _load_dsa_key(self, private_key, private_key_pass=None):
         private_key_file = os.path.expanduser(private_key)
@@ -78,7 +82,7 @@ class Connection(object):
             dsa_key = paramiko.DSSKey.from_private_key_file(private_key_file, private_key_pass)
             return dsa_key
         except paramiko.SSHException,e:
-            print 'invalid dsa key or password specified'
+            log.error('invalid dsa key or password specified')
     
     def _sftp_connect(self):
         """Establish the SFTP connection."""
@@ -107,7 +111,7 @@ class Connection(object):
         self._sftp_connect()
         self._sftp.put(localpath, remotepath)
 
-    def execute(self, command,silent = False):
+    def execute(self, command, silent = True):
         """Execute the given commands on a remote machine."""
         channel = self._transport.open_session()
         channel.exec_command(command)
@@ -118,7 +122,10 @@ class Connection(object):
 
         if not silent:
             for line in output:
-                print line.strip()
+                print line
+        else:
+            for line in output:
+                log.debug(line.strip())
         return output
 
     def close(self):
@@ -134,6 +141,7 @@ class Connection(object):
 
     def __del__(self):
         """Attempt to clean up if not explicitly closed."""
+        log.debug('__del__ called')
         self.close()
 
 def main():
