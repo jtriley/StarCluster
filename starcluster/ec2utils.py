@@ -274,7 +274,7 @@ def start_cluster(create=True):
     s.start()
     while True:
         if is_cluster_up():
-            s.stop = True
+            s.stop()
             break
         else:  
             time.sleep(15)
@@ -413,7 +413,7 @@ def attach_volume_to_master():
                     return False
 
 class Spinner(Thread):
-    spin_screen_pos = 0     #Set the screen position of the spinner (chars from the left).
+    spin_screen_pos = 1     #Set the screen position of the spinner (chars from the left).
     char_index_pos = 0      #Set the current index position in the spinner character list.
     sleep_time = 1       #Set the time between character changes in the spinner.
     spin_type = 2          #Set the spinner type: 0-3
@@ -421,7 +421,7 @@ class Spinner(Thread):
     def __init__(self, type=spin_type):
         Thread.__init__(self)
         self.setDaemon(True)
-        self.stop = False
+        self.stop_spinner = False
         if type == 0:
             self.char = ['O', 'o', '-', 'o','0']
         elif type == 1:
@@ -430,7 +430,7 @@ class Spinner(Thread):
             self.char = ['|', '/', '-', '\\', '-']
         else:
             self.char = ['*','#','@','%','+']
-            self.len  = len(self.char)
+        self.len  = len(self.char)
 
     def Print(self,crnt):
         str, crnt = self.curr(crnt)
@@ -450,20 +450,25 @@ class Spinner(Thread):
         return self.char[test], crnt
 
     def done(self):
-        sys.stdout.write("\b \b")
+        sys.stdout.write("\b \b\n")
+
+    def stop(self):
+        self.stop_spinner = True
+        time.sleep(0.1) #give time for run to get the message
     
     def run(self):
         print " " * self.spin_screen_pos, #the comma keeps print from ending with a newline.
         while True:
-            if self.stop:
+            if self.stop_spinner:
                 self.done()
                 return
             self.char_index_pos = self.Print(self.char_index_pos)
 
 if __name__ == "__main__":
-    # just test the spinner
+    # test the spinner
     s = Spinner()
-    print 'Waiting for cluster...',
+    print 'Waiting for process...',
     s.start()
     time.sleep(3)
-    s.stop = True
+    s.stop()
+    print 'Process is finished...'
