@@ -37,6 +37,7 @@ def _get_string(config, section, option):
         opt = None
     return opt
 
+# setting, type, required?
 ec2_options = [
     ('AWS_ACCESS_KEY_ID',_get_string, True),
     ('AWS_SECRET_ACCESS_KEY', _get_string, True),
@@ -101,14 +102,39 @@ def is_valid():
         log.error("""You specified an invalid INSTANCE_TYPE\nPossible options are:\n%s %s %s %s %s""" % tuple(instance_types.keys()))
         return False
     
-    if DEFAULT_CLUSTER_SIZE < 0:
-        log.error('>>> DEFAULT_CLUSTER_SIZE must be a positive integer')
+    if DEFAULT_CLUSTER_SIZE <= 0:
+        log.error('DEFAULT_CLUSTER_SIZE must be a positive integer')
         return False
     
     if CLUSTER_USER is None:
-        log.warn('>>> No CLUSTER_USER specified. Defaulting to sgeadmin user')
+        log.warn('No CLUSTER_USER specified. Defaulting to sgeadmin user')
         globals()['CLUSTER_USER'] = 'sgeadmin'
 
+    if not _has_valid_ebs_settings():
+        log.error('EBS settings are invalid, please check your settings')
+        return False
+
+    if not _has_valid_instance_type_settings():
+        log.error('Your INSTANCE_TYPE setting is invalid, please check your settings')
+        return False
+
+    return True
+
+def _has_valid_instance_type_settings():
+    #TODO implement this
+    # check INSTANCE_TYPE vs platform against image platform for IMAGE_ID/MASTER_IMAGE_ID 
+    # (ie m1.small -> 32bit, c1.xlarge -> 64bit, etc)
+    return True
+
+def _has_valid_ebs_settings():
+    #TODO check that ATTACH_VOLUME id exists
+    if ATTACH_VOLUME is not None:
+        if VOLUME_DEVICE is None:
+            log.error('Must specify VOLUME_DEVICE when specifying ATTACH_VOLUME setting')
+            return False
+        if VOLUME_PARTITION is None:
+            log.error('Must specify VOLUME_PARTITION when specifying ATTACH_VOLUME setting')
+            return False
     return True
 
 def _has_all_required_settings():
@@ -118,7 +144,7 @@ def _has_all_required_settings():
         for opt in section_opts:
             name = opt[0]; required = opt[2]
             if required and globals()[name] is None:
-                log.warn('Missing setting %s under section "%s"' % (name,section_name))
+                log.warn('Missing rquired setting %s under section "%s"' % (name,section_name))
                 has_all_required = False
     return has_all_required
 
