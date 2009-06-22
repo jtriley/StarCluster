@@ -211,7 +211,10 @@ def terminate_instances(instances=None):
 
 def get_master_node():
     external_hostnames = get_external_hostnames()
-    return external_hostnames[0]
+    try:
+        return external_hostnames[0]
+    except Exception,e:
+        return None
         
 def get_master_instance():
     instances = get_running_instances()
