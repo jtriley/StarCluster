@@ -96,9 +96,9 @@ def remove_image_files(image_name, bucket = None, pretend=True):
     files = get_image_files(image_name, bucket)
     if len(files) != 0:
         if pretend:
-            print 'not all files deleted, would recurse'
+            log.debug('not all files deleted, would recurse')
         else:
-            print 'not all files deleted, recursing'
+            log.debug('not all files deleted, recursing')
             remove_image_files(image_name, bucket, pretend)
     
 
@@ -108,10 +108,10 @@ def remove_image(image_name, pretend=True):
 
     # then deregister ami
     image = get_image(image_name)
-    print 'removing %s (ami: %s)' % (image['NAME'],image['AMI'])
     if pretend:
-        print 'would run conn.deregister_image()'
+        log.info('Would run conn.deregister_image for image %s (ami: %s)' % (image['NAME'],image['AMI']))
     else:
+        log.info('Removing image %s (ami: %s)' % (image['NAME'],image['AMI']))
         conn = get_conn()
         conn.deregister_image(image['AMI'])
 
@@ -197,12 +197,12 @@ def list_instances(refresh=False):
     instances = get_instances(refresh)
     if len(instances) != 0:
         counter = 0
-        print ">>> EC2 Instances:"
+        log.info("EC2 Instances:")
         for instance in instances:
             print "[%s] %s %s (%s)" % (counter, instance[3], instance[5],instance[2])
             counter +=1
     else:
-        print ">>> No instances found..."
+        log.info("No instances found...")
     
 def terminate_instances(instances=None):
     if instances is not None:
@@ -224,22 +224,22 @@ def get_master_instance():
 def ssh_to_master():
     master_node = get_master_node()
     if master_node is not None:
-        print "\n>>> MASTER NODE: %s" % master_node
+        log.info("MASTER NODE: %s" % master_node)
         os.system('ssh -i %s root@%s' % (cfg.KEY_LOCATION, master_node)) 
     else: 
-        print ">>> No master node found..."
+        log.info("No master node found...")
 
 def ssh_to_node(node_number):
     nodes = get_external_hostnames()
     if len(nodes) == 0:
-        print '>>> No instances to connect to...exiting'
+        log.info('No instances to connect to...exiting')
         return
     try:
         node = nodes[int(node_number)]
-        print ">>> Logging into node: %s" % node
+        log.info("Logging into node: %s" % node)
         os.system('ssh -i %s root@%s' % (cfg.KEY_LOCATION, node))
     except:
-        print ">>> Invalid node_number. Please select a node number from the output of manage-cluster.py -l"
+        log.error("Invalid node_number. Please select a node number from the output of manage-cluster.py -l")
 
 def get_nodes():
     internal_hostnames = get_internal_hostnames()
@@ -249,7 +249,7 @@ def get_nodes():
     nodeid = 0
     for ihost, ehost in  zip(internal_hostnames,external_hostnames):
         node = {}
-        log.debug('>>> Creating persistent connection to %s' % ehost)
+        log.debug('Creating persistent connection to %s' % ehost)
         node['CONNECTION'] = ssh.Connection(ehost, username='root', private_key=cfg.KEY_LOCATION)
         node['NODE_ID'] = nodeid
         node['EXTERNAL_NAME'] = ehost
@@ -266,11 +266,11 @@ def get_nodes():
 
 @print_timing
 def start_cluster(create=True):
-    log.info(">>> Starting cluster...")
+    log.info("Starting cluster...")
     if create:
         create_cluster()
     s = Spinner()
-    log.info(">>> Waiting for cluster to start...",)
+    log.info("Waiting for cluster to start...",)
     s.start()
     while True:
         if is_cluster_up():
@@ -282,40 +282,44 @@ def start_cluster(create=True):
     attach_volume_to_master()
 
     master_node = get_master_node()
-    print ">>> The master node is %s" % master_node
+    log.info("The master node is %s" % master_node)
 
-    print ">>> Setting up the cluster..."
+    log.info("Setting up the cluster...")
     cluster_setup.main(get_nodes())
         
-    print "\n>>> The cluster has been started and configured. ssh into the master node as root by running:" 
-    print ""
-    print "$ manage-cluster.py -m"
-    print ""
-    print ">>> or as %s directly:" % cfg.CLUSTER_USER
-    print ""
-    print "$ ssh -i %s %s@%s " % (cfg.KEY_LOCATION, cfg.CLUSTER_USER, master_node)
-    print ""
+    log.info("""
+
+The cluster has been started and configured. ssh into the master node as root by running: 
+
+$ manage-cluster.py -m
+
+or as %(user)s directly:
+
+$ ssh -i %(key)s %(user)s@%(master)s
+
+""" % {'master': master_node, 'user': cfg.CLUSTER_USER, 'key': cfg.KEY_LOCATION}
+    )
 
 def create_cluster():
     conn = get_conn()
     if cfg.MASTER_IMAGE_ID is not None:
-        print ">>> Launching master node..."
-        print ">>> MASTER AMI: ", cfg.MASTER_IMAGE_ID
+        log.info("Launching master node...")
+        log.info("MASTER AMI: ", cfg.MASTER_IMAGE_ID)
         master_response = conn.run_instances(imageId=cfg.MASTER_IMAGE_ID, instanceType=cfg.INSTANCE_TYPE, \
                                              minCount=1, maxCount=1, keyName=cfg.KEYNAME, availabilityZone=cfg.AVAILABILITY_ZONE)
         print master_response
 
-        print ">>> Launching worker nodes..."
-        print ">>> NODE AMI: ", cfg.IMAGE_ID
+        log.info("Launching worker nodes...")
+        log.info("NODE AMI: ", cfg.IMAGE_ID)
         instances_response = conn.run_instances(imageId=cfg.IMAGE_ID, instanceType=cfg.INSTANCE_TYPE, \
                                                 minCount=max((cfg.DEFAULT_CLUSTER_SIZE-1)/2, 1), maxCount=max(cfg.DEFAULT_CLUSTER_SIZE-1,1), \
                                                 keyName=cfg.KEYNAME, availabilityZone=cfg.AVAILABILITY_ZONE)
         print instances_response
         # if the workers failed, what should we do about the master?
     else:
-        print ">>> Launching master and worker nodes..."
-        print ">>> MASTER AMI: ", cfg.IMAGE_ID
-        print ">>> NODE AMI: ", cfg.IMAGE_ID
+        log.info("Launching master and worker nodes...")
+        log.info("MASTER AMI: %s" % cfg.IMAGE_ID)
+        log.info("NODE AMI: %s" % cfg.IMAGE_ID)
         instances_response = conn.run_instances(imageId=cfg.IMAGE_ID, instanceType=cfg.INSTANCE_TYPE, \
                                                 minCount=max(cfg.DEFAULT_CLUSTER_SIZE/2,1), maxCount=max(cfg.DEFAULT_CLUSTER_SIZE,1), \
                                                 keyName=cfg.KEYNAME, availabilityZone=cfg.AVAILABILITY_ZONE)
@@ -328,43 +332,43 @@ def stop_cluster():
     if resp == 'yes':
         detach_vol = detach_volume()
         log.debug("detach_vol: \n%s" % detach_vol)
-        print ">>> Listing instances ..."
+        log.info("Listing instances ...")
         list_instances()
         running_instances = get_running_instances()
         if len(running_instances) > 0:
             for instance in running_instances:
-                print ">>> Shutting down instance: %s " % instance
-            print "\n>>> Waiting for instances to shutdown ...."
+                log.info("Shutting down instance: %s " % instance)
+            log.info("Waiting for instances to shutdown ....")
             terminate_instances(running_instances)
             time.sleep(5)
-        print ">>> Listing new state of instances" 
+        log.info("Listing new state of instances")
         list_instances(refresh=True)
     else:
-        print ">>> Exiting without shutting down instances...."
+        log.info("Exiting without shutting down instances....")
 
 def stop_slaves():
-    print ">>> Listing instances ..."
+    log.info("Listing instances...")
     list_instances(refresh=True)
     running_instances = get_running_instances()
     if len(running_instances) > 0:
         #exclude master node....
         running_instances=running_instances[1:len(running_instances)]
         for instance in running_instances:
-            print ">>> Shuttin down slave instance: %s " % instance
-        print "\n>>> Waiting for shutdown ...."
+            log.info("Shuttin down slave instance: %s " % instance)
+        log.info("Waiting for shutdown...")
         terminate_instances(running_instances)
         time.sleep(5)
-    print ">>> Listing new state of slave instances"
-    print list_instances(refresh=True)
+    log.info("Listing new state of slave instances")
+    list_instances(refresh=True)
 
 def has_attach_volume():
     if cfg.ATTACH_VOLUME is not None and cfg.ATTACH_VOLUME is not None:
         if cfg.VOLUME_DEVICE is not None:
             return True
         else:
-            print ">>> No VOLUME_DEVICE specified in config"
+            log.debug("No VOLUME_DEVICE specified in config")
     else:
-        print ">>> No ATTACH_VOLUME specified in config"
+        log.debug("No ATTACH_VOLUME specified in config")
     return False
         
 
@@ -386,14 +390,14 @@ def list_volumes():
 
 def detach_volume():
     if has_attach_volume():
-        print ">>> Detaching EBS device..."
+        log.info("Detaching EBS device...")
         conn = get_conn()
         return conn.detach_volume(cfg.ATTACH_VOLUME).parse()
     else:
-        print ">>> No EBS device to detach"
+        log.info("No EBS device to detach")
 
 def attach_volume_to_master():
-    print ">>> Attaching volume to master node..."
+    log.info("Attaching volume to master node...")
     master_instance = get_master_instance()
     if master_instance is not None:
         if attach_volume_to_node(master_instance) is not None:
