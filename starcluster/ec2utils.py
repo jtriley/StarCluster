@@ -16,6 +16,7 @@ from starcluster import starclustercfg as cfg
 from starcluster import s3utils
 from starcluster import cluster_setup
 from starcluster import ssh
+from starcluster import logger
 
 log = logging.getLogger('starcluster')
 
@@ -273,7 +274,7 @@ def start_cluster(create=True):
     if create:
         create_cluster()
     s = Spinner()
-    log.info("Waiting for cluster to start...",)
+    log.log(logger.INFO_NO_NEWLINE, "Waiting for cluster to start...")
     s.start()
     while True:
         if is_cluster_up():
@@ -307,13 +308,13 @@ def create_cluster():
     conn = get_conn()
     if cfg.MASTER_IMAGE_ID is not None:
         log.info("Launching master node...")
-        log.info("MASTER AMI: ", cfg.MASTER_IMAGE_ID)
+        log.info("MASTER AMI: %s" % cfg.MASTER_IMAGE_ID)
         master_response = conn.run_instances(imageId=cfg.MASTER_IMAGE_ID, instanceType=cfg.INSTANCE_TYPE, \
                                              minCount=1, maxCount=1, keyName=cfg.KEYNAME, availabilityZone=cfg.AVAILABILITY_ZONE)
         print master_response
 
         log.info("Launching worker nodes...")
-        log.info("NODE AMI: ", cfg.IMAGE_ID)
+        log.info("NODE AMI: %s" % cfg.IMAGE_ID)
         instances_response = conn.run_instances(imageId=cfg.IMAGE_ID, instanceType=cfg.INSTANCE_TYPE, \
                                                 minCount=max((cfg.DEFAULT_CLUSTER_SIZE-1)/2, 1), maxCount=max(cfg.DEFAULT_CLUSTER_SIZE-1,1), \
                                                 keyName=cfg.KEYNAME, availabilityZone=cfg.AVAILABILITY_ZONE)
@@ -457,7 +458,7 @@ class Spinner(Thread):
 
     def stop(self):
         self.stop_spinner = True
-        time.sleep(0.1) #give time for run to get the message
+        time.sleep(0.5) #give time for run to get the message
     
     def run(self):
         print " " * self.spin_screen_pos, #the comma keeps print from ending with a newline.

@@ -16,11 +16,11 @@ log = logging.getLogger('starcluster')
 
 
 instance_types = {
-    'm1.small': True,
-    'm1.large': True,
-    'm1.xlarge': True,
-    'c1.medium': True,
-    'c1.xlarge': True,
+    'm1.small':  'i386',
+    'm1.large':  'x86_64',
+    'm1.xlarge': 'x86_64',
+    'c1.medium': 'i386',
+    'c1.xlarge': 'x86_64',
 }
 
 def _get_int(config, section, option):
@@ -39,7 +39,7 @@ def _get_string(config, section, option):
 
 # setting, type, required?
 ec2_options = [
-    ('AWS_ACCESS_KEY_ID',_get_string, True),
+    ('AWS_ACCESS_KEY_ID', _get_string, True),
     ('AWS_SECRET_ACCESS_KEY', _get_string, True),
     ('AWS_USERID', _get_string, True),
     ('KEYNAME', _get_string, True),
@@ -82,15 +82,17 @@ def load_settings():
             globals()[name] = value
 
 def is_valid():
+    conn = _get_conn()
+
     if not _has_all_required_settings():
         log.error('Please specify the required settings in ~/.starclustercfg')
         return False
 
-    if not _has_valid_credentials():
+    if not _has_valid_credentials(conn):
         log.error('Invalid AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY combination')
         return False
 
-    if not _has_keypair(KEYNAME):
+    if not _has_keypair(conn, KEYNAME):
         log.error('Account does not contain a key with KEYNAME = %s. Please check your settings' % KEYNAME)
         return False
     
@@ -110,25 +112,89 @@ def is_valid():
         log.warn('No CLUSTER_USER specified. Defaulting to sgeadmin user')
         globals()['CLUSTER_USER'] = 'sgeadmin'
 
-    if not _has_valid_ebs_settings():
+    if not _has_valid_ebs_settings(conn):
         log.error('EBS settings are invalid, please check your settings')
         return False
 
-    if not _has_valid_instance_type_settings():
+    if not _has_valid_instance_type_settings(conn):
         log.error('Your INSTANCE_TYPE setting is invalid, please check your settings')
+        return False
+
+    if not _has_valid_image_settings(conn):
+        log.error('Your MASTER_IMAGE_ID/IMAGE_ID setting(s) are invalid, please check your settings')
+        return False
+
+    if not _has_valid_availability_zone(conn):
+        log.error('Your AVAILABILITY_ZONE setting is invalid, please check your settings')
         return False
 
     return True
 
-def _has_valid_instance_type_settings():
-    #TODO implement this
-    # check INSTANCE_TYPE vs platform against image platform for IMAGE_ID/MASTER_IMAGE_ID 
-    # (ie m1.small -> 32bit, c1.xlarge -> 64bit, etc)
+def _has_valid_image_settings(conn):
+    image = conn.describe_images(imageIds=[IMAGE_ID]).parse()
+    if not image:
+        log.error('IMAGE_ID %s does not exist' % IMAGE_ID)
+        return False
+    if MASTER_IMAGE_ID is not None:
+        master_image = conn.describe_images(imageIds=[MASTER_IMAGE_ID]).parse()
+        if not master_image:
+            log.error('MASTER_IMAGE_ID %s does not exist' % MASTER_IMAGE_ID)
+            return False
     return True
 
-def _has_valid_ebs_settings():
+def _has_valid_availability_zone(conn):
+    if AVAILABILITY_ZONE is not None:
+        zones = conn.describe_availability_zones().parse()
+        if not zones:
+            log.error('No availability zones found')
+            return False
+
+        zone_count = 0 
+        availabile_count = 0
+        for zone in zones:
+            zone_count += zone.count(AVAILABILITY_ZONE)
+            availabile_count += zone.count('available')
+
+        if zone_count == 0:
+            log.error('AVAILABILITY_ZONE = %s does not exist' % AVAILABILITY_ZONE)
+            return False
+
+        if availabile_count == 0:
+            log.error('The AVAILABILITY_ZONE = %s is not available at this time')
+            return False
+
+    return True
+
+def _has_valid_instance_type_settings(conn):
+    image_platform = conn.describe_images(imageIds=[IMAGE_ID]).parse()[0][6]
+    instance_platform = instance_types[INSTANCE_TYPE]
+    if instance_platform != image_platform:
+        log.error('You specified an incompatible IMAGE_ID and INSTANCE_TYPE')
+        log.error('INSTANCE_TYPE = %(instance_type)s is for a %(instance_platform)s \
+                    platform while IMAGE_ID = %(image_id)s is a %(image_platform)s' \
+                    % { 'instance_type': INSTANCE_TYPE, 'instance_platform': instance_platform, \
+                        'image_id': IMAGE_ID, 'image_platform': image_platform})
+        return False
+    
+    if MASTER_IMAGE_ID is not None:
+        master_image_platform = conn.describe_images(imageIds=[IMAGE_ID]).parse()[0][6]
+        if instance_platform != master_image_platform:
+            log.error('You specified an incompatible MASTER_IMAGE_ID and INSTANCE_TYPE')
+            log.error('INSTANCE_TYPE = %(instance_type)s is for a %(instance_platform)s \
+                        platform while MASTER_IMAGE_ID = %(master_image_id)s is a %(master_image_platform)s' \
+                        % { 'instance_type': INSTANCE_TYPE, 'instance_platform': instance_platform, \
+                            'image_id': MASETER_IMAGE_ID, 'image_platform': master_image_platform})
+            return False
+    
+    return True
+
+def _has_valid_ebs_settings(conn):
     #TODO check that ATTACH_VOLUME id exists
     if ATTACH_VOLUME is not None:
+        vols = conn.describe_volumes(volumeIds=[ATTACH_VOLUME]).parse()
+        if not vols:
+            log.error('ATTACH_VOLUME = %s does not exist' % ATTACH_VOLUME)
+            return False
         if VOLUME_DEVICE is None:
             log.error('Must specify VOLUME_DEVICE when specifying ATTACH_VOLUME setting')
             return False
@@ -156,12 +222,10 @@ def validate_or_exit():
 def _get_conn():  
     return EC2.AWSAuthConnection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
 
-def _has_valid_credentials():
-    conn = _get_conn()
+def _has_valid_credentials(conn):
     return not conn.describe_instances().is_error
 
-def _has_keypair(keyname):
-    conn = _get_conn()
+def _has_keypair(conn, keyname):
     keypairs = conn.describe_keypairs().parse()
     has_keypair = False
     for key in keypairs:
