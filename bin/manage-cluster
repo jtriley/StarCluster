@@ -4,7 +4,7 @@ import logging
 from optparse import OptionParser
 from optparse import OptionValueError
 from starcluster import ec2utils 
-from starcluster import starclustercfg 
+from starcluster import starclustercfg as cfg
 
 log = logging.getLogger('starcluster')
 
@@ -52,9 +52,8 @@ manage-cluster
 
     log.debug("options = %s" % options)
 
-    starclustercfg.validate_or_exit()
-
     if options.start_cluster:
+        cfg.validate_or_exit()
         ec2utils.start_cluster()
         if options.login_master:
             ec2utils.ssh_to_master()
