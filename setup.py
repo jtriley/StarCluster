@@ -5,7 +5,7 @@ from setuptools import setup
 setup(
     name = 'StarCluster',
     version = '0.0.1',
-    packages = ['starcluster'],
+    packages = ['starcluster', 'starcluster.templates'],
     package_dir = {'starcluster':'starcluster'},
     scripts=['bin/manage-cluster', 'bin/manage-images'],
 

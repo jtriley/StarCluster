@@ -9,6 +9,7 @@ import sys
 import time
 import socket
 import logging
+import platform
 from threading import Thread
 
 from starcluster import EC2
@@ -229,7 +230,10 @@ def ssh_to_master():
     master_node = get_master_node()
     if master_node is not None:
         log.info("MASTER NODE: %s" % master_node)
-        os.system('ssh -i %s root@%s' % (cfg.KEY_LOCATION, master_node)) 
+        if platform.system() != 'Windows':
+            os.system('ssh -i %s root@%s' % (cfg.KEY_LOCATION, master_node)) 
+        else:
+            os.system('putty -ssh -i %s root@%s' % (cfg.KEY_LOCATION, master_node))
     else: 
         log.info("No master node found...")
 
@@ -241,7 +245,10 @@ def ssh_to_node(node_number):
     try:
         node = nodes[int(node_number)]
         log.info("Logging into node: %s" % node)
-        os.system('ssh -i %s root@%s' % (cfg.KEY_LOCATION, node))
+        if platform.system() != 'Windows':
+            os.system('ssh -i %s root@%s' % (cfg.KEY_LOCATION, node))
+        else:
+            os.system('putty -ssh -i %s root@%s' % (cfg.KEY_LOCATION, node))
     except:
         log.error("Invalid node_number. Please select a node number from the output of manage-cluster.py -l")
 
@@ -295,7 +302,7 @@ def start_cluster(create=True):
 
 The cluster has been started and configured. ssh into the master node as root by running: 
 
-$ manage-cluster.py -m
+$ manage-cluster -m
 
 or as %(user)s directly:
 
