@@ -144,25 +144,21 @@ def _has_valid_image_settings(conn):
 
 def _has_valid_availability_zone(conn):
     if AVAILABILITY_ZONE is not None:
-        zones = conn.describe_availability_zones().parse()
-        if not zones:
+        zone_list = conn.describe_availability_zones().parse()
+        if not zone_list:
             log.error('No availability zones found')
             return False
 
-        zone_count = 0 
-        availabile_count = 0
-        for zone in zones:
-            zone_count += zone.count(AVAILABILITY_ZONE)
-            availabile_count += zone.count('available')
+        zones = {}
+        for zone in zone_list:
+            zones[zone[1]] = zone[2]
 
-        if zone_count == 0:
+        if not zones.has_key(AVAILABILITY_ZONE):
             log.error('AVAILABILITY_ZONE = %s does not exist' % AVAILABILITY_ZONE)
             return False
-
-        if availabile_count == 0:
+        elif zones[AVAILABILITY_ZONE] != 'available':
             log.error('The AVAILABILITY_ZONE = %s is not available at this time')
             return False
-
     return True
 
 def _has_valid_instance_type_settings(conn):

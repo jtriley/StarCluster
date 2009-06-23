@@ -334,27 +334,29 @@ def create_cluster():
 def stop_cluster():
     resp = raw_input(">>> This will shutdown all EC2 instances. Are you sure (yes/no)? ")
     if resp == 'yes':
-        detach_vol = detach_volume()
-        log.debug("detach_vol: \n%s" % detach_vol)
-        log.info("Listing instances ...")
-        list_instances()
         running_instances = get_running_instances()
         if len(running_instances) > 0:
+            detach_vol = detach_volume()
+            log.debug("detach_vol: \n%s" % detach_vol)
+            log.info("Listing instances ...")
+            list_instances()
             for instance in running_instances:
                 log.info("Shutting down instance: %s " % instance)
             log.info("Waiting for instances to shutdown ....")
             terminate_instances(running_instances)
             time.sleep(5)
-        log.info("Listing new state of instances")
-        list_instances(refresh=True)
+            log.info("Listing new state of instances")
+            list_instances(refresh=True)
+        else:
+            log.info('No running instances found, exiting...')
     else:
         log.info("Exiting without shutting down instances....")
 
 def stop_slaves():
-    log.info("Listing instances...")
-    list_instances(refresh=True)
     running_instances = get_running_instances()
     if len(running_instances) > 0:
+        log.info("Listing instances...")
+        list_instances(refresh=True)
         #exclude master node....
         running_instances=running_instances[1:len(running_instances)]
         for instance in running_instances:
@@ -362,8 +364,10 @@ def stop_slaves():
         log.info("Waiting for shutdown...")
         terminate_instances(running_instances)
         time.sleep(5)
-    log.info("Listing new state of slave instances")
-    list_instances(refresh=True)
+        log.info("Listing new state of slave instances")
+        list_instances(refresh=True)
+    else:
+        log.info("No running instances found, exiting...")
 
 def has_attach_volume():
     if cfg.ATTACH_VOLUME is not None and cfg.ATTACH_VOLUME is not None:
