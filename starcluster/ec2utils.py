@@ -26,7 +26,7 @@ def print_timing(func):
         t1 = time.time()
         res = func(*arg, **kargs)
         t2 = time.time()
-        log.info('%s took %0.3f ms' % (func.func_name, (t2-t1)*1000.0))
+        log.info('%s took %0.3f mins' % (func.func_name, (t2-t1)/60.0))
         return res
     return wrapper
 
@@ -34,6 +34,7 @@ EC2_CONNECTION = None
 
 def get_conn():
     if EC2_CONNECTION is None:
+        log.debug('EC2_CONNECTION is None, creating...')
         globals()['EC2_CONNECTION'] = EC2.AWSAuthConnection(cfg.AWS_ACCESS_KEY_ID, cfg.AWS_SECRET_ACCESS_KEY)
     return EC2_CONNECTION
 
@@ -138,6 +139,7 @@ INSTANCE_RESPONSE = None
 
 def get_instance_response(refresh=False):
     if INSTANCE_RESPONSE is None or refresh:
+        log.debug('INSTANCE_RESPONSE = %s, refresh = %s, creating' % (INSTANCE_RESPONSE, refresh))
         conn = get_conn()
         instance_response=conn.describe_instances()
         globals()['INSTANCE_RESPONSE'] = instance_response.parse()  
@@ -145,8 +147,9 @@ def get_instance_response(refresh=False):
         
 KEYPAIR_RESPONSE = None
 
-def get_keypair_response():
-    if KEYPAIR_RESPONSE is None:
+def get_keypair_response(refresh=False):
+    if KEYPAIR_RESPONSE is None or refresh:
+        log.debug('KEYPAIR_RESPONSE = %s, refresh = %s, creating' % (KEYPAIR_RESPONSE, refresh))
         conn = get_conn()
         keypair_response = conn.describe_keypairs()
         globals()['KEYPAIR_RESPONSE'] = keypair_response.parse()

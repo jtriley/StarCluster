@@ -3,7 +3,6 @@ import os
 import sys
 import logging
 import ConfigParser
-from ConfigParser import NoOptionError
 from templates.config import config_template
 
 from starcluster import EC2
@@ -27,41 +26,53 @@ instance_types = {
 def _get_int(config, section, option):
     try:
         opt = config.getint(section,option)
-    except (NoOptionError):
+    except (ConfigParser.NoSectionError):
+        opt = None
+    except (ConfigParser.NoOptionError):
         opt = None
     return opt
 
 def _get_string(config, section, option):
     try:
         opt = config.get(section,option)
-    except (NoOptionError):
+    except (ConfigParser.NoSectionError):
+        opt = None
+    except (ConfigParser.NoOptionError):
         opt = None
     return opt
 
 # setting, type, required?, default
-ec2_options = [
+aws_options = [
     ('AWS_ACCESS_KEY_ID', _get_string, True, None),
     ('AWS_SECRET_ACCESS_KEY', _get_string, True, None),
     ('AWS_USERID', _get_string, True, None),
+]
+
+ssh_options = [
     ('KEYNAME', _get_string, True, None),
     ('KEY_LOCATION', _get_string, True, None),
 ]
 
-starcluster_options = [
+cluster_options = [
+    ('DEFAULT_CLUSTER_SIZE', _get_int, False, 2),
+    ('CLUSTER_USER', _get_string, False, 'sgeadmin'),
     ('MASTER_IMAGE_ID', _get_string, False, None),
     ('IMAGE_ID', _get_string, True, None),
-    ('INSTANCE_TYPE', _get_string, False, None),
+    ('INSTANCE_TYPE', _get_string, True, None),
     ('AVAILABILITY_ZONE', _get_string, False, None),
+]
+
+ebs_options = [
     ('ATTACH_VOLUME', _get_string, False, None),
     ('VOLUME_DEVICE', _get_string, False, None),
     ('VOLUME_PARTITION', _get_string, False, None),
-    ('DEFAULT_CLUSTER_SIZE', _get_int, True, 2),
-    ('CLUSTER_USER', _get_string, False, 'sgeadmin')
 ]
 
 sections = [
-    ("section ec2", ec2_options),
-    ("section starcluster", starcluster_options)
+    ("section aws", aws_options),
+    ("section ssh", ssh_options),
+    ("section cluster", cluster_options),
+    ("section ebs", ebs_options),
 ]
 
 def load_settings():
@@ -73,7 +84,11 @@ def load_settings():
         sys.exit(1)
 
     config = ConfigParser.ConfigParser()
-    config.read(CFG_FILE)
+    try:
+        config.read(CFG_FILE)
+    except ConfigParser.MissingSectionHeaderError,e:
+        log.warn('No sections defined in settings file %s' % CFG_FILE)
+        pass
 
     for section in sections:
         section_name = section[0]; section_opts = section[1]
@@ -90,40 +105,39 @@ def is_valid():
     conn = _get_conn()
 
     if not _has_all_required_settings():
-        #cfg_file = os.path.join(os.path.expanduser('~'), '.starclustercfg')
         log.error('Please specify the required settings in %s' % CFG_FILE)
         return False
 
     if not _has_valid_credentials(conn):
-        log.error('Invalid AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY combination')
+        log.error('Invalid AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY combination. Please check your settings')
         return False
 
-    if not _has_keypair(conn, KEYNAME):
+    if not _has_keypair(conn):
         log.error('Account does not contain a key with KEYNAME = %s. Please check your settings' % KEYNAME)
         return False
     
     if not os.path.exists(KEY_LOCATION):
-        log.error('KEY_LOCATION=%s does not exist' % KEY_LOCATION)
+        log.error('KEY_LOCATION=%s does not exist. Please check your settings' % KEY_LOCATION)
         return False
     
     if DEFAULT_CLUSTER_SIZE <= 0:
-        log.error('DEFAULT_CLUSTER_SIZE must be a positive integer')
+        log.error('DEFAULT_CLUSTER_SIZE must be a positive integer. Please check your settings')
         return False
     
     if not _has_valid_availability_zone(conn):
-        log.error('Your AVAILABILITY_ZONE setting is invalid, please check your settings')
+        log.error('Your AVAILABILITY_ZONE setting is invalid. Please check your settings')
         return False
 
     if not _has_valid_ebs_settings(conn):
-        log.error('EBS settings are invalid, please check your settings')
+        log.error('EBS settings are invalid. Please check your settings')
         return False
 
     if not _has_valid_image_settings(conn):
-        log.error('Your MASTER_IMAGE_ID/IMAGE_ID setting(s) are invalid, please check your settings')
+        log.error('Your MASTER_IMAGE_ID/IMAGE_ID setting(s) are invalid. Please check your settings')
         return False
 
     if not _has_valid_instance_type_settings(conn):
-        log.error('Your INSTANCE_TYPE setting is invalid, please check your settings')
+        log.error('Your INSTANCE_TYPE setting is invalid. Please check your settings')
         return False
 
 
@@ -216,24 +230,32 @@ def _has_all_required_settings():
     for section in sections:
         section_name = section[0]; section_opts = section[1]
         for opt in section_opts:
-            name = opt[0]; required = opt[2]
+            name = opt[0]; required = opt[2], default=opt[3]
             if required and globals()[name] is None:
-                log.warn('Missing rquired setting %s under section "%s"' % (name,section_name))
+                log.warn('Missing required setting %s under section [%s]' % (name,section_name))
                 has_all_required = False
     return has_all_required
 
+def validate_aws_or_exit():
+    conn = _get_conn()
+    if conn is None or not _has_valid_credentials(conn):
+        log.error('Invalid AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY combination. Please check your settings')
+        sys.exit(1)
+    
 def validate_or_exit():
     if not is_valid():
         log.error('configuration error...exiting')
         sys.exit(1)
 
 def _get_conn():  
+    if AWS_ACCESS_KEY_ID is None or AWS_SECRET_ACCESS_KEY is None:
+        return None
     return EC2.AWSAuthConnection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
 
 def _has_valid_credentials(conn):
     return not conn.describe_instances().is_error
 
-def _has_keypair(conn, keyname):
+def _has_keypair(conn):
     keypairs = conn.describe_keypairs().parse()
     has_keypair = False
     for key in keypairs:

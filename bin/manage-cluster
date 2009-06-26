@@ -47,25 +47,26 @@ manage-cluster
 
     if options.debug:
         log.setLevel(logging.DEBUG)
-    else:
-        log.setLevel(logging.INFO)
 
     log.debug("options = %s" % options)
 
-    if options.start_cluster:
+    if options.start_cluster or options.no_create:
         cfg.validate_or_exit()
-        ec2utils.start_cluster()
+        create = not options.no_create
+        ec2utils.start_cluster(create=create)
         if options.login_master:
             ec2utils.ssh_to_master()
-    elif options.no_create:
-        ec2utils.start_cluster(create=False)
     elif options.terminate_cluster:
+        cfg.validate_aws_or_exit()
         ec2utils.stop_cluster()
     elif options.login_master:
+        cfg.validate_aws_or_exit()
         ec2utils.ssh_to_master()
     elif options.list_nodes:
+        cfg.validate_aws_or_exit()
         ec2utils.list_instances()
     elif options.login_node:
+        cfg.validate_aws_or_exit()
         ec2utils.ssh_to_node(options.login_node)
     else:
         parser.print_help()
