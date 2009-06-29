@@ -16,9 +16,9 @@ class CreateEC2Image(object):
         self.env_variables = None
 
     def removeimage(self):
-            #deregister the image
-            self.conn.deregister_image(self.config_dict['image_to_remove'])
-            os.system('ec2-delete-bundle -b %(bucket)s -p %(prefix)s -a %(access_key)s -s %(secret_key)s' % self.config_dict)
+        #deregister the image
+        self.conn.deregister_image(self.config_dict['image_to_remove'])
+        os.system('ec2-delete-bundle -b %(bucket)s -p %(prefix)s -a %(access_key)s -s %(secret_key)s' % self.config_dict)
 
     def main(self):
 

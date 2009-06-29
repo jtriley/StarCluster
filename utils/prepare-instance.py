@@ -1,4 +1,5 @@
 #!/usr/bin/python2.4
+import platform
 import os, pickle
 
 print '>>> Recovering config pickle'
@@ -16,9 +17,19 @@ os.system('rm -rf /root/*')
 os.system('rm -f ~/.bash_history')
 os.system('rm -rf /tmp/*')
 
+# get arch option for ec2-bundle-vol
+arch = platform.architecture()[0]
+if arch == "32bit":
+    arch = "i386"
+elif arch == "64bit":
+    arch = "x86_64"
+else: 
+    arch = "i386"
+config_dict['arch'] = arch
+
 # perform the bundle
 print '>>> Beginning the bundle process: '
-os.system('ec2-bundle-vol -d /mnt -k /mnt/%(private_key)s -c /mnt/%(cert)s -p %(prefix)s -u %(userid)s' % config_dict)
+os.system('ec2-bundle-vol -d /mnt -k /mnt/%(private_key)s -c /mnt/%(cert)s -p %(prefix)s -u %(userid)s -r %(arch)s' % config_dict)
 
 # upload bundle to S3
 print '>>> Uploading the bundle image: '

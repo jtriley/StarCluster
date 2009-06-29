@@ -230,7 +230,7 @@ def _has_all_required_settings():
     for section in sections:
         section_name = section[0]; section_opts = section[1]
         for opt in section_opts:
-            name = opt[0]; required = opt[2], default=opt[3]
+            name = opt[0]; required = opt[2]; default=opt[3]
             if required and globals()[name] is None:
                 log.warn('Missing required setting %s under section [%s]' % (name,section_name))
                 has_all_required = False
