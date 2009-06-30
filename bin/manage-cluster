@@ -9,7 +9,7 @@ from starcluster import starclustercfg as cfg
 log = logging.getLogger('starcluster')
 
 def positive_int(option, opt_str, value, parser):
-    err_msg = "-n option must be a positive integer greater than 0\n"
+    err_msg = "-n option must be an integer >= 0\n"
     try:
         intval = int(value)
         if intval < 0:
