@@ -1,6 +1,7 @@
 # Setup logging globally (ie root logger)
 import types
 import logging
+import logging.handlers
 
 INFO_NO_NEWLINE = logging.INFO + 1
 
@@ -35,5 +36,11 @@ class MultipleFormatHandler(logging.StreamHandler):
 
 logger = logging.getLogger('starcluster')
 logger.setLevel(logging.INFO)
+
 mfh = MultipleFormatHandler()
 logger.addHandler(mfh)
+
+syslog_handler = logging.handlers.SysLogHandler(address='/dev/log')
+formatter = logging.Formatter("%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n")
+syslog_handler.setFormatter(formatter)
+logger.addHandler(syslog_handler)
