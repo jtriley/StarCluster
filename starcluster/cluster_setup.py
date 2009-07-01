@@ -65,13 +65,12 @@ def setup_passwordless_ssh(nodes):
 
 def setup_ebs_volume(nodes):
     # setup /etc/fstab on master to use block device if specified
-    if globals().has_key('ATTACH_VOLUME') and globals().has_key('VOLUME_PARTITION'):
-        if ATTACH_VOLUME is not None and VOLUME_PARTITION is not None:
-            mconn = nodes[0]['CONNECTION']
-            master_fstab = mconn.remote_file('/etc/fstab', mode='a')
-            print >> master_fstab, "%s /home ext3 noauto,defaults 0 0 " % VOLUME_PARTITION
-            master_fstab.close()
-            mconn.execute('mount /home')
+    if ATTACH_VOLUME is not None and VOLUME_PARTITION is not None:
+        mconn = nodes[0]['CONNECTION']
+        master_fstab = mconn.remote_file('/etc/fstab', mode='a')
+        print >> master_fstab, "%s /home ext3 noauto,defaults 0 0 " % VOLUME_PARTITION
+        master_fstab.close()
+        mconn.execute('mount /home')
 
 def setup_nfs(nodes):
     log.info("Configuring NFS...")

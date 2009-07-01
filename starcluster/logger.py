@@ -36,5 +36,4 @@ class MultipleFormatHandler(logging.StreamHandler):
 logger = logging.getLogger('starcluster')
 logger.setLevel(logging.INFO)
 mfh = MultipleFormatHandler()
-mfh.setLevel(logging.INFO)
 logger.addHandler(mfh)

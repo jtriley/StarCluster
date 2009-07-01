@@ -293,7 +293,8 @@ def start_cluster(create=True):
         else:  
             time.sleep(15)
 
-    attach_volume_to_master()
+    if has_attach_volume():
+        attach_volume_to_master()
 
     master_node = get_master_node()
     log.info("The master node is %s" % master_node)
@@ -346,8 +347,9 @@ def stop_cluster():
     if resp == 'yes':
         running_instances = get_running_instances()
         if len(running_instances) > 0:
-            detach_vol = detach_volume()
-            log.debug("detach_vol: \n%s" % detach_vol)
+            if has_attach_volume():
+                detach_vol = detach_volume()
+                log.debug("detach_vol_response: \n%s" % detach_vol)
             log.info("Listing instances ...")
             list_instances()
             for instance in running_instances:
@@ -380,7 +382,7 @@ def stop_slaves():
         log.info("No running instances found, exiting...")
 
 def has_attach_volume():
-    if cfg.ATTACH_VOLUME is not None and cfg.ATTACH_VOLUME is not None:
+    if cfg.ATTACH_VOLUME is not None:
         if cfg.VOLUME_DEVICE is not None:
             return True
         else:
@@ -396,6 +398,10 @@ def attach_volume_to_node(node):
         return conn.attach_volume(cfg.ATTACH_VOLUME, node, cfg.VOLUME_DEVICE).parse()
 
 def get_volumes():
+    conn = get_conn()
+    return conn.describe_volumes().parse()
+
+def get_attach_volume():
     if has_attach_volume():
         conn = get_conn()
         return conn.describe_volumes([cfg.ATTACH_VOLUME]).parse()
@@ -420,7 +426,7 @@ def attach_volume_to_master():
     if master_instance is not None:
         if attach_volume_to_node(master_instance) is not None:
             while True:
-                vol = get_volumes()[0]
+                vol = get_attach_volume()[0]
                 if vol[0] == 'VOLUME':
                     if vol[1] == cfg.ATTACH_VOLUME and vol[4] == 'in-use':
                         return True
