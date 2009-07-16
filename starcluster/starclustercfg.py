@@ -119,6 +119,9 @@ def is_valid():
     if not os.path.exists(KEY_LOCATION):
         log.error('KEY_LOCATION=%s does not exist. Please check your settings' % KEY_LOCATION)
         return False
+    elif not os.path.isfile(KEY_LOCATION):
+        log.error('KEY_LOCATION=%s is not a file. Please check your settings' % KEY_LOCATION)
+        return False
     
     if DEFAULT_CLUSTER_SIZE <= 0:
         log.error('DEFAULT_CLUSTER_SIZE must be a positive integer. Please check your settings')
