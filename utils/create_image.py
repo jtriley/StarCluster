@@ -57,7 +57,7 @@ class CreateEC2Image(object):
                              'secret_key': AWS_SECRET_ACCESS_KEY, 
                              'private_key': os.path.split(EC2_PRIVATE_KEY)[-1], 
                              #'private_key': EC2_PRIVATE_KEY,
-                             'userid': AWS_USERID, 
+                             'userid': AWS_USER_ID, 
                              'cert': os.path.split(EC2_CERT)[-1], 
                              #'cert': EC2_CERT,
                              'bucket': bucket, 

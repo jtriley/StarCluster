@@ -45,7 +45,7 @@ def _get_string(config, section, option):
 aws_options = [
     ('AWS_ACCESS_KEY_ID', _get_string, True, None),
     ('AWS_SECRET_ACCESS_KEY', _get_string, True, None),
-    ('AWS_USERID', _get_string, True, None),
+    ('AWS_USER_ID', _get_string, True, None),
 ]
 
 ssh_options = [
@@ -57,7 +57,7 @@ cluster_options = [
     ('DEFAULT_CLUSTER_SIZE', _get_int, False, 2),
     ('CLUSTER_USER', _get_string, False, 'sgeadmin'),
     ('MASTER_IMAGE_ID', _get_string, False, None),
-    ('IMAGE_ID', _get_string, True, None),
+    ('NODE_IMAGE_ID', _get_string, True, None),
     ('INSTANCE_TYPE', _get_string, True, None),
     ('AVAILABILITY_ZONE', _get_string, False, None),
 ]
@@ -133,7 +133,7 @@ def is_valid():
         return False
 
     if not _has_valid_image_settings(conn):
-        log.error('Your MASTER_IMAGE_ID/IMAGE_ID setting(s) are invalid. Please check your settings')
+        log.error('Your MASTER_IMAGE_ID/NODE_IMAGE_ID setting(s) are invalid. Please check your settings')
         return False
 
     if not _has_valid_instance_type_settings(conn):
@@ -144,9 +144,9 @@ def is_valid():
     return True
 
 def _has_valid_image_settings(conn):
-    image = conn.describe_images(imageIds=[IMAGE_ID]).parse()
+    image = conn.describe_images(imageIds=[NODE_IMAGE_ID]).parse()
     if not image:
-        log.error('IMAGE_ID %s does not exist' % IMAGE_ID)
+        log.error('NODE_IMAGE_ID %s does not exist' % NODE_IMAGE_ID)
         return False
     if MASTER_IMAGE_ID is not None:
         master_image = conn.describe_images(imageIds=[MASTER_IMAGE_ID]).parse()
@@ -179,24 +179,24 @@ def _has_valid_instance_type_settings(conn):
         log.error("""You specified an invalid INSTANCE_TYPE\nPossible options are:\n%s %s %s %s %s""" % tuple(instance_types.keys()))
         return False
 
-    image_platform = conn.describe_images(imageIds=[IMAGE_ID]).parse()[0][6]
+    node_image_platform = conn.describe_images(imageIds=[NODE_IMAGE_ID]).parse()[0][6]
     instance_platform = instance_types[INSTANCE_TYPE]
-    if instance_platform != image_platform:
-        log.error('You specified an incompatible IMAGE_ID and INSTANCE_TYPE')
+    if instance_platform != node_image_platform:
+        log.error('You specified an incompatible NODE_IMAGE_ID and INSTANCE_TYPE')
         log.error('INSTANCE_TYPE = %(instance_type)s is for a %(instance_platform)s \
-platform while IMAGE_ID = %(image_id)s is a %(image_platform)s platform' \
+platform while NODE_IMAGE_ID = %(node_image_id)s is a %(node_image_platform)s platform' \
                     % { 'instance_type': INSTANCE_TYPE, 'instance_platform': instance_platform, \
-                        'image_id': IMAGE_ID, 'image_platform': image_platform})
+                        'node_image_id': NODE_IMAGE_ID, 'node_image_platform': node_image_platform})
         return False
     
     if MASTER_IMAGE_ID is not None:
-        master_image_platform = conn.describe_images(imageIds=[IMAGE_ID]).parse()[0][6]
+        master_image_platform = conn.describe_images(imageIds=[MASTER_IMAGE_ID]).parse()[0][6]
         if instance_platform != master_image_platform:
             log.error('You specified an incompatible MASTER_IMAGE_ID and INSTANCE_TYPE')
             log.error('INSTANCE_TYPE = %(instance_type)s is for a %(instance_platform)s \
 platform while MASTER_IMAGE_ID = %(master_image_id)s is a %(master_image_platform)s platform' \
                         % { 'instance_type': INSTANCE_TYPE, 'instance_platform': instance_platform, \
-                            'image_id': MASETER_IMAGE_ID, 'image_platform': master_image_platform})
+                            'image_id': MASETER_IMAGE_ID, 'master_image_platform': master_image_platform})
             return False
     
     return True

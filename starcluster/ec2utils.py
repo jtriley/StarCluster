@@ -161,7 +161,7 @@ def get_running_instances(refresh=True, strict=True):
     for chunk in parsed_response:
         if chunk[0]=='INSTANCE' and chunk[5]=='running':
             if strict:
-                if chunk[2] == cfg.IMAGE_ID or chunk[2] == cfg.MASTER_IMAGE_ID:
+                if chunk[2] == cfg.NODE_IMAGE_ID or chunk[2] == cfg.MASTER_IMAGE_ID:
                     running_instances.append(chunk[1])
             else:
                 running_instances.append(chunk[1])
@@ -325,17 +325,17 @@ def create_cluster():
         print master_response
 
         log.info("Launching worker nodes...")
-        log.info("NODE AMI: %s" % cfg.IMAGE_ID)
-        instances_response = conn.run_instances(imageId=cfg.IMAGE_ID, instanceType=cfg.INSTANCE_TYPE, \
+        log.info("NODE AMI: %s" % cfg.NODE_IMAGE_ID)
+        instances_response = conn.run_instances(imageId=cfg.NODE_IMAGE_ID, instanceType=cfg.INSTANCE_TYPE, \
                                                 minCount=max((cfg.DEFAULT_CLUSTER_SIZE-1)/2, 1), maxCount=max(cfg.DEFAULT_CLUSTER_SIZE-1,1), \
                                                 keyName=cfg.KEYNAME, availabilityZone=cfg.AVAILABILITY_ZONE)
         print instances_response
         # if the workers failed, what should we do about the master?
     else:
         log.info("Launching master and worker nodes...")
-        log.info("MASTER AMI: %s" % cfg.IMAGE_ID)
-        log.info("NODE AMI: %s" % cfg.IMAGE_ID)
-        instances_response = conn.run_instances(imageId=cfg.IMAGE_ID, instanceType=cfg.INSTANCE_TYPE, \
+        log.info("MASTER AMI: %s" % cfg.NODE_IMAGE_ID)
+        log.info("NODE AMI: %s" % cfg.NODE_IMAGE_ID)
+        instances_response = conn.run_instances(imageId=cfg.NODE_IMAGE_ID, instanceType=cfg.INSTANCE_TYPE, \
                                                 minCount=max(cfg.DEFAULT_CLUSTER_SIZE/2,1), maxCount=max(cfg.DEFAULT_CLUSTER_SIZE,1), \
                                                 keyName=cfg.KEYNAME, availabilityZone=cfg.AVAILABILITY_ZONE)
         # instances_response is a list: [["RESERVATION", reservationId, ownerId, ",".join(groups)],["INSTANCE", instanceId, imageId, dnsName, instanceState], [ "INSTANCE"etc])
