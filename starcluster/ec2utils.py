@@ -77,7 +77,16 @@ def get_registered_images():
     return images
 
 def get_image(image_name):
-    return get_registered_images()[image_name]
+    try:
+        log.debug("attempting to fetch ami: %s" % image_name)
+        return get_registered_images()[image_name]
+    except:
+        if image_name.startswith('ami') and len(image_name) == 12:
+            for ami in get_registered_images().itervalues():
+                if ami['AMI'] == image_name:
+                    log.debug("returning ami: %s" % ami['AMI'])
+                    return ami
+        log.error("invalid AMI name/id specified: %s" % image_name)
 
 def list_registered_images():
     images = get_registered_images()
@@ -85,8 +94,11 @@ def list_registered_images():
         print "%(NAME)s AMI=%(AMI)s BUCKET=%(BUCKET)s MANIFEST=%(MANIFEST)s" % images[image]
 
 def remove_image_files(image_name, bucket = None, pretend=True):
-    if not bucket:
-        bucket = get_image(image_name)['BUCKET']
+    image = get_image(image_name)
+    if image is None:
+        log.error('cannot remove AMI %s' % image_name)
+        return
+    bucket = image['BUCKET']
     files = get_image_files(image_name, bucket)
     for file in files:
         if pretend:
@@ -106,11 +118,15 @@ def remove_image_files(image_name, bucket = None, pretend=True):
     
 
 def remove_image(image_name, pretend=True):
+    image = get_image(image_name)
+    if image is None:
+        log.error('cannot remove AMI %s' % image_name)
+        return
+
     # first remove image files
     remove_image_files(image_name, pretend = pretend)
 
     # then deregister ami
-    image = get_image(image_name)
     if pretend:
         log.info('Would run conn.deregister_image for image %s (ami: %s)' % (image['NAME'],image['AMI']))
     else:
@@ -124,16 +140,18 @@ def list_image_files(image_name, bucket=None):
         print file
 
 def get_image_files(image_name, bucket=None):
-    if bucket:
-        bucket_files = s3utils.get_bucket_files(bucket)
-    else:
-        image = get_image(image_name)
+    image = get_image(image_name)
+    if image is not None:
+        # recreating image_name in case they passed ami id instead of human readable
+        image_name = image['NAME']
         bucket_files = s3utils.get_bucket_files(image['BUCKET'])
-    image_files = []
-    for file in bucket_files:
-        if file.split('.part.')[0] == image_name:
-            image_files.append(file)
-    return image_files
+        image_files = []
+        for file in bucket_files:
+            if file.split('.part.')[0] == image_name:
+                image_files.append(file)
+        return image_files
+    else:
+        return []
 
 INSTANCE_RESPONSE = None
 
