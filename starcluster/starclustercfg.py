@@ -30,6 +30,9 @@ def _get_int(config, section, option):
         opt = None
     except (ConfigParser.NoOptionError):
         opt = None
+    except (ValueError):
+        log.warn("Expected integer value for option %s in %s, not setting option!" % (option,section))
+        opt = None
     return opt
 
 def _get_string(config, section, option):
