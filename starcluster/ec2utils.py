@@ -52,7 +52,7 @@ def is_ssh_up():
 
 def is_cluster_up():
     running_instances = get_running_instances()
-    if len(running_instances) == cfg.DEFAULT_CLUSTER_SIZE:
+    if len(running_instances) == cfg.CLUSTER_SIZE:
         if is_ssh_up():
             return True
         else:
@@ -345,7 +345,7 @@ def create_cluster():
         log.info("Launching worker nodes...")
         log.info("NODE AMI: %s" % cfg.NODE_IMAGE_ID)
         instances_response = conn.run_instances(imageId=cfg.NODE_IMAGE_ID, instanceType=cfg.INSTANCE_TYPE, \
-                                                minCount=max((cfg.DEFAULT_CLUSTER_SIZE-1)/2, 1), maxCount=max(cfg.DEFAULT_CLUSTER_SIZE-1,1), \
+                                                minCount=max((cfg.CLUSTER_SIZE-1)/2, 1), maxCount=max(cfg.CLUSTER_SIZE-1,1), \
                                                 keyName=cfg.KEYNAME, availabilityZone=cfg.AVAILABILITY_ZONE)
         print instances_response
         # if the workers failed, what should we do about the master?
@@ -354,7 +354,7 @@ def create_cluster():
         log.info("MASTER AMI: %s" % cfg.NODE_IMAGE_ID)
         log.info("NODE AMI: %s" % cfg.NODE_IMAGE_ID)
         instances_response = conn.run_instances(imageId=cfg.NODE_IMAGE_ID, instanceType=cfg.INSTANCE_TYPE, \
-                                                minCount=max(cfg.DEFAULT_CLUSTER_SIZE/2,1), maxCount=max(cfg.DEFAULT_CLUSTER_SIZE,1), \
+                                                minCount=max(cfg.CLUSTER_SIZE/2,1), maxCount=max(cfg.CLUSTER_SIZE,1), \
                                                 keyName=cfg.KEYNAME, availabilityZone=cfg.AVAILABILITY_ZONE)
         # instances_response is a list: [["RESERVATION", reservationId, ownerId, ",".join(groups)],["INSTANCE", instanceId, imageId, dnsName, instanceState], [ "INSTANCE"etc])
         # same as "describe instance"

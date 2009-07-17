@@ -54,7 +54,7 @@ ssh_options = [
 ]
 
 cluster_options = [
-    ('DEFAULT_CLUSTER_SIZE', _get_int, False, 2),
+    ('CLUSTER_SIZE', _get_int, False, 2),
     ('CLUSTER_USER', _get_string, False, 'sgeadmin'),
     ('CLUSTER_SHELL', _get_string, False, 'bash'),
     ('MASTER_IMAGE_ID', _get_string, False, None),
@@ -124,8 +124,8 @@ def is_valid():
         log.error('KEY_LOCATION=%s is not a file. Please check your settings' % KEY_LOCATION)
         return False
     
-    if DEFAULT_CLUSTER_SIZE <= 0:
-        log.error('DEFAULT_CLUSTER_SIZE must be a positive integer. Please check your settings')
+    if CLUSTER_SIZE <= 0:
+        log.error('CLUSTER_SIZE must be a positive integer. Please check your settings')
         return False
     
     if not _has_valid_availability_zone(conn):

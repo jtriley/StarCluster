@@ -19,7 +19,7 @@ KEY_LOCATION = #/path/to/your/keypair
 [section cluster]
 
 # cluster size
-DEFAULT_CLUSTER_SIZE = 2
+CLUSTER_SIZE = 2
 
 # create the following user on the cluster
 CLUSTER_USER = sgeadmin
