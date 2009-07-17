@@ -46,6 +46,9 @@ class CreateEC2Image(object):
             prefix = 'image'
 
         credentials = options.credentials
+        if credentials is None:
+            credentials = KEY_LOCATION 
+        print credentials
 
         # get location of certs from environment and setup configuration dictionary
         self.env_variables = dict(os.environ.items())
@@ -107,7 +110,7 @@ class CreateEC2Image(object):
         # copy keys over to host along with the config pickle 
         EC2_PRIVATE_KEY = self.env_variables['EC2_PRIVATE_KEY']
         EC2_CERT = self.env_variables['EC2_CERT']
-        conn = Connection(image_host,'root', credentials)
+        conn = Connection(image_host,'root', private_key = credentials)
         conn.put(EC2_PRIVATE_KEY, "/mnt/" + os.path.basename(EC2_PRIVATE_KEY))
         conn.put(EC2_CERT, "/mnt/" + os.path.basename(EC2_CERT))
         conn.put(self.pickle_file, "/mnt/" + os.path.basename(self.pickle_file))
@@ -120,7 +123,7 @@ class CreateEC2Image(object):
         # run script to prepare the host
         image_host = self.config_dict['image_host']
         credentials = self.config_dict['credentials']
-        #conn = Connection(image_host,'root', credentials)
+        #conn = Connection(image_host,'root', private_key = credentials)
         #print conn.execute("python /mnt/prepare-instance.py")
         # using system ssh here since it's better to see the output realtime than after the fact
         os.system('ssh -i %s root@%s python /mnt/prepare-instance.py' % (credentials, image_host))
