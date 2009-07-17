@@ -23,16 +23,19 @@ DEFAULT_CLUSTER_SIZE = 2
 
 # create the following user on the cluster
 CLUSTER_USER = sgeadmin
+# optionally specify shell (defaults to bash)
+# options: bash, zsh, csh, ksh, tcsh
+CLUSTER_SHELL = bash
 
 # AMI for master node. Defaults to NODE_IMAGE_ID if not specified
-# The base i386 StarCluster AMI is ami-efbd5c86
-# The base x86_64 StarCluster AMI is ami-17bd5c7e
-MASTER_IMAGE_ID = ami-efbd5c86
+# The base i386 StarCluster AMI is ami-0330d16a
+# The base x86_64 StarCluster AMI is ami-0f30d166
+MASTER_IMAGE_ID = ami-0330d16a
 
 # AMI for worker nodes. Also used for the master node if MASTER_IMAGE_ID is not specified
-# The base i386 StarCluster AMI is ami-efbd5c86
-# The base x86_64 StarCluster AMI is ami-17bd5c7e
-NODE_IMAGE_ID = ami-efbd5c86
+# The base i386 StarCluster AMI is ami-0330d16a
+# The base x86_64 StarCluster AMI is ami-0f30d166
+NODE_IMAGE_ID = ami-0330d16a
 
 # instance type
 INSTANCE_TYPE = m1.small

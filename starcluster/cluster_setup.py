@@ -5,7 +5,9 @@ cluster_setup.py
 """
 
 import os
+import shutil
 import logging
+import tempfile
 
 from starcluster.starclustercfg import *
 from templates.sgeprofile import sgeprofile_template
@@ -15,12 +17,14 @@ from templates.sge_pe import sge_pe_template
 log = logging.getLogger('starcluster')
 
 def setup_cluster_user(nodes):
+    """ Create cluster user on all StarCluster nodes """
     log.info("Creating cluster user: %s" % CLUSTER_USER)
     for node in nodes:
         nconn = node['CONNECTION']
-        nconn.execute('useradd -m -s /bin/bash %s' % CLUSTER_USER)
+        nconn.execute('useradd -m -s `which %s` %s' % (CLUSTER_SHELL, CLUSTER_USER))
 
 def setup_scratch(nodes):
+    """ Configure scratch space on all StarCluster nodes """
     log.info("Configuring scratch space for user: %s" % CLUSTER_USER)
     for node in nodes:
         nconn = node['CONNECTION']
@@ -30,6 +34,7 @@ def setup_scratch(nodes):
         nconn.execute('ln -s /mnt/%s /scratch' % CLUSTER_USER)
 
 def setup_etc_hosts(nodes):
+    """ Configure /etc/hosts on all StarCluster nodes"""
     log.info("Configuring /etc/hosts on each node")
     for node in nodes:
         conn = node['CONNECTION']
@@ -41,17 +46,35 @@ def setup_etc_hosts(nodes):
         host_file.close()
 
 def setup_passwordless_ssh(nodes):
+    """ Properly configure passwordless ssh for CLUSTER_USER on all StarCluster nodes"""
     log.info("Configuring passwordless ssh for root")
-    for node in nodes:
-        conn = node['CONNECTION']
-        conn.put(KEY_LOCATION,'/root/.ssh/id_rsa')
-        conn.execute('chmod 400 /root/.ssh/id_rsa')
 
     master = nodes[0]
     mconn = master['CONNECTION']
 
-    # make initial connections to all nodes to skip host key checking on first use
-    # this basically populates /root/.ssh/known_hosts which is copied to CLUSTER_USER below
+    # create local ssh key for root and copy to local tempdir
+    mconn.execute('ssh-keygen -q -t rsa -f /root/.ssh/id_rsa -P ""')
+    tempdir = tempfile.mkdtemp(prefix="starcluster-")
+    temprsa = os.path.join(tempdir, 'id_rsa')
+    temprsa_pub = os.path.join(tempdir, 'id_rsa.pub')
+    mconn.get('/root/.ssh/id_rsa', temprsa)
+    mconn.get('/root/.ssh/id_rsa.pub', temprsa_pub)
+
+    # copy newly generated id_rsa for root to each node
+    for node in nodes:
+        conn = node['CONNECTION']
+        conn.put(temprsa,'/root/.ssh/id_rsa')
+        conn.put(temprsa_pub,'/root/.ssh/id_rsa.pub')
+        conn.execute('chmod 400 /root/.ssh/id_rsa*')
+        conn.execute('cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys')
+
+    # no longer need the temp directory after copying over newly generated keys
+    #shutil.rmtree(tempdir)
+
+    # Now that root's passwordless ssh is setup:
+    # 1. Make initial connections to all nodes to skip host key checking on first use.
+    # 2. This populates /root/.ssh/known_hosts which is copied to CLUSTER_USER's
+    # ~/.ssh directory below
     for node in nodes:
         mconn.execute('ssh -o "StrictHostKeyChecking=no" %(INTERNAL_IP)s hostname' % node)
         mconn.execute('ssh -o "StrictHostKeyChecking=no" %(INTERNAL_NAME)s hostname' % node)
@@ -60,10 +83,14 @@ def setup_passwordless_ssh(nodes):
 
     log.info("Configuring passwordless ssh for user: %s" % CLUSTER_USER)
     # only needed on master, nfs takes care of the rest
-    mconn.execute('cp -r /root/.ssh /home/%s/' % CLUSTER_USER)
+    mconn.execute('mkdir /home/%s/.ssh' % CLUSTER_USER)
+    mconn.execute('ssh-keygen -q -t rsa -f /home/%s/.ssh/id_rsa -P ""' % CLUSTER_USER)
+    mconn.execute('cp /root/.ssh/authorized_keys /home/%s/.ssh/' % CLUSTER_USER)
+    mconn.execute('cp /root/.ssh/known_hosts /home/%s/.ssh/' % CLUSTER_USER)
     mconn.execute('chown -R %(user)s:%(user)s /home/%(user)s/.ssh' % {'user':CLUSTER_USER})
 
 def setup_ebs_volume(nodes):
+    """ Mount EBS volume, if specified, in ~/.starclustercfg to /home"""
     # setup /etc/fstab on master to use block device if specified
     if ATTACH_VOLUME is not None and VOLUME_PARTITION is not None:
         mconn = nodes[0]['CONNECTION']
@@ -73,6 +100,7 @@ def setup_ebs_volume(nodes):
         mconn.execute('mount /home')
 
 def setup_nfs(nodes):
+    """ Share /home and /opt/sge6 via nfs to all nodes"""
     log.info("Configuring NFS...")
 
     master = nodes[0]
@@ -111,6 +139,7 @@ def setup_nfs(nodes):
             nconn.execute('mount -t devpts none /dev/pts') # fix for xterm
 
 def setup_sge(nodes):
+    """ Install Sun Grid Engine with a default parallel environment on StarCluster"""
     log.info("Installing Sun Grid Engine...")
 
     # generate /etc/profile.d/sge.sh for each node
@@ -163,6 +192,7 @@ def setup_sge(nodes):
     log.info("Done Configuring Sun Grid Engine")
 
 def main(nodes):
+    """Start cluster configuration"""
     setup_ebs_volume(nodes)
     setup_cluster_user(nodes)
     setup_scratch(nodes)
