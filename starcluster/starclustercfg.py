@@ -56,6 +56,7 @@ ssh_options = [
 cluster_options = [
     ('DEFAULT_CLUSTER_SIZE', _get_int, False, 2),
     ('CLUSTER_USER', _get_string, False, 'sgeadmin'),
+    ('CLUSTER_SHELL', _get_string, False, 'bash'),
     ('MASTER_IMAGE_ID', _get_string, False, None),
     ('NODE_IMAGE_ID', _get_string, True, None),
     ('INSTANCE_TYPE', _get_string, True, None),
