@@ -69,6 +69,7 @@ def setup_passwordless_ssh(nodes):
         conn.execute('cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys')
 
     # no longer need the temp directory after copying over newly generated keys
+    # leave for now to debug
     #shutil.rmtree(tempdir)
 
     # Now that root's passwordless ssh is setup:
@@ -88,6 +89,8 @@ def setup_passwordless_ssh(nodes):
     mconn.execute('cp /root/.ssh/authorized_keys /home/%s/.ssh/' % CLUSTER_USER)
     mconn.execute('cp /root/.ssh/known_hosts /home/%s/.ssh/' % CLUSTER_USER)
     mconn.execute('chown -R %(user)s:%(user)s /home/%(user)s/.ssh' % {'user':CLUSTER_USER})
+    mconn.execute('chmod 400 /home/%s/id_rsa*' % CLUSTER_USER)
+    mconn.execute('cat /home/%(user)s/.ssh/id_rsa.pub >> /home/%(user)s/.ssh/authorized_keys' % {'user':CLUSTER_USER})
 
 def setup_ebs_volume(nodes):
     """ Mount EBS volume, if specified, in ~/.starclustercfg to /home"""
