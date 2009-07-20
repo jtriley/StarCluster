@@ -84,6 +84,8 @@ def setup_passwordless_ssh(nodes):
 
     log.info("Configuring passwordless ssh for user: %s" % CLUSTER_USER)
     # only needed on master, nfs takes care of the rest
+    if os.path.isdir('/home/%s/.ssh' % CLUSTER_USER):
+        shutil.rmtree('/home/%s/.ssh' % CLUSTER_USER)
     mconn.execute('mkdir /home/%s/.ssh' % CLUSTER_USER)
     mconn.execute('ssh-keygen -q -t rsa -f /home/%s/.ssh/id_rsa -P ""' % CLUSTER_USER)
     mconn.execute('cp /root/.ssh/authorized_keys /home/%s/.ssh/' % CLUSTER_USER)
