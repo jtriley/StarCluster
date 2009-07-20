@@ -53,6 +53,8 @@ def setup_passwordless_ssh(nodes):
     mconn = master['CONNECTION']
 
     # create local ssh key for root and copy to local tempdir
+    # remove any old keys first
+    mconn.execute('rm /root/.ssh/id_rsa*')
     mconn.execute('ssh-keygen -q -t rsa -f /root/.ssh/id_rsa -P ""')
     tempdir = tempfile.mkdtemp(prefix="starcluster-")
     temprsa = os.path.join(tempdir, 'id_rsa')
@@ -84,14 +86,31 @@ def setup_passwordless_ssh(nodes):
 
     log.info("Configuring passwordless ssh for user: %s" % CLUSTER_USER)
     # only needed on master, nfs takes care of the rest
-    if os.path.isdir('/home/%s/.ssh' % CLUSTER_USER):
-        shutil.rmtree('/home/%s/.ssh' % CLUSTER_USER)
-    mconn.execute('mkdir /home/%s/.ssh' % CLUSTER_USER)
-    mconn.execute('ssh-keygen -q -t rsa -f /home/%s/.ssh/id_rsa -P ""' % CLUSTER_USER)
+    mconn.execute('mkdir -p /home/%s/.ssh' % CLUSTER_USER)
+    pkfiles_list = ("/home/%(user)s/.ssh/id_rsa /home/%(user)s/.ssh/id_rsa.pub" % {'user':CLUSTER_USER}).split()
+    # check to see if both private key files exist (ie key and public key)
+    pkfiles_exist = [ eval(mconn.execute('test -f %s && echo "True" || echo "False"'%file)[0]) for file in pkfiles_list ]
+    has_all_pkfiles = (pkfiles_exist.count(True) == len(pkfiles_list))
+    pkfiles = zip(pkfiles_list, pkfiles_exist)
+
+    if not has_all_pkfiles:
+        # this handles the case of only id_rsa or id_rsa.pub existing (ie not both for whatever reason)
+        # in this case we want to remove whichever exists by itself and generate new local rsa keys
+        for file,exists in pkfiles:
+            log.debug('Checking for orphaned private key file: %s | exists = %s' % (file, exists))
+            if exists:
+                log.debug('Removing orphaned private key file: %s' % file)
+                mconn.execute('rm %s' % file)
+        log.info("Generating local RSA ssh keys for user: %s" % CLUSTER_USER)
+        mconn.execute('ssh-keygen -q -t rsa -f /home/%s/.ssh/id_rsa -P ""' % CLUSTER_USER)
+    else:
+        # existing rsa key with matching pub key exists, no need to regenerate
+        log.info("Using existing RSA ssh keys found for user: %s" % CLUSTER_USER)
+        
     mconn.execute('cp /root/.ssh/authorized_keys /home/%s/.ssh/' % CLUSTER_USER)
     mconn.execute('cp /root/.ssh/known_hosts /home/%s/.ssh/' % CLUSTER_USER)
     mconn.execute('chown -R %(user)s:%(user)s /home/%(user)s/.ssh' % {'user':CLUSTER_USER})
-    mconn.execute('chmod 400 /home/%s/id_rsa*' % CLUSTER_USER)
+    mconn.execute('chmod 400 /home/%s/.ssh/id_rsa*' % CLUSTER_USER)
     mconn.execute('cat /home/%(user)s/.ssh/id_rsa.pub >> /home/%(user)s/.ssh/authorized_keys' % {'user':CLUSTER_USER})
 
 def setup_ebs_volume(nodes):
@@ -173,7 +192,7 @@ def setup_sge(nodes):
     ec2_sge_conf.close()
 
     # installs sge in /opt/sge6 and starts qmaster and schedd on master node
-    mconn.execute('cd /opt/sge6 && TERM=rxvt ./inst_sge -m -x -auto ./ec2_sge.conf', silent=True)
+    mconn.execute('cd /opt/sge6 && TERM=rxvt ./inst_sge -m -x -auto ./ec2_sge.conf', silent=True, only_printable=True)
 
     # set all.q shell to bash
     mconn.execute('source /etc/profile && qconf -mattr queue shell "/bin/bash" all.q')

@@ -7,6 +7,7 @@ modified by justin riley (justin.t.riley@gmail.com)
 """
 
 import os
+import string
 import tempfile
 import paramiko
 import logging
@@ -123,7 +124,7 @@ class Connection(object):
         self._sftp_connect()
         self._sftp.put(localpath, remotepath)
 
-    def execute(self, command, silent = True):
+    def execute(self, command, silent = True, only_printable = False):
         """Execute the given commands on a remote machine."""
         channel = self._transport.open_session()
         channel.exec_command(command)
@@ -131,6 +132,9 @@ class Connection(object):
         stderr = channel.makefile_stderr('rb', -1).readlines()
         output = stdout+stderr
         output = [ line.strip() for line in output ]
+
+        if only_printable:
+            output = [ ''.join(char for char in line if char in string.printable) for line in output ]
 
         if not silent:
             for line in output:
