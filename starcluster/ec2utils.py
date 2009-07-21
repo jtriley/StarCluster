@@ -335,13 +335,19 @@ $ ssh -i %(key)s %(user)s@%(master)s
 
 def create_cluster():
     conn = get_conn()
-    if cfg.MASTER_IMAGE_ID is not None:
-        log.info("Launching master node...")
-        log.info("MASTER AMI: %s" % cfg.MASTER_IMAGE_ID)
-        master_response = conn.run_instances(imageId=cfg.MASTER_IMAGE_ID, instanceType=cfg.INSTANCE_TYPE, \
-                                             minCount=1, maxCount=1, keyName=cfg.KEYNAME, availabilityZone=cfg.AVAILABILITY_ZONE)
-        print master_response
 
+    log.info("Launching a %d-node cluster..." % cfg.CLUSTER_SIZE)
+
+    if cfg.MASTER_IMAGE_ID is None:
+        cfg.MASTER_IMAGE_ID = cfg.NODE_IMAGE_ID
+
+    log.info("Launching master node...")
+    log.info("MASTER AMI: %s" % cfg.MASTER_IMAGE_ID)
+    master_response = conn.run_instances(imageId=cfg.MASTER_IMAGE_ID, instanceType=cfg.INSTANCE_TYPE, \
+                                         minCount=1, maxCount=1, keyName=cfg.KEYNAME, availabilityZone=cfg.AVAILABILITY_ZONE)
+    print master_response
+    
+    if cfg.CLUSTER_SIZE > 1:
         log.info("Launching worker nodes...")
         log.info("NODE AMI: %s" % cfg.NODE_IMAGE_ID)
         instances_response = conn.run_instances(imageId=cfg.NODE_IMAGE_ID, instanceType=cfg.INSTANCE_TYPE, \
@@ -349,16 +355,6 @@ def create_cluster():
                                                 keyName=cfg.KEYNAME, availabilityZone=cfg.AVAILABILITY_ZONE)
         print instances_response
         # if the workers failed, what should we do about the master?
-    else:
-        log.info("Launching master and worker nodes...")
-        log.info("MASTER AMI: %s" % cfg.NODE_IMAGE_ID)
-        log.info("NODE AMI: %s" % cfg.NODE_IMAGE_ID)
-        instances_response = conn.run_instances(imageId=cfg.NODE_IMAGE_ID, instanceType=cfg.INSTANCE_TYPE, \
-                                                minCount=max(cfg.CLUSTER_SIZE/2,1), maxCount=max(cfg.CLUSTER_SIZE,1), \
-                                                keyName=cfg.KEYNAME, availabilityZone=cfg.AVAILABILITY_ZONE)
-        # instances_response is a list: [["RESERVATION", reservationId, ownerId, ",".join(groups)],["INSTANCE", instanceId, imageId, dnsName, instanceState], [ "INSTANCE"etc])
-        # same as "describe instance"
-        print instances_response
 
 def stop_cluster():
     resp = raw_input(">>> This will shutdown all EC2 instances. Are you sure (yes/no)? ")
