@@ -404,7 +404,6 @@ def has_attach_volume():
     else:
         log.debug("No ATTACH_VOLUME specified in config")
     return False
-        
 
 def attach_volume_to_node(node):
     if has_attach_volume():
@@ -438,17 +437,24 @@ def attach_volume_to_master():
     log.info("Attaching volume to master node...")
     master_instance = get_master_instance()
     if master_instance is not None:
-        if attach_volume_to_node(master_instance) is not None:
+        attach_response = attach_volume_to_node(master_instance)
+        log.debug("attach_response = %s" % attach_response)
+        if attach_response is not None:
             while True:
-                vol = get_attach_volume()[0]
-                if vol[0] == 'VOLUME':
-                    if vol[1] == cfg.ATTACH_VOLUME and vol[4] == 'in-use':
-                        return True
-                    else:
-                        time.sleep(5)
-                        continue
-                else:
+                attach_volume = get_attach_volume()
+                if len(attach_volume) != 2:
+                    time.sleep(5)
+                    continue
+                vol = attach_volume[0]
+                attachment = attach_volume[1]
+                if vol[0] != 'VOLUME' or attachment[0] != 'ATTACHMENT':
                     return False
+                if vol[1] != attachment[1] != cfg.ATTACH_VOLUME:
+                    return False
+                if vol[4] == "in-use" and attachment[5] == "attached":
+                    return True
+                time.sleep(5)
+                continue
 
 class Spinner(Thread):
     spin_screen_pos = 1     #Set the screen position of the spinner (chars from the left).

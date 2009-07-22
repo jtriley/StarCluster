@@ -116,6 +116,7 @@ def setup_passwordless_ssh(nodes):
 def setup_ebs_volume(nodes):
     """ Mount EBS volume, if specified, in ~/.starclustercfg to /home"""
     # setup /etc/fstab on master to use block device if specified
+    log.info("Mounting EBS volume %s on /home..." % ATTACH_VOLUME)
     if ATTACH_VOLUME is not None and VOLUME_PARTITION is not None:
         mconn = nodes[0]['CONNECTION']
         master_fstab = mconn.remote_file('/etc/fstab', mode='a')
