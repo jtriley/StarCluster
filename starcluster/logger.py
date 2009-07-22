@@ -2,6 +2,7 @@
 import types
 import logging
 import logging.handlers
+import platform
 
 INFO_NO_NEWLINE = logging.INFO + 1
 
@@ -40,7 +41,8 @@ logger.setLevel(logging.INFO)
 mfh = MultipleFormatHandler()
 logger.addHandler(mfh)
 
-syslog_handler = logging.handlers.SysLogHandler(address='/dev/log')
-formatter = logging.Formatter("%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n")
-syslog_handler.setFormatter(formatter)
-logger.addHandler(syslog_handler)
+if platform.system() == "Linux":
+    syslog_handler = logging.handlers.SysLogHandler(address='/dev/log')
+    formatter = logging.Formatter("%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n")
+    syslog_handler.setFormatter(formatter)
+    logger.addHandler(syslog_handler)
