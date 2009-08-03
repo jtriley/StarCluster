@@ -26,8 +26,6 @@ def main():
 StarCluster - (http://web.mit.edu/stardev/cluster)
 Author: justin.t.riley@gmail.com
 Please submit bug reports to star@mit.edu 
-
-manage-cluster 
     """
 
     print description
