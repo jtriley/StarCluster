@@ -1,0 +1,102 @@
+#!/usr/bin/env python
+
+import logging
+from optparse import OptionParser
+from optparse import OptionGroup
+from optparse import OptionValueError
+from starcluster import ec2utils 
+from starcluster import s3utils 
+from starcluster import starclustercfg as cfg
+
+log = logging.getLogger('starcluster')
+
+def positive_int(option, opt_str, value, parser):
+    err_msg = "-n option must be an integer >= 0\n"
+    try:
+        intval = int(value)
+        if intval < 0:
+            log.error(err_msg)
+            return
+        parser.values.login_node = value
+    except Exception,e:
+        log.error(err_msg)
+
+def main():
+    description = """
+StarCluster - (http://web.mit.edu/stardev/cluster)
+Author: justin.t.riley@gmail.com
+Please submit bug reports to star@mit.edu 
+
+manage-cluster 
+    """
+
+    print description
+
+    usage = "usage: %prog [options]"
+
+    parser = OptionParser(usage)
+
+    # manage-cluster
+    group = OptionGroup(parser, "Cluster Options", "These options concern starting, stopping, and managing a compute cluster on Amazon EC2")
+    group.add_option("-s","--start-cluster", dest="start_cluster", action="store_true", default=False, help="start an amazon ec2 cluster")
+    group.add_option("-t","--terminate-cluster", dest="terminate_cluster", action="store_true", default=False, help="shutdown ec2 cluster")
+    group.add_option("-x","--no-create", dest="no_create", action="store_true", default=False, help="same as -s but does not launch new ec2 instances when starting cluster (mostly for debug)")
+    group.add_option("-m","--login-master", dest="login_master", action="store_true", default=False, help="ssh to ec2 cluster master node (equivalent to -n 0")
+    group.add_option("-l","--list-nodes", dest="list_nodes", action="store_true", default=False, help="list all ec2 cluster nodes")
+    group.add_option("-n","--login-node", action="callback", dest="login_node",  type="string", default=False, callback=positive_int, help="node number to ssh to. (from output of -l option)")
+    parser.add_option_group(group)
+
+
+    # manage-images
+    group = OptionGroup(parser, "Cluster Image Options", "These options are for managing your AMIs on Amazon EC2")
+    group.add_option("-i","--list-images", dest="list_images", action="store_true", default=False, help="list all registered ec2 images")
+    group.add_option("-f","--show-image-files", dest="show_image", default=None, help="show all files on s3 for an ec2 image (AMI id or human readable name)")
+    group.add_option("-b","--list-buckets", dest="list_buckets", action="store_true", default=False, help="list all s3 buckets")
+    group.add_option("-F","--show-bucket-files", dest="show_bucket", default=None, help="show all files in bucket")
+    group.add_option("-r","--remove-image", dest="remove_image", default=None, help="deregister an ec2 image and remove it from s3")
+    group.add_option("-p","--pretend", dest="pretend", default=False, action="store_true", help="pretend run, don't really do anything (used with -r option)")
+    parser.add_option_group(group)
+
+    parser.add_option("-d","--debug", dest="debug", action="store_true", default=False, help="print debug messages (may be useful for diagnosing problems)")
+
+    (options,args) = parser.parse_args() 
+
+
+    if options.debug:
+        log.setLevel(logging.DEBUG)
+
+    log.debug("options = %s" % options)
+
+    if options.start_cluster or options.no_create:
+        cfg.validate_or_exit()
+        create = not options.no_create
+        ec2utils.start_cluster(create=create)
+        if options.login_master:
+            ec2utils.ssh_to_master()
+    elif options.terminate_cluster:
+        cfg.validate_aws_or_exit()
+        ec2utils.stop_cluster()
+    elif options.login_master:
+        cfg.validate_aws_or_exit()
+        ec2utils.ssh_to_master()
+    elif options.list_nodes:
+        cfg.validate_aws_or_exit()
+        ec2utils.list_instances()
+    elif options.login_node:
+        cfg.validate_aws_or_exit()
+        ec2utils.ssh_to_node(options.login_node)
+    elif options.list_images:
+        ec2utils.list_registered_images()
+    elif options.list_buckets:
+        s3utils.list_buckets()
+    elif options.show_bucket:
+        s3utils.show_bucket_files(options.show_bucket)
+    elif options.remove_image:
+        ec2utils.remove_image(options.remove_image, pretend=options.pretend)
+    elif options.show_image:
+        ec2utils.list_image_files(options.show_image)
+    else:
+        parser.print_help()
+    
+if __name__ == "__main__":
+    main()

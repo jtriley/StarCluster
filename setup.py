@@ -7,7 +7,7 @@ setup(
     version = '0.0.1',
     packages = ['starcluster', 'starcluster.templates'],
     package_dir = {'starcluster':'starcluster'},
-    scripts=['bin/manage-cluster', 'bin/manage-images'],
+    scripts=['bin/starcluster',],
 
     install_requires=[
         "paramiko",
@@ -17,7 +17,7 @@ setup(
 
     author='Justin Riley',
     author_email='justin.t.riley@gmail.com',
-    url="http://web.mit.edu/stardev/cluster",
+    url="http://web.mit.edu/starcluster",
     description="StarCluster is a utility for creating and managing general purpose computing clusters hosted on Amazon's Elastic Compute Cloud (EC2).",
     long_description = """
     StarCluster minimizes the administrative overhead associated with obtaining, 
@@ -61,7 +61,7 @@ setup(
     it's easy to request a new set of machines in the cloud.
     """,
 
-    download_url='http://web.mit.edu/stardev/starcluster',
+    download_url='http://web.mit.edu/starcluster',
     license='LGPL3',
 
     classifiers=[
