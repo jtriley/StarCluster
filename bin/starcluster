@@ -23,9 +23,9 @@ def positive_int(option, opt_str, value, parser):
 
 def main():
     description = """
-StarCluster - (http://web.mit.edu/stardev/cluster)
+StarCluster - (http://web.mit.edu/starcluster)
 Author: justin.t.riley@gmail.com
-Please submit bug reports to star@mit.edu 
+Please submit bug reports to starcluster@mit.edu 
     """
 
     print description
