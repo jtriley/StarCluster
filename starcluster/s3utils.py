@@ -15,7 +15,8 @@ def get_conn():
 
 def bucket_exists(bucket_name):
     exists = (get_conn().check_bucket_exists(bucket_name).reason == 'OK')
-    log.error('bucket %s does not exist' % bucket_name)
+    if not exists:
+        log.error('bucket %s does not exist' % bucket_name)
     return exists
 
 def get_buckets():
