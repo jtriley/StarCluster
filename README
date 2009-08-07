@@ -68,16 +68,16 @@ Getting Started:
 
 * To run StarCluster:
 
-    $ manage-cluster --help // this will give you a template to create a configuration file with your EC2 info, preferences, etc
+    $ starcluster --help // this will give you a template to create a configuration file with your EC2 info, preferences, etc
     $ vi ~/.starclustercfg  
     (create the configuration file using the template from manage-cluster --help)
-    $ manage-cluster -s // starts the cluster
+    $ starcluster -s // starts the cluster
     (use the cluster for some amount of time)
-    $ manage-cluster -t // shuts down the cluster
-    $ manage-cluster --help // to see the rest of the available options 
+    $ starcluster -t // shuts down the cluster
+    $ starcluster --help // to see the rest of the available options 
 
-    To manage AMI's:
-    $ manage-images --help //this will show you all available options
+    To manage EC2 images (ie AMI's):
+    $ starcluster --help //this will show you all available options
 
 
 Licensing:
