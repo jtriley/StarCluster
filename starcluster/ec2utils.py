@@ -271,7 +271,7 @@ def ssh_to_node(node_number):
         else:
             os.system('putty -ssh -i %s root@%s' % (cfg.KEY_LOCATION, node))
     except:
-        log.error("Invalid node_number. Please select a node number from the output of manage-cluster.py -l")
+        log.error("Invalid node_number. Please select a node number from the output of starcluster -l")
 
 def get_nodes():
     internal_hostnames = get_internal_hostnames()
@@ -324,7 +324,7 @@ def start_cluster(create=True):
 
 The cluster has been started and configured. ssh into the master node as root by running: 
 
-$ manage-cluster -m
+$ starcluster -m
 
 or as %(user)s directly:
 

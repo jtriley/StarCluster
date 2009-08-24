@@ -70,7 +70,7 @@ Getting Started:
 
     $ starcluster --help // this will give you a template to create a configuration file with your EC2 info, preferences, etc
     $ vi ~/.starclustercfg  
-    (create the configuration file using the template from manage-cluster --help)
+    (create the configuration file using the template from starcluster --help)
     $ starcluster -s // starts the cluster
     (use the cluster for some amount of time)
     $ starcluster -t // shuts down the cluster
