@@ -53,7 +53,7 @@ setup(
     on a cheap budget before running on local dedicated resources.
 
     In the classroom, StarCluster provides a cost effective, reliable way of managing the 
-    software configurations for a particular course. It also abstracts away system 
+    software configurations for a particular course. It also removes the majority of system 
     administration concerns since the initial setup procedures have been captured in StarCluster 
     and in the user's software configurations (i.e. AMI images, EBS volumes, etc). This means 
     that each semester the exact computing cluster configuration can be recalled with more or 
