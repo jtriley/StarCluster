@@ -5,7 +5,7 @@ Author: Justin Riley (justin.t.riley@gmail.com)
 Description:
 ------------
 StarCluster is a utility for creating and managing general purpose computing clusters 
-hosted on Amazon's Elastic Compute Cloud (EC2).",
+hosted on Amazon's Elastic Compute Cloud (EC2).
 
 StarCluster minimizes the administrative overhead associated with obtaining, 
 configuring, and managing a traditional computing cluster used in research labs 
@@ -49,14 +49,16 @@ it's easy to request a new set of machines in the cloud.
 
 Dependencies:
 -------------
-Paramiko 1.7.4 
+Amazon AWS Account
+Python 2.4+
+Paramiko 1.7.4 (Python Package)
 
 Getting Started:
 ----------------
 
 * To install StarCluster:
 
-    Download StarCluster from http://web.mit.edu/stardev/cluster
+    Download StarCluster from http://web.mit.edu/starcluster
 
     $ tar xvzf starcluster-X.X.X.tar.gz  (where x.x.x is a version number)
     $ cd starcluster-X.X.X
