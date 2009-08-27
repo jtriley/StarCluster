@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name = 'StarCluster',
-    version = '0.0.1',
+    version = '0.90',
     packages = ['starcluster', 'starcluster.templates'],
     package_dir = {'starcluster':'starcluster'},
     scripts=['bin/starcluster',],
