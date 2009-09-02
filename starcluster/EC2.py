@@ -195,6 +195,18 @@ class AWSAuthConnection(object):
         params = { "KeyName": keyName }
         return DeleteKeyPairResponse(self.make_request("DeleteKeyPair", params))
 
+    def delete_volume(self, volumeId):
+        """Makes a C{DeleteVolume} call.
+
+        @param volumeId: The ID of the volume to delete. The volume 
+        remains in the deleting state for several minutes after you 
+        enter this command.
+
+        """
+
+        params = { "VolumeId": volumeId }
+        return DeleteVolumeResponse(self.make_request("DeleteVolume", params))
+
     def run_instances(self, imageId, minCount=1, maxCount=1, keyName=None,
                       groupIds=None, userData=None, base64Encode=True,
                       addressingType=None, instanceType=None,
@@ -715,12 +727,17 @@ class DescribeKeyPairsResponse(Response):
             lines.append(["KEYPAIR", keyName, keyFingerprint])
         return lines
 
-
 class DeleteKeyPairResponse(Response):
     """Response parser class for C{DeleteKeyPair} API call."""
     def parse(self):
         # If we don't get an error, the deletion succeeded.
         return [["Keypair deleted."]]
+
+class DeleteVolumeResponse(Response):
+    """Response parser class for C{DeleteVolume} API call."""
+    def parse(self):
+        # If we don't get an error, the deletion succeeded.
+        return [["Volume deleted."]]
 
 class AttachmentSetResponse(Response):
     """ Response containing attachment set items """
