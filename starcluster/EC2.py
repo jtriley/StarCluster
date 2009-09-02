@@ -371,6 +371,27 @@ class AWSAuthConnection(object):
             }
         return CreateSecurityGroupResponse(self.make_request("CreateSecurityGroup", params))
 
+    def create_volume(self, size, availabilityZone, snapshotId=''):
+        """Makes a C{CreateVolume} call.
+
+        @param size: The size of the volume, in GiBs. Required if you are not
+        creating a volume from a snapshot.
+
+        @param snapshotId: The snapshot from which to create the new volume.
+
+        @param availabilityZone: The Availability Zone in which to create the new volume.
+
+        """
+        #size_gb = int(size)
+        #if (1<= size_gb <=1024):
+        params = {
+            "Size": str(size),
+            "AvailabilityZone": availabilityZone, 
+            "SnapshotId": snapshotId
+            }
+        return CreateVolumeResponse(self.make_request("CreateVolume", params))
+
+
     def describe_securitygroups(self, groupNames=None):
         """Makes a C{DescribeSecurityGroups} call.
 
@@ -668,6 +689,18 @@ class CreateKeyPairResponse(Response):
         keyFingerprint = self.findtext(doc, "keyFingerprint")
         keyMaterial = self.findtext(doc, "keyMaterial")
         return [["KEYPAIR", keyName, keyFingerprint], [keyMaterial]]
+
+class CreateVolumeResponse(Response):
+    """Response parser class for C{CreateVolume} API call."""
+    def parse(self):
+        doc = ET.XML(self.http_xml)
+        volumeId = self.findtext(doc, "volumeId")
+        size = self.findtext(doc, "size")
+        snapshotId = self.findtext(doc, "snapshotId")
+        availabilityZone = self.findtext(doc, "availabilityZone")
+        status = self.findtext(doc, "status")
+        createTime = self.findtext(doc, "createTime")
+        return [["VOLUME", volumeId, size, snapshotId, availabilityZone, status, createTime ]]
 
 
 class DescribeKeyPairsResponse(Response):
