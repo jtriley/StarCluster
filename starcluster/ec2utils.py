@@ -198,9 +198,9 @@ def get_external_hostnames():
 
 def get_internal_hostnames():
     parsed_response=get_instance_response() 
+    internal_hostnames = []
     if len(parsed_response) == 0:
-        return None
-    internal_hostnames = []    
+        return internal_hostnames
     for chunk in parsed_response:
         #if chunk[0]=='INSTANCE' and chunk[-1]=='running' :
         if chunk[0]=='INSTANCE' and chunk[5]=='running' :
@@ -276,10 +276,10 @@ def ssh_to_node(node_number):
 def get_nodes():
     internal_hostnames = get_internal_hostnames()
     external_hostnames = get_external_hostnames()
-    
+
     nodes = []
     nodeid = 0
-    for ihost, ehost in  zip(internal_hostnames,external_hostnames):
+    for ihost, ehost in zip(internal_hostnames,external_hostnames):
         node = {}
         log.debug('Creating persistent connection to %s' % ehost)
         node['CONNECTION'] = ssh.Connection(ehost, username='root', private_key=cfg.KEY_LOCATION)
