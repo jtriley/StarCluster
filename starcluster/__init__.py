@@ -1,4 +1,6 @@
 # StarCluster internal modules
+__version__ = "0.90"
+__author__ = "Justin Riley (justin.t.riley@gmail.com)"
 import logger
 import starclustercfg
 import ec2utils

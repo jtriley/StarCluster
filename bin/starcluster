@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import sys
 import logging
 from optparse import OptionParser
 from optparse import OptionGroup
@@ -10,91 +11,195 @@ from starcluster import starclustercfg as cfg
 
 log = logging.getLogger('starcluster')
 
-def positive_int(option, opt_str, value, parser):
-    err_msg = "-n option must be an integer >= 0\n"
-    try:
-        intval = int(value)
-        if intval < 0:
-            log.error(err_msg)
-            return
-        parser.values.login_node = value
-    except Exception,e:
-        log.error(err_msg)
+def run_start_cmd(args):
+    """Runs the 'start' command"""
+    startcmd_usage = "usage: %prog start [options]"
+    startcmd = OptionParser(startcmd_usage)
+    startcmd.add_option("-x","--no-create", dest="no_create",
+    action="store_true", default=False, help="Do not launch new ec2 \
+instances when starting cluster (uses existing instances instead)")
+    startcmd.add_option("-m","--login-master", dest="login_master", 
+    action="store_true", default=False, help="ssh to ec2 cluster master \
+node after launch")
+    (options, args) = startcmd.parse_args(args)
+    log.debug('startcmd opts: %s' % options)
+    log.debug('startcmd args: %s' % args)
+    cfg.validate_or_exit()
+    create = not options.no_create
+    ec2utils.start_cluster(create=create)
+    if options.login_master:
+        ec2utils.ssh_to_master()
+
+def run_stop_cmd(args):
+    """Runs the 'stop' command"""
+    stopcmd_usage = "usage: %prog stop"
+    stopcmd = OptionParser(stopcmd_usage)
+    (options, args) = stopcmd.parse_args(args)
+    cfg.validate_aws_or_exit()
+    ec2utils.stop_cluster()
+
+def run_sshmaster_cmd(args):
+    """Runs the 'sshmaster' command"""
+    sshmastercmd_usage = "usage: %prog sshmaster"
+    sshmastercmd = OptionParser(sshmastercmd_usage)
+    (options, args) = sshmastercmd.parse_args(args)
+    cfg.validate_aws_or_exit()
+    ec2utils.ssh_to_master()
+
+def run_sshnode_cmd(args):
+    """Runs the 'sshnode' command"""
+    sshnodecmd_usage = "usage: %prog sshnode node_number"
+    sshnodecmd = OptionParser(sshnodecmd_usage)
+    (options, args) = sshnodecmd.parse_args(args)
+    if len(args) < 1:
+        print_error('Please specify a node to connect to')
+        sys.exit(1)
+    node_number=args[0]
+    cfg.validate_aws_or_exit()
+    ec2utils.ssh_to_node(node_number)
+
+def run_listnodes_cmd(args):
+    """ Runs the 'listnodes' command """
+    listnodescmd_usage = "usage: %prog listnodes"
+    listnodescmd = OptionParser(listnodescmd_usage)
+    (options, args) = listnodescmd.parse_args(args)
+    cfg.validate_aws_or_exit()
+    ec2utils.list_instances()
+
+def run_listimages_cmd(args):
+    """ Runs the 'listimages' command """
+    listimagescmd_usage = "usage: %prog listimages"
+    listimagescmd = OptionParser(listimagescmd_usage)
+    (options, args) = listimagescmd.parse_args(args)
+    cfg.validate_aws_or_exit()
+    ec2utils.list_registered_images()
+
+def run_listbuckets_cmd(args):
+    """ Runs the 'listbuckets' command """
+    listbucketscmd_usage = "usage: %prog listbuckets [options] bucket"
+    listbucketscmd = OptionParser(listbucketscmd_usage)
+    (options, args) = listbucketscmd.parse_args(args)
+    cfg.validate_aws_or_exit()
+    s3utils.list_buckets()
+
+def run_showbucket_cmd(args):
+    showbucketcmd_usage = "usage: %prog showbucket [options] [args]"
+    showbucketcmd = OptionParser(showbucketcmd_usage)
+    (options, args) = showbucketcmd.parse_args(args)
+    if len(args) < 1:
+        print_error('Please specify a bucket name')
+        sys.exit(1)
+    bucket = args[0]
+    cfg.validate_aws_or_exit()
+    s3utils.show_bucket_files(bucket)
+
+def run_removeimage_cmd(args):
+    removeimagecmd_usage = "usage: %prog removeimage [options] image"
+    removeimagecmd = OptionParser(removeimagecmd_usage)
+    removeimagecmd.add_option("-p","--pretend", dest="pretend", default=False, action="store_true", help="pretend run, don't really do anything (used with -r option)")
+    (options, args) = removeimagecmd.parse_args(args)
+    if len(args) < 1:
+        print_error('Please specify an AMI name or id')
+        sys.exit(1)
+    image = args[0]
+    cfg.validate_aws_or_exit()
+    ec2utils.remove_image(image, pretend=options.pretend)
+
+def run_showimage_cmd(args):
+    showimagecmd_usage = "usage: %prog showimage image"
+    showimagecmd = OptionParser(showimagecmd_usage)
+    (options, args) = showimagecmd.parse_args(args)
+    if len(args) < 1:
+        print_error('Please specify an AMI name or id')
+        sys.exit(1)
+    image = args[0]
+    cfg.validate_aws_or_exit()
+    ec2utils.list_image_files(image)
+
+def show_help(args):
+    get_option_parser().print_help()
+    
+# name, help, function
+ACTIONS = [
+    ('start', "Start an amazon EC2 cluster", run_start_cmd),
+    ('stop', "Shutdown EC2 cluster", run_stop_cmd),
+    ('sshmaster',"SSH to EC2 cluster master node", run_sshmaster_cmd),
+    ('sshnode', "SSH to EC2 cluster node", run_sshnode_cmd),
+    ('listnodes', "List all EC2 cluster nodes", run_listnodes_cmd),
+    ('listimages', "List all registered EC2 images", run_listimages_cmd),
+    ('listbuckets', "List all S3 buckets", run_listbuckets_cmd),
+    ('showbucket', "Show all files in bucket", run_showbucket_cmd),
+    ('removeimage', "Deregister an EC2 image and remove it from S3", run_removeimage_cmd),
+    ('showimage', "Show all files on S3 for an ec2 image", run_showimage_cmd),
+    ('help', "Show starcluster usage", show_help),
+]
+
+def get_action_dict():
+    action_dict = {}
+    action_dict.update([ (action[0],action[2]) for action in ACTIONS ])
+    return action_dict
+
+def get_action_str():
+    """ returns a str representation of available actions """
+    actions_str = ""
+    for action in ACTIONS:
+        action_name = action[0]
+        action_help = action[1]
+        actions_str += "%s - %s\n" % (action_name, action_help)
+    return actions_str
+
+def print_available_actions():
+    print get_action_str()
+
+def print_error(msg):
+    sys.stderr.write('ERROR: ' + msg + '\n')
+
+def print_action_error_msg(msg):
+    print_error(msg)
+    sys.stderr.write('\nPlease supply one of the following actions:\n\n')
+    print_available_actions()
+
+def get_option_parser():
+    STARCLUSTER_USAGE = "usage: %prog action [options] [args] "
+    parser = OptionParser(STARCLUSTER_USAGE, version="%prog 0.90")
+    parser.disable_interspersed_args()
+    parser.add_option("-l","--list-actions", dest="list_actions", action="store_true", default=False, help="list all currently available actions")
+    parser.add_option("-d","--debug", dest="debug", action="store_true", default=False, help="print debug messages (may be useful for diagnosing problems)")
+    return parser
 
 def main():
     description = """
 StarCluster - (http://web.mit.edu/starcluster)
-Author: justin.t.riley@gmail.com
 Please submit bug reports to starcluster@mit.edu 
     """
 
     print description
 
-    usage = "usage: %prog [options]"
-
-    parser = OptionParser(usage)
-
-    # manage-cluster
-    group = OptionGroup(parser, "Cluster Options", "These options concern starting, stopping, and managing a compute cluster on Amazon EC2")
-    group.add_option("-s","--start-cluster", dest="start_cluster", action="store_true", default=False, help="start an amazon ec2 cluster")
-    group.add_option("-t","--terminate-cluster", dest="terminate_cluster", action="store_true", default=False, help="shutdown ec2 cluster")
-    group.add_option("-x","--no-create", dest="no_create", action="store_true", default=False, help="same as -s but does not launch new ec2 instances when starting cluster (mostly for debug)")
-    group.add_option("-m","--login-master", dest="login_master", action="store_true", default=False, help="ssh to ec2 cluster master node (equivalent to -n 0")
-    group.add_option("-l","--list-nodes", dest="list_nodes", action="store_true", default=False, help="list all ec2 cluster nodes")
-    group.add_option("-n","--login-node", action="callback", dest="login_node",  type="string", default=False, callback=positive_int, help="node number to ssh to. (from output of -l option)")
-    parser.add_option_group(group)
-
-
-    # manage-images
-    group = OptionGroup(parser, "Cluster Image Options", "These options are for managing your AMIs on Amazon EC2")
-    group.add_option("-i","--list-images", dest="list_images", action="store_true", default=False, help="list all registered ec2 images")
-    group.add_option("-f","--show-image-files", dest="show_image", default=None, help="show all files on s3 for an ec2 image (AMI id or human readable name)")
-    group.add_option("-b","--list-buckets", dest="list_buckets", action="store_true", default=False, help="list all s3 buckets")
-    group.add_option("-F","--show-bucket-files", dest="show_bucket", default=None, help="show all files in bucket")
-    group.add_option("-r","--remove-image", dest="remove_image", default=None, help="deregister an ec2 image and remove it from s3")
-    group.add_option("-p","--pretend", dest="pretend", default=False, action="store_true", help="pretend run, don't really do anything (used with -r option)")
-    parser.add_option_group(group)
-
-    parser.add_option("-d","--debug", dest="debug", action="store_true", default=False, help="print debug messages (may be useful for diagnosing problems)")
-
+    parser = get_option_parser()
     (options,args) = parser.parse_args() 
-
 
     if options.debug:
         log.setLevel(logging.DEBUG)
 
-    log.debug("options = %s" % options)
+    if options.list_actions:
+        print "%s\n" % parser.usage
+        print_available_actions()
+        sys.exit()
 
-    if options.start_cluster or options.no_create:
-        cfg.validate_or_exit()
-        create = not options.no_create
-        ec2utils.start_cluster(create=create)
-        if options.login_master:
-            ec2utils.ssh_to_master()
-    elif options.terminate_cluster:
-        cfg.validate_aws_or_exit()
-        ec2utils.stop_cluster()
-    elif options.login_master:
-        cfg.validate_aws_or_exit()
-        ec2utils.ssh_to_master()
-    elif options.list_nodes:
-        cfg.validate_aws_or_exit()
-        ec2utils.list_instances()
-    elif options.login_node:
-        cfg.validate_aws_or_exit()
-        ec2utils.ssh_to_node(options.login_node)
-    elif options.list_images:
-        ec2utils.list_registered_images()
-    elif options.list_buckets:
-        s3utils.list_buckets()
-    elif options.show_bucket:
-        s3utils.show_bucket_files(options.show_bucket)
-    elif options.remove_image:
-        ec2utils.remove_image(options.remove_image, pretend=options.pretend)
-    elif options.show_image:
-        ec2utils.list_image_files(options.show_image)
-    else:
-        parser.print_help()
-    
+    if len(args) < 1:
+        print_action_error_msg('You forgot to give me an action!')
+        sys.exit(1)
+
+    action = args[0]
+    cmdstr = args[1:]
+    actions = get_action_dict()
+
+    try:
+        run_action = actions[action]
+        run_action(cmdstr)
+    except KeyError, e:
+        print_action_error_msg('Unknown action "%s"' % action)
+        sys.exit(1)
+
 if __name__ == "__main__":
     main()
