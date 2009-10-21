@@ -183,7 +183,7 @@ Please submit bug reports to starcluster@mit.edu
         log.setLevel(logging.DEBUG)
 
     if options.list_actions:
-        print "%s\n" % parser.usage
+        print parser.get_usage()
         print_available_actions()
         sys.exit()
 
