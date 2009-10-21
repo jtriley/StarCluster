@@ -5,6 +5,7 @@ import logging
 from optparse import OptionParser
 from optparse import OptionGroup
 from optparse import OptionValueError
+import starcluster
 from starcluster import ec2utils 
 from starcluster import s3utils 
 from starcluster import starclustercfg as cfg
@@ -161,7 +162,7 @@ def print_action_error_msg(msg):
 
 def get_option_parser():
     STARCLUSTER_USAGE = "usage: %prog action [options] [args] "
-    parser = OptionParser(STARCLUSTER_USAGE, version="%prog 0.90")
+    parser = OptionParser(STARCLUSTER_USAGE, version="%prog "+starcluster.__version__)
     parser.disable_interspersed_args()
     parser.add_option("-l","--list-actions", dest="list_actions", action="store_true", default=False, help="list all currently available actions")
     parser.add_option("-d","--debug", dest="debug", action="store_true", default=False, help="print debug messages (may be useful for diagnosing problems)")

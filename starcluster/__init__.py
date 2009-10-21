@@ -1,5 +1,5 @@
 # StarCluster internal modules
-__version__ = "0.90"
+__version__ = "0.9999"
 __author__ = "Justin Riley (justin.t.riley@gmail.com)"
 import logger
 import starclustercfg
