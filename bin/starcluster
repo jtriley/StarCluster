@@ -97,7 +97,7 @@ def run_showbucket_cmd(args):
 def run_removeimage_cmd(args):
     removeimagecmd_usage = "usage: %prog removeimage [options] image"
     removeimagecmd = OptionParser(removeimagecmd_usage)
-    removeimagecmd.add_option("-p","--pretend", dest="pretend", default=False, action="store_true", help="pretend run, don't really do anything (used with -r option)")
+    removeimagecmd.add_option("-p","--pretend", dest="pretend", default=False, action="store_true", help="pretend run, don't really do anything")
     (options, args) = removeimagecmd.parse_args(args)
     if len(args) < 1:
         print_error('Please specify an AMI name or id')
@@ -129,9 +129,9 @@ ACTIONS = [
     ('listnodes', "List all EC2 cluster nodes", run_listnodes_cmd),
     ('listimages', "List all registered EC2 images", run_listimages_cmd),
     ('listbuckets', "List all S3 buckets", run_listbuckets_cmd),
+    ('showimage', "Show all files on S3 for an ec2 image", run_showimage_cmd),
     ('showbucket', "Show all files in bucket", run_showbucket_cmd),
     ('removeimage', "Deregister an EC2 image and remove it from S3", run_removeimage_cmd),
-    ('showimage', "Show all files on S3 for an ec2 image", run_showimage_cmd),
     ('help', "Show starcluster usage", show_help),
 ]
 
@@ -142,12 +142,20 @@ def get_action_dict():
 
 def get_action_str():
     """ returns a str representation of available actions """
-    actions_str = ""
+    labels = ['Action', 'Description']
+    max_width = len(max(get_action_dict().keys(),key=len))
+    actions_str = []
+    tip_line = "(TIP: Pass -h to any action to see it's options)\n"
+    actions_str.append(tip_line)
+    label_line = ''.join([s.ljust(max_width+3) for s in labels])
+    actions_str.append(label_line)
+    divider_line = "=" * len(label_line)
+    actions_str.append(divider_line)
     for action in ACTIONS:
-        action_name = action[0]
+        action_name = action[0].ljust(max_width)
         action_help = action[1]
-        actions_str += "%s - %s\n" % (action_name, action_help)
-    return actions_str
+        actions_str.append("%s - %s" % (action_name, action_help))
+    return '\n'.join(actions_str)
 
 def print_available_actions():
     print get_action_str()
