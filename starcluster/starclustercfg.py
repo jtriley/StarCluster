@@ -21,6 +21,8 @@ instance_types = {
     'm1.xlarge': 'x86_64',
     'c1.medium': 'i386',
     'c1.xlarge': 'x86_64',
+    'm2.2xlarge': 'x86_64',
+    'm2.4xlarge': 'x86_64',
 }
 
 def _get_int(config, section, option):
@@ -82,9 +84,9 @@ sections = [
 def load_settings():
     # TODO: create the template file for them?
     if not os.path.exists(CFG_FILE):
-        log.info('It appears this is your first time using StarCluster.')
-        log.info('Please create %s using the template below:' % CFG_FILE)
         print config_template
+        log.info('It appears this is your first time using StarCluster.')
+        log.info('Please create %s using the template above.' % CFG_FILE)
         sys.exit(1)
 
     config = ConfigParser.ConfigParser()

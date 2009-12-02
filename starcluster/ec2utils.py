@@ -386,7 +386,7 @@ def stop_slaves():
         #exclude master node....
         running_instances=running_instances[1:len(running_instances)]
         for instance in running_instances:
-            log.info("Shuttin down slave instance: %s " % instance)
+            log.info("Shutting down slave instance: %s " % instance)
         log.info("Waiting for shutdown...")
         terminate_instances(running_instances)
         time.sleep(5)
