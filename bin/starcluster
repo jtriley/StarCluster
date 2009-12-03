@@ -117,22 +117,34 @@ def run_showimage_cmd(args):
     cfg.validate_aws_or_exit()
     ec2utils.list_image_files(image)
 
+def run_listclusters_cmd(args):
+    log.info("Not implemented yet...")
+
+def run_createami_cmd(args):
+    log.info("Not implemented yet...")
+
+def run_createvolume_cmd(args):
+    log.info("Not implemented yet...")
+
 def show_help(args):
     get_option_parser().print_help()
     
 # name, help, function
 ACTIONS = [
-    ('start', "Start an amazon EC2 cluster", run_start_cmd),
-    ('stop', "Shutdown EC2 cluster", run_stop_cmd),
-    ('sshmaster',"SSH to EC2 cluster master node", run_sshmaster_cmd),
-    ('sshnode', "SSH to EC2 cluster node", run_sshnode_cmd),
-    ('listnodes', "List all EC2 cluster nodes", run_listnodes_cmd),
-    ('listimages', "List all registered EC2 images", run_listimages_cmd),
+    ('start', "Start a StarCluster cluster", run_start_cmd),
+    ('stop', "Shutdown a StarCluster cluster", run_stop_cmd),
+    ('sshmaster',"SSH to StarCluster master node", run_sshmaster_cmd),
+    ('sshnode', "SSH to StarCluster node", run_sshnode_cmd),
+    ('listclusters', "List all StarCluster clusters", run_listclusters_cmd),
+    ('createami', "Create a new image (AMI) from a currently running EC2 instance", run_createami_cmd),
+    ('createvolume', "Create a new EBS volume for use with StarCluster", run_createvolume_cmd),
+    #('listnodes', "List all EC2 cluster nodes", run_listnodes_cmd),
+    ('listimages', "List all registered EC2 images (AMIs)", run_listimages_cmd),
     ('listbuckets', "List all S3 buckets", run_listbuckets_cmd),
-    ('showimage', "Show all files on S3 for an ec2 image", run_showimage_cmd),
-    ('showbucket', "Show all files in bucket", run_showbucket_cmd),
-    ('removeimage', "Deregister an EC2 image and remove it from S3", run_removeimage_cmd),
-    ('help', "Show starcluster usage", show_help),
+    ('showimage', "Show all files on S3 for an EC2 image (AMI)", run_showimage_cmd),
+    ('showbucket', "Show all files in a S3 bucket", run_showbucket_cmd),
+    ('removeimage', "Deregister an EC2 image (AMI) and remove it from S3", run_removeimage_cmd),
+    ('help', "Show StarCluster usage", show_help),
 ]
 
 def get_action_dict():

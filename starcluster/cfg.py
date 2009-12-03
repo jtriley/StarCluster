@@ -5,13 +5,32 @@ import logging
 import ConfigParser
 from templates.config import config_template
 
-#from starcluster import EC2
+from starcluster import EC2
 
 log = logging.getLogger('starcluster')
 
-class StarClusterConfig(dict):
+class ClusterDoesNotExist(Exception):
+    pass
+
+class AttributeDict(dict):
+    """ Subclass of dict that allows read-only attribute-like access to
+    dictionary key/values"""
+    def __getattr__(self, name):
+        try:
+            return self.__getitem__(name)
+        except KeyError,e:
+            return super(StarClusterConfig, self).__getattribute__(name)
+
+class StarClusterConfig(AttributeDict):
     """
-    Reads starcluster configuration settings defined in ~/.starclustercfg config file into starclustercfg module's namespace
+    Loads StarCluster configuration settings defined in ~/.starclustercfg config file
+    Settings are available as follows:
+
+    cfg = StarClusterConfig()
+    cfg.load()
+    aws_info = cfg.aws_info
+    cluster_cfg = cfg.mycluster
+    print cluster_cfg
     """
 
     CFG_FILE = os.path.join(os.path.expanduser('~'),'.starclustercfg')
@@ -55,12 +74,7 @@ class StarClusterConfig(dict):
         self._config = None
         self.aws_section = "aws info"
         self.cluster_sections = []
-
-    def __getattr__(self, name):
-        try:
-            return self.__getitem__(name)
-        except KeyError,e:
-            return super(StarClusterConfig, self).__getattribute__(name)
+        self._conn = None
 
     def _get_int(self, config, section, option):
         try:
@@ -84,6 +98,15 @@ class StarClusterConfig(dict):
         return opt
 
     @property
+    def conn(self):  
+        if self._conn is None:
+            if self.aws.AWS_ACCESS_KEY_ID is None or self.aws.AWS_SECRET_ACCESS_KEY is None:
+                return None
+            else:
+                self._conn = EC2.AWSAuthConnection(self.aws.AWS_ACCESS_KEY_ID, self.aws.AWS_SECRET_ACCESS_KEY)
+        return self._conn
+
+    @property
     def config(self):
         # TODO: create the template file for them?
         CFG_FILE = self.CFG_FILE
@@ -100,20 +123,23 @@ class StarClusterConfig(dict):
                 log.warn('No sections defined in settings file %s' % CFG_FILE)
         return self._config
 
-    def load_settings(self, section_name, settings):
-        section_conf = self.get(section_name, None)
+    def load_settings(self, section_name, settings, section_key=None):
+        if section_key is None:
+            section_key = section_name
+        section_conf = self.get(section_key)
         if not section_conf:
-            section_conf = self[section_name] = {}
+            self[section_key] = AttributeDict()
+            section_conf = self[section_key]
         for opt in settings:
             name = opt[0]; func = opt[1]; required = opt[2]; default = opt[3]
             value = func(self.config, section_name, name)
             if value is not None:
                 section_conf[name] = value
 
-    def load_defaults(self, section_name, settings):
-        section_conf = self.get(section_name, None)
+    def load_defaults(self, section_key, settings):
+        section_conf = self.get(section_key, None)
         if not section_conf:
-            section_conf = self[section_name] = {}
+            section_conf = self[section_key] = AttributeDict()
         for opt in settings:
             name = opt[0]; default = opt[3]
             if section_conf.get(name, None) is None:
@@ -121,82 +147,89 @@ class StarClusterConfig(dict):
                     log.warn('No %s setting specified. Defaulting to %s' % (name, default))
                 section_conf[name] = default
 
-    def load_extends_variables(self):
-        for section in self.cluster_sections:
-            cluster_section = self[section]
-            cluster_extends = cluster_section['EXTENDS'] = cluster_section.get('EXTENDS', None)
-            if cluster_extends is None:
-                continue
-            log.info('%s EXTENDS %s' % (section, "cluster " + cluster_extends))
-            cluster_extensions = [cluster_section]
-            while True:
-                extends = cluster_section.get('EXTENDS',None)
-                if extends:
-                    try:
-                        cluster_section = self["cluster " +extends]
-                        cluster_extensions.insert(0, cluster_section)
-                    except KeyError,e:
-                        log.warn("can't extend non-existent section %s" % extends)
-                        break
-                else:
+    def load_extends_variables(self, section_key):
+        cluster_section = self[section_key]
+        cluster_extends = cluster_section['EXTENDS'] = cluster_section.get('EXTENDS', None)
+        if cluster_extends is None:
+            return
+        log.debug('%s extends %s' % (section_key, cluster_extends))
+        cluster_extensions = [cluster_section]
+        while True:
+            extends = cluster_section.get('EXTENDS',None)
+            if extends:
+                try:
+                    cluster_section = self[extends]
+                    cluster_extensions.insert(0, cluster_section)
+                except KeyError,e:
+                    log.warn("can't extend non-existent section %s" % extends)
                     break
-            transform = {}
-            for extension in cluster_extensions:
-                transform.update(extension)
-            self[section] = transform
+            else:
+                break
+        transform = AttributeDict()
+        for extension in cluster_extensions:
+            transform.update(extension)
+        self[section_key] = transform
 
     def load(self):
-        self.load_settings(self.aws_section, self.aws_settings)
+        self.load_settings(self.aws_section, self.aws_settings, 'aws')
         self.cluster_sections = [section for section in self.config.sections() if section.startswith('cluster')]
+        self.clusters = [ section.split()[1] for section in self.cluster_sections ]
         for section in self.cluster_sections:
-            self.load_settings(section, self.cluster_settings)
+            section_label = section.split()[1]
+            self.load_settings(section, self.cluster_settings, section_label)
+        for section in self.cluster_sections:
+            section_label = section.split()[1]
+            self.load_extends_variables(section_label)
+            self.load_defaults(section_label, self.cluster_settings)
 
-    def is_valid(self):
-        conn = _get_conn()
 
-        if not _has_all_required_settings():
+    def is_valid(self, cluster): 
+        CLUSTER_SIZE = cluster.CLUSTER_SIZE
+        KEYNAME = cluster.KEYNAME
+        KEY_LOCATION = cluster.KEY_LOCATION
+        conn = self.conn 
+        if not self._has_all_required_settings(cluster):
             log.error('Please specify the required settings in %s' % CFG_FILE)
             return False
-
-        if not _has_valid_credentials(conn):
+        if not self._has_valid_credentials():
             log.error('Invalid AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY combination. Please check your settings')
             return False
-
-        if not _has_keypair(conn):
+        if not self._has_keypair(cluster):
             log.error('Account does not contain a key with KEYNAME = %s. Please check your settings' % KEYNAME)
             return False
-        
         if not os.path.exists(KEY_LOCATION):
             log.error('KEY_LOCATION=%s does not exist. Please check your settings' % KEY_LOCATION)
             return False
         elif not os.path.isfile(KEY_LOCATION):
             log.error('KEY_LOCATION=%s is not a file. Please check your settings' % KEY_LOCATION)
             return False
-        
         if CLUSTER_SIZE <= 0:
             log.error('CLUSTER_SIZE must be a positive integer. Please check your settings')
             return False
-        
-        if not _has_valid_availability_zone(conn):
+        if not self._has_valid_availability_zone(cluster):
             log.error('Your AVAILABILITY_ZONE setting is invalid. Please check your settings')
             return False
-
-        if not _has_valid_ebs_settings(conn):
+        if not self._has_valid_ebs_settings(cluster):
             log.error('EBS settings are invalid. Please check your settings')
             return False
-
-        if not _has_valid_image_settings(conn):
+        if not self._has_valid_image_settings(cluster):
             log.error('Your MASTER_IMAGE_ID/NODE_IMAGE_ID setting(s) are invalid. Please check your settings')
             return False
-
-        if not _has_valid_instance_type_settings(conn):
+        if not self._has_valid_instance_type_settings(cluster):
             log.error('Your INSTANCE_TYPE setting is invalid. Please check your settings')
             return False
-
-
         return True
 
-    def _has_valid_image_settings(self, conn):
+    def get_cluster(self, cluster_name):
+        try:
+            return self[cluster_name]
+        except KeyError,e:
+            raise ClusterDoesNotExist('config for cluster %s does not exist' % cluster_name)
+
+    def _has_valid_image_settings(self, cluster):
+        MASTER_IMAGE_ID = cluster.MASTER_IMAGE_ID
+        NODE_IMAGE_ID = cluster.NODE_IMAGE_ID
+        conn = self.conn
         image = conn.describe_images(imageIds=[NODE_IMAGE_ID]).parse()
         if not image:
             log.error('NODE_IMAGE_ID %s does not exist' % NODE_IMAGE_ID)
@@ -208,7 +241,9 @@ class StarClusterConfig(dict):
                 return False
         return True
 
-    def _has_valid_availability_zone(self, conn):
+    def _has_valid_availability_zone(self, cluster):
+        conn = self.conn
+        AVAILABILITY_ZONE = cluster.AVAILABILITY_ZONE
         if AVAILABILITY_ZONE is not None:
             zone_list = conn.describe_availability_zones().parse()
             if not zone_list:
@@ -227,9 +262,14 @@ class StarClusterConfig(dict):
                 return False
         return True
 
-    def _has_valid_instance_type_settings(self, conn):
+    def _has_valid_instance_type_settings(self, cluster):
+        MASTER_IMAGE_ID = cluster.MASTER_IMAGE_ID
+        NODE_IMAGE_ID = cluster.NODE_IMAGE_ID
+        INSTANCE_TYPE = cluster.INSTANCE_TYPE
+        instance_types = self.instance_types
+        conn = self.conn
         if not instance_types.has_key(INSTANCE_TYPE):
-            log.error("""You specified an invalid INSTANCE_TYPE\nPossible options are:\n%s %s %s %s %s""" % tuple(instance_types.keys()))
+            log.error("You specified an invalid INSTANCE_TYPE %s \nPossible options are:\n%s" % (INSTANCE_TYPE,' '.join(instance_types.keys())))
             return False
 
         node_image_platform = conn.describe_images(imageIds=[NODE_IMAGE_ID]).parse()[0][6]
@@ -254,8 +294,13 @@ class StarClusterConfig(dict):
         
         return True
 
-    def _has_valid_ebs_settings(self, conn):
+    def _has_valid_ebs_settings(self, cluster):
         #TODO check that ATTACH_VOLUME id exists
+        ATTACH_VOLUME = cluster.ATTACH_VOLUME
+        VOLUME_DEVICE = cluster.VOLUME_DEVICE
+        VOLUME_PARTITION = cluster.VOLUME_PARTITION
+        AVAILABILITY_ZONE = cluster.AVAILABILITY_ZONE
+        conn = self.conn
         if ATTACH_VOLUME is not None:
             vol = conn.describe_volumes(volumeIds=[ATTACH_VOLUME]).parse()
             if not vol:
@@ -278,37 +323,35 @@ class StarClusterConfig(dict):
                     return False
         return True
 
-    def _has_all_required_settings(self):
+    def _has_all_required_settings(self, cluster):
         has_all_required = True
-        for section in sections:
-            section_name = section[0]; section_opts = section[1]
-            for opt in section_opts:
-                name = opt[0]; required = opt[2]; default=opt[3]
-                if required and globals()[name] is None:
-                    log.warn('Missing required setting %s under section [%s]' % (name,section_name))
-                    has_all_required = False
+        for opt in self.cluster_settings:
+            name = opt[0]; required = opt[2]; default=opt[3]
+            if required and cluster[name] is None:
+                log.warn('Missing required setting %s under section [%s]' % (name,section_name))
+                has_all_required = False
         return has_all_required
 
     def validate_aws_or_exit(self):
-        conn = _get_conn()
-        if conn is None or not _has_valid_credentials(conn):
+        conn = self.conn
+        if conn is None or not self._has_valid_credentials():
             log.error('Invalid AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY combination. Please check your settings')
             sys.exit(1)
         
-    def validate_or_exit(self):
-        if not is_valid():
-            log.error('configuration error...exiting')
-            sys.exit(1)
+    def validate_all_or_exit(self):
+        for cluster in self.clusters:
+            cluster = self.get_cluster(cluster)
+            if not self.is_valid(cluster):
+                log.error('configuration error...exiting')
+                sys.exit(1)
 
-    def _get_conn(self):  
-        if AWS_ACCESS_KEY_ID is None or AWS_SECRET_ACCESS_KEY is None:
-            return None
-        return EC2.AWSAuthConnection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
-
-    def _has_valid_credentials(self, conn):
+    def _has_valid_credentials(self):
+        conn = self.conn
         return not conn.describe_instances().is_error
 
-    def _has_keypair(self, conn):
+    def _has_keypair(self, cluster):
+        KEYNAME = cluster.KEYNAME
+        conn = self.conn
         keypairs = conn.describe_keypairs().parse()
         has_keypair = False
         for key in keypairs:
@@ -316,8 +359,6 @@ class StarClusterConfig(dict):
                 has_keypair = True
         return has_keypair
         
-    def _load_everything(self, config):
-        for section in config.sections():
-            for option in config.options(section):
-                globals()[option.upper()] = config.get(section,option)
-
+cfg = StarClusterConfig()
+cfg.load()
+cfg.validate_all_or_exit()
