@@ -5,7 +5,7 @@ starcluster [<global-opts>] action [<action-opts>] [<action-args> ...]
 
 __description__ = """
 StarCluster - (http://web.mit.edu/starcluster)
-Please submit bug reports to starcluster@mit.edu 
+Please submit bug reports to starcluster@mit.edu
 """
 
 __moredoc__ = """
@@ -25,6 +25,7 @@ from pprint import pprint, pformat
 from starcluster.logger import log
 from starcluster import cfg
 from starcluster import optcomplete
+from starcluster.cluster import Cluster
 CmdComplete = optcomplete.CmdComplete
 
 #try:
@@ -74,47 +75,47 @@ class CmdStart(CmdBase):
         opt = parser.add_option("-x","--no-create", dest="NO_CREATE",
         action="store_true", default=False, help="Do not launch new ec2 \
 instances when starting cluster (uses existing instances instead)")
-        parser.add_option("-l","--login-master", dest="LOGIN_MASTER", 
+        parser.add_option("-l","--login-master", dest="LOGIN_MASTER",
         action="store_true", default=False, help="ssh to ec2 cluster master \
 node after launch")
-        parser.add_option("-N","--cluster-size", dest="CLUSTER_SIZE", 
+        parser.add_option("-N","--cluster-size", dest="CLUSTER_SIZE",
         action="store", type="int", default=None, help="number of ec2 nodes \
 to launch")
-        parser.add_option("-u","--cluster-user", dest="CLUSTER_USER", 
+        parser.add_option("-u","--cluster-user", dest="CLUSTER_USER",
         action="store", type="string", default=None, help="name of \
 user to create on cluster (defaults to sgeadmin)")
-        opt = parser.add_option("-s","--cluster-shell", dest="CLUSTER_SHELL", 
-        action="store", choices=["bash", "zsh", "csh", "ksh", "tcsh"], 
+        opt = parser.add_option("-s","--cluster-shell", dest="CLUSTER_SHELL",
+        action="store", choices=["bash", "zsh", "csh", "ksh", "tcsh"],
         default=None, help="shell for cluster user ")
         if optcomplete:
             opt.completer = optcomplete.ListCompleter(opt.choices)
-        parser.add_option("-m","--master-image-id", dest="MASTER_IMAGE_ID", 
+        parser.add_option("-m","--master-image-id", dest="MASTER_IMAGE_ID",
         action="store", type="string", default=None, help="image to use for master")
-        parser.add_option("-n","--node-image-id", dest="NODE_IMAGE_ID", 
+        parser.add_option("-n","--node-image-id", dest="NODE_IMAGE_ID",
         action="store", type="string", default=None, help="image to use for \
 node")
-        opt = parser.add_option("-i","--instance-type", dest="INSTANCE_TYPE", 
+        opt = parser.add_option("-i","--instance-type", dest="INSTANCE_TYPE",
         action="store",
         choices=cfg.INSTANCE_TYPES.keys(),
         default=None, help="specify machine type for cluster")
         if optcomplete:
             opt.completer = optcomplete.ListCompleter(opt.choices)
-        parser.add_option("-a","--availability-zone", dest="AVAILABILITY_ZONE", 
+        parser.add_option("-a","--availability-zone", dest="AVAILABILITY_ZONE",
         action="store", type="string", default=None, help="availability zone \
 to launch ec2 instances in ")
-        parser.add_option("-k","--keyname", dest="KEYNAME", 
+        parser.add_option("-k","--keyname", dest="KEYNAME",
         action="store", type="string", default=None, help="name of AWS ssh \
 key to use to use for cluster")
-        parser.add_option("-K","--key-location", dest="KEY_LOCATION", 
-        action="store", type="string", default=None, help="path to ssh key \
-used for this cluster")
-        parser.add_option("-v","--attach-volume", dest="ATTACH_VOLUME", 
+        parser.add_option("-K","--key-location", dest="KEY_LOCATION",
+        action="store", type="string", default=None, metavar="FILE",
+        help="path to ssh key used for this cluster")
+        parser.add_option("-v","--attach-volume", dest="ATTACH_VOLUME",
         action="store", type="string", default=None, help="EBS volume to \
 attach to master node")
-        parser.add_option("-d","--volume-device", dest="VOLUME_DEVICE", 
+        parser.add_option("-d","--volume-device", dest="VOLUME_DEVICE",
         action="store", type="string", default=None, help="device label to \
 use for EBS volume")
-        parser.add_option("-p","--volume-partition", dest="VOLUME_PARTITION", 
+        parser.add_option("-p","--volume-partition", dest="VOLUME_PARTITION",
         action="store", type="string", default=None, help="Partition to \
 mount on master node")
 
@@ -122,10 +123,11 @@ mount on master node")
         if not args:
             self.parser.error("please specify a cluster")
         from starcluster import cfg
-        sc_cfg = cfg.StarClusterConfig(); sc_cfg.load()
-        cluster = args[0]
+        config_file = self.goptions_dict.get("CONFIG")
+        sc_cfg = cfg.StarClusterConfig(config_file); sc_cfg.load()
+        cluster_name = args[0]
         try:
-            cluster = sc_cfg.get_cluster(cluster)
+            cluster = sc_cfg.get_cluster(cluster_name)
             print cluster
         except cfg.ClusterDoesNotExist,e:
             cluster = self.options_dict
@@ -210,7 +212,7 @@ class CmdShowImage(CmdBase):
         pprint(args)
         pprint(self.gopts)
         pprint(self.opts)
-    
+   
 class CmdShowBucket(CmdBase):
     """Show all files in a S3 bucket"""
     names = ['showbuckets']
@@ -246,7 +248,7 @@ class CmdHelp:
             gparser.parse_args(['--help'])
 
 def get_description():
-    return __description__.replace('\n','',1) 
+    return __description__.replace('\n','',1)
 
 def parse_subcommands(gparser, subcmds):
 
@@ -301,22 +303,19 @@ def main():
     import optparse
     gparser = optparse.OptionParser(__doc__.strip(), version=__version__)
     gparser.add_option("-d","--debug", dest="DEBUG", action="store_true",
-        default=False, 
+        default=False,
         help="print debug messages (useful for diagnosing problems)")
-    gparser.add_option("--aws-access-key-id", dest="AWS_ACCESS_KEY_ID", 
+    gparser.add_option("-c","--config", dest="CONFIG", action="store",
+        metavar="FILE",
+        help="use alternate config file (default: ~/.starclustercfg)")
+    gparser.add_option("--aws-access-key-id", dest="AWS_ACCESS_KEY_ID",
         action="store", type="string", help="your AWS_ACCESS_KEY_ID (not needed if using config)")
     gparser.add_option("--aws-secret-access-key",
-        dest="AWS_SECRET_ACCESS_KEY", action="store", type="string", 
+        dest="AWS_SECRET_ACCESS_KEY", action="store", type="string",
         help="your AWS_SECRET_ACCESS_KEY (not needed if using config)")
-    gparser.add_option("--aws-user-id", dest="AWS_USER_ID", 
-        action="store", type="string", 
+    gparser.add_option("--aws-user-id", dest="AWS_USER_ID",
+        action="store", type="string",
         help="your AWS_USER_ID (not needed if using config)")
-    #gparser.add_option("-d","--debug", dest="DEBUG", action="store_true",
-        #default=False, 
-        #help="print debug messages (useful for diagnosing problems)")
-    #gparser.add_option("-d","--debug", dest="DEBUG", action="store_true",
-        #default=False, 
-        #help="print debug messages (useful for diagnosing problems)")
 
     # Declare subcommands.
     subcmds = [
@@ -339,7 +338,7 @@ def main():
     for sc in subcmds:
         for n in sc.names:
             scmap[n] = sc
-   
+  
     if optcomplete:
         listcter = optcomplete.ListCompleter(scmap.keys())
         subcter = optcomplete.ListCompleter(
