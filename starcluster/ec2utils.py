@@ -8,7 +8,6 @@ import os
 import sys
 import time
 import socket
-import logging
 import platform
 from threading import Thread
 
@@ -17,9 +16,8 @@ from starcluster import starclustercfg as cfg
 from starcluster import s3utils
 from starcluster import cluster_setup
 from starcluster import ssh
-from starcluster import logger
+from starcluster.logger import log
 
-log = logging.getLogger('starcluster')
 
 def print_timing(func):
     def wrapper(*arg, **kargs):
@@ -454,7 +452,6 @@ def attach_volume_to_master():
                 if vol[4] == "in-use" and attachment[5] == "attached":
                     return True
                 time.sleep(5)
-                continue
 
 class Spinner(Thread):
     spin_screen_pos = 1     #Set the screen position of the spinner (chars from the left).

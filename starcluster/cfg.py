@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 import os
 import sys
-import logging
 import ConfigParser
 from templates.config import config_template
 
 from starcluster import EC2
+from starcluster.logger import log
 
-log = logging.getLogger('starcluster')
+class InvalidOptions(Exception):
+    pass
 
 class ClusterDoesNotExist(Exception):
     pass
@@ -35,6 +36,7 @@ class StarClusterConfig(AttributeDict):
 
     CFG_FILE = os.path.join(os.path.expanduser('~'),'.starclustercfg')
 
+    # until i can find a way to query AWS for these...
     instance_types = {
         'm1.small':  'i386',
         'm1.large':  'x86_64',
@@ -72,9 +74,9 @@ class StarClusterConfig(AttributeDict):
         ]
 
         self._config = None
+        self._conn = None
         self.aws_section = "aws info"
         self.cluster_sections = []
-        self._conn = None
 
     def _get_int(self, config, section, option):
         try:
@@ -226,6 +228,12 @@ class StarClusterConfig(AttributeDict):
         except KeyError,e:
             raise ClusterDoesNotExist('config for cluster %s does not exist' % cluster_name)
 
+    def get_clusters(self):
+        clusters = []
+        for section in self.cluster_sections:
+            clusters.append(section.replace('cluster ','',1).strip())
+        return clusters
+
     def _has_valid_image_settings(self, cluster):
         MASTER_IMAGE_ID = cluster.MASTER_IMAGE_ID
         NODE_IMAGE_ID = cluster.NODE_IMAGE_ID
@@ -359,6 +367,7 @@ class StarClusterConfig(AttributeDict):
                 has_keypair = True
         return has_keypair
         
-cfg = StarClusterConfig()
-cfg.load()
-cfg.validate_all_or_exit()
+INSTANCE_TYPES=StarClusterConfig.instance_types
+#cfg = StarClusterConfig()
+#cfg.load()
+#cfg.validate_all_or_exit()

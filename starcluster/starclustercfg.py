@@ -277,4 +277,4 @@ def _load_everything(config):
         for option in config.options(section):
             globals()[option.upper()] = config.get(section,option)
 
-load_settings()
+#load_settings()

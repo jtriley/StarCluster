@@ -1,9 +1,7 @@
 #!/usr/bin/env python
-import logging
 import starcluster.starclustercfg as cfg
 from starcluster import S3
-
-log = logging.getLogger('starcluster')
+from starcluster.logger import log
 
 S3_CONNECTION = None
 

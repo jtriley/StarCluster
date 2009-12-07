@@ -1,226 +1,364 @@
 #!/usr/bin/env python
+"""
+starcluster [<global-opts>] action [<action-opts>] [<action-args> ...]
+"""
 
-import sys
-import logging
-from optparse import OptionParser
-from optparse import OptionGroup
-from optparse import OptionValueError
-import starcluster
-from starcluster import ec2utils 
-from starcluster import s3utils 
-from starcluster import starclustercfg as cfg
-
-log = logging.getLogger('starcluster')
-
-def run_start_cmd(args):
-    """Runs the 'start' command"""
-    startcmd_usage = "usage: %prog start [options]"
-    startcmd = OptionParser(startcmd_usage)
-    startcmd.add_option("-x","--no-create", dest="no_create",
-    action="store_true", default=False, help="Do not launch new ec2 \
-instances when starting cluster (uses existing instances instead)")
-    startcmd.add_option("-m","--login-master", dest="login_master", 
-    action="store_true", default=False, help="ssh to ec2 cluster master \
-node after launch")
-    (options, args) = startcmd.parse_args(args)
-    log.debug('startcmd opts: %s' % options)
-    log.debug('startcmd args: %s' % args)
-    cfg.validate_or_exit()
-    create = not options.no_create
-    ec2utils.start_cluster(create=create)
-    if options.login_master:
-        ec2utils.ssh_to_master()
-
-def run_stop_cmd(args):
-    """Runs the 'stop' command"""
-    stopcmd_usage = "usage: %prog stop"
-    stopcmd = OptionParser(stopcmd_usage)
-    (options, args) = stopcmd.parse_args(args)
-    cfg.validate_aws_or_exit()
-    ec2utils.stop_cluster()
-
-def run_sshmaster_cmd(args):
-    """Runs the 'sshmaster' command"""
-    sshmastercmd_usage = "usage: %prog sshmaster"
-    sshmastercmd = OptionParser(sshmastercmd_usage)
-    (options, args) = sshmastercmd.parse_args(args)
-    cfg.validate_aws_or_exit()
-    ec2utils.ssh_to_master()
-
-def run_sshnode_cmd(args):
-    """Runs the 'sshnode' command"""
-    sshnodecmd_usage = "usage: %prog sshnode node_number"
-    sshnodecmd = OptionParser(sshnodecmd_usage)
-    (options, args) = sshnodecmd.parse_args(args)
-    if len(args) < 1:
-        print_error('Please specify a node to connect to')
-        sys.exit(1)
-    node_number=args[0]
-    cfg.validate_aws_or_exit()
-    ec2utils.ssh_to_node(node_number)
-
-def run_listnodes_cmd(args):
-    """ Runs the 'listnodes' command """
-    listnodescmd_usage = "usage: %prog listnodes"
-    listnodescmd = OptionParser(listnodescmd_usage)
-    (options, args) = listnodescmd.parse_args(args)
-    cfg.validate_aws_or_exit()
-    ec2utils.list_instances()
-
-def run_listimages_cmd(args):
-    """ Runs the 'listimages' command """
-    listimagescmd_usage = "usage: %prog listimages"
-    listimagescmd = OptionParser(listimagescmd_usage)
-    (options, args) = listimagescmd.parse_args(args)
-    cfg.validate_aws_or_exit()
-    ec2utils.list_registered_images()
-
-def run_listbuckets_cmd(args):
-    """ Runs the 'listbuckets' command """
-    listbucketscmd_usage = "usage: %prog listbuckets [options] bucket"
-    listbucketscmd = OptionParser(listbucketscmd_usage)
-    (options, args) = listbucketscmd.parse_args(args)
-    cfg.validate_aws_or_exit()
-    s3utils.list_buckets()
-
-def run_showbucket_cmd(args):
-    showbucketcmd_usage = "usage: %prog showbucket [options] [args]"
-    showbucketcmd = OptionParser(showbucketcmd_usage)
-    (options, args) = showbucketcmd.parse_args(args)
-    if len(args) < 1:
-        print_error('Please specify a bucket name')
-        sys.exit(1)
-    bucket = args[0]
-    cfg.validate_aws_or_exit()
-    s3utils.show_bucket_files(bucket)
-
-def run_removeimage_cmd(args):
-    removeimagecmd_usage = "usage: %prog removeimage [options] image"
-    removeimagecmd = OptionParser(removeimagecmd_usage)
-    removeimagecmd.add_option("-p","--pretend", dest="pretend", default=False, action="store_true", help="pretend run, don't really do anything")
-    (options, args) = removeimagecmd.parse_args(args)
-    if len(args) < 1:
-        print_error('Please specify an AMI name or id')
-        sys.exit(1)
-    image = args[0]
-    cfg.validate_aws_or_exit()
-    ec2utils.remove_image(image, pretend=options.pretend)
-
-def run_showimage_cmd(args):
-    showimagecmd_usage = "usage: %prog showimage image"
-    showimagecmd = OptionParser(showimagecmd_usage)
-    (options, args) = showimagecmd.parse_args(args)
-    if len(args) < 1:
-        print_error('Please specify an AMI name or id')
-        sys.exit(1)
-    image = args[0]
-    cfg.validate_aws_or_exit()
-    ec2utils.list_image_files(image)
-
-def run_listclusters_cmd(args):
-    log.info("Not implemented yet...")
-
-def run_createami_cmd(args):
-    log.info("Not implemented yet...")
-
-def run_createvolume_cmd(args):
-    log.info("Not implemented yet...")
-
-def show_help(args):
-    get_option_parser().print_help()
-    
-# name, help, function
-ACTIONS = [
-    ('start', "Start a StarCluster cluster", run_start_cmd),
-    ('stop', "Shutdown a StarCluster cluster", run_stop_cmd),
-    ('sshmaster',"SSH to StarCluster master node", run_sshmaster_cmd),
-    ('sshnode', "SSH to StarCluster node", run_sshnode_cmd),
-    ('listclusters', "List all StarCluster clusters", run_listclusters_cmd),
-    ('createami', "Create a new image (AMI) from a currently running EC2 instance", run_createami_cmd),
-    ('createvolume', "Create a new EBS volume for use with StarCluster", run_createvolume_cmd),
-    #('listnodes', "List all EC2 cluster nodes", run_listnodes_cmd),
-    ('listimages', "List all registered EC2 images (AMIs)", run_listimages_cmd),
-    ('listbuckets', "List all S3 buckets", run_listbuckets_cmd),
-    ('showimage', "Show all files on S3 for an EC2 image (AMI)", run_showimage_cmd),
-    ('showbucket', "Show all files in a S3 bucket", run_showbucket_cmd),
-    ('removeimage', "Deregister an EC2 image (AMI) and remove it from S3", run_removeimage_cmd),
-    ('help', "Show StarCluster usage", show_help),
-]
-
-def get_action_dict():
-    action_dict = {}
-    action_dict.update([ (action[0],action[2]) for action in ACTIONS ])
-    return action_dict
-
-def get_action_str():
-    """ returns a str representation of available actions """
-    labels = ['Action', 'Description']
-    max_width = len(max(get_action_dict().keys(),key=len))
-    actions_str = []
-    tip_line = "(TIP: Pass -h to any action to see it's options)\n"
-    actions_str.append(tip_line)
-    label_line = ''.join([s.ljust(max_width+3) for s in labels])
-    actions_str.append(label_line)
-    divider_line = "=" * len(label_line)
-    actions_str.append(divider_line)
-    for action in ACTIONS:
-        action_name = action[0].ljust(max_width)
-        action_help = action[1]
-        actions_str.append("%s - %s" % (action_name, action_help))
-    return '\n'.join(actions_str)
-
-def print_available_actions():
-    print get_action_str()
-
-def print_error(msg):
-    sys.stderr.write('ERROR: ' + msg + '\n')
-
-def print_action_error_msg(msg):
-    print_error(msg)
-    sys.stderr.write('\nPlease supply one of the following actions:\n\n')
-    print_available_actions()
-
-def get_option_parser():
-    STARCLUSTER_USAGE = "usage: %prog action [options] [args] "
-    parser = OptionParser(STARCLUSTER_USAGE, version="%prog "+starcluster.__version__)
-    parser.disable_interspersed_args()
-    parser.add_option("-l","--list-actions", dest="list_actions", action="store_true", default=False, help="list all currently available actions")
-    parser.add_option("-d","--debug", dest="debug", action="store_true", default=False, help="print debug messages (may be useful for diagnosing problems)")
-    return parser
-
-def main():
-    description = """
+__description__ = """
 StarCluster - (http://web.mit.edu/starcluster)
 Please submit bug reports to starcluster@mit.edu 
-    """
+"""
 
-    print description
+__moredoc__ = """
+Each command consists of a class, which has the following properties:
 
-    parser = get_option_parser()
-    (options,args) = parser.parse_args() 
+- Must have a class member 'names' which is a list of the names for the command;
 
-    if options.debug:
-        log.setLevel(logging.DEBUG)
+- Can optionally have a addopts(self, parser) method which adds options to the
+  given parser. This defines command options.
+"""
 
-    if options.list_actions:
-        print parser.get_usage()
-        print_available_actions()
-        sys.exit()
+__version__ = "$Revision: 0.9999 $"
+__author__ = "Justin Riley <justin.t.riley@gmail.com>"
 
-    if len(args) < 1:
-        print_action_error_msg('You forgot to give me an action!')
-        sys.exit(1)
+import sys, os
+from pprint import pprint, pformat
+from starcluster.logger import log
+from starcluster import cfg
+from starcluster import optcomplete
+CmdComplete = optcomplete.CmdComplete
 
-    action = args[0]
-    cmdstr = args[1:]
-    actions = get_action_dict()
+#try:
+    #import optcomplete
+    #CmdComplete = optcomplete.CmdComplete
+#except ImportError,e:
+    #optcomplete, CmdComplete = None, object
 
+class CmdBase(CmdComplete):
+    parser = None
+    opts = None
+    gopts = None
+
+    @property
+    def goptions_dict(self):
+        return dict(self.gopts.__dict__)
+
+    @property
+    def options_dict(self):
+        return dict(self.opts.__dict__)
+
+    @property
+    def specified_options_dict(self):
+        """ only return options with non-None value """
+        specified = {}
+        options = self.options_dict
+        for opt in options:
+            if options[opt]:
+                specified[opt] = options[opt]
+        return specified
+
+class CmdStart(CmdBase):
+    """Start a StarCluster cluster """
+    names = ['start']
+
+    @property
+    def completer(self):
+        if optcomplete:
+            try:
+                conf = cfg.StarClusterConfig()
+                conf.load()
+                return optcomplete.ListCompleter(conf.get_clusters())
+            except Exception, e:
+                log.error('something went wrong fix me: %s' % e)
+
+    def addopts(self, parser):
+        opt = parser.add_option("-x","--no-create", dest="NO_CREATE",
+        action="store_true", default=False, help="Do not launch new ec2 \
+instances when starting cluster (uses existing instances instead)")
+        parser.add_option("-l","--login-master", dest="LOGIN_MASTER", 
+        action="store_true", default=False, help="ssh to ec2 cluster master \
+node after launch")
+        parser.add_option("-N","--cluster-size", dest="CLUSTER_SIZE", 
+        action="store", type="int", default=None, help="number of ec2 nodes \
+to launch")
+        parser.add_option("-u","--cluster-user", dest="CLUSTER_USER", 
+        action="store", type="string", default=None, help="name of \
+user to create on cluster (defaults to sgeadmin)")
+        opt = parser.add_option("-s","--cluster-shell", dest="CLUSTER_SHELL", 
+        action="store", choices=["bash", "zsh", "csh", "ksh", "tcsh"], 
+        default=None, help="shell for cluster user ")
+        if optcomplete:
+            opt.completer = optcomplete.ListCompleter(opt.choices)
+        parser.add_option("-m","--master-image-id", dest="MASTER_IMAGE_ID", 
+        action="store", type="string", default=None, help="image to use for master")
+        parser.add_option("-n","--node-image-id", dest="NODE_IMAGE_ID", 
+        action="store", type="string", default=None, help="image to use for \
+node")
+        opt = parser.add_option("-i","--instance-type", dest="INSTANCE_TYPE", 
+        action="store",
+        choices=cfg.INSTANCE_TYPES.keys(),
+        default=None, help="specify machine type for cluster")
+        if optcomplete:
+            opt.completer = optcomplete.ListCompleter(opt.choices)
+        parser.add_option("-a","--availability-zone", dest="AVAILABILITY_ZONE", 
+        action="store", type="string", default=None, help="availability zone \
+to launch ec2 instances in ")
+        parser.add_option("-k","--keyname", dest="KEYNAME", 
+        action="store", type="string", default=None, help="name of AWS ssh \
+key to use to use for cluster")
+        parser.add_option("-K","--key-location", dest="KEY_LOCATION", 
+        action="store", type="string", default=None, help="path to ssh key \
+used for this cluster")
+        parser.add_option("-v","--attach-volume", dest="ATTACH_VOLUME", 
+        action="store", type="string", default=None, help="EBS volume to \
+attach to master node")
+        parser.add_option("-d","--volume-device", dest="VOLUME_DEVICE", 
+        action="store", type="string", default=None, help="device label to \
+use for EBS volume")
+        parser.add_option("-p","--volume-partition", dest="VOLUME_PARTITION", 
+        action="store", type="string", default=None, help="Partition to \
+mount on master node")
+
+    def execute(self, args):
+        if not args:
+            self.parser.error("please specify a cluster")
+        from starcluster import cfg
+        sc_cfg = cfg.StarClusterConfig(); sc_cfg.load()
+        cluster = args[0]
+        try:
+            cluster = sc_cfg.get_cluster(cluster)
+            print cluster
+        except cfg.ClusterDoesNotExist,e:
+            cluster = self.options_dict
+            print e
+        try:
+            cluster.update(self.specified_options_dict)
+        except cfg.InvalidOptions,e:
+            print e
+        print cluster
+        pprint(args)
+        pprint(self.goptions_dict)
+        pprint(self.options_dict)
+
+class CmdStop(CmdBase):
+    """Shutdown a StarCluster cluster"""
+    names = ['stop']
+    def execute(self, args):
+        pprint(args)
+        pprint(self.gopts)
+        pprint(self.opts)
+
+class CmdSshMaster(CmdBase):
+    """SSH to StarCluster master node"""
+    names = ['sshmaster']
+    def execute(self, args):
+        pprint(args)
+        pprint(self.gopts)
+        pprint(self.opts)
+
+class CmdSshNode(CmdBase):
+    """SSH to StarCluster node"""
+    names = ['sshnode']
+    def execute(self, args):
+        pprint(args)
+        pprint(self.gopts)
+        pprint(self.opts)
+
+class CmdListClusters(CmdBase):
+    """List all StarCluster clusters"""
+    names = ['listclusters']
+    def execute(self, args):
+        pprint(args)
+        pprint(self.gopts)
+        pprint(self.opts)
+
+class CmdCreateAmi(CmdBase):
+    """Create a new image (AMI) from a currently running EC2 instance"""
+    names = ['createami']
+    def execute(self, args):
+        pprint(args)
+        pprint(self.gopts)
+        pprint(self.opts)
+
+class CmdCreateVolume(CmdBase):
+    """Create a new EBS volume for use with StarCluster"""
+    names = ['createvolume']
+    def execute(self, args):
+        pprint(args)
+        pprint(self.gopts)
+        pprint(self.opts)
+
+class CmdListImages(CmdBase):
+    """List all registered EC2 images (AMIs)"""
+    names = ['listimages']
+    def execute(self, args):
+        pprint(args)
+        pprint(self.gopts)
+        pprint(self.opts)
+
+class CmdListBuckets(CmdBase):
+    """List all S3 buckets"""
+    names = ['listbuckets']
+    def execute(self, args):
+        pprint(args)
+        pprint(self.gopts)
+        pprint(self.opts)
+
+class CmdShowImage(CmdBase):
+    """Show all files on S3 for an EC2 image (AMI)"""
+    names = ['showimage']
+    def execute(self, args):
+        pprint(args)
+        pprint(self.gopts)
+        pprint(self.opts)
+    
+class CmdShowBucket(CmdBase):
+    """Show all files in a S3 bucket"""
+    names = ['showbuckets']
+    def execute(self, args):
+        pprint(args)
+        pprint(self.gopts)
+        pprint(self.opts)
+
+class CmdRemoveImage(CmdBase):
+    """Deregister an EC2 image (AMI) and remove it from S3"""
+    names = ['removeimage']
+    def execute(self, args):
+        pprint(args)
+        pprint(self.gopts)
+        pprint(self.opts)
+
+class CmdHelp:
+    """Show StarCluster usage"""
+    names =['help']
+    def execute(self, args):
+        import optparse
+        if args:
+            cmdname = args[0]
+            try:
+                sc = subcmds_map[cmdname]
+                lparser = optparse.OptionParser(sc.__doc__.strip())
+                if hasattr(sc, 'addopts'):
+                    sc.addopts(lparser)
+                lparser.print_help()
+            except KeyError:
+                raise SystemExit("Error: invalid command '%s'" % cmdname)
+        else:
+            gparser.parse_args(['--help'])
+
+def get_description():
+    return __description__.replace('\n','',1) 
+
+def parse_subcommands(gparser, subcmds):
+
+    """Parse given global arguments, find subcommand from given list of
+    subcommand objects, parse local arguments and return a tuple of global
+    options, selected command object, command options, and command arguments.
+    Call execute() on the command object to run. The command object has members
+    'gopts' and 'opts' set for global and command options respectively, you
+    don't need to call execute with those but you could if you wanted to."""
+
+    import optparse
+    global subcmds_map # needed for help command only.
+
+    print get_description()
+
+    # Build map of name -> command and docstring.
+    subcmds_map = {}
+    gparser.usage += '\n\nAvailable Actions\n'
+    for sc in subcmds:
+        gparser.usage += '- %s: %s\n' % (', '.join(sc.names),
+                                       sc.__doc__.splitlines()[0])
+        for n in sc.names:
+            assert n not in subcmds_map
+            subcmds_map[n] = sc
+
+    # Declare and parse global options.
+    gparser.disable_interspersed_args()
+
+    gopts, args = gparser.parse_args()
+    if not args:
+        gparser.print_help()
+        raise SystemExit("\nError: you must specify an action.")
+    subcmdname, subargs = args[0], args[1:]
+
+    # Parse command arguments and invoke command.
     try:
-        run_action = actions[action]
-        run_action(cmdstr)
-    except KeyError, e:
-        print_action_error_msg('Unknown action "%s"' % action)
-        sys.exit(1)
+        sc = subcmds_map[subcmdname]
+        lparser = optparse.OptionParser(sc.__doc__.strip())
+        if hasattr(sc, 'addopts'):
+            sc.addopts(lparser)
+        sc.parser = lparser
+        sc.gopts = gopts
+        sc.opts, subsubargs = lparser.parse_args(subargs)
+    except KeyError:
+        raise SystemExit("Error: invalid command '%s'" % subcmdname)
 
-if __name__ == "__main__":
-    main()
+    return gopts, sc, sc.opts, subsubargs
+
+def main():
+    # Create global options parser.
+    global gparser # only need for 'help' command (optional)
+    import optparse
+    gparser = optparse.OptionParser(__doc__.strip(), version=__version__)
+    gparser.add_option("-d","--debug", dest="DEBUG", action="store_true",
+        default=False, 
+        help="print debug messages (useful for diagnosing problems)")
+    gparser.add_option("--aws-access-key-id", dest="AWS_ACCESS_KEY_ID", 
+        action="store", type="string", help="your AWS_ACCESS_KEY_ID (not needed if using config)")
+    gparser.add_option("--aws-secret-access-key",
+        dest="AWS_SECRET_ACCESS_KEY", action="store", type="string", 
+        help="your AWS_SECRET_ACCESS_KEY (not needed if using config)")
+    gparser.add_option("--aws-user-id", dest="AWS_USER_ID", 
+        action="store", type="string", 
+        help="your AWS_USER_ID (not needed if using config)")
+    #gparser.add_option("-d","--debug", dest="DEBUG", action="store_true",
+        #default=False, 
+        #help="print debug messages (useful for diagnosing problems)")
+    #gparser.add_option("-d","--debug", dest="DEBUG", action="store_true",
+        #default=False, 
+        #help="print debug messages (useful for diagnosing problems)")
+
+    # Declare subcommands.
+    subcmds = [
+        CmdStart(),
+        CmdListClusters(),
+        CmdCreateAmi(),
+        CmdCreateVolume(),
+        CmdStop(),
+        CmdSshMaster(),
+        CmdSshNode(),
+        CmdListBuckets(),
+        CmdShowBucket(),
+        CmdRemoveImage(),
+        CmdShowImage(),
+        CmdHelp(),
+    ]
+
+    # subcommand completions
+    scmap = {}
+    for sc in subcmds:
+        for n in sc.names:
+            scmap[n] = sc
+   
+    if optcomplete:
+        listcter = optcomplete.ListCompleter(scmap.keys())
+        subcter = optcomplete.ListCompleter(
+            ['some', 'default', 'commands', 'completion'])
+        optcomplete.autocomplete(
+            gparser, listcter, None, subcter, subcommands=scmap)
+    elif 'COMP_LINE' in os.environ:
+        return -1
+
+    gopts, sc, opts, args = parse_subcommands(gparser, subcmds)
+    sc.execute(args)
+
+def test():
+    pass
+
+if os.environ.has_key('starcluster_commands_test'):
+    test()
+elif __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        print "Interrupted, exiting."

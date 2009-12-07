@@ -35,14 +35,18 @@ class MultipleFormatHandler(logging.StreamHandler):
         except:
             self.handleError(record)
 
-logger = logging.getLogger('starcluster')
-logger.setLevel(logging.INFO)
+log = logging.getLogger('starcluster')
+log.setLevel(logging.INFO)
 
 mfh = MultipleFormatHandler()
-logger.addHandler(mfh)
+log.addHandler(mfh)
 
 if platform.system() == "Linux":
-    syslog_handler = logging.handlers.SysLogHandler(address='/dev/log')
-    formatter = logging.Formatter("%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n")
-    syslog_handler.setFormatter(formatter)
-    logger.addHandler(syslog_handler)
+    import os
+    log_device = '/dev/log'
+    if os.path.exists(log_device):
+        log.debug("Logging to %s" % log_device)
+        syslog_handler = logging.handlers.SysLogHandler(address=log_device)
+        formatter = logging.Formatter("%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n")
+        syslog_handler.setFormatter(formatter)
+        log.addHandler(syslog_handler)
