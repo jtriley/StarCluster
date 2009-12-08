@@ -9,7 +9,6 @@ import shutil
 import logging
 import tempfile
 
-from starcluster.starclustercfg import *
 from templates.sgeprofile import sgeprofile_template
 from templates.sgeinstall import sgeinstall_template
 from templates.sge_pe import sge_pe_template

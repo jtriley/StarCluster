@@ -1,43 +1,73 @@
+#!/usr/bin/env python
 import os
 import socket
-from starcluster import ssh
-from starcluster import cluster_setup
-from starcluster.spinner import Spinner
-from starcluster.utils import AttributeDict
+import ssh
+import cluster_setup
+from spinner import Spinner
+from utils import AttributeDict, print_timing
+from static import INSTANCE_TYPES
+
+def get_cluster(**kwargs):
+    """Factory for Cluster class"""
+    return Cluster(**kwargs)
 
 class Cluster(AttributeDict):
+    def __init__(self,
+            CLUSTER_SIZE=None,
+            CLUSTER_USER=None,
+            CLUSTER_SHELL=None,
+            MASTER_IMAGE_ID=None,
+            NODE_IMAGE_ID=None,
+            INSTANCE_TYPE=None,
+            AVAILABILITY_ZONE=None,
+            KEYNAME=None,
+            KEY_LOCATION=None,
+            ATTACH_VOLUME=None,
+            VOLUME_DEVICE=None,
+            VOLUME_PARTITION=None,
+            **kwargs):
+        self.update({
+            'CLUSTER_SIZE':CLUSTER_SIZE,
+            'CLUSTER_USER':CLUSTER_USER,
+            'CLUSTER_SHELL':CLUSTER_SHELL,
+            'MASTER_IMAGE_ID':MASTER_IMAGE_ID,
+            'NODE_IMAGE_ID':NODE_IMAGE_ID,
+            'INSTANCE_TYPE':INSTANCE_TYPE,
+            'AVAILABILITY_ZONE':AVAILABILITY_ZONE,
+            'KEYNAME':KEYNAME,
+            'KEY_LOCATION':KEY_LOCATION,
+            'ATTACH_VOLUME':ATTACH_VOLUME,
+            'VOLUME_DEVICE':VOLUME_DEVICE,
+            'VOLUME_PARTITION':VOLUME_PARTITION,
+        })
 
-    def create_cluster():
-        log.info("Launching a %d-node cluster..." % cfg.CLUSTER_SIZE)
+    def create_cluster(self):
+        log.info("Launching a %d-node cluster..." % self.CLUSTER_SIZE)
 
-        if cfg.MASTER_IMAGE_ID is None:
-            cfg.MASTER_IMAGE_ID = cfg.NODE_IMAGE_ID
+        if self.MASTER_IMAGE_ID is None:
+            self.MASTER_IMAGE_ID = self.NODE_IMAGE_ID
 
         log.info("Launching master node...")
-        log.info("MASTER AMI: %s" % cfg.MASTER_IMAGE_ID)
-        master_response = conn.run_instances(imageId=cfg.MASTER_IMAGE_ID, instanceType=cfg.INSTANCE_TYPE, \
-                                             minCount=1, maxCount=1, keyName=cfg.KEYNAME, availabilityZone=cfg.AVAILABILITY_ZONE)
+        log.info("MASTER AMI: %s" % self.MASTER_IMAGE_ID)
+        master_response = conn.run_instances(imageId=self.MASTER_IMAGE_ID,
+            instanceType=self.INSTANCE_TYPE,
+            minCount=1, maxCount=1,
+            keyName=self.KEYNAME,
+            availabilityZone=self.AVAILABILITY_ZONE)
         print master_response
         
-        if cfg.CLUSTER_SIZE > 1:
+        if self.CLUSTER_SIZE > 1:
             log.info("Launching worker nodes...")
-            log.info("NODE AMI: %s" % cfg.NODE_IMAGE_ID)
-            instances_response = conn.run_instances(imageId=cfg.NODE_IMAGE_ID, instanceType=cfg.INSTANCE_TYPE, \
-                                                    minCount=max((cfg.CLUSTER_SIZE-1)/2, 1), maxCount=max(cfg.CLUSTER_SIZE-1,1), \
-                                                    keyName=cfg.KEYNAME, availabilityZone=cfg.AVAILABILITY_ZONE)
+            log.info("NODE AMI: %s" % self.NODE_IMAGE_ID)
+            instances_response = conn.run_instances(imageId=self.NODE_IMAGE_ID,
+                instanceType=self.INSTANCE_TYPE,
+                minCount=max((self.CLUSTER_SIZE-1)/2, 1),
+                maxCount=max(self.CLUSTER_SIZE-1,1),
+                keyName=self.KEYNAME,
+                availabilityZone=self.AVAILABILITY_ZONE)
             print instances_response
-            # if the workers failed, what should we do about the master?
 
-    def print_timing(func):
-        def wrapper(*arg, **kargs):
-            t1 = time.time()
-            res = func(*arg, **kargs)
-            t2 = time.time()
-            log.info('%s took %0.3f mins' % (func.func_name, (t2-t1)/60.0))
-            return res
-        return wrapper
-
-    def is_ssh_up():
+    def is_ssh_up(self):
         external_hostnames = get_external_hostnames()
         for ehost in external_hostnames:
             s = socket.socket()
@@ -49,9 +79,9 @@ class Cluster(AttributeDict):
                 return False
         return True
 
-    def is_cluster_up():
+    def is_cluster_up(self):
         running_instances = get_running_instances()
-        if len(running_instances) == cfg.CLUSTER_SIZE:
+        if len(running_instances) == self.CLUSTER_SIZE:
             if is_ssh_up():
                 return True
             else:
@@ -59,7 +89,7 @@ class Cluster(AttributeDict):
         else:
             return False
 
-    def attach_volume_to_master():
+    def attach_volume_to_master(self):
         log.info("Attaching volume to master node...")
         master_instance = get_master_instance()
         if master_instance is not None:
@@ -75,13 +105,13 @@ class Cluster(AttributeDict):
                     attachment = attach_volume[1]
                     if vol[0] != 'VOLUME' or attachment[0] != 'ATTACHMENT':
                         return False
-                    if vol[1] != attachment[1] != cfg.ATTACH_VOLUME:
+                    if vol[1] != attachment[1] != self.ATTACH_VOLUME:
                         return False
                     if vol[4] == "in-use" and attachment[5] == "attached":
                         return True
                     time.sleep(5)
 
-    def get_nodes():
+    def get_nodes(self):
         internal_hostnames = get_internal_hostnames()
         external_hostnames = get_external_hostnames()
 
@@ -90,7 +120,8 @@ class Cluster(AttributeDict):
         for ihost, ehost in zip(internal_hostnames,external_hostnames):
             node = {}
             log.debug('Creating persistent connection to %s' % ehost)
-            node['CONNECTION'] = ssh.Connection(ehost, username='root', private_key=cfg.KEY_LOCATION)
+            node['CONNECTION'] = ssh.Connection(ehost, username='root',
+            private_key=self.KEY_LOCATION)
             node['NODE_ID'] = nodeid
             node['EXTERNAL_NAME'] = ehost
             node['INTERNAL_NAME'] = ihost
@@ -104,7 +135,7 @@ class Cluster(AttributeDict):
             nodeid += 1
         return nodes
 
-    def ssh_to_node(node_number):
+    def ssh_to_node(self,node_number):
         nodes = get_external_hostnames()
         if len(nodes) == 0:
             log.info('No instances to connect to...exiting')
@@ -113,31 +144,31 @@ class Cluster(AttributeDict):
             node = nodes[int(node_number)]
             log.info("Logging into node: %s" % node)
             if platform.system() != 'Windows':
-                os.system('ssh -i %s root@%s' % (cfg.KEY_LOCATION, node))
+                os.system('ssh -i %s root@%s' % (self.KEY_LOCATION, node))
             else:
-                os.system('putty -ssh -i %s root@%s' % (cfg.KEY_LOCATION, node))
+                os.system('putty -ssh -i %s root@%s' % (self.KEY_LOCATION, node))
         except:
             log.error("Invalid node_number. Please select a node number from the output of starcluster -l")
 
-    def ssh_to_master():
+    def ssh_to_master(self):
         master_node = get_master_node()
         if master_node is not None:
             log.info("MASTER NODE: %s" % master_node)
             if platform.system() != 'Windows':
-                os.system('ssh -i %s root@%s' % (cfg.KEY_LOCATION, master_node)) 
+                os.system('ssh -i %s root@%s' % (self.KEY_LOCATION, master_node)) 
             else:
-                os.system('putty -ssh -i %s root@%s' % (cfg.KEY_LOCATION, master_node))
+                os.system('putty -ssh -i %s root@%s' % (self.KEY_LOCATION, master_node))
         else: 
             log.info("No master node found...")
 
-    def get_master_node():
+    def get_master_node(self):
         external_hostnames = get_external_hostnames()
         try:
             return external_hostnames[0]
         except Exception,e:
             return None
             
-    def get_master_instance():
+    def get_master_instance(self):
         instances = get_running_instances()
         try:
             master_instance = instances[0] 
@@ -146,7 +177,7 @@ class Cluster(AttributeDict):
         return master_instance
 
 
-    def stop_cluster():
+    def stop_cluster(self):
         resp = raw_input(">>> This will shutdown all EC2 instances. Are you sure (yes/no)? ")
         if resp == 'yes':
             running_instances = get_running_instances()
@@ -168,7 +199,7 @@ class Cluster(AttributeDict):
         else:
             log.info("Exiting without shutting down instances....")
 
-    def stop_slaves():
+    def stop_slaves(self):
         running_instances = get_running_instances()
         if len(running_instances) > 0:
             log.info("Listing instances...")
@@ -186,7 +217,7 @@ class Cluster(AttributeDict):
             log.info("No running instances found, exiting...")
 
     @print_timing
-    def start_cluster(create=True):
+    def start_cluster(self, create=True):
         log.info("Starting cluster...")
         if create:
             create_cluster()
@@ -194,42 +225,32 @@ class Cluster(AttributeDict):
         log.log(logger.INFO_NO_NEWLINE, "Waiting for cluster to start...")
         s.start()
         while True:
-            if is_cluster_up():
+            if self.is_cluster_up():
                 s.stop()
                 break
             else:  
                 time.sleep(15)
 
-        if has_attach_volume():
-            attach_volume_to_master()
+        if self.has_attach_volume():
+            self.attach_volume_to_master()
 
-        master_node = get_master_node()
+        master_node = self.get_master_node()
         log.info("The master node is %s" % master_node)
 
         log.info("Setting up the cluster...")
-        cluster_setup.main(get_nodes())
+        cluster_setup.main(self.get_nodes())
             
         log.info("""
 
-    The cluster has been started and configured. ssh into the master node as root by running: 
+The cluster has been started and configured. ssh into the master node as root by running: 
 
-    $ starcluster -m
+$ starcluster sshmaster 
 
-    or as %(user)s directly:
+or as %(user)s directly:
 
-    $ ssh -i %(key)s %(user)s@%(master)s
+$ ssh -i %(key)s %(user)s@%(master)s
 
-    """ % {'master': master_node, 'user': cfg.CLUSTER_USER, 'key': cfg.KEY_LOCATION}
-        )
-
-    @property
-    def conn(self):  
-        if self._conn is None:
-            if self.aws.AWS_ACCESS_KEY_ID is None or self.aws.AWS_SECRET_ACCESS_KEY is None:
-                return None
-            else:
-                self._conn = EC2.AWSAuthConnection(self.aws.AWS_ACCESS_KEY_ID, self.aws.AWS_SECRET_ACCESS_KEY)
-        return self._conn
+        """ % {'master': master_node, 'user': self.CLUSTER_USER, 'key': self.KEY_LOCATION})
 
     def is_valid(self, cluster): 
         CLUSTER_SIZE = cluster.CLUSTER_SIZE
@@ -305,11 +326,11 @@ class Cluster(AttributeDict):
                 return False
         return True
 
-    def _has_valid_instance_type_settings(self, cluster):
-        MASTER_IMAGE_ID = cluster.MASTER_IMAGE_ID
-        NODE_IMAGE_ID = cluster.NODE_IMAGE_ID
-        INSTANCE_TYPE = cluster.INSTANCE_TYPE
-        instance_types = self.instance_types
+    def _has_valid_instance_type_settings(self):
+        MASTER_IMAGE_ID = self.MASTER_IMAGE_ID
+        NODE_IMAGE_ID = self.NODE_IMAGE_ID
+        INSTANCE_TYPE = self.INSTANCE_TYPE
+        instance_types = INSTANCE_TYPES
         conn = self.conn
         if not instance_types.has_key(INSTANCE_TYPE):
             log.error("You specified an invalid INSTANCE_TYPE %s \nPossible options are:\n%s" % (INSTANCE_TYPE,' '.join(instance_types.keys())))

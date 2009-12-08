@@ -7,9 +7,10 @@ import os
 import sys
 import platform
 
-from starcluster import S3
-from starcluster import EC2
-from starcluster.logger import log
+import S3
+import EC2
+import cfg 
+from logger import log
 
 class EasyAWS(object):
     def __init__(self, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, CONNECTION_AUTHENTICATOR):
@@ -36,15 +37,16 @@ class EasyAWS(object):
                 self.aws_secret_access_key)
         return self._conn
 
-def get_easy_ec2():
+def get_easy_ec2(**kwargs):
     """
     Factory for EasyEC2 class that attempts to load AWS credentials from
     the StarCluster config file. Returns an EasyEC2 object if
     successful.
     """
-    from starcluster.cfg import StarClusterConfig
-    cfg = StarClusterConfig(); cfg.load()
-    ec2 = EasyEC2(**cfg.aws)
+    if kwargs:
+        return EasyEC2(**kwargs)
+    config = cfg.StarClusterConfig(); config.load()
+    ec2 = EasyEC2(**config.aws)
     return ec2
 
 class EasyEC2(EasyAWS):
@@ -246,15 +248,16 @@ class EasyEC2(EasyAWS):
         log.info("Detaching EBS device...")
         return self.conn.detach_volume(volume).parse()
 
-def get_easy_s3():
+def get_easy_s3(**kwargs):
     """
     Factory for EasyEC2 class that attempts to load AWS credentials from
     the StarCluster config file. Returns an EasyEC2 object if
     successful.
     """
-    from starcluster.cfg import StarClusterConfig
-    cfg = StarClusterConfig(); cfg.load()
-    s3 = EasyS3(**cfg.aws)
+    if kwargs:
+        return EasyS3(**kwargs)
+    config = cfg.StarClusterConfig(); config.load()
+    s3 = EasyS3(**config.aws)
     return s3
 
 class EasyS3(EasyAWS):

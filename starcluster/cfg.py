@@ -2,10 +2,12 @@
 import os
 import sys
 import ConfigParser
+
+import cluster
+from logger import log
+from utils import AttributeDict
+from static import INSTANCE_TYPES
 from templates.config import config_template
-from starcluster import EC2
-from starcluster.logger import log
-from starcluster.utils import AttributeDict
 
 class InvalidOptions(Exception):
     pass
@@ -28,17 +30,10 @@ class StarClusterConfig(AttributeDict):
     DEFAULT_CFG_FILE = os.path.join(os.path.expanduser('~'),'.starclustercfg')
 
     # until i can find a way to query AWS for these...
-    instance_types = {
-        'm1.small':  'i386',
-        'm1.large':  'x86_64',
-        'm1.xlarge': 'x86_64',
-        'c1.medium': 'i386',
-        'c1.xlarge': 'x86_64',
-        'm2.2xlarge': 'x86_64',
-        'm2.4xlarge': 'x86_64',
-    }
+    instance_types = INSTANCE_TYPES
 
-    def __init__(self, config_file=None):
+
+    def __init__(self, config_file=None, cache=False):
         if config_file:
             if os.path.exists(config_file):
                 if os.path.isfile(config_file):
@@ -81,6 +76,7 @@ class StarClusterConfig(AttributeDict):
 
         self._config = None
         self._conn = None
+        self.cache = cache
         self.aws_section = "aws info"
         self.cluster_sections = []
 
@@ -114,7 +110,7 @@ class StarClusterConfig(AttributeDict):
             log.info('It appears this is your first time using StarCluster.')
             log.info('Please create %s using the template above.' % CFG_FILE)
             sys.exit(1)
-        if self._config is None:
+        if not self.cache or self._config is None:
             try:
                 self._config = ConfigParser.ConfigParser()
                 self._config.read(CFG_FILE)
@@ -125,10 +121,8 @@ class StarClusterConfig(AttributeDict):
     def load_settings(self, section_name, settings, section_key=None):
         if section_key is None:
             section_key = section_name
-        section_conf = self.get(section_key)
-        if not section_conf:
-            self[section_key] = AttributeDict()
-            section_conf = self[section_key]
+        self[section_key] = AttributeDict()
+        section_conf = self[section_key]
         for opt in settings:
             name = opt[0]; func = opt[1]; required = opt[2]; default = opt[3]
             value = func(self.config, section_name, name)
@@ -181,9 +175,20 @@ class StarClusterConfig(AttributeDict):
             self.load_extends_variables(section_label)
             self.load_defaults(section_label, self.cluster_settings)
 
+    def get_aws_credentials(self):
+        """Returns AWS credentials defined in the configuration
+        file. Defining any of the AWS settings in the environment
+        overrides the configuration file."""
+        # first override with environment settings if they exist
+        for key in self.aws_settings:
+            key = key[0]
+            if os.environ.has_key(key):
+                self.aws[key] = os.environ.get(key)
+        return self.aws
+
     def get_cluster(self, cluster_name):
         try:
-            return self[cluster_name]
+            return cluster.get_cluster(**self[cluster_name])
         except KeyError,e:
             raise ClusterDoesNotExist('config for cluster %s does not exist' % cluster_name)
 
@@ -192,5 +197,3 @@ class StarClusterConfig(AttributeDict):
         for section in self.cluster_sections:
             clusters.append(section.replace('cluster ','',1).strip())
         return clusters
-
-INSTANCE_TYPES=StarClusterConfig.instance_types

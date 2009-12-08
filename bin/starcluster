@@ -22,11 +22,12 @@ __author__ = "Justin Riley <justin.t.riley@gmail.com>"
 
 import sys, os
 from pprint import pprint, pformat
-from starcluster.logger import log
 from starcluster import cfg
-from starcluster import optcomplete
 from starcluster.cluster import Cluster
+from starcluster import optcomplete
 CmdComplete = optcomplete.CmdComplete
+
+from starcluster.logger import log
 
 #try:
     #import optcomplete
@@ -308,14 +309,6 @@ def main():
     gparser.add_option("-c","--config", dest="CONFIG", action="store",
         metavar="FILE",
         help="use alternate config file (default: ~/.starclustercfg)")
-    gparser.add_option("--aws-access-key-id", dest="AWS_ACCESS_KEY_ID",
-        action="store", type="string", help="your AWS_ACCESS_KEY_ID (not needed if using config)")
-    gparser.add_option("--aws-secret-access-key",
-        dest="AWS_SECRET_ACCESS_KEY", action="store", type="string",
-        help="your AWS_SECRET_ACCESS_KEY (not needed if using config)")
-    gparser.add_option("--aws-user-id", dest="AWS_USER_ID",
-        action="store", type="string",
-        help="your AWS_USER_ID (not needed if using config)")
 
     # Declare subcommands.
     subcmds = [
