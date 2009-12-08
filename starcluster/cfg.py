@@ -194,6 +194,6 @@ class StarClusterConfig(AttributeDict):
 
     def get_clusters(self):
         clusters = []
-        for section in self.cluster_sections:
-            clusters.append(section.replace('cluster ','',1).strip())
+        for clust in self.clusters:
+            clusters.append(cluster.get_cluster(**self[clust]))
         return clusters
