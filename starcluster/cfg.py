@@ -193,6 +193,4 @@ class StarClusterConfig(AttributeDict):
             clusters.append(section.replace('cluster ','',1).strip())
         return clusters
 
-
-        
 INSTANCE_TYPES=StarClusterConfig.instance_types
