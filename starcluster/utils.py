@@ -1,18 +1,27 @@
 #!/usr/bin/env python
+"""
+Utils module for StarCluster
+"""
+
+import time
+from logger import log
+
 class AttributeDict(dict):
     """ Subclass of dict that allows read-only attribute-like access to
     dictionary key/values"""
     def __getattr__(self, name):
         try:
             return self.__getitem__(name)
-        except KeyError,e:
+        except KeyError:
             return super(AttributeDict, self).__getattribute__(name)
 
 def print_timing(func):
+    """Decorator for printing execution time (in mins) of a function"""
     def wrapper(*arg, **kargs):
-        t1 = time.time()
+        """Raw timing function """
+        time1 = time.time()
         res = func(*arg, **kargs)
-        t2 = time.time()
-        log.info('%s took %0.3f mins' % (func.func_name, (t2-t1)/60.0))
+        time2 = time.time()
+        log.info('%s took %0.3f mins' % (func.func_name, (time2-time1)/60.0))
         return res
     return wrapper
