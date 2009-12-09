@@ -12,4 +12,4 @@ _starcluster()
         COMP_WORDS="${COMP_WORDS[*]}"  COMP_CWORD=$COMP_CWORD \
         OPTPARSE_AUTO_COMPLETE=1 $1 ) )
 }
-complete -F _starcluster starcluster
+complete -F _starcluster -o default starcluster
