@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 import os
 import socket
+
 import ssh
+import awsutils
 import cluster_setup
-from spinner import Spinner
 from utils import AttributeDict, print_timing
-from static import INSTANCE_TYPES
+from static import AVAILABLE_SHELLS, INSTANCE_TYPES, CLUSTER_SETTINGS
+from spinner import Spinner
 from logger import log
 
 def get_cluster(**kwargs):
@@ -14,6 +16,9 @@ def get_cluster(**kwargs):
 
 class Cluster(AttributeDict):
     def __init__(self,
+            AWS_ACCESS_KEY_ID=None,
+            AWS_SECRET_ACCESS_KEY=None,
+            AWS_USER_ID=None,
             CLUSTER_SIZE=None,
             CLUSTER_USER=None,
             CLUSTER_SHELL=None,
@@ -28,6 +33,9 @@ class Cluster(AttributeDict):
             VOLUME_PARTITION=None,
             **kwargs):
         self.update({
+            'AWS_ACCESS_KEY_ID': AWS_ACCESS_KEY_ID,
+            'AWS_SECRET_ACCESS_KEY': AWS_SECRET_ACCESS_KEY,
+            'AWS_USER_ID': AWS_USER_ID,
             'CLUSTER_SIZE':CLUSTER_SIZE,
             'CLUSTER_USER':CLUSTER_USER,
             'CLUSTER_SHELL':CLUSTER_SHELL,
@@ -41,6 +49,13 @@ class Cluster(AttributeDict):
             'VOLUME_DEVICE':VOLUME_DEVICE,
             'VOLUME_PARTITION':VOLUME_PARTITION,
         })
+        self.ec2 = awsutils.get_easy_ec2(
+            AWS_ACCESS_KEY_ID = self.AWS_ACCESS_KEY_ID, 
+            AWS_SECRET_ACCESS_KEY = self.AWS_SECRET_ACCESS_KEY
+        )
+        self.cluster_settings = CLUSTER_SETTINGS
+        self.available_shells = AVAILABLE_SHELLS
+        self.nodes = []
 
     def create_cluster(self):
         log.info("Launching a %d-node cluster..." % self.CLUSTER_SIZE)
@@ -253,18 +268,18 @@ $ ssh -i %(key)s %(user)s@%(master)s
 
         """ % {'master': master_node, 'user': self.CLUSTER_USER, 'key': self.KEY_LOCATION})
 
-    def is_valid(self, cluster): 
-        CLUSTER_SIZE = cluster.CLUSTER_SIZE
-        KEYNAME = cluster.KEYNAME
-        KEY_LOCATION = cluster.KEY_LOCATION
-        conn = self.conn 
-        if not self._has_all_required_settings(cluster):
+    def is_valid(self): 
+        CLUSTER_SIZE = self.CLUSTER_SIZE
+        KEYNAME = self.KEYNAME
+        KEY_LOCATION = self.KEY_LOCATION
+        conn = self.ec2.conn 
+        if not self._has_all_required_settings():
             log.error('Please specify the required settings in %s' % CFG_FILE)
             return False
         if not self._has_valid_credentials():
             log.error('Invalid AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY combination. Please check your settings')
             return False
-        if not self._has_keypair(cluster):
+        if not self._has_keypair():
             log.error('Account does not contain a key with KEYNAME = %s. Please check your settings' % KEYNAME)
             return False
         if not os.path.exists(KEY_LOCATION):
@@ -276,25 +291,32 @@ $ ssh -i %(key)s %(user)s@%(master)s
         if CLUSTER_SIZE <= 0:
             log.error('CLUSTER_SIZE must be a positive integer. Please check your settings')
             return False
-        if not self._has_valid_availability_zone(cluster):
+        if not self._has_valid_availability_zone():
             log.error('Your AVAILABILITY_ZONE setting is invalid. Please check your settings')
             return False
-        if not self._has_valid_ebs_settings(cluster):
+        if not self._has_valid_ebs_settings():
             log.error('EBS settings are invalid. Please check your settings')
             return False
-        if not self._has_valid_image_settings(cluster):
+        if not self._has_valid_image_settings():
             log.error('Your MASTER_IMAGE_ID/NODE_IMAGE_ID setting(s) are invalid. Please check your settings')
             return False
-        if not self._has_valid_instance_type_settings(cluster):
+        if not self._has_valid_instance_type_settings():
             log.error('Your INSTANCE_TYPE setting is invalid. Please check your settings')
+            return False
+        if not self._has_valid_shell_setting():
+            log.error('Your CLUSTER_SHELL setting %s is invalid. Please check your settings' % self.CLUSTER_SHELL)
+        return True
+
+    def _has_valid_shell_setting(self):
+        CLUSTER_SHELL = self.CLUSTER_SHELL
+        if not self.available_shells.get(CLUSTER_SHELL):
             return False
         return True
 
-
-    def _has_valid_image_settings(self, cluster):
-        MASTER_IMAGE_ID = cluster.MASTER_IMAGE_ID
-        NODE_IMAGE_ID = cluster.NODE_IMAGE_ID
-        conn = self.conn
+    def _has_valid_image_settings(self):
+        MASTER_IMAGE_ID = self.MASTER_IMAGE_ID
+        NODE_IMAGE_ID = self.NODE_IMAGE_ID
+        conn = self.ec2.conn
         image = conn.describe_images(imageIds=[NODE_IMAGE_ID]).parse()
         if not image:
             log.error('NODE_IMAGE_ID %s does not exist' % NODE_IMAGE_ID)
@@ -306,9 +328,9 @@ $ ssh -i %(key)s %(user)s@%(master)s
                 return False
         return True
 
-    def _has_valid_availability_zone(self, cluster):
-        conn = self.conn
-        AVAILABILITY_ZONE = cluster.AVAILABILITY_ZONE
+    def _has_valid_availability_zone(self):
+        conn = self.ec2.conn
+        AVAILABILITY_ZONE = self.AVAILABILITY_ZONE
         if AVAILABILITY_ZONE is not None:
             zone_list = conn.describe_availability_zones().parse()
             if not zone_list:
@@ -332,7 +354,7 @@ $ ssh -i %(key)s %(user)s@%(master)s
         NODE_IMAGE_ID = self.NODE_IMAGE_ID
         INSTANCE_TYPE = self.INSTANCE_TYPE
         instance_types = INSTANCE_TYPES
-        conn = self.conn
+        conn = self.ec2.conn
         if not instance_types.has_key(INSTANCE_TYPE):
             log.error("You specified an invalid INSTANCE_TYPE %s \nPossible options are:\n%s" % (INSTANCE_TYPE,' '.join(instance_types.keys())))
             return False
@@ -359,13 +381,13 @@ $ ssh -i %(key)s %(user)s@%(master)s
         
         return True
 
-    def _has_valid_ebs_settings(self, cluster):
+    def _has_valid_ebs_settings(self):
         #TODO check that ATTACH_VOLUME id exists
-        ATTACH_VOLUME = cluster.ATTACH_VOLUME
-        VOLUME_DEVICE = cluster.VOLUME_DEVICE
-        VOLUME_PARTITION = cluster.VOLUME_PARTITION
-        AVAILABILITY_ZONE = cluster.AVAILABILITY_ZONE
-        conn = self.conn
+        ATTACH_VOLUME = self.ATTACH_VOLUME
+        VOLUME_DEVICE = self.VOLUME_DEVICE
+        VOLUME_PARTITION = self.VOLUME_PARTITION
+        AVAILABILITY_ZONE = self.AVAILABILITY_ZONE
+        conn = self.ec2.conn
         if ATTACH_VOLUME is not None:
             vol = conn.describe_volumes(volumeIds=[ATTACH_VOLUME]).parse()
             if not vol:
@@ -388,35 +410,34 @@ $ ssh -i %(key)s %(user)s@%(master)s
                     return False
         return True
 
-    def _has_all_required_settings(self, cluster):
+    def _has_all_required_settings(self):
         has_all_required = True
         for opt in self.cluster_settings:
-            name = opt[0]; required = opt[2]; default=opt[3]
-            if required and cluster[name] is None:
-                log.warn('Missing required setting %s under section [%s]' % (name,section_name))
+            requirements = self.cluster_settings[opt]
+            name = opt; required = requirements[1];
+            if required and self.get(name) is None:
+                log.warn('Missing required setting %s' % name)
                 has_all_required = False
         return has_all_required
 
+    def _has_valid_credentials(self):
+        conn = self.ec2.conn
+        return not conn.describe_instances().is_error
+
     def validate_aws_or_exit(self):
-        conn = self.conn
+        conn = self.ec2.conn
         if conn is None or not self._has_valid_credentials():
             log.error('Invalid AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY combination. Please check your settings')
             sys.exit(1)
         
-    def validate_all_or_exit(self):
-        for cluster in self.clusters:
-            cluster = self.get_cluster(cluster)
-            if not self.is_valid(cluster):
-                log.error('configuration error...exiting')
-                sys.exit(1)
+    def validate_or_exit(self):
+        if not self.is_valid():
+            log.error('configuration error...exiting')
+            sys.exit(1)
 
-    def _has_valid_credentials(self):
-        conn = self.conn
-        return not conn.describe_instances().is_error
-
-    def _has_keypair(self, cluster):
-        KEYNAME = cluster.KEYNAME
-        conn = self.conn
+    def _has_keypair(self):
+        KEYNAME = self.KEYNAME
+        conn = self.ec2.conn
         keypairs = conn.describe_keypairs().parse()
         has_keypair = False
         for key in keypairs:

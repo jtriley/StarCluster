@@ -41,8 +41,9 @@ class StarClusterConfig(AttributeDict):
 
     DEFAULT_CFG_FILE = os.path.join(os.path.expanduser('~'),'.starclustercfg')
 
-    # until i can find a way to query AWS for these...
+    # until i can find a way to query AWS for instance types...
     instance_types = INSTANCE_TYPES
+
     aws_settings = AWS_SETTINGS
     cluster_settings = CLUSTER_SETTINGS
 
@@ -72,6 +73,7 @@ class StarClusterConfig(AttributeDict):
         self.cache = cache
         self.aws_section = "aws info"
         self.cluster_sections = []
+        self['aws'] = {}
 
     def _get_int(self, config, section, option):
         try:
@@ -185,7 +187,10 @@ class StarClusterConfig(AttributeDict):
 
     def get_cluster(self, cluster_name):
         try:
-            clust = cluster.get_cluster(**self[cluster_name])
+            kwargs = {}
+            kwargs.update(**self.aws)
+            kwargs.update(self[cluster_name])
+            clust = cluster.get_cluster(**kwargs)
             return clust
         except KeyError,e:
             raise ClusterDoesNotExist('config for cluster %s does not exist' % cluster_name)

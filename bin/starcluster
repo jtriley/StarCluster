@@ -88,7 +88,7 @@ to launch")
         action="store", type="string", default=None, help="name of \
 user to create on cluster (defaults to sgeadmin)")
         opt = parser.add_option("-s","--cluster-shell", dest="CLUSTER_SHELL",
-        action="store", choices=static.AVAILABLE_SHELLS,
+        action="store", choices=static.AVAILABLE_SHELLS.keys(),
         default=None, help="shell for cluster user ")
         if optcomplete:
             opt.completer = optcomplete.ListCompleter(opt.choices)
@@ -127,21 +127,23 @@ mount on master node")
             self.parser.error("please specify a cluster")
         config_file = self.goptions_dict.get("CONFIG")
         cfg = config.StarClusterConfig(config_file); cfg.load()
-        cluster_name = args[0]
-        try:
-            cluster = cfg.get_cluster(cluster_name)
-            print cluster
-        except exceptions.ClusterDoesNotExist,e:
-            cluster = self.options_dict
-            log.warn(e.explain())
-        try:
-            cluster.update(self.specified_options_dict)
-        except cfg.InvalidOptions,e:
-            print e
-        pprint(cluster)
-        pprint(args)
-        pprint(self.goptions_dict)
-        pprint(self.options_dict)
+        for cluster_name in args:
+            try:
+                cluster = cfg.get_cluster(cluster_name)
+                cluster.update(self.specified_options_dict)
+                pprint(cluster)
+            except exceptions.ClusterDoesNotExist,e:
+                log.warn(e.explain())
+                aws_environ = cfg.get_aws_credentials()
+                cluster_options = self.specified_options_dict
+                kwargs = {}
+                kwargs.update(aws_environ)
+                kwargs.update(cluster_options)
+                cluster = Cluster(**kwargs)
+            pprint(cluster_name)
+            pprint(cluster)
+            pprint(self.goptions_dict)
+            pprint(self.options_dict)
 
 class CmdStop(CmdBase):
     """Shutdown a StarCluster cluster"""
@@ -335,8 +337,7 @@ def main():
   
     if optcomplete:
         listcter = optcomplete.ListCompleter(scmap.keys())
-        subcter = optcomplete.ListCompleter(
-            ['some', 'default', 'commands', 'completion'])
+        subcter = optcomplete.NoneCompleter()
         optcomplete.autocomplete(
             gparser, listcter, None, subcter, subcommands=scmap)
     elif 'COMP_LINE' in os.environ:

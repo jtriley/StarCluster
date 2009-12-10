@@ -45,8 +45,8 @@ def get_easy_ec2(**kwargs):
     """
     if kwargs:
         return EasyEC2(**kwargs)
-    config = config.StarClusterConfig(); config.load()
-    ec2 = EasyEC2(**config.aws)
+    cfg = config.StarClusterConfig(); cfg.load()
+    ec2 = EasyEC2(**cfg.aws)
     return ec2
 
 class EasyEC2(EasyAWS):
@@ -256,8 +256,8 @@ def get_easy_s3(**kwargs):
     """
     if kwargs:
         return EasyS3(**kwargs)
-    config = config.StarClusterConfig(); config.load()
-    s3 = EasyS3(**config.aws)
+    cfg = config.StarClusterConfig(); cfg.load()
+    s3 = EasyS3(**cfg.aws)
     return s3
 
 class EasyS3(EasyAWS):

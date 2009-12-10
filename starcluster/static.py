@@ -13,13 +13,13 @@ INSTANCE_TYPES = {
     'm2.4xlarge': 'x86_64',
 }
 
-AVAILABLE_SHELLS = [
-    "bash", 
-    "zsh", 
-    "csh", 
-    "ksh", 
-    "tcsh" 
-]
+AVAILABLE_SHELLS = {
+    "bash": True, 
+    "zsh": True, 
+    "csh": True, 
+    "ksh": True, 
+    "tcsh": True,
+}
 
 AWS_SETTINGS = {
     # setting, type, required?, default
