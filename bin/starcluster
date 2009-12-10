@@ -22,10 +22,12 @@ __author__ = "Justin Riley <justin.t.riley@gmail.com>"
 
 import sys, os
 from pprint import pprint, pformat
-from starcluster import cfg
-from starcluster.cluster import Cluster
+from starcluster import config
+from starcluster import static
+from starcluster import exceptions
 from starcluster import optcomplete
 CmdComplete = optcomplete.CmdComplete
+from starcluster.cluster import Cluster
 
 from starcluster.logger import log
 
@@ -66,9 +68,9 @@ class CmdStart(CmdBase):
     def completer(self):
         if optcomplete:
             try:
-                conf = cfg.StarClusterConfig()
-                conf.load()
-                return optcomplete.ListCompleter(conf.get_clusters())
+                cfg = config.StarClusterConfig()
+                cfg.load()
+                return optcomplete.ListCompleter(cfg.get_cluster_names())
             except Exception, e:
                 log.error('something went wrong fix me: %s' % e)
 
@@ -86,7 +88,7 @@ to launch")
         action="store", type="string", default=None, help="name of \
 user to create on cluster (defaults to sgeadmin)")
         opt = parser.add_option("-s","--cluster-shell", dest="CLUSTER_SHELL",
-        action="store", choices=["bash", "zsh", "csh", "ksh", "tcsh"],
+        action="store", choices=static.AVAILABLE_SHELLS,
         default=None, help="shell for cluster user ")
         if optcomplete:
             opt.completer = optcomplete.ListCompleter(opt.choices)
@@ -97,7 +99,7 @@ user to create on cluster (defaults to sgeadmin)")
 node")
         opt = parser.add_option("-i","--instance-type", dest="INSTANCE_TYPE",
         action="store",
-        choices=cfg.INSTANCE_TYPES.keys(),
+        choices=static.INSTANCE_TYPES.keys(),
         default=None, help="specify machine type for cluster")
         if optcomplete:
             opt.completer = optcomplete.ListCompleter(opt.choices)
@@ -123,21 +125,20 @@ mount on master node")
     def execute(self, args):
         if not args:
             self.parser.error("please specify a cluster")
-        from starcluster import cfg
         config_file = self.goptions_dict.get("CONFIG")
-        sc_cfg = cfg.StarClusterConfig(config_file); sc_cfg.load()
+        cfg = config.StarClusterConfig(config_file); cfg.load()
         cluster_name = args[0]
         try:
-            cluster = sc_cfg.get_cluster(cluster_name)
+            cluster = cfg.get_cluster(cluster_name)
             print cluster
-        except cfg.ClusterDoesNotExist,e:
+        except exceptions.ClusterDoesNotExist,e:
             cluster = self.options_dict
-            print e
+            log.warn(e.explain())
         try:
             cluster.update(self.specified_options_dict)
         except cfg.InvalidOptions,e:
             print e
-        print cluster
+        pprint(cluster)
         pprint(args)
         pprint(self.goptions_dict)
         pprint(self.options_dict)

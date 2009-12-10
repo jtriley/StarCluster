@@ -6,6 +6,7 @@ import cluster_setup
 from spinner import Spinner
 from utils import AttributeDict, print_timing
 from static import INSTANCE_TYPES
+from logger import log
 
 def get_cluster(**kwargs):
     """Factory for Cluster class"""
