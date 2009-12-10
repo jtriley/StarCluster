@@ -224,12 +224,12 @@ def autocomplete(parser,
 
     # Set default completers.
     if arg_completer is None:
-        arg_completer = AllCompleter()
+        arg_completer = NoneCompleter()
     if opt_completer is None:
-        opt_completer = AllCompleter()
+        opt_completer = NoneCompleter()
     if subcmd_completer is None:
         ## subcmd_completer = arg_completer
-        subcmd_completer = AllCompleter()
+        subcmd_completer = NoneCompleter()
 
     # By default, completion will be arguments completion, unless we find out
     # later we're trying to complete for an option.
