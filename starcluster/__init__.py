@@ -2,7 +2,7 @@
 __version__ = "0.9999"
 __author__ = "Justin Riley (justin.t.riley@gmail.com)"
 #import logger
-#import cfg
+#import config
 #import awsutils
 #import ssh
 #import cluster

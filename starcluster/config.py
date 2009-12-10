@@ -6,21 +6,32 @@ import ConfigParser
 import cluster
 from logger import log
 from utils import AttributeDict
-from static import INSTANCE_TYPES
+from static import AWS_SETTINGS, CLUSTER_SETTINGS, INSTANCE_TYPES
 from templates.config import config_template
 
-class InvalidOptions(Exception):
-    pass
+def get_aws_from_environ():
+    """Returns AWS credentials defined in the user's shell
+    environment."""
+    awscreds = {}
+    for key in AWS_SETTINGS:
+        if os.environ.has_key(key):
+            awscreds[key] = os.environ.get(key)
+    return awscreds
 
-class ClusterDoesNotExist(Exception):
-    pass
+def get_config(config_file=None, cache=False):
+    """Factory for StarClusterConfig object"""
+    return StarClusterConfig(config_file, cache)
 
 class StarClusterConfig(AttributeDict):
     """
-    Loads StarCluster configuration settings defined in ~/.starclustercfg config file
+    Loads StarCluster configuration settings defined in config_file
+    which defaults to ~/.starclustercfg
+
     Settings are available as follows:
 
     cfg = StarClusterConfig()
+    or
+    cfg = StarClusterConfig('/path/to/my/config.cfg')
     cfg.load()
     aws_info = cfg.aws_info
     cluster_cfg = cfg.mycluster
@@ -31,7 +42,8 @@ class StarClusterConfig(AttributeDict):
 
     # until i can find a way to query AWS for these...
     instance_types = INSTANCE_TYPES
-
+    aws_settings = AWS_SETTINGS
+    cluster_settings = CLUSTER_SETTINGS
 
     def __init__(self, config_file=None, cache=False):
         if config_file:
@@ -49,33 +61,13 @@ class StarClusterConfig(AttributeDict):
         else:
             self.cfg_file = self.DEFAULT_CFG_FILE
 
-        # setting, type, required?, default
-        self.aws_settings = [
-            ('AWS_ACCESS_KEY_ID', self._get_string, True, None),
-            ('AWS_SECRET_ACCESS_KEY', self._get_string, True, None),
-            ('AWS_USER_ID', self._get_string, True, None),
-        ]
-
-        self.cluster_settings = [
-            ('CLUSTER_SIZE', self._get_int, False, 2),
-            ('CLUSTER_USER', self._get_string, False, 'sgeadmin'),
-            ('CLUSTER_SHELL', self._get_string, False, 'bash'),
-            ('MASTER_IMAGE_ID', self._get_string, False, None),
-            ('NODE_IMAGE_ID', self._get_string, True, None),
-            ('INSTANCE_TYPE', self._get_string, True, None),
-            ('AVAILABILITY_ZONE', self._get_string, False, None),
-            # SSH KEYPAIR OPTIONS
-            ('KEYNAME', self._get_string, True, None),
-            ('KEY_LOCATION', self._get_string, True, None),
-            # EBS OPTIONS
-            ('ATTACH_VOLUME', self._get_string, False, None),
-            ('VOLUME_DEVICE', self._get_string, False, None),
-            ('VOLUME_PARTITION', self._get_string, False, None),
-            ('EXTENDS', self._get_string, False, None),
-        ]
-
+        self.type_validators = {
+            int: self._get_int,
+            str: self._get_string,
+        }
         self._config = None
         self._conn = None
+        self.clusters = None
         self.cache = cache
         self.aws_section = "aws info"
         self.cluster_sections = []
@@ -105,11 +97,11 @@ class StarClusterConfig(AttributeDict):
     def config(self):
         # TODO: create the template file for them?
         CFG_FILE = self.cfg_file
-        if not os.path.exists(CFG_FILE):
-            print config_template
-            log.info('It appears this is your first time using StarCluster.')
-            log.info('Please create %s using the template above.' % CFG_FILE)
-            sys.exit(1)
+        #if not os.path.exists(CFG_FILE):
+            #print config_template
+            #log.info('It appears this is your first time using StarCluster.')
+            #log.info('Please create %s using the template above.' % CFG_FILE)
+            #sys.exit(1)
         if not self.cache or self._config is None:
             try:
                 self._config = ConfigParser.ConfigParser()
@@ -123,20 +115,24 @@ class StarClusterConfig(AttributeDict):
             section_key = section_name
         self[section_key] = AttributeDict()
         section_conf = self[section_key]
-        for opt in settings:
-            name = opt[0]; func = opt[1]; required = opt[2]; default = opt[3]
+        for setting in settings:
+            requirements = settings[setting]
+            name = setting
+            func = self.type_validators.get(requirements[0])
+            required = requirements[1];
+            default = requirements[2]
             value = func(self.config, section_name, name)
-            if value is not None:
+            if value:
                 section_conf[name] = value
 
     def load_defaults(self, section_key, settings):
         section_conf = self.get(section_key, None)
         if not section_conf:
             section_conf = self[section_key] = AttributeDict()
-        for opt in settings:
-            name = opt[0]; default = opt[3]
+        for setting in settings:
+            name = setting; default = settings[setting][2]
             if section_conf.get(name, None) is None:
-                if default is not None:
+                if default:
                     log.warn('No %s setting specified. Defaulting to %s' % (name, default))
                 section_conf[name] = default
 
@@ -180,20 +176,21 @@ class StarClusterConfig(AttributeDict):
         file. Defining any of the AWS settings in the environment
         overrides the configuration file."""
         # first override with environment settings if they exist
-        for key in self.aws_settings:
-            key = key[0]
-            if os.environ.has_key(key):
-                self.aws[key] = os.environ.get(key)
+        self.aws.update(get_aws_from_environ())
         return self.aws
+
+    def get_cluster_names(self):
+        return self.clusters
 
     def get_cluster(self, cluster_name):
         try:
-            return cluster.get_cluster(**self[cluster_name])
+            clust = cluster.get_cluster(**self[cluster_name])
+            return clust
         except KeyError,e:
             raise ClusterDoesNotExist('config for cluster %s does not exist' % cluster_name)
 
     def get_clusters(self):
         clusters = []
-        for clust in self.clusters:
-            clusters.append(cluster.get_cluster(**self[clust]))
+        for cluster in self.clusters:
+            clusters.append(self.get_cluster(cluster))
         return clusters

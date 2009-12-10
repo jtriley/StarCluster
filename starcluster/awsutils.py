@@ -9,7 +9,7 @@ import platform
 
 import S3
 import EC2
-import cfg 
+import config 
 from logger import log
 
 class EasyAWS(object):
@@ -45,7 +45,7 @@ def get_easy_ec2(**kwargs):
     """
     if kwargs:
         return EasyEC2(**kwargs)
-    config = cfg.StarClusterConfig(); config.load()
+    config = config.StarClusterConfig(); config.load()
     ec2 = EasyEC2(**config.aws)
     return ec2
 
@@ -256,7 +256,7 @@ def get_easy_s3(**kwargs):
     """
     if kwargs:
         return EasyS3(**kwargs)
-    config = cfg.StarClusterConfig(); config.load()
+    config = config.StarClusterConfig(); config.load()
     s3 = EasyS3(**config.aws)
     return s3
 
