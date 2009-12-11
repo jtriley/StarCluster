@@ -5,8 +5,8 @@ import socket
 import ssh
 import awsutils
 import cluster_setup
+import static
 from utils import AttributeDict, print_timing
-from static import AVAILABLE_SHELLS, INSTANCE_TYPES, CLUSTER_SETTINGS
 from spinner import Spinner
 from logger import log
 
@@ -19,6 +19,9 @@ class Cluster(AttributeDict):
             AWS_ACCESS_KEY_ID=None,
             AWS_SECRET_ACCESS_KEY=None,
             AWS_USER_ID=None,
+            CLUSTER_TYPE=None,
+            CLUSTER_TAG=None,
+            CLUSTER_DESCRIPTION=None,
             CLUSTER_SIZE=None,
             CLUSTER_USER=None,
             CLUSTER_SHELL=None,
@@ -36,6 +39,9 @@ class Cluster(AttributeDict):
             'AWS_ACCESS_KEY_ID': AWS_ACCESS_KEY_ID,
             'AWS_SECRET_ACCESS_KEY': AWS_SECRET_ACCESS_KEY,
             'AWS_USER_ID': AWS_USER_ID,
+            'CLUSTER_TYPE':CLUSTER_TYPE,
+            'CLUSTER_TAG':CLUSTER_TAG,
+            'CLUSTER_DESCRIPTION':CLUSTER_DESCRIPTION,
             'CLUSTER_SIZE':CLUSTER_SIZE,
             'CLUSTER_USER':CLUSTER_USER,
             'CLUSTER_SHELL':CLUSTER_SHELL,
@@ -53,8 +59,9 @@ class Cluster(AttributeDict):
             AWS_ACCESS_KEY_ID = self.AWS_ACCESS_KEY_ID, 
             AWS_SECRET_ACCESS_KEY = self.AWS_SECRET_ACCESS_KEY
         )
-        self.cluster_settings = CLUSTER_SETTINGS
-        self.available_shells = AVAILABLE_SHELLS
+        self.instance_types = static.INSTANCE_TYPES
+        self.cluster_settings = static.CLUSTER_SETTINGS
+        self.available_shells = static.AVAILABLE_SHELLS
         self.nodes = []
 
     def create_cluster(self):
@@ -274,7 +281,7 @@ $ ssh -i %(key)s %(user)s@%(master)s
         KEY_LOCATION = self.KEY_LOCATION
         conn = self.ec2.conn 
         if not self._has_all_required_settings():
-            log.error('Please specify the required settings in %s' % CFG_FILE)
+            log.error('Please specify the required settings')
             return False
         if not self._has_valid_credentials():
             log.error('Invalid AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY combination. Please check your settings')
@@ -353,7 +360,7 @@ $ ssh -i %(key)s %(user)s@%(master)s
         MASTER_IMAGE_ID = self.MASTER_IMAGE_ID
         NODE_IMAGE_ID = self.NODE_IMAGE_ID
         INSTANCE_TYPE = self.INSTANCE_TYPE
-        instance_types = INSTANCE_TYPES
+        instance_types = self.instance_types
         conn = self.ec2.conn
         if not instance_types.has_key(INSTANCE_TYPE):
             log.error("You specified an invalid INSTANCE_TYPE %s \nPossible options are:\n%s" % (INSTANCE_TYPE,' '.join(instance_types.keys())))

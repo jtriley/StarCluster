@@ -3,6 +3,12 @@
 Module for storing static datastructures
 """
 
+# StarCluster BASE AMIs (i386/x86_64)
+BASE_AMI_32="ami-0330d16a"
+BASE_AMI_64="ami-0f30d166"
+
+SECURITY_GROUP_PREFIX="#starcluster"
+
 INSTANCE_TYPES = {
     'm1.small':  'i386',
     'm1.large':  'x86_64',

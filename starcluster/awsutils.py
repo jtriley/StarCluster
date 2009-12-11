@@ -56,6 +56,7 @@ class EasyEC2(EasyAWS):
         self._instance_response = None
         self._keypair_response = None
         self._images = None
+        self._security_group_response = None
         self.s3 = EasyS3(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, cache, **kwargs)
 
     @property
@@ -205,7 +206,7 @@ class EasyEC2(EasyAWS):
                 internal_hostnames.append(chunk[4])
         return internal_hostnames
 
-    def get_instances(self, refresh=False):
+    def get_instances(self):
         parsed_response = self.instance_response
         instances = []
         if len(parsed_response) != 0:
@@ -214,8 +215,8 @@ class EasyEC2(EasyAWS):
                     instances.append(instance)
         return instances
 
-    def list_instances(self, refresh=False):
-        instances = self.get_instances(refresh)
+    def list_instances(self):
+        instances = self.get_instances()
         if len(instances) != 0:
             counter = 0
             log.info("EC2 Instances:")
@@ -247,6 +248,11 @@ class EasyEC2(EasyAWS):
     def detach_volume(self, volume):
         log.info("Detaching EBS device...")
         return self.conn.detach_volume(volume).parse()
+
+    def get_security_groups(self):
+        sgresponse = self.conn.describe_securitygroups().parse()
+        groups = [ group for group in sgresponse if group[0] == "GROUP" ]
+        return groups
 
 def get_easy_s3(**kwargs):
     """
