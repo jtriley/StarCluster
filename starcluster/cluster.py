@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+import time
 import socket
 
 import ssh
@@ -10,6 +11,8 @@ from utils import AttributeDict, print_timing
 from spinner import Spinner
 from logger import log
 
+import boto
+
 def get_cluster(**kwargs):
     """Factory for Cluster class"""
     return Cluster(**kwargs)
@@ -19,7 +22,7 @@ class Cluster(AttributeDict):
             AWS_ACCESS_KEY_ID=None,
             AWS_SECRET_ACCESS_KEY=None,
             AWS_USER_ID=None,
-            CLUSTER_TYPE=None,
+            CLUSTER_PROFILE=None,
             CLUSTER_TAG=None,
             CLUSTER_DESCRIPTION=None,
             CLUSTER_SIZE=None,
@@ -31,15 +34,17 @@ class Cluster(AttributeDict):
             AVAILABILITY_ZONE=None,
             KEYNAME=None,
             KEY_LOCATION=None,
-            ATTACH_VOLUME=None,
+            VOLUME=None,
             VOLUME_DEVICE=None,
             VOLUME_PARTITION=None,
             **kwargs):
+        if CLUSTER_TAG is None:
+            CLUSTER_TAG = time.strftime("%Y%m%d%H%M")
         self.update({
             'AWS_ACCESS_KEY_ID': AWS_ACCESS_KEY_ID,
             'AWS_SECRET_ACCESS_KEY': AWS_SECRET_ACCESS_KEY,
             'AWS_USER_ID': AWS_USER_ID,
-            'CLUSTER_TYPE':CLUSTER_TYPE,
+            'CLUSTER_PROFILE':CLUSTER_PROFILE,
             'CLUSTER_TAG':CLUSTER_TAG,
             'CLUSTER_DESCRIPTION':CLUSTER_DESCRIPTION,
             'CLUSTER_SIZE':CLUSTER_SIZE,
@@ -51,7 +56,7 @@ class Cluster(AttributeDict):
             'AVAILABILITY_ZONE':AVAILABILITY_ZONE,
             'KEYNAME':KEYNAME,
             'KEY_LOCATION':KEY_LOCATION,
-            'ATTACH_VOLUME':ATTACH_VOLUME,
+            'VOLUME':VOLUME,
             'VOLUME_DEVICE':VOLUME_DEVICE,
             'VOLUME_PARTITION':VOLUME_PARTITION,
         })
@@ -59,53 +64,82 @@ class Cluster(AttributeDict):
             AWS_ACCESS_KEY_ID = self.AWS_ACCESS_KEY_ID, 
             AWS_SECRET_ACCESS_KEY = self.AWS_SECRET_ACCESS_KEY
         )
-        self.instance_types = static.INSTANCE_TYPES
-        self.cluster_settings = static.CLUSTER_SETTINGS
-        self.available_shells = static.AVAILABLE_SHELLS
-        self.nodes = []
+        self.__instance_types = static.INSTANCE_TYPES
+        self.__cluster_settings = static.CLUSTER_SETTINGS
+        self.__available_shells = static.AVAILABLE_SHELLS
+        self._security_group = static.SECURITY_GROUP_TEMPLATE % self.CLUSTER_TAG
+        self._master_reservation = None
+        self._node_reservation = None
+        self._nodes = []
+
+    @property
+    def security_group(self):
+        try:
+            sg = self.ec2.conn.get_all_security_groups(
+                groupnames=[self._security_group])[0]
+            return sg
+        except boto.exception.EC2ResponseError, e:
+            pass
+
+    @property
+    def master_node(self):
+        sgname=static.SECURITY_GROUP_TEMPLATE % self.CLUSTER_TAG
+        sg = self.ec2.conn.get_all_security_groups(groupnames=[sgname])[0]
+        return sg
+
+    @property
+    def nodes(self):
+        if self._nodes is None:
+            log.debug('self._nodes = %s' % self._nodes)
+            sg = self.security_group
+            if sg:
+                self._nodes=sg.instances()
+        return self._nodes
 
     def create_cluster(self):
         log.info("Launching a %d-node cluster..." % self.CLUSTER_SIZE)
-
         if self.MASTER_IMAGE_ID is None:
             self.MASTER_IMAGE_ID = self.NODE_IMAGE_ID
-
         log.info("Launching master node...")
         log.info("MASTER AMI: %s" % self.MASTER_IMAGE_ID)
-        master_response = conn.run_instances(imageId=self.MASTER_IMAGE_ID,
-            instanceType=self.INSTANCE_TYPE,
-            minCount=1, maxCount=1,
-            keyName=self.KEYNAME,
-            availabilityZone=self.AVAILABILITY_ZONE)
+        conn = self.ec2.conn
+        master_response = conn.run_instances(image_id=self.MASTER_IMAGE_ID,
+            instance_type=self.INSTANCE_TYPE,
+            min_count=1, max_count=1,
+            key_name=self.KEYNAME,
+            security_groups=[static.MASTER_GROUP, self._security_group],
+            placement=self.AVAILABILITY_ZONE)
         print master_response
-        
         if self.CLUSTER_SIZE > 1:
             log.info("Launching worker nodes...")
             log.info("NODE AMI: %s" % self.NODE_IMAGE_ID)
-            instances_response = conn.run_instances(imageId=self.NODE_IMAGE_ID,
-                instanceType=self.INSTANCE_TYPE,
-                minCount=max((self.CLUSTER_SIZE-1)/2, 1),
-                maxCount=max(self.CLUSTER_SIZE-1,1),
-                keyName=self.KEYNAME,
-                availabilityZone=self.AVAILABILITY_ZONE)
+            instances_response = conn.run_instances(image_id=self.NODE_IMAGE_ID,
+                instance_type=self.INSTANCE_TYPE,
+                min_count=max((self.CLUSTER_SIZE-1)/2, 1),
+                max_count=max(self.CLUSTER_SIZE-1,1),
+                key_name=self.KEYNAME,
+                security_groups=[self._security_group],
+                placement=self.AVAILABILITY_ZONE)
             print instances_response
 
     def is_ssh_up(self):
-        external_hostnames = get_external_hostnames()
-        for ehost in external_hostnames:
+        for node in self.nodes:
             s = socket.socket()
             s.settimeout(0.25)
             try:
-                s.connect((ehost, 22))
+                s.connect((node.dns_name, 22))
                 s.close()
             except socket.error:
                 return False
         return True
 
     def is_cluster_up(self):
-        running_instances = get_running_instances()
-        if len(running_instances) == self.CLUSTER_SIZE:
-            if is_ssh_up():
+        """
+        TODO: Create get_running_instances equivalent for use below
+        """
+        #running_instances = get_running_instances()
+        if len(self.nodes) == self.CLUSTER_SIZE:
+            if self.is_ssh_up():
                 return True
             else:
                 return False
@@ -128,35 +162,11 @@ class Cluster(AttributeDict):
                     attachment = attach_volume[1]
                     if vol[0] != 'VOLUME' or attachment[0] != 'ATTACHMENT':
                         return False
-                    if vol[1] != attachment[1] != self.ATTACH_VOLUME:
+                    if vol[1] != attachment[1] != self.VOLUME:
                         return False
                     if vol[4] == "in-use" and attachment[5] == "attached":
                         return True
                     time.sleep(5)
-
-    def get_nodes(self):
-        internal_hostnames = get_internal_hostnames()
-        external_hostnames = get_external_hostnames()
-
-        nodes = []
-        nodeid = 0
-        for ihost, ehost in zip(internal_hostnames,external_hostnames):
-            node = {}
-            log.debug('Creating persistent connection to %s' % ehost)
-            node['CONNECTION'] = ssh.Connection(ehost, username='root',
-            private_key=self.KEY_LOCATION)
-            node['NODE_ID'] = nodeid
-            node['EXTERNAL_NAME'] = ehost
-            node['INTERNAL_NAME'] = ihost
-            node['INTERNAL_IP'] = node['CONNECTION'].execute('python -c "import socket; print socket.gethostbyname(\'%s\')"' % ihost)[0].strip()
-            node['INTERNAL_NAME_SHORT'] = ihost.split('.')[0]
-            if nodeid == 0:
-                node['INTERNAL_ALIAS'] = 'master'
-            else:
-                node['INTERNAL_ALIAS'] = 'node%.3d' % nodeid
-            nodes.append(node)
-            nodeid += 1
-        return nodes
 
     def ssh_to_node(self,node_number):
         nodes = get_external_hostnames()
@@ -174,31 +184,17 @@ class Cluster(AttributeDict):
             log.error("Invalid node_number. Please select a node number from the output of starcluster -l")
 
     def ssh_to_master(self):
-        master_node = get_master_node()
+        master_node = self.master_node
         if master_node is not None:
             log.info("MASTER NODE: %s" % master_node)
             if platform.system() != 'Windows':
-                os.system('ssh -i %s root@%s' % (self.KEY_LOCATION, master_node)) 
+                os.system('ssh -i %s root@%s' % (self.KEY_LOCATION,
+                                                 master_node.dns_name)) 
             else:
-                os.system('putty -ssh -i %s root@%s' % (self.KEY_LOCATION, master_node))
+                os.system('putty -ssh -i %s root@%s' % (self.KEY_LOCATION,
+                                                        master_node.dns_name))
         else: 
             log.info("No master node found...")
-
-    def get_master_node(self):
-        external_hostnames = get_external_hostnames()
-        try:
-            return external_hostnames[0]
-        except Exception,e:
-            return None
-            
-    def get_master_instance(self):
-        instances = get_running_instances()
-        try:
-            master_instance = instances[0] 
-        except Exception,e:
-            master_instance = None
-        return master_instance
-
 
     def stop_cluster(self):
         resp = raw_input(">>> This will shutdown all EC2 instances. Are you sure (yes/no)? ")
@@ -243,7 +239,7 @@ class Cluster(AttributeDict):
     def start_cluster(self, create=True):
         log.info("Starting cluster...")
         if create:
-            create_cluster()
+            self.create_cluster()
         s = Spinner()
         log.log(logger.INFO_NO_NEWLINE, "Waiting for cluster to start...")
         s.start()
@@ -254,14 +250,14 @@ class Cluster(AttributeDict):
             else:  
                 time.sleep(15)
 
-        if self.has_attach_volume():
-            self.attach_volume_to_master()
+        #if self.has_attach_volume():
+            #self.attach_volume_to_master()
 
-        master_node = self.get_master_node()
+        master_node = self.master_node
         log.info("The master node is %s" % master_node)
 
         log.info("Setting up the cluster...")
-        cluster_setup.main(self.get_nodes())
+        #cluster_setup.main(self.get_nodes())
             
         log.info("""
 
@@ -298,7 +294,7 @@ $ ssh -i %(key)s %(user)s@%(master)s
         if CLUSTER_SIZE <= 0:
             log.error('CLUSTER_SIZE must be a positive integer. Please check your settings')
             return False
-        if not self._has_valid_availability_zone():
+        if not self._has_valid_zone():
             log.error('Your AVAILABILITY_ZONE setting is invalid. Please check your settings')
             return False
         if not self._has_valid_ebs_settings():
@@ -316,7 +312,7 @@ $ ssh -i %(key)s %(user)s@%(master)s
 
     def _has_valid_shell_setting(self):
         CLUSTER_SHELL = self.CLUSTER_SHELL
-        if not self.available_shells.get(CLUSTER_SHELL):
+        if not self.__available_shells.get(CLUSTER_SHELL):
             return False
         return True
 
@@ -324,35 +320,30 @@ $ ssh -i %(key)s %(user)s@%(master)s
         MASTER_IMAGE_ID = self.MASTER_IMAGE_ID
         NODE_IMAGE_ID = self.NODE_IMAGE_ID
         conn = self.ec2.conn
-        image = conn.describe_images(imageIds=[NODE_IMAGE_ID]).parse()
-        if not image:
+        try:
+            image = conn.get_all_images(image_ids=[NODE_IMAGE_ID])[0]
+        except boto.exception.EC2ResponseError,e:
             log.error('NODE_IMAGE_ID %s does not exist' % NODE_IMAGE_ID)
             return False
         if MASTER_IMAGE_ID is not None:
-            master_image = conn.describe_images(imageIds=[MASTER_IMAGE_ID]).parse()
-            if not master_image:
+            try:
+                master_image = conn.get_all_images(image_ids=[MASTER_IMAGE_ID])[0]
+            except boto.exception.EC2ResponseError,e:
                 log.error('MASTER_IMAGE_ID %s does not exist' % MASTER_IMAGE_ID)
                 return False
         return True
 
-    def _has_valid_availability_zone(self):
+    def _has_valid_zone(self):
         conn = self.ec2.conn
         AVAILABILITY_ZONE = self.AVAILABILITY_ZONE
-        if AVAILABILITY_ZONE is not None:
-            zone_list = conn.describe_availability_zones().parse()
-            if not zone_list:
-                log.error('No availability zones found')
-                return False
-
-            zones = {}
-            for zone in zone_list:
-                zones[zone[1]] = zone[2]
-
-            if not zones.has_key(AVAILABILITY_ZONE):
+        if AVAILABILITY_ZONE:
+            try:
+                zone = conn.get_all_zones()[0]
+                if zone.state != 'available':
+                    log.error('The AVAILABILITY_ZONE = %s is not available at this time')
+                    return False
+            except boto.exception.EC2ResponseError,e:
                 log.error('AVAILABILITY_ZONE = %s does not exist' % AVAILABILITY_ZONE)
-                return False
-            elif zones[AVAILABILITY_ZONE] != 'available':
-                log.error('The AVAILABILITY_ZONE = %s is not available at this time')
                 return False
         return True
 
@@ -360,13 +351,17 @@ $ ssh -i %(key)s %(user)s@%(master)s
         MASTER_IMAGE_ID = self.MASTER_IMAGE_ID
         NODE_IMAGE_ID = self.NODE_IMAGE_ID
         INSTANCE_TYPE = self.INSTANCE_TYPE
-        instance_types = self.instance_types
+        instance_types = self.__instance_types
         conn = self.ec2.conn
         if not instance_types.has_key(INSTANCE_TYPE):
             log.error("You specified an invalid INSTANCE_TYPE %s \nPossible options are:\n%s" % (INSTANCE_TYPE,' '.join(instance_types.keys())))
             return False
 
-        node_image_platform = conn.describe_images(imageIds=[NODE_IMAGE_ID]).parse()[0][6]
+        try:
+            node_image_platform = conn.get_all_images(image_ids=[NODE_IMAGE_ID])[0].architecture
+        except boto.exception.EC2ResponseError,e:
+            node_image_platform = None
+
         instance_platform = instance_types[INSTANCE_TYPE]
         if instance_platform != node_image_platform:
             log.error('You specified an incompatible NODE_IMAGE_ID and INSTANCE_TYPE')
@@ -377,7 +372,10 @@ $ ssh -i %(key)s %(user)s@%(master)s
             return False
         
         if MASTER_IMAGE_ID is not None:
-            master_image_platform = conn.describe_images(imageIds=[MASTER_IMAGE_ID]).parse()[0][6]
+            try:
+                master_image_platform = conn.get_all_images(image_ids=[MASTER_IMAGE_ID])[0].architecture
+            except boto.exception.EC2ResponseError,e:
+                master_image_platform = None
             if instance_platform != master_image_platform:
                 log.error('You specified an incompatible MASTER_IMAGE_ID and INSTANCE_TYPE')
                 log.error('INSTANCE_TYPE = %(instance_type)s is for a %(instance_platform)s \
@@ -389,38 +387,37 @@ $ ssh -i %(key)s %(user)s@%(master)s
         return True
 
     def _has_valid_ebs_settings(self):
-        #TODO check that ATTACH_VOLUME id exists
-        ATTACH_VOLUME = self.ATTACH_VOLUME
+        #TODO check that VOLUME id exists
+        VOLUME = self.VOLUME
         VOLUME_DEVICE = self.VOLUME_DEVICE
         VOLUME_PARTITION = self.VOLUME_PARTITION
         AVAILABILITY_ZONE = self.AVAILABILITY_ZONE
         conn = self.ec2.conn
-        if ATTACH_VOLUME is not None:
-            vol = conn.describe_volumes(volumeIds=[ATTACH_VOLUME]).parse()
-            if not vol:
-                log.error('ATTACH_VOLUME = %s does not exist' % ATTACH_VOLUME)
+        if VOLUME is not None:
+            try:
+                vol = conn.get_all_volumes(volume_ids=[VOLUME])[0]
+            except boto.exception.EC2ResponseError,e:
+                log.error('VOLUME = %s does not exist' % VOLUME)
                 return False
-            vol = vol[0]
             if VOLUME_DEVICE is None:
-                log.error('Must specify VOLUME_DEVICE when specifying ATTACH_VOLUME setting')
+                log.error('Must specify VOLUME_DEVICE when specifying VOLUME setting')
                 return False
             if VOLUME_PARTITION is None:
-                log.error('Must specify VOLUME_PARTITION when specifying ATTACH_VOLUME setting')
+                log.error('Must specify VOLUME_PARTITION when specifying VOLUME setting')
                 return False
             if AVAILABILITY_ZONE is not None:
-                vol_zone = vol[3]
-                if vol.count(AVAILABILITY_ZONE) == 0:
-                    log.error('The ATTACH_VOLUME you specified is only available in zone %(vol_zone)s, \
+                if vol.availabilityZone != AVAILABILITY_ZONE:
+                    log.error('The VOLUME you specified is only available in region %(vol_zone)s, \
     however, you specified AVAILABILITY_ZONE = %(availability_zone)s\nYou need to \
     either change AVAILABILITY_ZONE or create a new volume in %(availability_zone)s' \
-                                % {'vol_zone': vol_zone, 'availability_zone': AVAILABILITY_ZONE})
+                                % {'vol_zone': vol.region.name, 'availability_zone': AVAILABILITY_ZONE})
                     return False
         return True
 
     def _has_all_required_settings(self):
         has_all_required = True
-        for opt in self.cluster_settings:
-            requirements = self.cluster_settings[opt]
+        for opt in self.__cluster_settings:
+            requirements = self.__cluster_settings[opt]
             name = opt; required = requirements[1];
             if required and self.get(name) is None:
                 log.warn('Missing required setting %s' % name)
@@ -428,8 +425,11 @@ $ ssh -i %(key)s %(user)s@%(master)s
         return has_all_required
 
     def _has_valid_credentials(self):
-        conn = self.ec2.conn
-        return not conn.describe_instances().is_error
+        try:
+            self.ec2.conn.get_all_instances()
+            return True
+        except boto.exception.EC2ResponseError,e:
+            return False
 
     def validate_aws_or_exit(self):
         conn = self.ec2.conn
@@ -445,9 +445,14 @@ $ ssh -i %(key)s %(user)s@%(master)s
     def _has_keypair(self):
         KEYNAME = self.KEYNAME
         conn = self.ec2.conn
-        keypairs = conn.describe_keypairs().parse()
-        has_keypair = False
-        for key in keypairs:
-            if key[1] == KEYNAME:
-                has_keypair = True
-        return has_keypair
+        try:
+            keypair = conn.get_all_key_pairs(keynames=[KEYNAME])
+            return True
+        except boto.exception.EC2ResponseError,e:
+            return False
+
+if __name__ == "__main__":
+    from starcluster.config import StarClusterConfig
+    cfg = StarClusterConfig(); cfg.load()
+    sc =  cfg.get_cluster('smallcluster')
+    print sc.is_valid()

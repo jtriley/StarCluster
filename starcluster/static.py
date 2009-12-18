@@ -8,6 +8,8 @@ BASE_AMI_32="ami-0330d16a"
 BASE_AMI_64="ami-0f30d166"
 
 SECURITY_GROUP_PREFIX="#starcluster"
+MASTER_GROUP="%s-masters" % SECURITY_GROUP_PREFIX
+SECURITY_GROUP_TEMPLATE=SECURITY_GROUP_PREFIX+"-%s"
 
 INSTANCE_TYPES = {
     'm1.small':  'i386',
@@ -47,7 +49,7 @@ CLUSTER_SETTINGS = {
     'KEYNAME': (str, True, None),
     'KEY_LOCATION': (str, True, None),
     # EBS OPTIONS
-    'ATTACH_VOLUME': (str, False, None),
+    'VOLUME': (str, False, None),
     'VOLUME_DEVICE': (str, False, None),
     'VOLUME_PARTITION': (str, False, None),
     'EXTENDS': (str, False, None),

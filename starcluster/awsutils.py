@@ -6,9 +6,9 @@ EC2/S3 Utility Classes
 import os
 import sys
 import platform
+from pprint import pprint
 
-import S3
-import EC2
+import boto
 import config 
 from logger import log
 
@@ -51,7 +51,7 @@ def get_easy_ec2(**kwargs):
 
 class EasyEC2(EasyAWS):
     def __init__(self, AWS_ACCESS_KEY_ID=None, AWS_SECRET_ACCESS_KEY=None, cache=False, **kwargs):
-        super(EasyEC2, self).__init__(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, EC2.AWSAuthConnection)
+        super(EasyEC2, self).__init__(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, boto.connect_ec2)
         self.cache = cache
         self._instance_response = None
         self._keypair_response = None
@@ -62,38 +62,24 @@ class EasyEC2(EasyAWS):
     @property
     def registered_images(self):
         if not self.cache or self._images is None:
-            image_list = self.conn.describe_images(owners=["self"]).parse()
-            images = {}
-            for image in image_list:
-                image_name = os.path.basename(image[2]).split('.manifest.xml')[0]
-                images[image_name] = {}
-                img_dict = images[image_name]
-                img_dict['NAME'] = image_name
-                img_dict['AMI'] = image[1]
-                img_dict['MANIFEST'] = image[2] 
-                img_dict['BUCKET'] = os.path.dirname(image[2])
-                img_dict['STATUS'] = image[4] 
-                img_dict['PRIVACY'] = image[5] 
-            self._images = images
+            self._images = self.conn.get_all_images(owners=["self"])
         return self._images
 
-    def get_image(self, image_name):
-        rimages = self.registered_images
-        try:
-            log.debug("attempting to fetch ami: %s" % image_name)
-            return rimages[image_name]
-        except:
-            if image_name.startswith('ami') and len(image_name) == 12:
-                for ami in rimages.itervalues():
-                    if ami['AMI'] == image_name:
-                        log.debug("returning ami: %s" % ami['AMI'])
-                        return ami
-            log.error("invalid AMI name/id specified: %s" % image_name)
-
+    def get_registered_image(self, image_id):
+        if not image_name.startswith('ami') or len(image_name) != 12:
+            raise TypeError("invalid AMI name/id requested: %s" % image_name)
+        for image in self.registered_images:
+            if image.id == image_id:
+                return image
+            
     def list_registered_images(self):
         images = self.registered_images
-        for image in images.keys():
-            print "%(NAME)s AMI=%(AMI)s BUCKET=%(BUCKET)s MANIFEST=%(MANIFEST)s" % images[image]
+        for image in images:
+            name = os.path.basename(image.location).split('.manifest.xml')[0]
+            bucket = os.path.dirname(image.location)
+            metadata = dict(NAME=name, AMI=image.id, BUCKET=bucket,
+                            MANIFEST=image.location) 
+            pprint(metadata)
 
     def remove_image_files(self, image_name, bucket=None, pretend=True):
         image = self.get_image(image_name)
@@ -157,32 +143,26 @@ class EasyEC2(EasyAWS):
             return []
 
     @property
-    def instance_response(self):
+    def instances():
         if not self.cache or self._instance_response is None:
             log.debug('instance_response = %s, cache = %s' %
             (self._instance_response, self.cache))
-            self._instance_response=self.conn.describe_instances().parse()
+            self._instance_response=self.conn.get_all_instances()
         return self._instance_response
             
     @property
-    def keypair_response(self):
+    def keypair():
         if not self.cache or self._keypair_response is None:
             log.debug('keypair_response = %s, cache = %s' %
             (self._keypair_response, self.cache))
-            self._keypair_response = self.conn.describe_keypairs().parse()
+            self._keypair_response = self.conn.get_all_keypairs()
         return self._keypair_response
 
-    def get_running_instances(self, amis=[], strict=True):
-        parsed_response = self.instance_response
-        running_instances=[]
-        for chunk in parsed_response:
-            if chunk[0]=='INSTANCE' and chunk[5]=='running':
-                if strict:
-                    if chunk[2] in amis:
-                        running_instances.append(chunk[1])
-                else:
-                    running_instances.append(chunk[1])
-        return running_instances
+    def get_running_instances(self):
+        """ 
+        TODO: write me 
+        """
+        pass
 
     def get_external_hostnames(self):
         parsed_response=self.instance_response 
@@ -268,7 +248,7 @@ def get_easy_s3(**kwargs):
 
 class EasyS3(EasyAWS):
     def __init__(self, AWS_ACCESS_KEY_ID=None, AWS_SECRET_ACCESS_KEY=None, cache=False, **kwargs):
-        super(EasyS3, self).__init__(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, S3.AWSAuthConnection)
+        super(EasyS3, self).__init__(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, boto.connect_s3)
         self.cache = cache
 
     def bucket_exists(self, bucket_name):
@@ -303,3 +283,7 @@ class EasyS3(EasyAWS):
 
     def remove_file(self, bucket_name, file_name):
         self.conn.delete(bucket_name, file_name)
+
+if __name__ == "__main__":
+    ec2 = get_easy_ec2()
+    ec2.list_registered_images()

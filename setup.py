@@ -4,13 +4,14 @@ from setuptools import setup
 
 setup(
     name = 'StarCluster',
-    version = '0.90',
+    version = '0.9999',
     packages = ['starcluster', 'starcluster.templates'],
     package_dir = {'starcluster':'starcluster'},
     scripts=['bin/starcluster',],
 
     install_requires=[
         "paramiko",
+        "boto",
     ],
 
     zip_safe = True,

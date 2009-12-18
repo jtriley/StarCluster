@@ -8,7 +8,7 @@ from logger import log
 from utils import AttributeDict
 from static import AWS_SETTINGS, CLUSTER_SETTINGS, INSTANCE_TYPES
 from templates.config import config_template
-from exceptions import ClusterDoesNotExist
+from exception import ClusterDoesNotExist
 
 def get_aws_from_environ():
     """Returns AWS credentials defined in the user's shell

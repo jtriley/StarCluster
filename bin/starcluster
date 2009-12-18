@@ -20,7 +20,9 @@ Each command consists of a class, which has the following properties:
 __version__ = "$Revision: 0.9999 $"
 __author__ = "Justin Riley <justin.t.riley@gmail.com>"
 
-import sys, os
+import os
+import sys
+import time
 from pprint import pprint, pformat
 from starcluster import config
 from starcluster import static
@@ -79,48 +81,55 @@ class CmdStart(CmdBase):
         action="store_true", default=False, help="Do not launch new ec2 \
 instances when starting cluster (uses existing instances instead)")
         parser.add_option("-l","--login-master", dest="LOGIN_MASTER",
-        action="store_true", default=False, help="ssh to ec2 cluster master \
-node after launch")
-        parser.add_option("-N","--cluster-size", dest="CLUSTER_SIZE",
-        action="store", type="int", default=None, help="number of ec2 nodes \
-to launch")
+            action="store_true", default=False, 
+            help="ssh to ec2 cluster master node after launch")
+        parser.add_option("-t","--tag", dest="CLUSTER_TAG",
+            action="store", type="string", default=time.strftime("%Y%m%d%H%M"), 
+            help="tag to identify cluster")
+        parser.add_option("-d","--description", dest="CLUSTER_DESCRIPTION",
+            action="store", type="string", 
+            default="Cluster requested at %s" % time.strftime("%Y%m%d%H%M"), 
+            help="brief description of cluster")
+        parser.add_option("-s","--cluster-size", dest="CLUSTER_SIZE",
+            action="store", type="int", default=None, 
+            help="number of ec2 nodes to launch")
         parser.add_option("-u","--cluster-user", dest="CLUSTER_USER",
-        action="store", type="string", default=None, help="name of \
-user to create on cluster (defaults to sgeadmin)")
-        opt = parser.add_option("-s","--cluster-shell", dest="CLUSTER_SHELL",
-        action="store", choices=static.AVAILABLE_SHELLS.keys(),
-        default=None, help="shell for cluster user ")
+            action="store", type="string", default=None, 
+            help="name of user to create on cluster (defaults to sgeadmin)")
+        opt = parser.add_option("-S","--cluster-shell", dest="CLUSTER_SHELL",
+            action="store", choices=static.AVAILABLE_SHELLS.keys(),
+            default=None, help="shell for cluster user ")
         if optcomplete:
             opt.completer = optcomplete.ListCompleter(opt.choices)
         parser.add_option("-m","--master-image-id", dest="MASTER_IMAGE_ID",
-        action="store", type="string", default=None, help="image to use for master")
+            action="store", type="string", default=None, 
+            help="image to use for master")
         parser.add_option("-n","--node-image-id", dest="NODE_IMAGE_ID",
-        action="store", type="string", default=None, help="image to use for \
-node")
+            action="store", type="string", default=None, 
+            help="image to use for node")
         opt = parser.add_option("-i","--instance-type", dest="INSTANCE_TYPE",
-        action="store",
-        choices=static.INSTANCE_TYPES.keys(),
-        default=None, help="specify machine type for cluster")
+            action="store", choices=static.INSTANCE_TYPES.keys(),
+            default=None, help="specify machine type for cluster")
         if optcomplete:
             opt.completer = optcomplete.ListCompleter(opt.choices)
         parser.add_option("-a","--availability-zone", dest="AVAILABILITY_ZONE",
-        action="store", type="string", default=None, help="availability zone \
-to launch ec2 instances in ")
+            action="store", type="string", default=None, 
+            help="availability zone to launch ec2 instances in ")
         parser.add_option("-k","--keyname", dest="KEYNAME",
-        action="store", type="string", default=None, help="name of AWS ssh \
-key to use to use for cluster")
+            action="store", type="string", default=None, 
+            help="name of AWS ssh key to use for cluster")
         parser.add_option("-K","--key-location", dest="KEY_LOCATION",
-        action="store", type="string", default=None, metavar="FILE",
-        help="path to ssh key used for this cluster")
-        parser.add_option("-v","--attach-volume", dest="ATTACH_VOLUME",
-        action="store", type="string", default=None, help="EBS volume to \
-attach to master node")
-        parser.add_option("-d","--volume-device", dest="VOLUME_DEVICE",
-        action="store", type="string", default=None, help="device label to \
-use for EBS volume")
+            action="store", type="string", default=None, metavar="FILE",
+            help="path to ssh key used for this cluster")
+        parser.add_option("-v","--volume", dest="VOLUME",
+            action="store", type="string", default=None, 
+            help="EBS volume to attach to master node")
+        parser.add_option("-D","--volume-device", dest="VOLUME_DEVICE",
+            action="store", type="string", default=None, 
+            help="Device label to use for EBS volume")
         parser.add_option("-p","--volume-partition", dest="VOLUME_PARTITION",
-        action="store", type="string", default=None, help="Partition to \
-mount on master node")
+            action="store", type="string", default=None, 
+            help="EBS Volume partition to mount on master node")
 
     def execute(self, args):
         if not args:
