@@ -26,7 +26,7 @@ import time
 from pprint import pprint, pformat
 from starcluster import config
 from starcluster import static
-from starcluster import exceptions
+from starcluster import exception
 from starcluster import optcomplete
 CmdComplete = optcomplete.CmdComplete
 from starcluster.cluster import Cluster
