@@ -141,7 +141,7 @@ instances when starting cluster (uses existing instances instead)")
                 cluster = cfg.get_cluster(cluster_name)
                 cluster.update(self.specified_options_dict)
                 pprint(cluster)
-            except exceptions.ClusterDoesNotExist,e:
+            except exception.ClusterDoesNotExist,e:
                 log.warn(e.explain())
                 aws_environ = cfg.get_aws_credentials()
                 cluster_options = self.specified_options_dict
