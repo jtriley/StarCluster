@@ -2,6 +2,7 @@
 import os
 import time
 import socket
+import platform
 
 import ssh
 import awsutils
@@ -91,9 +92,9 @@ class Cluster(AttributeDict):
     @property
     def master_node(self):
         mgroup_instances = self.master_group.instances()
-        cgroup_instances = self.cluster_group.instances()
+        cgroup_instances = [ node.id for node in self.cluster_group.instances() ]
         for node in mgroup_instances:
-            if node in cgroup_instances:
+            if node.id in cgroup_instances:
                 return node
 
     @property
@@ -108,6 +109,11 @@ class Cluster(AttributeDict):
             if node.state == 'running':
                 nodes.append(node)
         return nodes
+
+    @property
+    def volume(self):
+        vol = self.ec2.conn.get_all_volumes(volume_ids=[self.VOLUME])[0]
+        return vol
 
     def create_cluster(self):
         log.info("Launching a %d-node cluster..." % self.CLUSTER_SIZE)
@@ -163,25 +169,16 @@ class Cluster(AttributeDict):
 
     def attach_volume_to_master(self):
         log.info("Attaching volume to master node...")
-        master_instance = get_master_instance()
-        if master_instance is not None:
-            attach_response = attach_volume_to_node(master_instance)
-            log.debug("attach_response = %s" % attach_response)
-            if attach_response is not None:
-                while True:
-                    attach_volume = get_volume()
-                    if len(attach_volume) != 2:
-                        time.sleep(5)
-                        continue
-                    vol = attach_volume[0]
-                    attachment = attach_volume[1]
-                    if vol[0] != 'VOLUME' or attachment[0] != 'ATTACHMENT':
-                        return False
-                    if vol[1] != attachment[1] != self.VOLUME:
-                        return False
-                    if vol[4] == "in-use" and attachment[5] == "attached":
-                        return True
-                    time.sleep(5)
+        vol = self.volume
+        if vol.status != "available":
+            log.error('Volume not available...please check and try again')
+        resp = vol.attach(self.master_node.id, self.VOLUME_DEVICE)
+        log.debug("resp = %s" % resp)
+        while True:
+            vol.update()
+            if vol.attachment_state() == 'attached':
+                return True
+            time.sleep(5)
 
     def ssh_to_node(self,node_number):
         nodes = get_external_hostnames()
@@ -215,10 +212,10 @@ class Cluster(AttributeDict):
     def stop_cluster(self):
         resp = raw_input(">>> Shutdown cluster ? (yes/no) ")
         if resp == 'yes':
-            #if self.has_attach_volume():
-                #detach_vol = detach_volume()
-                #log.debug("detach_vol_response: \n%s" % detach_vol)
-
+            if self.VOLUME:
+                log.info("Detaching volume (%s) from master" % self.VOLUME)
+                self.volume.detach()
+                
             for node in self.running_nodes:
                 log.info("Shutting down instance: %s " % node.id)
                 node.stop()
@@ -449,4 +446,4 @@ if __name__ == "__main__":
     cfg = StarClusterConfig(); cfg.load()
     sc =  cfg.get_cluster('smallcluster')
     if sc.is_valid():
-        sc.start(create=False)
+        sc.start(create=True)
