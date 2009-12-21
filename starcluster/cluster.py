@@ -9,7 +9,7 @@ import cluster_setup
 import static
 from utils import AttributeDict, print_timing
 from spinner import Spinner
-from logger import log
+from logger import log,INFO_NO_NEWLINE
 
 import boto
 
@@ -38,8 +38,11 @@ class Cluster(AttributeDict):
             VOLUME_DEVICE=None,
             VOLUME_PARTITION=None,
             **kwargs):
+        now = time.strftime("%Y%m%d%H%M")
         if CLUSTER_TAG is None:
-            CLUSTER_TAG = time.strftime("%Y%m%d%H%M")
+            CLUSTER_TAG = now
+        if CLUSTER_DESCRIPTION is None:
+            CLUSTER_DESCRIPTION = "Cluster created at %s" % now 
         self.update({
             'AWS_ACCESS_KEY_ID': AWS_ACCESS_KEY_ID,
             'AWS_SECRET_ACCESS_KEY': AWS_SECRET_ACCESS_KEY,
@@ -70,31 +73,41 @@ class Cluster(AttributeDict):
         self._security_group = static.SECURITY_GROUP_TEMPLATE % self.CLUSTER_TAG
         self._master_reservation = None
         self._node_reservation = None
-        self._nodes = []
+        self._nodes = None
+        self._master = None
 
     @property
-    def security_group(self):
-        try:
-            sg = self.ec2.conn.get_all_security_groups(
-                groupnames=[self._security_group])[0]
-            return sg
-        except boto.exception.EC2ResponseError, e:
-            pass
-
-    @property
-    def master_node(self):
-        sgname=static.SECURITY_GROUP_TEMPLATE % self.CLUSTER_TAG
-        sg = self.ec2.conn.get_all_security_groups(groupnames=[sgname])[0]
+    def master_group(self):
+        sg = self.ec2.get_or_create_group(static.MASTER_GROUP,
+                                          static.MASTER_GROUP_DESCRIPTION)
         return sg
 
     @property
+    def cluster_group(self):
+        sg = self.ec2.get_or_create_group(self._security_group,
+                                          self.CLUSTER_DESCRIPTION)
+        return sg
+            
+    @property
+    def master_node(self):
+        mgroup_instances = self.master_group.instances()
+        cgroup_instances = self.cluster_group.instances()
+        for node in mgroup_instances:
+            if node in cgroup_instances:
+                return node
+
+    @property
     def nodes(self):
-        if self._nodes is None:
-            log.debug('self._nodes = %s' % self._nodes)
-            sg = self.security_group
-            if sg:
-                self._nodes=sg.instances()
+        self._nodes = self.cluster_group.instances()
         return self._nodes
+
+    @property
+    def running_nodes(self):
+        nodes = []
+        for node in self.nodes:
+            if node.state == 'running':
+                nodes.append(node)
+        return nodes
 
     def create_cluster(self):
         log.info("Launching a %d-node cluster..." % self.CLUSTER_SIZE)
@@ -103,11 +116,13 @@ class Cluster(AttributeDict):
         log.info("Launching master node...")
         log.info("MASTER AMI: %s" % self.MASTER_IMAGE_ID)
         conn = self.ec2.conn
+        master_sg = self.master_group.name
+        cluster_sg = self.cluster_group.name
         master_response = conn.run_instances(image_id=self.MASTER_IMAGE_ID,
             instance_type=self.INSTANCE_TYPE,
             min_count=1, max_count=1,
             key_name=self.KEYNAME,
-            security_groups=[static.MASTER_GROUP, self._security_group],
+            security_groups=[master_sg, cluster_sg],
             placement=self.AVAILABILITY_ZONE)
         print master_response
         if self.CLUSTER_SIZE > 1:
@@ -118,12 +133,12 @@ class Cluster(AttributeDict):
                 min_count=max((self.CLUSTER_SIZE-1)/2, 1),
                 max_count=max(self.CLUSTER_SIZE-1,1),
                 key_name=self.KEYNAME,
-                security_groups=[self._security_group],
+                security_groups=[cluster_sg],
                 placement=self.AVAILABILITY_ZONE)
             print instances_response
 
     def is_ssh_up(self):
-        for node in self.nodes:
+        for node in self.running_nodes:
             s = socket.socket()
             s.settimeout(0.25)
             try:
@@ -135,10 +150,10 @@ class Cluster(AttributeDict):
 
     def is_cluster_up(self):
         """
-        TODO: Create get_running_instances equivalent for use below
+        Check whether there are CLUSTER_SIZE nodes running
+        and that ssh (port 22) is up on all nodes
         """
-        #running_instances = get_running_instances()
-        if len(self.nodes) == self.CLUSTER_SIZE:
+        if len(self.running_nodes) == self.CLUSTER_SIZE:
             if self.is_ssh_up():
                 return True
             else:
@@ -196,52 +211,30 @@ class Cluster(AttributeDict):
         else: 
             log.info("No master node found...")
 
+
     def stop_cluster(self):
-        resp = raw_input(">>> This will shutdown all EC2 instances. Are you sure (yes/no)? ")
+        resp = raw_input(">>> Shutdown cluster ? (yes/no) ")
         if resp == 'yes':
-            running_instances = get_running_instances()
-            if len(running_instances) > 0:
-                if has_attach_volume():
-                    detach_vol = detach_volume()
-                    log.debug("detach_vol_response: \n%s" % detach_vol)
-                log.info("Listing instances ...")
-                list_instances()
-                for instance in running_instances:
-                    log.info("Shutting down instance: %s " % instance)
-                log.info("Waiting for instances to shutdown ....")
-                terminate_instances(running_instances)
-                time.sleep(5)
-                log.info("Listing new state of instances")
-                list_instances(refresh=True)
-            else:
-                log.info('No running instances found, exiting...')
+            #if self.has_attach_volume():
+                #detach_vol = detach_volume()
+                #log.debug("detach_vol_response: \n%s" % detach_vol)
+
+            for node in self.running_nodes:
+                log.info("Shutting down instance: %s " % node.id)
+                node.stop()
+
+            log.info("Removing %s security group" % self._security_group)
+            self.cluster_group.delete()
         else:
             log.info("Exiting without shutting down instances....")
 
-    def stop_slaves(self):
-        running_instances = get_running_instances()
-        if len(running_instances) > 0:
-            log.info("Listing instances...")
-            list_instances(refresh=True)
-            #exclude master node....
-            running_instances=running_instances[1:len(running_instances)]
-            for instance in running_instances:
-                log.info("Shutting down slave instance: %s " % instance)
-            log.info("Waiting for shutdown...")
-            terminate_instances(running_instances)
-            time.sleep(5)
-            log.info("Listing new state of slave instances")
-            list_instances(refresh=True)
-        else:
-            log.info("No running instances found, exiting...")
-
     @print_timing
-    def start_cluster(self, create=True):
+    def start(self, create=True):
         log.info("Starting cluster...")
         if create:
             self.create_cluster()
         s = Spinner()
-        log.log(logger.INFO_NO_NEWLINE, "Waiting for cluster to start...")
+        log.log(INFO_NO_NEWLINE, "Waiting for cluster to start...")
         s.start()
         while True:
             if self.is_cluster_up():
@@ -455,4 +448,5 @@ if __name__ == "__main__":
     from starcluster.config import StarClusterConfig
     cfg = StarClusterConfig(); cfg.load()
     sc =  cfg.get_cluster('smallcluster')
-    print sc.is_valid()
+    if sc.is_valid():
+        sc.start(create=False)

@@ -4,6 +4,7 @@ EC2/S3 Utility Classes
 """
 
 import os
+import time
 import sys
 import platform
 from pprint import pprint
@@ -71,6 +72,33 @@ class EasyEC2(EasyAWS):
         for image in self.registered_images:
             if image.id == image_id:
                 return image
+
+    def get_group_or_none(self, name):
+        try:
+            sg = self.conn.get_all_security_groups(group_names=[name])[0]
+            return sg
+        except boto.exception.EC2ResponseError, e:
+            pass
+
+    def get_or_create_group(self, name, description):
+        """ 
+        Try to return a security group by name.
+        If the group is not found, attempt to create it. 
+        Description only applies to creation.
+
+        Authorizes ssh port 22 by default if creating a new group
+        """
+        try:
+            sg = self.conn.get_all_security_groups(
+                groupnames=[name])[0]
+            return sg
+        except boto.exception.EC2ResponseError, e:
+            if not name:
+                return None
+            log.info("Creating security group %s..." % name)
+            sg = self.conn.create_security_group(name, description)
+            sg.authorize('tcp', 22, 22,'0.0.0.0/0')
+            return sg
             
     def list_registered_images(self):
         images = self.registered_images
