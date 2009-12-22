@@ -37,6 +37,10 @@ AWS_SETTINGS = {
     'AWS_USER_ID': (str, True, None),
 }
 
+KEY_SETTINGS = {
+    'KEY_LOCATION': (str, True, None)
+}
+
 CLUSTER_SETTINGS = {
     # setting, type, required?, default
     'CLUSTER_SIZE': (int, False, 2),

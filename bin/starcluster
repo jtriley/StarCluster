@@ -30,6 +30,7 @@ from starcluster import exception
 from starcluster import optcomplete
 CmdComplete = optcomplete.CmdComplete
 from starcluster.cluster import Cluster
+from starcluster.awsutils import get_easy_ec2, get_easy_s3
 
 from starcluster.logger import log
 
@@ -140,7 +141,7 @@ instances when starting cluster (uses existing instances instead)")
             try:
                 cluster = cfg.get_cluster(cluster_name)
                 cluster.update(self.specified_options_dict)
-                pprint(cluster)
+                #pprint(cluster)
             except exception.ClusterDoesNotExist,e:
                 log.warn(e.explain())
                 aws_environ = cfg.get_aws_credentials()
@@ -158,89 +159,134 @@ class CmdStop(CmdBase):
     """Shutdown a StarCluster cluster"""
     names = ['stop']
     def execute(self, args):
-        pprint(args)
-        pprint(self.gopts)
-        pprint(self.opts)
+        if not args:
+            self.parser.error("please specify a cluster")
+        config_file = self.goptions_dict.get("CONFIG")
+        cfg = config.StarClusterConfig(config_file); cfg.load()
+        ec2 = get_easy_ec2()
+        for cluster_name in args:
+            if not cluster_name.startswith(static.SECURITY_GROUP_PREFIX):
+                cluster_name = static.SECURITY_GROUP_TEMPLATE % cluster_name
+            try:
+                cluster = ec2.get_security_group(cluster_name)
+                for node in cluster.instances():
+                    log.info('Shutting down %s' % node.id)
+                    node.stop()
+                log.info('Removing cluster security group %s' % cluster.name)
+                cluster.delete()
+            except Exception,e:
+                #print e
+                log.error("cluster %s does not exist" % cluster_name)
 
 class CmdSshMaster(CmdBase):
     """SSH to StarCluster master node"""
     names = ['sshmaster']
     def execute(self, args):
-        pprint(args)
-        pprint(self.gopts)
-        pprint(self.opts)
+        log.error('unimplemented')
+        #pprint(args)
+        #pprint(self.gopts)
+        #pprint(self.opts)
 
 class CmdSshNode(CmdBase):
     """SSH to StarCluster node"""
     names = ['sshnode']
     def execute(self, args):
-        pprint(args)
-        pprint(self.gopts)
-        pprint(self.opts)
+        log.error('unimplemented')
+        #pprint(args)
+        #pprint(self.gopts)
+        #pprint(self.opts)
 
 class CmdListClusters(CmdBase):
     """List all StarCluster clusters"""
     names = ['listclusters']
     def execute(self, args):
-        pprint(args)
-        pprint(self.gopts)
-        pprint(self.opts)
+        ec2 = get_easy_ec2()
+        sgs = ec2.get_security_groups()
+        starcluster_groups = []
+        for sg in sgs:
+            is_starcluster = sg.name.startswith(static.SECURITY_GROUP_PREFIX)
+            if is_starcluster and sg.name != static.MASTER_GROUP:
+                starcluster_groups.append(sg)
+        if starcluster_groups:
+            for scg in starcluster_groups:
+                print scg.name
+                for node in scg.instances():
+                    print "  %s" % node.dns_name
+        else:
+            log.info("No clusters found...")
 
 class CmdCreateAmi(CmdBase):
     """Create a new image (AMI) from a currently running EC2 instance"""
     names = ['createami']
     def execute(self, args):
-        pprint(args)
-        pprint(self.gopts)
-        pprint(self.opts)
+        log.error('unimplemented')
+        #pprint(args)
+        #pprint(self.gopts)
+        #pprint(self.opts)
 
 class CmdCreateVolume(CmdBase):
     """Create a new EBS volume for use with StarCluster"""
     names = ['createvolume']
     def execute(self, args):
-        pprint(args)
-        pprint(self.gopts)
-        pprint(self.opts)
+        log.error('unimplemented')
+        #pprint(args)
+        #pprint(self.gopts)
+        #pprint(self.opts)
 
 class CmdListImages(CmdBase):
     """List all registered EC2 images (AMIs)"""
     names = ['listimages']
     def execute(self, args):
-        pprint(args)
-        pprint(self.gopts)
-        pprint(self.opts)
+        def get_key(obj):
+            return obj.location
+        ec2 = get_easy_ec2()
+        counter = 0
+        images = ec2.registered_images
+        images.sort(key=get_key)
+        for image in images:
+            name = image.location.split('/')[1].split('.manifest.xml')[0]
+            print "[%d] %s (%s)" % (counter, image.id, name)
+            counter += 1
 
 class CmdListBuckets(CmdBase):
     """List all S3 buckets"""
     names = ['listbuckets']
     def execute(self, args):
-        pprint(args)
-        pprint(self.gopts)
-        pprint(self.opts)
+        s3 = get_easy_s3()
+        buckets = s3.list_buckets()
 
 class CmdShowImage(CmdBase):
     """Show all files on S3 for an EC2 image (AMI)"""
     names = ['showimage']
     def execute(self, args):
-        pprint(args)
-        pprint(self.gopts)
-        pprint(self.opts)
+        if not args:
+            self.parser.error('please specify an AMI id')
+        for arg in args:
+            ec2 = get_easy_ec2()
+            files = ec2.get_image_files(arg)
+            for file in files:
+                print file.name
    
 class CmdShowBucket(CmdBase):
     """Show all files in a S3 bucket"""
-    names = ['showbuckets']
+    names = ['showbucket']
     def execute(self, args):
-        pprint(args)
-        pprint(self.gopts)
-        pprint(self.opts)
+        if not args:
+            self.parser.error('please specify a S3 bucket')
+        for arg in args:
+            s3 = get_easy_s3()
+            bucket = s3.get_bucket(arg)
+            for file in bucket.list():
+                print file.name
 
 class CmdRemoveImage(CmdBase):
     """Deregister an EC2 image (AMI) and remove it from S3"""
     names = ['removeimage']
     def execute(self, args):
-        pprint(args)
-        pprint(self.gopts)
-        pprint(self.opts)
+        log.error('unimplemented')
+        #pprint(args)
+        #pprint(self.gopts)
+        #pprint(self.opts)
 
 class CmdHelp:
     """Show StarCluster usage"""
@@ -333,6 +379,7 @@ def main():
         CmdSshNode(),
         CmdListBuckets(),
         CmdShowBucket(),
+        CmdListImages(),
         CmdRemoveImage(),
         CmdShowImage(),
         CmdHelp(),

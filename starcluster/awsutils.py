@@ -11,6 +11,7 @@ from pprint import pprint
 
 import boto
 import config 
+import static
 from logger import log
 
 class EasyAWS(object):
@@ -23,8 +24,8 @@ class EasyAWS(object):
         authenticated AWS connection object
         """
 
-        log.info('aws_access_key = %s' % AWS_ACCESS_KEY_ID)
-        log.info('aws_secret_access_key = %s' % AWS_SECRET_ACCESS_KEY)
+        #log.info('aws_access_key = %s' % AWS_ACCESS_KEY_ID)
+        #log.info('aws_secret_access_key = %s' % AWS_SECRET_ACCESS_KEY)
         self.aws_access_key = AWS_ACCESS_KEY_ID
         self.aws_secret_access_key = AWS_SECRET_ACCESS_KEY
         self.connection_authenticator = CONNECTION_AUTHENTICATOR
@@ -156,19 +157,15 @@ class EasyEC2(EasyAWS):
         for file in files:
             print file
 
-    def get_image_files(self, image_name, bucket=None):
-        image = self.get_image(image_name)
-        if image is not None:
-            # recreating image_name in case they passed ami id instead of human readable
-            image_name = image['NAME']
-            bucket_files = self.s3.get_bucket_files(image['BUCKET'])
-            image_files = []
-            for file in bucket_files:
-                if file.split('.part.')[0] == image_name:
-                    image_files.append(file)
-            return image_files
-        else:
-            return []
+    def get_image(self, image_id):
+        return self.conn.get_all_images(image_ids=[image_id])[0]
+
+    def get_image_files(self, image_id):
+        image = self.get_image(image_id)
+        bucketname = image.location.split('/')[0]
+        bucket = self.s3.get_bucket(bucketname)
+        files = bucket.list(prefix=image.location.split('/')[1].split('.manifest.xml')[0])
+        return files
 
     @property
     def instances():
@@ -192,60 +189,15 @@ class EasyEC2(EasyAWS):
         """
         pass
 
-    def get_external_hostnames(self):
-        parsed_response=self.instance_response 
-        external_hostnames = []
-        if len(parsed_response) == 0:
-            return external_hostnames        
-        for chunk in parsed_response:
-            #if chunk[0]=='INSTANCE' and chunk[-1]=='running':
-            if chunk[0]=='INSTANCE' and chunk[5]=='running':
-                external_hostnames.append(chunk[3])
-        return external_hostnames
-
-    def get_internal_hostnames(self):
-        parsed_response=self.instance_response 
-        internal_hostnames = []
-        if len(parsed_response) == 0:
-            return internal_hostnames
-        for chunk in parsed_response:
-            #if chunk[0]=='INSTANCE' and chunk[-1]=='running' :
-            if chunk[0]=='INSTANCE' and chunk[5]=='running' :
-                internal_hostnames.append(chunk[4])
-        return internal_hostnames
-
-    def get_instances(self):
-        parsed_response = self.instance_response
-        instances = []
-        if len(parsed_response) != 0:
-            for instance in parsed_response:
-                if instance[0] == 'INSTANCE':
-                    instances.append(instance)
-        return instances
-
-    def list_instances(self):
-        instances = self.get_instances()
-        if len(instances) != 0:
-            counter = 0
-            log.info("EC2 Instances:")
-            for instance in instances:
-                print "[%s] %s %s (%s)" % (counter, instance[3], instance[5],instance[2])
-                counter +=1
-        else:
-            log.info("No instances found...")
-        
     def terminate_instances(self, instances=None):
         if instances is not None:
             self.conn.terminate_instances(instances)
 
-    def attach_volume_to_node(self, volume, node, device):
-        return self.conn.attach_volume(volume, node, device).parse()
-
     def get_volumes(self):
-        return self.conn.describe_volumes().parse()
+        return self.conn.get_all_volumes()
 
-    def get_volume(self, volume):
-        return self.conn.describe_volumes([volume]).parse()
+    def get_volume(self, volume_id):
+        return self.conn.get_all_volumes(volume_ids=[volume])
 
     def list_volumes(self):
         vols = self.get_volumes()
@@ -253,14 +205,11 @@ class EasyEC2(EasyAWS):
             for vol in vols:
                 print vol
 
-    def detach_volume(self, volume):
-        log.info("Detaching EBS device...")
-        return self.conn.detach_volume(volume).parse()
+    def get_security_group(self, groupname):
+        return self.conn.get_all_security_groups(groupnames=[groupname])[0]
 
     def get_security_groups(self):
-        sgresponse = self.conn.describe_securitygroups().parse()
-        groups = [ group for group in sgresponse if group[0] == "GROUP" ]
-        return groups
+        return self.conn.get_all_security_groups()
 
 def get_easy_s3(**kwargs):
     """
@@ -285,18 +234,23 @@ class EasyS3(EasyAWS):
             log.error('bucket %s does not exist' % bucket_name)
         return exists
 
+    def get_bucket(self, bucketname):
+        return self.conn.get_bucket(bucketname)
+
     def get_buckets(self):
-        bucket_list = self.conn.list_all_my_buckets().entries
-        buckets = []
-        for bucket in bucket_list:
-            buckets.append(bucket.name)
+        buckets = self.conn.get_all_buckets()
         return buckets
 
     def list_buckets(self):
         for bucket in self.get_buckets():
-            print bucket
+            print bucket.name
 
-    def get_bucket_files(self, bucket_name):
+    def get_bucket_files(self, bucketname):
+        files = []
+        try:
+            bucket = self.get_bucket(bucketname)
+        except:
+            return 
         if self.bucket_exists(bucket_name):
             files = [ entry.key for entry in self.conn.list_bucket(bucket_name).entries] 
         else:

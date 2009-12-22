@@ -6,7 +6,7 @@ import ConfigParser
 import cluster
 from logger import log
 from utils import AttributeDict
-from static import AWS_SETTINGS, CLUSTER_SETTINGS, INSTANCE_TYPES
+from static import AWS_SETTINGS, KEY_SETTINGS, CLUSTER_SETTINGS, INSTANCE_TYPES
 from templates.config import config_template
 from exception import ClusterDoesNotExist
 
@@ -46,6 +46,7 @@ class StarClusterConfig(AttributeDict):
 
     aws_settings = AWS_SETTINGS
     cluster_settings = CLUSTER_SETTINGS
+    key_settings = KEY_SETTINGS
 
     def __init__(self, config_file=None, cache=False):
         if config_file:
@@ -69,11 +70,13 @@ class StarClusterConfig(AttributeDict):
         }
         self._config = None
         self._conn = None
-        self.clusters = None
-        self.cache = cache
-        self.aws_section = "aws info"
-        self.cluster_sections = []
         self['aws'] = {}
+        self.aws_section = "aws info"
+        self.clusters = None
+        self.cluster_sections = []
+        self.keys = None
+        self.key_sections = []
+        self.cache = cache
 
     def _get_int(self, config, section, option):
         try:
@@ -141,7 +144,7 @@ class StarClusterConfig(AttributeDict):
 
     def load_extends_variables(self, section_key):
         cluster_section = self[section_key]
-        cluster_extends = cluster_section['EXTENDS'] = cluster_section.get('EXTENDS', None)
+        cluster_extends = cluster_section['EXTENDS'] = cluster_section.get('EXTENDS')
         if cluster_extends is None:
             return
         log.debug('%s extends %s' % (section_key, cluster_extends))
@@ -162,8 +165,23 @@ class StarClusterConfig(AttributeDict):
             transform.update(extension)
         self[section_key] = transform
 
+    def load_keys(self, section_key):
+        cluster_section = self[section_key]
+        keyname = cluster_section.get('KEYNAME')
+        cluster_key = self.get(keyname)
+        if cluster_key is None:
+            return
+        cluster_section['KEYNAME'] = keyname
+        cluster_section['KEY_LOCATION'] = cluster_key['KEY_LOCATION']
+
     def load(self):
         self.load_settings(self.aws_section, self.aws_settings, 'aws')
+        self.key_sections = [section for section in self.config.sections() if section.startswith('key')]
+        self.keys = [ section.split()[1] for section in self.key_sections ]
+        for section in self.key_sections:
+            section_label = section.split()[1]
+            self.load_settings(section, self.key_settings, section_label)
+
         self.cluster_sections = [section for section in self.config.sections() if section.startswith('cluster')]
         self.clusters = [ section.split()[1] for section in self.cluster_sections ]
         for section in self.cluster_sections:
@@ -173,6 +191,7 @@ class StarClusterConfig(AttributeDict):
             section_label = section.split()[1]
             self.load_extends_variables(section_label)
             self.load_defaults(section_label, self.cluster_settings)
+            self.load_keys(section_label)
 
     def get_aws_credentials(self):
         """Returns AWS credentials defined in the configuration
