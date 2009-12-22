@@ -11,6 +11,7 @@ import static
 from utils import AttributeDict, print_timing
 from spinner import Spinner
 from logger import log,INFO_NO_NEWLINE
+from node import Node
 
 import boto
 
@@ -71,11 +72,14 @@ class Cluster(AttributeDict):
         self.__instance_types = static.INSTANCE_TYPES
         self.__cluster_settings = static.CLUSTER_SETTINGS
         self.__available_shells = static.AVAILABLE_SHELLS
-        self._security_group = static.SECURITY_GROUP_TEMPLATE % self.CLUSTER_TAG
         self._master_reservation = None
         self._node_reservation = None
         self._nodes = None
         self._master = None
+
+    @property
+    def _security_group(self):
+        return static.SECURITY_GROUP_TEMPLATE % self.CLUSTER_TAG
 
     @property
     def master_group(self):
@@ -91,15 +95,32 @@ class Cluster(AttributeDict):
             
     @property
     def master_node(self):
-        mgroup_instances = self.master_group.instances()
-        cgroup_instances = [ node.id for node in self.cluster_group.instances() ]
-        for node in mgroup_instances:
-            if node.id in cgroup_instances:
-                return node
+        if not self._master:
+            # TODO: do this with reservation group info instead
+            mgroup_instances = self.master_group.instances()
+            cgroup_instances = [ node.id for node in self.cluster_group.instances() ]
+            for node in mgroup_instances:
+                if node.id in cgroup_instances:
+                    self._master = Node(node, self.KEY_LOCATION, 'master')
+        return self._master
 
     @property
     def nodes(self):
-        self._nodes = self.cluster_group.instances()
+        if not self._nodes:
+            nodes = self.cluster_group.instances()
+            self._nodes = []
+            master = self.master_node
+            nodeid = 1
+            for node in nodes:
+                if node.id == master.id:
+                    self._nodes.append(master)
+                    continue
+                self._nodes.append(Node(node, self.KEY_LOCATION, 
+                                        'node%.3d' % nodeid))
+                nodeid += 1
+        else:
+            for node in self._nodes:
+                node.update()
         return self._nodes
 
     @property
@@ -240,11 +261,10 @@ class Cluster(AttributeDict):
             else:  
                 time.sleep(15)
 
-        #if self.has_attach_volume():
-            #self.attach_volume_to_master()
+        log.info("The master node is %s" % self.master_node.dns_name)
 
-        master_node = self.master_node
-        log.info("The master node is %s" % master_node)
+        if self.VOLUME:
+            self.attach_volume_to_master()
 
         log.info("Setting up the cluster...")
         #cluster_setup.main(self.get_nodes())
@@ -259,7 +279,7 @@ or as %(user)s directly:
 
 $ ssh -i %(key)s %(user)s@%(master)s
 
-        """ % {'master': master_node, 'user': self.CLUSTER_USER, 'key': self.KEY_LOCATION})
+        """ % {'master': self.master_node.dns_name, 'user': self.CLUSTER_USER, 'key': self.KEY_LOCATION})
 
     def is_valid(self): 
         CLUSTER_SIZE = self.CLUSTER_SIZE
@@ -396,7 +416,7 @@ $ ssh -i %(key)s %(user)s@%(master)s
                 log.error('Must specify VOLUME_PARTITION when specifying VOLUME setting')
                 return False
             if AVAILABILITY_ZONE is not None:
-                if vol.availabilityZone != AVAILABILITY_ZONE:
+                if vol.zone != AVAILABILITY_ZONE:
                     log.error('The VOLUME you specified is only available in region %(vol_zone)s, \
     however, you specified AVAILABILITY_ZONE = %(availability_zone)s\nYou need to \
     either change AVAILABILITY_ZONE or create a new volume in %(availability_zone)s' \

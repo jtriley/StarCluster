@@ -78,7 +78,7 @@ class CmdStart(CmdBase):
 
     def addopts(self, parser):
         opt = parser.add_option("-x","--no-create", dest="NO_CREATE",
-        action="store_true", default=False, help="Do not launch new ec2 \
+            action="store_true", default=False, help="Do not launch new ec2 \
 instances when starting cluster (uses existing instances instead)")
         parser.add_option("-l","--login-master", dest="LOGIN_MASTER",
             action="store_true", default=False, 
@@ -149,10 +149,10 @@ instances when starting cluster (uses existing instances instead)")
                 kwargs.update(aws_environ)
                 kwargs.update(cluster_options)
                 cluster = Cluster(**kwargs)
-            pprint(cluster_name)
-            pprint(cluster)
-            pprint(self.goptions_dict)
-            pprint(self.options_dict)
+            if cluster.is_valid():
+                cluster.start(create=not self.opts.NO_CREATE)
+            else:
+                print 'not valid cluster'
 
 class CmdStop(CmdBase):
     """Shutdown a StarCluster cluster"""
