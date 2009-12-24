@@ -6,7 +6,7 @@ import platform
 
 import ssh
 import awsutils
-import cluster_setup
+import clustersetup
 import static
 from utils import AttributeDict, print_timing
 from spinner import Spinner
@@ -113,7 +113,7 @@ class Cluster(AttributeDict):
             nodeid = 1
             for node in nodes:
                 if node.id == master.id:
-                    self._nodes.append(master)
+                    self._nodes.insert(0,master)
                     continue
                 self._nodes.append(Node(node, self.KEY_LOCATION, 
                                         'node%.3d' % nodeid))
@@ -267,7 +267,7 @@ class Cluster(AttributeDict):
             self.attach_volume_to_master()
 
         log.info("Setting up the cluster...")
-        #cluster_setup.main(self.get_nodes())
+        #clustersetup.main(self.get_nodes())
             
         log.info("""
 

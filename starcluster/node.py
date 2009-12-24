@@ -2,6 +2,16 @@ import ssh
 from logger import log
 
 class Node(object):
+    """
+    This class represents a single compute node in a StarCluster. 
+    
+    It contains all useful metadata for the node such as the internal/external 
+    hostnames, ips, etc as well as a paramiko ssh object for executing commands,
+    creating/modifying files on the node.
+
+    Takes boto.ec2.instance.Instance, key_location, and alias as input and
+    optionally a user to ssh as (defaults to root)
+    """
     def __init__(self, instance, key_location, alias, user='root'):
         self.instance = instance
         self.key_location = key_location
@@ -24,6 +34,10 @@ class Node(object):
     @property 
     def private_dns_name(self):
         return self.instance.private_dns_name
+
+    @property 
+    def private_dns_name_short(self):
+        return self.instance.private_dns_name.split('.')[0]
 
     @property
     def id(self):
@@ -53,6 +67,22 @@ class Node(object):
                                        username=self.user,
                                        private_key=self.key_location)
         return self._ssh
+
+    @property
+    def network_names(self):
+        """ Returns all network names for this node in a dictionary"""
+        names = {}
+        names['INTERNAL_IP'] = self.private_ip_address
+        names['INTERNAL_NAME'] = self.private_dns_name
+        names['INTERNAL_NAME_SHORT'] = self.private_dns_name_short
+        names['INTERNAL_ALIAS'] = self.alias
+        return names
+
+    def get_hosts_entry(self):
+        """ Returns /etc/hosts entry for this node """
+        etc_hosts_line = "%(INTERNAL_IP)s %(INTERNAL_NAME)s %(INTERNAL_NAME_SHORT)s %(INTERNAL_ALIAS)s" 
+        etc_hosts_line = etc_hosts_line % self.network_names
+        return etc_hosts_line
 
     def __del__(self):
         if self._ssh:
