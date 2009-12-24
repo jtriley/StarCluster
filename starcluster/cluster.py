@@ -39,6 +39,7 @@ class Cluster(AttributeDict):
             VOLUME=None,
             VOLUME_DEVICE=None,
             VOLUME_PARTITION=None,
+            setup_class=clustersetup.ClusterSetup,
             **kwargs):
         now = time.strftime("%Y%m%d%H%M")
         if CLUSTER_TAG is None:
@@ -76,6 +77,7 @@ class Cluster(AttributeDict):
         self._node_reservation = None
         self._nodes = None
         self._master = None
+        self._setup_class = setup_class
 
     @property
     def _security_group(self):
@@ -193,6 +195,7 @@ class Cluster(AttributeDict):
         vol = self.volume
         if vol.status != "available":
             log.error('Volume not available...please check and try again')
+            return
         resp = vol.attach(self.master_node.id, self.VOLUME_DEVICE)
         log.debug("resp = %s" % resp)
         while True:
@@ -267,7 +270,8 @@ class Cluster(AttributeDict):
             self.attach_volume_to_master()
 
         log.info("Setting up the cluster...")
-        #clustersetup.main(self.get_nodes())
+        setup = self._setup_class(self)
+        setup.run()
             
         log.info("""
 

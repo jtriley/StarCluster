@@ -47,7 +47,7 @@ class ClusterSetup(object):
             nconn.execute('mkdir /scratch')
             nconn.execute('ln -s /mnt/%s /scratch' % self._user)
 
-    def _setup_etc_hosts(nodes):
+    def _setup_etc_hosts(self):
         """ Configure /etc/hosts on all StarCluster nodes"""
         log.info("Configuring /etc/hosts on each node")
         for node in self._nodes:
