@@ -92,7 +92,8 @@ class Cluster(AttributeDict):
     @property
     def cluster_group(self):
         sg = self.ec2.get_or_create_group(self._security_group,
-                                          self.CLUSTER_DESCRIPTION)
+                                          self.CLUSTER_DESCRIPTION,
+                                          auth_group_traffic=True)
         return sg
             
     @property
