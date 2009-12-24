@@ -87,7 +87,7 @@ class EasyEC2(EasyAWS):
         If the group is not found, attempt to create it. 
         Description only applies to creation.
 
-        Authorizes ssh port 22 by default if creating a new group
+        Authorizes all traffic between members of the group
         """
         try:
             sg = self.conn.get_all_security_groups(
@@ -98,7 +98,7 @@ class EasyEC2(EasyAWS):
                 return None
             log.info("Creating security group %s..." % name)
             sg = self.conn.create_security_group(name, description)
-            sg.authorize('tcp', 22, 22,'0.0.0.0/0')
+            sg.authorize(src_group=sg)
             return sg
             
     def list_registered_images(self):
