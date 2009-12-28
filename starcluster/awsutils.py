@@ -69,7 +69,7 @@ class EasyEC2(EasyAWS):
         except boto.exception.EC2ResponseError, e:
             pass
 
-    def get_or_create_group(self, name, description, auth_group_traffic=False):
+    def get_or_create_group(self, name, description, auth_ssh=True, auth_group_traffic=False):
         """ 
         Try to return a security group by name.
         If the group is not found, attempt to create it. 
@@ -86,6 +86,8 @@ class EasyEC2(EasyAWS):
                 return None
             log.info("Creating security group %s..." % name)
             sg = self.conn.create_security_group(name, description)
+            if auth_ssh:
+                sg.authorize('tcp', 22, 22, '0.0.0.0/0')
             if auth_group_traffic:
                 sg.authorize(src_group=sg)
             return sg
@@ -109,7 +111,8 @@ class EasyEC2(EasyAWS):
         if not instances:
             log.info("No instances found")
         for instance in instances:
-            print instance.dns_name
+            print "%s %s" % (instance.dns_name, instance.state)
+            #print instance.dns_name
             
     def list_registered_images(self):
         images = self.registered_images

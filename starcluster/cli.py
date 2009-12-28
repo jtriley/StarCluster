@@ -152,11 +152,9 @@ instances when starting cluster (uses existing instances instead)")
                 kwargs.update(aws_environ)
                 kwargs.update(cluster_options)
                 scluster = cluster.Cluster(**kwargs)
-            print scluster
-            sys.exit(0)
             if scluster.is_valid():
-                #scluster.start(create=not self.opts.NO_CREATE)
-                print 'valid cluster'
+                scluster.start(create=not self.opts.NO_CREATE)
+                #print 'valid cluster'
             else:
                 print 'not valid cluster'
 
@@ -174,19 +172,16 @@ class CmdSshMaster(CmdBase):
     """SSH to StarCluster master node"""
     names = ['sshmaster']
     def execute(self, args):
-        log.error('unimplemented')
-        #pprint(args)
-        #pprint(self.gopts)
-        #pprint(self.opts)
+        if not args:
+            self.parser.error("please specify a cluster")
+        for arg in args:
+            cluster.ssh_to_master(args[0], self.cfg)
 
 class CmdSshNode(CmdBase):
     """SSH to StarCluster node"""
     names = ['sshnode']
     def execute(self, args):
         log.error('unimplemented')
-        #pprint(args)
-        #pprint(self.gopts)
-        #pprint(self.opts)
 
 class CmdListClusters(CmdBase):
     """List all StarCluster clusters"""

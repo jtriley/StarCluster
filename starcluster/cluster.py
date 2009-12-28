@@ -16,14 +16,38 @@ from starcluster.node import Node
 
 import boto
 
-def get_cluster(**kwargs):
+def get_cluster(cluster_name, cfg):
     """Factory for Cluster class"""
+    try:
+        ec2 = cfg.get_easy_ec2()
+        cluster = ec2.get_security_group(_get_cluster_name(cluster_name))
+    except Exception,e:
+        log.error("cluster %s does not exist" % cluster_name)
+        return
+    kwargs = {}
+    kwargs.update(cfg.aws)
+    kwargs.update({'CLUSTER_TAG': cluster_name})
     return Cluster(**kwargs)
+
+def ssh_to_master(cluster_name, cfg):
+    cluster = get_cluster(cluster_name, cfg)
+    if cluster:
+        master = cluster.master_node
+        if cfg.keys.has_key(master.key_name):
+            key = cfg.keys.get(master.key_name)
+            os.system('ssh -i %s %s@%s' % (key.KEY_LOCATION, master.user,
+                                           master.dns_name))
+        else:
+            print 'key %s needed to ssh not found' % master.key_name
+
+def _get_cluster_name(cluster_name):
+    if not cluster_name.startswith(static.SECURITY_GROUP_PREFIX):
+        cluster_name = static.SECURITY_GROUP_TEMPLATE % cluster_name
+    return cluster_name
 
 def stop_cluster(cluster_name, cfg):
     ec2 = cfg.get_easy_ec2()
-    if not cluster_name.startswith(static.SECURITY_GROUP_PREFIX):
-        cluster_name = static.SECURITY_GROUP_TEMPLATE % cluster_name
+    cluster_name = _get_cluster_name(cluster_name)
     try:
         cluster = ec2.get_security_group(cluster_name)
         for node in cluster.instances():
@@ -75,17 +99,16 @@ class Cluster(object):
             **kwargs):
 
         now = time.strftime("%Y%m%d%H%M")
-        if CLUSTER_TAG is None:
-            CLUSTER_TAG = now
-        if CLUSTER_DESCRIPTION is None:
-            CLUSTER_DESCRIPTION = "Cluster created at %s" % now 
-
         self.AWS_ACCESS_KEY_ID = AWS_ACCESS_KEY_ID
         self.AWS_SECRET_ACCESS_KEY = AWS_SECRET_ACCESS_KEY
         self.AWS_USER_ID = AWS_USER_ID
         self.CLUSTER_PROFILE = CLUSTER_PROFILE
         self.CLUSTER_TAG = CLUSTER_TAG
         self.CLUSTER_DESCRIPTION = CLUSTER_DESCRIPTION
+        if self.CLUSTER_TAG is None:
+            self.CLUSTER_TAG = now
+        if CLUSTER_DESCRIPTION is None:
+            self.CLUSTER_DESCRIPTION = "Cluster created at %s" % now 
         self.CLUSTER_SIZE = CLUSTER_SIZE
         self.CLUSTER_USER = CLUSTER_USER
         self.CLUSTER_SHELL = CLUSTER_SHELL

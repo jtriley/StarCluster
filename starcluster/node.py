@@ -54,6 +54,10 @@ class Node(object):
     def state(self):
         return self.instance.state
 
+    @property
+    def key_name(self):
+        return self.instance.key_name
+
     def stop(self):
         return self.instance.stop
 

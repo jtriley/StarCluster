@@ -3,7 +3,7 @@ import os
 import sys
 import ConfigParser
 
-from starcluster import cluster
+from starcluster.cluster import Cluster
 from starcluster import static 
 from starcluster import awsutils 
 from starcluster.utils import AttributeDict
@@ -221,7 +221,7 @@ class StarClusterConfig(object):
             kwargs = {}
             kwargs.update(**self.aws)
             kwargs.update(self.clusters[cluster_name])
-            clust = cluster.get_cluster(**kwargs)
+            clust = Cluster(**kwargs)
             return clust
         except KeyError,e:
             raise exception.ClusterDoesNotExist(
