@@ -3,7 +3,7 @@ import os
 import time
 import socket
 import platform
-from pprint import pformat
+import pprint 
 
 from starcluster import ssh
 from starcluster import awsutils
@@ -39,6 +39,50 @@ def ssh_to_master(cluster_name, cfg):
                                            master.dns_name))
         else:
             print 'key %s needed to ssh not found' % master.key_name
+
+
+def ssh_to_node(node_id, cfg, user='root'):
+    ec2 = cfg.get_easy_ec2()
+    instances = ec2.get_all_instances()
+    node = None
+    for instance in instances:
+        if instance.dns_name == node_id:
+            node = instance
+            break
+        elif instance.id == node_id:
+            node = instance
+            break
+    if node:
+        key = cfg.get_key(node.key_name)
+        if key:
+            os.system('ssh -i %s %s@%s' % (key.KEY_LOCATION, user, 
+                                           node.dns_name))
+        else:
+            print 'key %s needed to ssh not found' % node.key_name
+    else:
+        log.error("node %s does not exist" % node_id)
+
+def ssh_to_cluster_node(cluster_name, node_id, cfg):
+    cluster = get_cluster(cluster_name, cfg)
+    node = None
+    if cluster:
+        try:
+            node = cluster.nodes[int(node_id)]
+        except:
+            if node_id.startswith('i-') and len(node_id) == 10:
+                node = cluster.get_node_by_id(node_id)
+            else:
+                node = cluster.get_node_by_dns_name(node_id)
+        if node:
+            key = cfg.get_key(node.key_name)
+            if key:
+                os.system('ssh -i %s %s@%s' % (key.KEY_LOCATION, node.user,
+                                               node.dns_name))
+            else:
+                print 'key %s needed to ssh not found' % node.key_name
+        else:
+            log.error("node %s does not exist" % node_id)
+
 
 def _get_cluster_name(cluster_name):
     if not cluster_name.startswith(static.SECURITY_GROUP_PREFIX):
@@ -144,7 +188,27 @@ class Cluster(object):
         return self.__dict__.get(name)
 
     def __str__(self):
-        return pformat(self.__dict__)
+        cfg = {
+            'AWS_ACCESS_KEY_ID': self.AWS_ACCESS_KEY_ID,
+            'AWS_SECRET_ACCESS_KEY': self.AWS_SECRET_ACCESS_KEY,
+            'AWS_USER_ID': self.AWS_USER_ID,
+            'CLUSTER_PROFILE':  self.CLUSTER_PROFILE,
+            'CLUSTER_TAG': self.CLUSTER_TAG,
+            'CLUSTER_DESCRIPTION': self.CLUSTER_DESCRIPTION,
+            'CLUSTER_SIZE': self.CLUSTER_SIZE,
+            'CLUSTER_USER': self.CLUSTER_USER,
+            'CLUSTER_SHELL': self.CLUSTER_SHELL,
+            'MASTER_IMAGE_ID': self.MASTER_IMAGE_ID,
+            'NODE_IMAGE_ID': self.NODE_IMAGE_ID,
+            'INSTANCE_TYPE': self.INSTANCE_TYPE,
+            'AVAILABILITY_ZONE': self.AVAILABILITY_ZONE,
+            'KEYNAME': self.KEYNAME,
+            'KEY_LOCATION': self.KEY_LOCATION,
+            'VOLUME': self.VOLUME,
+            'VOLUME_DEVICE': self.VOLUME_DEVICE,
+            'VOLUME_PARTITION': self.VOLUME_PARTITION,
+        }
+        return pprint.pformat(cfg)
 
     @property
     def _security_group(self):
@@ -192,6 +256,18 @@ class Cluster(object):
             for node in self._nodes:
                 node.update()
         return self._nodes
+
+    def get_node_by_dns_name(self, dns_name):
+        nodes = self.nodes
+        for node in nodes:
+            if node.dns_name == dns_name:
+                return node
+
+    def get_node_by_id(self, instance_id):
+        nodes = self.nodes
+        for node in nodes:
+            if node.id == instance_id:
+                return node
 
     @property
     def running_nodes(self):

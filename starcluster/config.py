@@ -90,11 +90,8 @@ class StarClusterConfig(object):
         }
         self._config = None
         self.aws = AttributeDict()
-        self.aws_section = "aws info"
         self.clusters = AttributeDict()
-        self.cluster_sections = []
         self.keys = AttributeDict()
-        self.key_sections = []
         self.cache = cache
 
     def _get_int(self, config, section, option):
@@ -232,6 +229,12 @@ class StarClusterConfig(object):
         for cluster in self.clusters:
             clusters.append(self.get_cluster(cluster))
         return clusters
+
+    def get_key(self, keyname):
+        try:
+            return self.keys[keyname]
+        except:
+            pass
 
     def get_easy_s3(self):
         """

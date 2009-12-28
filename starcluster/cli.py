@@ -175,13 +175,24 @@ class CmdSshMaster(CmdBase):
         if not args:
             self.parser.error("please specify a cluster")
         for arg in args:
-            cluster.ssh_to_master(args[0], self.cfg)
+            cluster.ssh_to_master(arg, self.cfg)
 
 class CmdSshNode(CmdBase):
     """SSH to StarCluster node"""
     names = ['sshnode']
     def execute(self, args):
-        log.error('unimplemented')
+        if not args:
+            self.parser.error("please specify a cluster and node to connect to")
+        elif len(args) == 1:
+            scluster = args[0]
+            if scluster.startswith("ec2-"):
+                cluster.ssh_to_node(scluster, self.cfg)
+                return
+            self.parser.error("please specify a node to connect to")
+        scluster = args[0]
+        nodes = args[1:]
+        for node in nodes:
+            cluster.ssh_to_cluster_node(scluster, node, self.cfg)
 
 class CmdListClusters(CmdBase):
     """List all StarCluster clusters"""
