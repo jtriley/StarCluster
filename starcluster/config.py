@@ -43,7 +43,7 @@ def get_config(config_file=None, cache=False):
     """Factory for StarClusterConfig object"""
     return StarClusterConfig(config_file, cache)
 
-class StarClusterConfig(AttributeDict):
+class StarClusterConfig(object):
     """
     Loads StarCluster configuration settings defined in config_file
     which defaults to ~/.starclustercfg
@@ -64,7 +64,6 @@ class StarClusterConfig(AttributeDict):
 
     # until i can find a way to query AWS for instance types...
     instance_types = static.INSTANCE_TYPES
-
     aws_settings = static.AWS_SETTINGS
     cluster_settings = static.CLUSTER_SETTINGS
     key_settings = static.KEY_SETTINGS
@@ -90,12 +89,11 @@ class StarClusterConfig(AttributeDict):
             str: self._get_string,
         }
         self._config = None
-        self._conn = None
-        self['aws'] = {}
+        self.aws = AttributeDict()
         self.aws_section = "aws info"
-        self.clusters = None
+        self.clusters = AttributeDict()
         self.cluster_sections = []
-        self.keys = None
+        self.keys = AttributeDict()
         self.key_sections = []
         self.cache = cache
 
@@ -137,25 +135,21 @@ class StarClusterConfig(AttributeDict):
                 log.warn('No sections defined in settings file %s' % CFG_FILE)
         return self._config
 
-    def load_settings(self, section_name, settings, section_key=None):
-        if section_key is None:
-            section_key = section_name
-        self[section_key] = AttributeDict()
-        section_conf = self[section_key]
+    def load_settings(self, section_prefix, section_name, settings, store):
+        section_key = ' '.join([section_prefix, section_name])
+        section_conf = store
         for setting in settings:
             requirements = settings[setting]
             name = setting
             func = self.type_validators.get(requirements[0])
             required = requirements[1];
             default = requirements[2]
-            value = func(self.config, section_name, name)
+            value = func(self.config, section_key, name)
             if value:
                 section_conf[name] = value
 
-    def load_defaults(self, section_key, settings):
-        section_conf = self.get(section_key, None)
-        if not section_conf:
-            section_conf = self[section_key] = AttributeDict()
+    def load_defaults(self, settings, store):
+        section_conf = store
         for setting in settings:
             name = setting; default = settings[setting][2]
             if section_conf.get(name, None) is None:
@@ -163,56 +157,53 @@ class StarClusterConfig(AttributeDict):
                     log.warn('No %s setting specified. Defaulting to %s' % (name, default))
                 section_conf[name] = default
 
-    def load_extends_variables(self, section_key):
-        cluster_section = self[section_key]
-        cluster_extends = cluster_section['EXTENDS'] = cluster_section.get('EXTENDS')
-        if cluster_extends is None:
+    def load_extends_variables(self, section_name, store):
+        section = store[section_name]
+        extends = section['EXTENDS'] = section.get('EXTENDS')
+        if extends is None:
             return
-        log.debug('%s extends %s' % (section_key, cluster_extends))
-        cluster_extensions = [cluster_section]
+        log.debug('%s extends %s' % (section, extends))
+        extensions = [section]
         while True:
-            extends = cluster_section.get('EXTENDS',None)
+            extends = section.get('EXTENDS',None)
             if extends:
                 try:
-                    cluster_section = self[extends]
-                    cluster_extensions.insert(0, cluster_section)
+                    section = store[extends]
+                    extensions.insert(0, section)
                 except KeyError,e:
                     log.warn("can't extend non-existent section %s" % extends)
                     break
             else:
                 break
         transform = AttributeDict()
-        for extension in cluster_extensions:
+        for extension in extensions:
             transform.update(extension)
-        self[section_key] = transform
+        store[section_name] = transform
 
-    def load_keys(self, section_key):
-        cluster_section = self[section_key]
+    def load_keypairs(self, section_name, store):
+        cluster_section = store
         keyname = cluster_section.get('KEYNAME')
-        cluster_key = self.get(keyname)
-        if cluster_key is None:
+        keypair = self.keys.get(keyname)
+        if keypair is None:
             return
         cluster_section['KEYNAME'] = keyname
-        cluster_section['KEY_LOCATION'] = cluster_key['KEY_LOCATION']
+        cluster_section['KEY_LOCATION'] = keypair['KEY_LOCATION']
 
     def load(self):
-        self.load_settings(self.aws_section, self.aws_settings, 'aws')
-        self.key_sections = [section for section in self.config.sections() if section.startswith('key')]
-        self.keys = [ section.split()[1] for section in self.key_sections ]
-        for section in self.key_sections:
-            section_label = section.split()[1]
-            self.load_settings(section, self.key_settings, section_label)
-
-        self.cluster_sections = [section for section in self.config.sections() if section.startswith('cluster')]
-        self.clusters = [ section.split()[1] for section in self.cluster_sections ]
-        for section in self.cluster_sections:
-            section_label = section.split()[1]
-            self.load_settings(section, self.cluster_settings, section_label)
-        for section in self.cluster_sections:
-            section_label = section.split()[1]
-            self.load_extends_variables(section_label)
-            self.load_defaults(section_label, self.cluster_settings)
-            self.load_keys(section_label)
+        self.load_settings('aws', 'info', self.aws_settings, self.aws)
+        keys = [section.split()[1] for section in self.config.sections() if section.startswith('key')]
+        for key in keys:
+            self.keys[key] = AttributeDict()
+            self.load_settings('key', key, self.key_settings, self.keys[key]) 
+        clusters = [section.split()[1] for section in self.config.sections() if section.startswith('cluster')]
+        for cluster in clusters:
+            self.clusters[cluster] = AttributeDict()
+            self.load_settings('cluster', cluster, self.cluster_settings,
+                               self.clusters[cluster])
+        for cluster in clusters:
+            self.load_extends_variables(cluster, self.clusters)
+            self.load_defaults(self.cluster_settings, self.clusters[cluster])
+            self.load_keypairs(cluster, self.clusters[cluster])
 
     def get_aws_credentials(self):
         """Returns AWS credentials defined in the configuration
@@ -229,7 +220,7 @@ class StarClusterConfig(AttributeDict):
         try:
             kwargs = {}
             kwargs.update(**self.aws)
-            kwargs.update(self[cluster_name])
+            kwargs.update(self.clusters[cluster_name])
             clust = cluster.get_cluster(**kwargs)
             return clust
         except KeyError,e:
@@ -263,7 +254,8 @@ class StarClusterConfig(AttributeDict):
         return ec2
 
 if __name__ == "__main__":
+    from pprint import pprint
     cfg = StarClusterConfig(); cfg.load()
-    print cfg.aws
-    print cfg.clusters
-    print cfg.keys
+    pprint(cfg.aws)
+    pprint(cfg.clusters)
+    pprint(cfg.keys)

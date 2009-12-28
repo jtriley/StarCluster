@@ -113,7 +113,9 @@ class Cluster(object):
         self._setup_class = setup_class
 
     def update(self, kwargs):
-        self.__dict__.update(kwargs)
+        for key in kwargs.keys():
+            if hasattr(self, key):
+                self.__dict__[key] = kwargs[key]
 
     def get(self, name):
         return self.__dict__.get(name)
