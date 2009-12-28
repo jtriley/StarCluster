@@ -1,5 +1,5 @@
-import ssh
-from logger import log
+from starcluster import ssh
+from starcluster.logger import log
 
 class Node(object):
     """

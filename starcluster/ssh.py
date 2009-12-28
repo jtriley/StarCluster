@@ -10,7 +10,6 @@ import os
 import string
 import tempfile
 import paramiko
-import logging
 
 import socket
 import sys
@@ -23,7 +22,7 @@ try:
 except ImportError:
     HAS_TERMIOS = False
 
-log = logging.getLogger('starcluster')
+from starcluster.logger import log
 
 class Connection(object):
     """Connects and logs into the specified hostname. 

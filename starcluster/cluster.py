@@ -3,15 +3,16 @@ import os
 import time
 import socket
 import platform
+from pprint import pformat
 
-import ssh
-import awsutils
-import clustersetup
-import static
-from utils import AttributeDict, print_timing
-from spinner import Spinner
-from logger import log,INFO_NO_NEWLINE
-from node import Node
+from starcluster import ssh
+from starcluster import awsutils
+from starcluster import clustersetup
+from starcluster import static
+from starcluster.utils import print_timing
+from starcluster.spinner import Spinner
+from starcluster.logger import log, INFO_NO_NEWLINE
+from starcluster.node import Node
 
 import boto
 
@@ -19,7 +20,38 @@ def get_cluster(**kwargs):
     """Factory for Cluster class"""
     return Cluster(**kwargs)
 
-class Cluster(AttributeDict):
+def stop_cluster(cluster_name, cfg):
+    ec2 = cfg.get_easy_ec2()
+    if not cluster_name.startswith(static.SECURITY_GROUP_PREFIX):
+        cluster_name = static.SECURITY_GROUP_TEMPLATE % cluster_name
+    try:
+        cluster = ec2.get_security_group(cluster_name)
+        for node in cluster.instances():
+            log.info('Shutting down %s' % node.id)
+            node.stop()
+        log.info('Removing cluster security group %s' % cluster.name)
+        cluster.delete()
+    except Exception,e:
+        #print e
+        log.error("cluster %s does not exist" % cluster_name)
+
+def list_clusters(cfg):
+    ec2 = cfg.get_easy_ec2()
+    sgs = ec2.get_security_groups()
+    starcluster_groups = []
+    for sg in sgs:
+        is_starcluster = sg.name.startswith(static.SECURITY_GROUP_PREFIX)
+        if is_starcluster and sg.name != static.MASTER_GROUP:
+            starcluster_groups.append(sg)
+    if starcluster_groups:
+        for scg in starcluster_groups:
+            print scg.name
+            for node in scg.instances():
+                print "  %s" % node.dns_name
+    else:
+        log.info("No clusters found...")
+
+class Cluster(object):
     def __init__(self,
             AWS_ACCESS_KEY_ID=None,
             AWS_SECRET_ACCESS_KEY=None,
@@ -41,32 +73,33 @@ class Cluster(AttributeDict):
             VOLUME_PARTITION=None,
             setup_class=clustersetup.ClusterSetup,
             **kwargs):
+
         now = time.strftime("%Y%m%d%H%M")
         if CLUSTER_TAG is None:
             CLUSTER_TAG = now
         if CLUSTER_DESCRIPTION is None:
             CLUSTER_DESCRIPTION = "Cluster created at %s" % now 
-        self.update({
-            'AWS_ACCESS_KEY_ID': AWS_ACCESS_KEY_ID,
-            'AWS_SECRET_ACCESS_KEY': AWS_SECRET_ACCESS_KEY,
-            'AWS_USER_ID': AWS_USER_ID,
-            'CLUSTER_PROFILE':CLUSTER_PROFILE,
-            'CLUSTER_TAG':CLUSTER_TAG,
-            'CLUSTER_DESCRIPTION':CLUSTER_DESCRIPTION,
-            'CLUSTER_SIZE':CLUSTER_SIZE,
-            'CLUSTER_USER':CLUSTER_USER,
-            'CLUSTER_SHELL':CLUSTER_SHELL,
-            'MASTER_IMAGE_ID':MASTER_IMAGE_ID,
-            'NODE_IMAGE_ID':NODE_IMAGE_ID,
-            'INSTANCE_TYPE':INSTANCE_TYPE,
-            'AVAILABILITY_ZONE':AVAILABILITY_ZONE,
-            'KEYNAME':KEYNAME,
-            'KEY_LOCATION':KEY_LOCATION,
-            'VOLUME':VOLUME,
-            'VOLUME_DEVICE':VOLUME_DEVICE,
-            'VOLUME_PARTITION':VOLUME_PARTITION,
-        })
-        self.ec2 = awsutils.get_easy_ec2(
+
+        self.AWS_ACCESS_KEY_ID = AWS_ACCESS_KEY_ID
+        self.AWS_SECRET_ACCESS_KEY = AWS_SECRET_ACCESS_KEY
+        self.AWS_USER_ID = AWS_USER_ID
+        self.CLUSTER_PROFILE = CLUSTER_PROFILE
+        self.CLUSTER_TAG = CLUSTER_TAG
+        self.CLUSTER_DESCRIPTION = CLUSTER_DESCRIPTION
+        self.CLUSTER_SIZE = CLUSTER_SIZE
+        self.CLUSTER_USER = CLUSTER_USER
+        self.CLUSTER_SHELL = CLUSTER_SHELL
+        self.MASTER_IMAGE_ID = MASTER_IMAGE_ID
+        self.NODE_IMAGE_ID = NODE_IMAGE_ID
+        self.INSTANCE_TYPE = INSTANCE_TYPE
+        self.AVAILABILITY_ZONE = AVAILABILITY_ZONE
+        self.KEYNAME = KEYNAME
+        self.KEY_LOCATION = KEY_LOCATION
+        self.VOLUME = VOLUME
+        self.VOLUME_DEVICE = VOLUME_DEVICE
+        self.VOLUME_PARTITION = VOLUME_PARTITION
+
+        self.ec2 = awsutils.EasyEC2(
             AWS_ACCESS_KEY_ID = self.AWS_ACCESS_KEY_ID, 
             AWS_SECRET_ACCESS_KEY = self.AWS_SECRET_ACCESS_KEY
         )
@@ -78,6 +111,15 @@ class Cluster(AttributeDict):
         self._nodes = None
         self._master = None
         self._setup_class = setup_class
+
+    def update(self, kwargs):
+        self.__dict__.update(kwargs)
+
+    def get(self, name):
+        return self.__dict__.get(name)
+
+    def __str__(self):
+        return pformat(self.__dict__)
 
     @property
     def _security_group(self):

@@ -24,13 +24,12 @@ import os
 import sys
 import time
 from pprint import pprint, pformat
+from starcluster import cluster
 from starcluster import config
-from starcluster import static
 from starcluster import exception
+from starcluster import static
 from starcluster import optcomplete
 CmdComplete = optcomplete.CmdComplete
-from starcluster.cluster import Cluster
-from starcluster.awsutils import get_easy_ec2, get_easy_s3
 
 from starcluster.logger import log
 
@@ -62,6 +61,10 @@ class CmdBase(CmdComplete):
             if options[opt]:
                 specified[opt] = options[opt]
         return specified
+
+    @property
+    def cfg(self):
+        return self.goptions_dict.get('CONFIG')
 
 class CmdStart(CmdBase):
     """Start a StarCluster cluster """
@@ -135,13 +138,12 @@ instances when starting cluster (uses existing instances instead)")
     def execute(self, args):
         if not args:
             self.parser.error("please specify a cluster")
-        config_file = self.goptions_dict.get("CONFIG")
-        cfg = config.StarClusterConfig(config_file); cfg.load()
+        cfg = self.cfg
         for cluster_name in args:
             try:
-                cluster = cfg.get_cluster(cluster_name)
-                cluster.update(self.specified_options_dict)
-                #pprint(cluster)
+                scluster = cfg.get_cluster(cluster_name)
+                scluster.update(self.specified_options_dict)
+                #pprint(scluster)
             except exception.ClusterDoesNotExist,e:
                 log.warn(e.explain())
                 aws_environ = cfg.get_aws_credentials()
@@ -149,9 +151,12 @@ instances when starting cluster (uses existing instances instead)")
                 kwargs = {}
                 kwargs.update(aws_environ)
                 kwargs.update(cluster_options)
-                cluster = Cluster(**kwargs)
-            if cluster.is_valid():
-                cluster.start(create=not self.opts.NO_CREATE)
+                scluster = cluster.Cluster(**kwargs)
+            print scluster
+            sys.exit(0)
+            if scluster.is_valid():
+                #scluster.start(create=not self.opts.NO_CREATE)
+                print 'valid cluster'
             else:
                 print 'not valid cluster'
 
@@ -161,22 +166,9 @@ class CmdStop(CmdBase):
     def execute(self, args):
         if not args:
             self.parser.error("please specify a cluster")
-        config_file = self.goptions_dict.get("CONFIG")
-        cfg = config.StarClusterConfig(config_file); cfg.load()
-        ec2 = get_easy_ec2()
+        cfg = self.cfg
         for cluster_name in args:
-            if not cluster_name.startswith(static.SECURITY_GROUP_PREFIX):
-                cluster_name = static.SECURITY_GROUP_TEMPLATE % cluster_name
-            try:
-                cluster = ec2.get_security_group(cluster_name)
-                for node in cluster.instances():
-                    log.info('Shutting down %s' % node.id)
-                    node.stop()
-                log.info('Removing cluster security group %s' % cluster.name)
-                cluster.delete()
-            except Exception,e:
-                #print e
-                log.error("cluster %s does not exist" % cluster_name)
+            cluster.stop_cluster(cluster_name, cfg)
 
 class CmdSshMaster(CmdBase):
     """SSH to StarCluster master node"""
@@ -200,20 +192,8 @@ class CmdListClusters(CmdBase):
     """List all StarCluster clusters"""
     names = ['listclusters']
     def execute(self, args):
-        ec2 = get_easy_ec2()
-        sgs = ec2.get_security_groups()
-        starcluster_groups = []
-        for sg in sgs:
-            is_starcluster = sg.name.startswith(static.SECURITY_GROUP_PREFIX)
-            if is_starcluster and sg.name != static.MASTER_GROUP:
-                starcluster_groups.append(sg)
-        if starcluster_groups:
-            for scg in starcluster_groups:
-                print scg.name
-                for node in scg.instances():
-                    print "  %s" % node.dns_name
-        else:
-            log.info("No clusters found...")
+        cfg = self.cfg
+        cluster.list_clusters(cfg)
 
 class CmdCreateAmi(CmdBase):
     """Create a new image (AMI) from a currently running EC2 instance"""
@@ -237,22 +217,14 @@ class CmdListImages(CmdBase):
     """List all registered EC2 images (AMIs)"""
     names = ['listimages']
     def execute(self, args):
-        def get_key(obj):
-            return obj.location
-        ec2 = get_easy_ec2()
-        counter = 0
-        images = ec2.registered_images
-        images.sort(key=get_key)
-        for image in images:
-            name = image.location.split('/')[1].split('.manifest.xml')[0]
-            print "[%d] %s (%s)" % (counter, image.id, name)
-            counter += 1
+        ec2 = self.cfg.get_easy_ec2()
+        ec2.list_registered_images()
 
 class CmdListBuckets(CmdBase):
     """List all S3 buckets"""
     names = ['listbuckets']
     def execute(self, args):
-        s3 = get_easy_s3()
+        s3 = self.cfg.get_easy_s3()
         buckets = s3.list_buckets()
 
 class CmdShowImage(CmdBase):
@@ -261,11 +233,9 @@ class CmdShowImage(CmdBase):
     def execute(self, args):
         if not args:
             self.parser.error('please specify an AMI id')
+        ec2 = self.cfg.get_easy_ec2()
         for arg in args:
-            ec2 = get_easy_ec2()
-            files = ec2.get_image_files(arg)
-            for file in files:
-                print file.name
+            ec2.list_image_files(arg)
    
 class CmdShowBucket(CmdBase):
     """Show all files in a S3 bucket"""
@@ -274,10 +244,8 @@ class CmdShowBucket(CmdBase):
         if not args:
             self.parser.error('please specify a S3 bucket')
         for arg in args:
-            s3 = get_easy_s3()
-            bucket = s3.get_bucket(arg)
-            for file in bucket.list():
-                print file.name
+            s3 = self.cfg.get_easy_s3()
+            bucket = s3.list_bucket(arg)
 
 class CmdRemoveImage(CmdBase):
     """Deregister an EC2 image (AMI) and remove it from S3"""
@@ -287,6 +255,13 @@ class CmdRemoveImage(CmdBase):
         #pprint(args)
         #pprint(self.gopts)
         #pprint(self.opts)
+
+class CmdListInstances(CmdBase):
+    """List *all* EC2 instances"""
+    names = ['listinstances']
+    def execute(self, args):
+        ec2 = self.cfg.get_easy_ec2()
+        ec2.list_all_instances()
 
 class CmdHelp:
     """Show StarCluster usage"""
@@ -342,6 +317,11 @@ def parse_subcommands(gparser, subcmds):
         raise SystemExit("\nError: you must specify an action.")
     subcmdname, subargs = args[0], args[1:]
 
+    # load StarClusterConfig into global options
+    cfg = config.StarClusterConfig(gopts.CONFIG)
+    cfg.load()
+    gopts.CONFIG = cfg
+
     # Parse command arguments and invoke command.
     try:
         sc = subcmds_map[subcmdname]
@@ -380,6 +360,7 @@ def main():
         CmdListBuckets(),
         CmdShowBucket(),
         CmdListImages(),
+        CmdListInstances(),
         CmdRemoveImage(),
         CmdShowImage(),
         CmdHelp(),

@@ -10,9 +10,8 @@ import platform
 from pprint import pprint
 
 import boto
-import config 
-import static
-from logger import log
+from starcluster import static
+from starcluster.logger import log
 
 class EasyAWS(object):
     def __init__(self, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, CONNECTION_AUTHENTICATOR):
@@ -39,27 +38,16 @@ class EasyAWS(object):
                 self.aws_secret_access_key)
         return self._conn
 
-def get_easy_ec2(**kwargs):
-    """
-    Factory for EasyEC2 class that attempts to load AWS credentials from
-    the StarCluster config file. Returns an EasyEC2 object if
-    successful.
-    """
-    if kwargs:
-        return EasyEC2(**kwargs)
-    cfg = config.StarClusterConfig(); cfg.load()
-    ec2 = EasyEC2(**cfg.aws)
-    return ec2
 
 class EasyEC2(EasyAWS):
-    def __init__(self, AWS_ACCESS_KEY_ID=None, AWS_SECRET_ACCESS_KEY=None, cache=False, **kwargs):
+    def __init__(self, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, cache=False):
         super(EasyEC2, self).__init__(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, boto.connect_ec2)
         self.cache = cache
         self._instance_response = None
         self._keypair_response = None
         self._images = None
         self._security_group_response = None
-        self.s3 = EasyS3(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, cache, **kwargs)
+        self.s3 = EasyS3(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, cache)
 
     @property
     def registered_images(self):
@@ -101,15 +89,47 @@ class EasyEC2(EasyAWS):
             if auth_group_traffic:
                 sg.authorize(src_group=sg)
             return sg
+
+    def __print_header(self, msg):
+        print msg
+        print "-" * len(msg)
+
+    def get_image_name(self, img):
+        return img.location.split('/')[1].split('.manifest.xml')[0]
+
+    def get_all_instances(self):
+        reservations = self.conn.get_all_instances()
+        instances = []
+        for res in reservations:
+            instances.extend(res.instances)
+        return instances
+
+    def list_all_instances(self):
+        instances = self.get_all_instances()
+        if not instances:
+            log.info("No instances found")
+        for instance in instances:
+            print instance.dns_name
             
     def list_registered_images(self):
         images = self.registered_images
-        for image in images:
-            name = os.path.basename(image.location).split('.manifest.xml')[0]
-            bucket = os.path.dirname(image.location)
-            metadata = dict(NAME=name, AMI=image.id, BUCKET=bucket,
-                            MANIFEST=image.location) 
-            pprint(metadata)
+        def get_key(obj):
+            return str(obj.region) + ' ' + str(obj.location)
+        imgs_i386 = [ img for img in images if img.architecture == "i386" ]
+        imgs_i386.sort(key=get_key)
+        imgs_x86_64 = [ img for img in images if img.architecture == "x86_64" ]
+        imgs_x86_64.sort(key=get_key)
+        self.__list_images("Your 32bit Images:", imgs_i386)
+        self.__list_images("\nYour 64bit Images:", imgs_x86_64)
+        print "\ntotal registered images: %d" % len(images)
+
+    def __list_images(self, msg, imgs):
+        counter = 0
+        self.__print_header(msg)
+        for image in imgs:
+            name = self.get_image_name(image)
+            print "[%d] %s %s %s" % (counter, image.id, image.region.name, name)
+            counter += 1
 
     def remove_image_files(self, image_name, bucket=None, pretend=True):
         image = self.get_image(image_name)
@@ -168,6 +188,11 @@ class EasyEC2(EasyAWS):
         files = bucket.list(prefix=image.location.split('/')[1].split('.manifest.xml')[0])
         return files
 
+    def list_image_files(self, image_id):
+        files = self.get_image_files(image_id)
+        for file in files:
+            print file.name
+
     @property
     def instances():
         if not self.cache or self._instance_response is None:
@@ -212,18 +237,6 @@ class EasyEC2(EasyAWS):
     def get_security_groups(self):
         return self.conn.get_all_security_groups()
 
-def get_easy_s3(**kwargs):
-    """
-    Factory for EasyEC2 class that attempts to load AWS credentials from
-    the StarCluster config file. Returns an EasyEC2 object if
-    successful.
-    """
-    if kwargs:
-        return EasyS3(**kwargs)
-    cfg = config.StarClusterConfig(); cfg.load()
-    s3 = EasyS3(**cfg.aws)
-    return s3
-
 class EasyS3(EasyAWS):
     def __init__(self, AWS_ACCESS_KEY_ID=None, AWS_SECRET_ACCESS_KEY=None, cache=False, **kwargs):
         super(EasyS3, self).__init__(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, boto.connect_s3)
@@ -237,6 +250,11 @@ class EasyS3(EasyAWS):
 
     def get_bucket(self, bucketname):
         return self.conn.get_bucket(bucketname)
+
+    def list_bucket(self, bucketname):
+        bucket = self.get_bucket(bucketname)
+        for file in bucket.list():
+            print file.name
 
     def get_buckets(self):
         buckets = self.conn.get_all_buckets()

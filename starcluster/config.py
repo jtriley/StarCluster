@@ -3,18 +3,38 @@ import os
 import sys
 import ConfigParser
 
-import cluster
-from logger import log
-from utils import AttributeDict
-from static import AWS_SETTINGS, KEY_SETTINGS, CLUSTER_SETTINGS, INSTANCE_TYPES
-from templates.config import config_template
-from exception import ClusterDoesNotExist
+from starcluster import cluster
+from starcluster import static 
+from starcluster import awsutils 
+from starcluster.utils import AttributeDict
+from starcluster.templates.config import config_template
+from starcluster import exception 
+
+from starcluster.logger import log
+
+def get_easy_s3():
+    """
+    Factory for EasyS3 class that attempts to load AWS credentials from
+    the StarCluster config file. Returns an EasyS3 object if
+    successful.
+    """
+    cfg = StarClusterConfig(); cfg.load()
+    return cfg.get_easy_s3()
+
+def get_easy_ec2():
+    """
+    Factory for EasyEC2 class that attempts to load AWS credentials from
+    the StarCluster config file. Returns an EasyEC2 object if
+    successful.
+    """
+    cfg = StarClusterConfig(); cfg.load()
+    return cfg.get_easy_ec2()
 
 def get_aws_from_environ():
     """Returns AWS credentials defined in the user's shell
     environment."""
     awscreds = {}
-    for key in AWS_SETTINGS:
+    for key in static.AWS_SETTINGS:
         if os.environ.has_key(key):
             awscreds[key] = os.environ.get(key)
     return awscreds
@@ -34,19 +54,20 @@ class StarClusterConfig(AttributeDict):
     or
     cfg = StarClusterConfig('/path/to/my/config.cfg')
     cfg.load()
-    aws_info = cfg.aws_info
-    cluster_cfg = cfg.mycluster
+    aws_info = cfg.aws
+    cluster_cfg = cfg.clusters['mycluster']
+    key_cfg = cfg.keys['gsg-keypair']
     print cluster_cfg
     """
 
     DEFAULT_CFG_FILE = os.path.join(os.path.expanduser('~'),'.starclustercfg')
 
     # until i can find a way to query AWS for instance types...
-    instance_types = INSTANCE_TYPES
+    instance_types = static.INSTANCE_TYPES
 
-    aws_settings = AWS_SETTINGS
-    cluster_settings = CLUSTER_SETTINGS
-    key_settings = KEY_SETTINGS
+    aws_settings = static.AWS_SETTINGS
+    cluster_settings = static.CLUSTER_SETTINGS
+    key_settings = static.KEY_SETTINGS
 
     def __init__(self, config_file=None, cache=False):
         if config_file:
@@ -212,10 +233,37 @@ class StarClusterConfig(AttributeDict):
             clust = cluster.get_cluster(**kwargs)
             return clust
         except KeyError,e:
-            raise ClusterDoesNotExist('config for cluster %s does not exist' % cluster_name)
+            raise exception.ClusterDoesNotExist(
+                'config for cluster %s does not exist' % cluster_name)
 
     def get_clusters(self):
         clusters = []
         for cluster in self.clusters:
             clusters.append(self.get_cluster(cluster))
         return clusters
+
+    def get_easy_s3(self):
+        """
+        Factory for EasyEC2 class that attempts to load AWS credentials from
+        the StarCluster config file. Returns an EasyEC2 object if
+        successful.
+        """
+        s3 = awsutils.EasyS3(self.aws['AWS_ACCESS_KEY_ID'],
+                             self.aws['AWS_SECRET_ACCESS_KEY'])
+        return s3
+
+    def get_easy_ec2(self):
+        """
+        Factory for EasyEC2 class that attempts to load AWS credentials from
+        the StarCluster config file. Returns an EasyEC2 object if
+        successful.
+        """
+        ec2 = awsutils.EasyEC2(self.aws['AWS_ACCESS_KEY_ID'],
+                             self.aws['AWS_SECRET_ACCESS_KEY'])
+        return ec2
+
+if __name__ == "__main__":
+    cfg = StarClusterConfig(); cfg.load()
+    print cfg.aws
+    print cfg.clusters
+    print cfg.keys

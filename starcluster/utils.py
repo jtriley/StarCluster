@@ -4,7 +4,7 @@ Utils module for StarCluster
 """
 
 import time
-from logger import log
+from starcluster.logger import log
 
 class AttributeDict(dict):
     """ Subclass of dict that allows read-only attribute-like access to

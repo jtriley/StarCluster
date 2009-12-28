@@ -6,14 +6,12 @@ clustersetup.py
 
 import os
 import shutil
-import logging
 import tempfile
 
-from templates.sgeprofile import sgeprofile_template
-from templates.sgeinstall import sgeinstall_template
-from templates.sge_pe import sge_pe_template
-
-log = logging.getLogger('starcluster')
+from starcluster.templates.sgeprofile import sgeprofile_template
+from starcluster.templates.sgeinstall import sgeinstall_template
+from starcluster.templates.sge_pe import sge_pe_template
+from starcluster.logger import log
 
 class ClusterSetup(object):
     """
