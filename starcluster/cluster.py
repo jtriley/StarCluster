@@ -40,7 +40,6 @@ def ssh_to_master(cluster_name, cfg):
         else:
             print 'key %s needed to ssh not found' % master.key_name
 
-
 def ssh_to_node(node_id, cfg, user='root'):
     ec2 = cfg.get_easy_ec2()
     instances = ec2.get_all_instances()
@@ -82,7 +81,6 @@ def ssh_to_cluster_node(cluster_name, node_id, cfg):
                 print 'key %s needed to ssh not found' % node.key_name
         else:
             log.error("node %s does not exist" % node_id)
-
 
 def _get_cluster_name(cluster_name):
     if not cluster_name.startswith(static.SECURITY_GROUP_PREFIX):
@@ -279,7 +277,7 @@ class Cluster(object):
 
     @property
     def volume(self):
-        vol = self.ec2.conn.get_all_volumes(volume_ids=[self.VOLUME])[0]
+        vol = self.ec2.get_volume(self.VOLUME)
         return vol
 
     def create_cluster(self):

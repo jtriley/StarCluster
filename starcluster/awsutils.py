@@ -226,7 +226,10 @@ class EasyEC2(EasyAWS):
         return self.conn.get_all_volumes()
 
     def get_volume(self, volume_id):
-        return self.conn.get_all_volumes(volume_ids=[volume])
+        try:
+            return self.conn.get_all_volumes(volume_ids=[volume_id])[0]
+        except:
+            pass
 
     def list_volumes(self):
         vols = self.get_volumes()
@@ -289,5 +292,7 @@ class EasyS3(EasyAWS):
         self.conn.delete(bucket_name, file_name)
 
 if __name__ == "__main__":
+    from starcluster.config import get_easy_ec2
     ec2 = get_easy_ec2()
-    ec2.list_registered_images()
+    ec2.get_volume('asdf')
+    #ec2.list_registered_images()
