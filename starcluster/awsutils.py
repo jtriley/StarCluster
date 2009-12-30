@@ -56,8 +56,8 @@ class EasyEC2(EasyAWS):
         return self._images
 
     def get_registered_image(self, image_id):
-        if not image_name.startswith('ami') or len(image_name) != 12:
-            raise TypeError("invalid AMI name/id requested: %s" % image_name)
+        if not image_id.startswith('ami') or len(image_id) != 12:
+            raise TypeError("invalid AMI name/id requested: %s" % image_id)
         for image in self.registered_images:
             if image.id == image_id:
                 return image
@@ -91,6 +91,16 @@ class EasyEC2(EasyAWS):
             if auth_group_traffic:
                 sg.authorize(src_group=sg)
             return sg
+
+    def run_instances(self, image_id=None, instance_type=None, min_count=None,
+                      max_count=None, key_name=None, security_groups=None,
+                      placement=None):
+        return self.connrun_instances(image_id, instance_type, min_count,
+                                      max_count, key_name, security_groups,
+                                      placement)
+
+    def get_keypair(self, keypair):
+        return self.conn.get_all_key_pairs(keynames=[keypair])[0]
 
     def __print_header(self, msg):
         print msg
@@ -180,6 +190,9 @@ class EasyEC2(EasyAWS):
         files = self.get_image_files(image_name, bucket)
         for file in files:
             print file
+
+    def get_zone(self, zone):
+        return self.conn.get_all_zones(zones=[zone])[0]
 
     def get_image(self, image_id):
         return self.conn.get_all_images(image_ids=[image_id])[0]

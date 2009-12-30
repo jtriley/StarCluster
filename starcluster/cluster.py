@@ -286,7 +286,7 @@ class Cluster(object):
             self.MASTER_IMAGE_ID = self.NODE_IMAGE_ID
         log.info("Launching master node...")
         log.info("MASTER AMI: %s" % self.MASTER_IMAGE_ID)
-        conn = self.ec2.conn
+        conn = self.ec2
         master_sg = self.master_group.name
         cluster_sg = self.cluster_group.name
         master_response = conn.run_instances(image_id=self.MASTER_IMAGE_ID,
@@ -431,7 +431,6 @@ $ ssh -i %(key)s %(user)s@%(master)s
         CLUSTER_SIZE = self.CLUSTER_SIZE
         KEYNAME = self.KEYNAME
         KEY_LOCATION = self.KEY_LOCATION
-        conn = self.ec2.conn 
         if not self._has_all_required_settings():
             log.error('Please specify the required settings')
             return False
@@ -475,26 +474,26 @@ $ ssh -i %(key)s %(user)s@%(master)s
     def _has_valid_image_settings(self):
         MASTER_IMAGE_ID = self.MASTER_IMAGE_ID
         NODE_IMAGE_ID = self.NODE_IMAGE_ID
-        conn = self.ec2.conn
+        conn = self.ec2
         try:
-            image = conn.get_all_images(image_ids=[NODE_IMAGE_ID])[0]
+            image = conn.get_image(NODE_IMAGE_ID)
         except boto.exception.EC2ResponseError,e:
             log.error('NODE_IMAGE_ID %s does not exist' % NODE_IMAGE_ID)
             return False
         if MASTER_IMAGE_ID is not None:
             try:
-                master_image = conn.get_all_images(image_ids=[MASTER_IMAGE_ID])[0]
+                master_image = conn.get_image(MASTER_IMAGE_ID)
             except boto.exception.EC2ResponseError,e:
                 log.error('MASTER_IMAGE_ID %s does not exist' % MASTER_IMAGE_ID)
                 return False
         return True
 
     def _has_valid_zone(self):
-        conn = self.ec2.conn
+        conn = self.ec2
         AVAILABILITY_ZONE = self.AVAILABILITY_ZONE
         if AVAILABILITY_ZONE:
             try:
-                zone = conn.get_all_zones()[0]
+                zone = conn.get_zone(AVAILABILITY_ZONE)
                 if zone.state != 'available':
                     log.error('The AVAILABILITY_ZONE = %s is not available at this time')
                     return False
@@ -508,13 +507,13 @@ $ ssh -i %(key)s %(user)s@%(master)s
         NODE_IMAGE_ID = self.NODE_IMAGE_ID
         INSTANCE_TYPE = self.INSTANCE_TYPE
         instance_types = self.__instance_types
-        conn = self.ec2.conn
+        conn = self.ec2
         if not instance_types.has_key(INSTANCE_TYPE):
             log.error("You specified an invalid INSTANCE_TYPE %s \nPossible options are:\n%s" % (INSTANCE_TYPE,' '.join(instance_types.keys())))
             return False
 
         try:
-            node_image_platform = conn.get_all_images(image_ids=[NODE_IMAGE_ID])[0].architecture
+            node_image_platform = conn.get_image(NODE_IMAGE_ID).architecture
         except boto.exception.EC2ResponseError,e:
             node_image_platform = None
 
@@ -529,7 +528,7 @@ $ ssh -i %(key)s %(user)s@%(master)s
         
         if MASTER_IMAGE_ID is not None:
             try:
-                master_image_platform = conn.get_all_images(image_ids=[MASTER_IMAGE_ID])[0].architecture
+                master_image_platform = conn.get_image(MASTER_IMAGE_ID).architecture
             except boto.exception.EC2ResponseError,e:
                 master_image_platform = None
             if instance_platform != master_image_platform:
@@ -548,10 +547,10 @@ $ ssh -i %(key)s %(user)s@%(master)s
         VOLUME_DEVICE = self.VOLUME_DEVICE
         VOLUME_PARTITION = self.VOLUME_PARTITION
         AVAILABILITY_ZONE = self.AVAILABILITY_ZONE
-        conn = self.ec2.conn
+        conn = self.ec2
         if VOLUME is not None:
             try:
-                vol = conn.get_all_volumes(volume_ids=[VOLUME])[0]
+                vol = conn.get_volume(VOLUME)
             except boto.exception.EC2ResponseError,e:
                 log.error('VOLUME = %s does not exist' % VOLUME)
                 return False
@@ -582,27 +581,16 @@ $ ssh -i %(key)s %(user)s@%(master)s
 
     def _has_valid_credentials(self):
         try:
-            self.ec2.conn.get_all_instances()
+            self.ec2.get_all_instances()
             return True
         except boto.exception.EC2ResponseError,e:
             return False
 
-    def validate_aws_or_exit(self):
-        conn = self.ec2.conn
-        if conn is None or not self._has_valid_credentials():
-            log.error('Invalid AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY combination. Please check your settings')
-            sys.exit(1)
-        
-    def validate_or_exit(self):
-        if not self.is_valid():
-            log.error('configuration error...exiting')
-            sys.exit(1)
-
     def _has_keypair(self):
         KEYNAME = self.KEYNAME
-        conn = self.ec2.conn
+        conn = self.ec2
         try:
-            keypair = conn.get_all_key_pairs(keynames=[KEYNAME])
+            keypair = conn.get_keypair(KEYNAME)
             return True
         except boto.exception.EC2ResponseError,e:
             return False
