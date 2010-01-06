@@ -67,7 +67,7 @@ class CmdBase(CmdComplete):
         return self.goptions_dict.get('CONFIG')
 
 class CmdStart(CmdBase):
-    """Start a StarCluster cluster """
+    """Start a new cluster """
     names = ['start']
 
     @property
@@ -159,7 +159,7 @@ instances when starting cluster (uses existing instances instead)")
                 print 'not valid cluster'
 
 class CmdStop(CmdBase):
-    """Shutdown a StarCluster cluster"""
+    """Shutdown a running cluster"""
     names = ['stop']
     def execute(self, args):
         if not args:
@@ -169,7 +169,7 @@ class CmdStop(CmdBase):
             cluster.stop_cluster(cluster_name, cfg)
 
 class CmdSshMaster(CmdBase):
-    """SSH to StarCluster master node"""
+    """SSH to a cluster's master node"""
     names = ['sshmaster']
     def execute(self, args):
         if not args:
@@ -178,7 +178,7 @@ class CmdSshMaster(CmdBase):
             cluster.ssh_to_master(arg, self.cfg)
 
 class CmdSshNode(CmdBase):
-    """SSH to StarCluster node"""
+    """SSH to a cluster node"""
     names = ['sshnode']
     def execute(self, args):
         if not args:
@@ -195,7 +195,7 @@ class CmdSshNode(CmdBase):
             cluster.ssh_to_cluster_node(scluster, node, self.cfg)
 
 class CmdListClusters(CmdBase):
-    """List all StarCluster clusters"""
+    """List all active clusters"""
     names = ['listclusters']
     def execute(self, args):
         cfg = self.cfg
@@ -263,7 +263,7 @@ class CmdRemoveImage(CmdBase):
         #pprint(self.opts)
 
 class CmdListInstances(CmdBase):
-    """List *all* EC2 instances"""
+    """List all running EC2 instances"""
     names = ['listinstances']
     def execute(self, args):
         ec2 = self.cfg.get_easy_ec2()
@@ -357,18 +357,18 @@ def main():
     # Declare subcommands.
     subcmds = [
         CmdStart(),
-        CmdListClusters(),
-        CmdCreateAmi(),
-        CmdCreateVolume(),
         CmdStop(),
+        CmdListClusters(),
         CmdSshMaster(),
         CmdSshNode(),
+        CmdListInstances(),
+        CmdListImages(),
+        CmdShowImage(),
+        CmdRemoveImage(),
         CmdListBuckets(),
         CmdShowBucket(),
-        CmdListImages(),
-        CmdListInstances(),
-        CmdRemoveImage(),
-        CmdShowImage(),
+        CmdCreateAmi(),
+        CmdCreateVolume(),
         CmdHelp(),
     ]
 
