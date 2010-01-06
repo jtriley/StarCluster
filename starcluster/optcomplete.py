@@ -427,12 +427,15 @@ class CmdComplete:
     have it here."""
 
     def autocomplete(self, completer):
+        import logging
+        logging.disable(logging.CRITICAL)
         import optparse
         parser = optparse.OptionParser(self.__doc__.strip())
         if hasattr(self, 'addopts'):
             self.addopts(parser)
         if hasattr(self, 'completer'):
             completer = self.completer
+        logging.disable(logging.NOTSET)
         return autocomplete(parser, completer)
 
 

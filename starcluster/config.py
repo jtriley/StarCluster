@@ -182,9 +182,10 @@ class StarClusterConfig(object):
         keyname = cluster_section.get('KEYNAME')
         keypair = self.keys.get(keyname)
         if keypair is None:
+            log.warn("keypair %s not defined in config" % keyname)
             return
         cluster_section['KEYNAME'] = keyname
-        cluster_section['KEY_LOCATION'] = keypair['KEY_LOCATION']
+        cluster_section['KEY_LOCATION'] = keypair.get('KEY_LOCATION')
 
     def load(self):
         self.load_settings('aws', 'info', self.aws_settings, self.aws)

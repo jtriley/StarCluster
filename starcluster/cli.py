@@ -154,9 +154,9 @@ instances when starting cluster (uses existing instances instead)")
                 scluster = cluster.Cluster(**kwargs)
             if scluster.is_valid():
                 scluster.start(create=not self.opts.NO_CREATE)
-                #print 'valid cluster'
+                #log.info('valid cluster')
             else:
-                print 'not valid cluster'
+                log.error('not valid cluster')
 
 class CmdStop(CmdBase):
     """Shutdown a running cluster"""

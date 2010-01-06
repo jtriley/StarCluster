@@ -43,7 +43,7 @@ KEY_SETTINGS = {
 
 CLUSTER_SETTINGS = {
     # setting, type, required?, default
-    'CLUSTER_SIZE': (int, False, 2),
+    'CLUSTER_SIZE': (int, True, None),
     'CLUSTER_USER': (str, False, 'sgeadmin'),
     'CLUSTER_SHELL': (str, False, 'bash'),
     'MASTER_IMAGE_ID': (str, False, None),
