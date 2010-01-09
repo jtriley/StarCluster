@@ -127,18 +127,28 @@ class Connection(object):
         """Execute the given commands on a remote machine."""
         channel = self._transport.open_session()
         channel.exec_command(command)
-        stdout = channel.makefile('rb', -1).readlines()
-        stderr = channel.makefile_stderr('rb', -1).readlines()
-        output = stdout+stderr
+        stdout = channel.makefile('rb', -1)
+        stderr = channel.makefile_stderr('rb', -1)
+        output = []
+        line = None
+        if silent:
+            output = stdout.readlines() + stderr.readlines()
+        else:
+            while line != '':
+                line = stdout.readline()
+                if only_printable:
+                    line = ''.join(char for char in line if char in string.printable) 
+                if line != '':
+                    output.append(line)
+                    print line,
+
+            for line in stderr.readlines():
+                output.append(line)
+                print line;
+
         output = [ line.strip() for line in output ]
 
-        if only_printable:
-            output = [ ''.join(char for char in line if char in string.printable) for line in output ]
-
-        if not silent:
-            for line in output:
-                print line
-        else:
+        if silent:
             for line in output:
                 log.debug(line.strip())
         return output
@@ -241,7 +251,8 @@ def main():
     """Little test when called directly."""
     # Set these to your own details.
     myssh = Connection('example.com')
-    myssh.put('ssh.py')
+    print myssh.execute('hostname')
+    #myssh.put('ssh.py')
     myssh.close()
 
 # start the ball rolling.
