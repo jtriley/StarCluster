@@ -92,12 +92,14 @@ class EasyEC2(EasyAWS):
                 sg.authorize(src_group=sg)
             return sg
 
-    def run_instances(self, image_id=None, instance_type=None, min_count=None,
-                      max_count=None, key_name=None, security_groups=None,
+    def run_instances(self, image_id, instance_type='m1.small', min_count=1,
+                      max_count=1, key_name=None, security_groups=None,
                       placement=None):
-        return self.connrun_instances(image_id, instance_type, min_count,
-                                      max_count, key_name, security_groups,
-                                      placement)
+        return self.conn.run_instances(image_id, instance_type=instance_type,
+                                       min_count=min_count,
+                                      max_count=max_count, key_name=key_name,
+                                       security_groups=security_groups,
+                                      placement=placement)
 
     def get_keypair(self, keypair):
         return self.conn.get_all_key_pairs(keynames=[keypair])[0]
