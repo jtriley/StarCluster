@@ -7,7 +7,7 @@ Module for storing static datastructures
 BASE_AMI_32="ami-0330d16a"
 BASE_AMI_64="ami-0f30d166"
 
-SECURITY_GROUP_PREFIX="#starcluster"
+SECURITY_GROUP_PREFIX="@sc"
 MASTER_GROUP="%s-masters" % SECURITY_GROUP_PREFIX
 MASTER_GROUP_DESCRIPTION="StarCluster Master Nodes"
 SECURITY_GROUP_TEMPLATE=SECURITY_GROUP_PREFIX+"-%s"
@@ -35,6 +35,8 @@ AWS_SETTINGS = {
     'AWS_ACCESS_KEY_ID': (str, True, None),
     'AWS_SECRET_ACCESS_KEY': (str, True, None),
     'AWS_USER_ID': (str, True, None),
+    'EC2_CERT': (str, False, None),
+    'EC2_PRIVATE_KEY': (str, False, None),
 }
 
 KEY_SETTINGS = {

@@ -25,6 +25,7 @@ import sys
 import time
 from pprint import pprint, pformat
 from starcluster import cluster
+from starcluster import node
 from starcluster import config
 from starcluster import exception
 from starcluster import static
@@ -186,7 +187,7 @@ class CmdSshNode(CmdBase):
         elif len(args) == 1:
             scluster = args[0]
             if scluster.startswith("ec2-"):
-                cluster.ssh_to_node(scluster, self.cfg)
+                node.ssh_to_node(scluster, self.cfg)
                 return
             self.parser.error("please specify a node to connect to")
         scluster = args[0]
@@ -204,7 +205,23 @@ class CmdListClusters(CmdBase):
 class CmdCreateAmi(CmdBase):
     """Create a new image (AMI) from a currently running EC2 instance"""
     names = ['createami']
+
+    def addopts(self, parser):
+        parser.add_option("-n","--host_number", dest="host_number", 
+                          help="host to use for making the image"),
+        parser.add_option("-b","--bucket", dest="bucket", 
+                          help="name of bucket to put the image in (required)")
+        parser.add_option("-p","--prefix", dest="prefix", 
+                          help="prefix for image files (eg 'my-image'). " + \
+                          "Defaults to 'image' (optional)")
+        parser.add_option("-d","--delete_image", dest="image_to_remove", 
+                          help="ami to remove from bucket (optional)")
+        parser.add_option("-c","--credentials", dest="credentials", 
+                          help="id_rsa file to use as credentials (optional)")
+
     def execute(self, args):
+        cfg = self.cfg
+        print cfg.aws
         log.error('unimplemented')
         #pprint(args)
         #pprint(self.gopts)

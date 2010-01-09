@@ -40,27 +40,6 @@ def ssh_to_master(cluster_name, cfg):
         else:
             print 'key %s needed to ssh not found' % master.key_name
 
-def ssh_to_node(node_id, cfg, user='root'):
-    ec2 = cfg.get_easy_ec2()
-    instances = ec2.get_all_instances()
-    node = None
-    for instance in instances:
-        if instance.dns_name == node_id:
-            node = instance
-            break
-        elif instance.id == node_id:
-            node = instance
-            break
-    if node:
-        key = cfg.get_key(node.key_name)
-        if key:
-            os.system('ssh -i %s %s@%s' % (key.KEY_LOCATION, user, 
-                                           node.dns_name))
-        else:
-            print 'key %s needed to ssh not found' % node.key_name
-    else:
-        log.error("node %s does not exist" % node_id)
-
 def ssh_to_cluster_node(cluster_name, node_id, cfg):
     cluster = get_cluster(cluster_name, cfg)
     node = None
@@ -345,35 +324,6 @@ class Cluster(object):
             if vol.attachment_state() == 'attached':
                 return True
             time.sleep(5)
-
-    def ssh_to_node(self,node_number):
-        nodes = get_external_hostnames()
-        if len(nodes) == 0:
-            log.info('No instances to connect to...exiting')
-            return
-        try:
-            node = nodes[int(node_number)]
-            log.info("Logging into node: %s" % node)
-            if platform.system() != 'Windows':
-                os.system('ssh -i %s root@%s' % (self.KEY_LOCATION, node))
-            else:
-                os.system('putty -ssh -i %s root@%s' % (self.KEY_LOCATION, node))
-        except:
-            log.error("Invalid node_number. Please select a node number from the output of starcluster -l")
-
-    def ssh_to_master(self):
-        master_node = self.master_node
-        if master_node is not None:
-            log.info("MASTER NODE: %s" % master_node)
-            if platform.system() != 'Windows':
-                os.system('ssh -i %s root@%s' % (self.KEY_LOCATION,
-                                                 master_node.dns_name)) 
-            else:
-                os.system('putty -ssh -i %s root@%s' % (self.KEY_LOCATION,
-                                                        master_node.dns_name))
-        else: 
-            log.info("No master node found...")
-
 
     def stop_cluster(self):
         resp = raw_input(">>> Shutdown cluster ? (yes/no) ")
