@@ -12,6 +12,7 @@ from pprint import pprint
 import boto
 from starcluster import static
 from starcluster.logger import log
+from starcluster.utils import print_timing
 
 class EasyAWS(object):
     def __init__(self, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, CONNECTION_AUTHENTICATOR):
@@ -101,6 +102,13 @@ class EasyEC2(EasyAWS):
                                        security_groups=security_groups,
                                       placement=placement)
 
+    def register_image(self, name, description=None, image_location=None,
+                       architecture=None, kernel_id=None, ramdisk_id=None,
+                       root_device_name=None, block_device_map=None):
+        return self.conn.register_image(name, description, image_location,
+                           architecture, kernel_id, ramdisk_id,
+                           root_device_name, block_device_map)
+
     def get_keypair(self, keypair):
         return self.conn.get_all_key_pairs(keynames=[keypair])[0]
 
@@ -123,7 +131,7 @@ class EasyEC2(EasyAWS):
         if not instances:
             log.info("No instances found")
         for instance in instances:
-            print "%s %s" % (instance.dns_name, instance.state)
+            print "%s %s %s" % (instance.id, instance.dns_name, instance.state)
             #print instance.dns_name
             
     def list_registered_images(self):
@@ -146,46 +154,51 @@ class EasyEC2(EasyAWS):
             print "[%d] %s %s %s" % (counter, image.id, image.region.name, name)
             counter += 1
 
-    def remove_image_files(self, image_name, bucket=None, pretend=True):
+    def remove_image_files(self, image_name, pretend=True):
         image = self.get_image(image_name)
         if image is None:
             log.error('cannot remove AMI %s' % image_name)
             return
-        bucket = image['BUCKET']
-        files = self.get_image_files(image_name, bucket)
+        bucket = os.path.dirname(image.location)
+        files = self.get_image_files(image_name)
         for file in files:
             if pretend:
                 print file
             else:
                 print 'removing file %s' % file
-                self.s3.remove_file(bucket, file)
+                file.delete()
 
         # recursive double check
-        files = get_image_files(image_name, bucket)
+        files = self.get_image_files(image_name)
         if len(files) != 0:
             if pretend:
-                log.debug('not all files deleted, would recurse')
+                log.info('Not all files deleted, would recurse...exiting')
+                return
             else:
-                log.debug('not all files deleted, recursing')
-                self.remove_image_files(image_name, bucket, pretend)
-        
+                log.info('Not all files deleted, recursing...')
+                self.remove_image_files(image_name, pretend)
 
+    @print_timing
     def remove_image(self, image_name, pretend=True):
         image = self.get_image(image_name)
         if image is None:
-            log.error('cannot remove AMI %s' % image_name)
+            log.error('AMI %s does not exist' % image_name)
             return
+        if pretend:
+            log.info("Pretending to remove AMI: %s" % imageid)
+        else:
+            log.info("Removing AMI: %s" % image_name)
 
         # first remove image files
+        log.info('Removing image files...')
         self.remove_image_files(image_name, pretend = pretend)
 
         # then deregister ami
-        name = image['NAME']
-        ami = image['AMI']
+        ami = image.id
         if pretend:
-            log.info('Would run conn.deregister_image for image %s (ami: %s)' % (name,ami))
+            log.info('Would run deregister_image for ami: %s)' % ami)
         else:
-            log.info('Removing image %s (ami: %s)' % (name,ami))
+            log.info('Deregistering ami: %s' % ami)
             self.conn.deregister_image(ami)
 
     def list_image_files(self, image_name, bucket=None):
@@ -194,16 +207,23 @@ class EasyEC2(EasyAWS):
             print file
 
     def get_zone(self, zone):
-        return self.conn.get_all_zones(zones=[zone])[0]
+        try:
+            return self.conn.get_all_zones(zones=[zone])[0]
+        except IndexError,e:
+            return None
 
     def get_image(self, image_id):
-        return self.conn.get_all_images(image_ids=[image_id])[0]
+        try:
+            return self.conn.get_all_images(image_ids=[image_id])[0]
+        except IndexError,e:
+            return None
 
     def get_image_files(self, image_id):
         image = self.get_image(image_id)
         bucketname = image.location.split('/')[0]
         bucket = self.s3.get_bucket(bucketname)
-        files = bucket.list(prefix=image.location.split('/')[1].split('.manifest.xml')[0])
+        files = bucket.list(prefix=os.path.basename(image.location).split('.manifest.xml')[0])
+        files = [ file for file in files ]
         return files
 
     def list_image_files(self, image_id):
@@ -302,9 +322,6 @@ class EasyS3(EasyAWS):
             files = self.get_bucket_files(bucket_name)
             for file in files:
                 print file
-
-    def remove_file(self, bucket_name, file_name):
-        self.conn.delete(bucket_name, file_name)
 
 if __name__ == "__main__":
     from starcluster.config import get_easy_ec2

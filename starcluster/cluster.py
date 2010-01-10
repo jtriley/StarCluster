@@ -92,7 +92,7 @@ def list_clusters(cfg):
         for scg in starcluster_groups:
             print scg.name
             for node in scg.instances():
-                print "  %s" % node.dns_name
+                print "  %s %s" % (node.id, node.dns_name)
     else:
         log.info("No clusters found...")
 
@@ -264,7 +264,7 @@ class Cluster(object):
         if self.MASTER_IMAGE_ID is None:
             self.MASTER_IMAGE_ID = self.NODE_IMAGE_ID
         log.info("Launching master node...")
-        log.info("MASTER AMI: %s" % self.MASTER_IMAGE_ID)
+        log.info("Master AMI: %s" % self.MASTER_IMAGE_ID)
         conn = self.ec2
         master_sg = self.master_group.name
         cluster_sg = self.cluster_group.name
@@ -277,7 +277,7 @@ class Cluster(object):
         print master_response
         if self.CLUSTER_SIZE > 1:
             log.info("Launching worker nodes...")
-            log.info("NODE AMI: %s" % self.NODE_IMAGE_ID)
+            log.info("Node AMI: %s" % self.NODE_IMAGE_ID)
             instances_response = conn.run_instances(image_id=self.NODE_IMAGE_ID,
                 instance_type=self.INSTANCE_TYPE,
                 min_count=max((self.CLUSTER_SIZE-1)/2, 1),

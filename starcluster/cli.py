@@ -30,6 +30,7 @@ from starcluster import config
 from starcluster import exception
 from starcluster import static
 from starcluster import optcomplete
+from starcluster import image
 CmdComplete = optcomplete.CmdComplete
 
 from starcluster.logger import log
@@ -68,7 +69,15 @@ class CmdBase(CmdComplete):
         return self.goptions_dict.get('CONFIG')
 
 class CmdStart(CmdBase):
-    """Start a new cluster """
+    """
+    start <cluster_config> <tagname>
+
+    Start a new cluster 
+
+    example: 
+        starcluster start largecluster physics
+    
+    """
     names = ['start']
 
     @property
@@ -79,7 +88,7 @@ class CmdStart(CmdBase):
                 cfg.load()
                 return optcomplete.ListCompleter(cfg.get_cluster_names())
             except Exception, e:
-                log.error('something went wrong fix me: %s' % e)
+                log.error('sometiing went wrong fix me: %s' % e)
 
     def addopts(self, parser):
         opt = parser.add_option("-x","--no-create", dest="NO_CREATE",
@@ -88,9 +97,9 @@ instances when starting cluster (uses existing instances instead)")
         parser.add_option("-l","--login-master", dest="LOGIN_MASTER",
             action="store_true", default=False, 
             help="ssh to ec2 cluster master node after launch")
-        parser.add_option("-t","--tag", dest="CLUSTER_TAG",
-            action="store", type="string", default=time.strftime("%Y%m%d%H%M"), 
-            help="tag to identify cluster")
+        #parser.add_option("-t","--tag", dest="CLUSTER_TAG",
+            #action="store", type="string", default=time.strftime("%Y%m%d%H%M"), 
+            #help="tag to identify cluster")
         parser.add_option("-d","--description", dest="CLUSTER_DESCRIPTION",
             action="store", type="string", 
             default="Cluster requested at %s" % time.strftime("%Y%m%d%H%M"), 
@@ -137,30 +146,37 @@ instances when starting cluster (uses existing instances instead)")
             help="EBS Volume partition to mount on master node")
 
     def execute(self, args):
-        if not args:
-            self.parser.error("please specify a cluster")
+        if len(args) != 2:
+            self.parser.error("Please specify a cluster config and tag name")
         cfg = self.cfg
-        for cluster_name in args:
-            try:
-                scluster = cfg.get_cluster(cluster_name)
-                scluster.update(self.specified_options_dict)
-                #pprint(scluster)
-            except exception.ClusterDoesNotExist,e:
-                log.warn(e.explain())
-                aws_environ = cfg.get_aws_credentials()
-                cluster_options = self.specified_options_dict
-                kwargs = {}
-                kwargs.update(aws_environ)
-                kwargs.update(cluster_options)
-                scluster = cluster.Cluster(**kwargs)
-            if scluster.is_valid():
-                scluster.start(create=not self.opts.NO_CREATE)
-                #log.info('valid cluster')
-            else:
-                log.error('not valid cluster')
+        cluster_config = args[0]
+        tag = args[1]
+        tagdict={'CLUSTER_TAG': tag}
+        try:
+            scluster = cfg.get_cluster(cluster_config)
+            scluster.update(self.specified_options_dict)
+            scluster.update(tagdict)
+        except exception.ClusterDoesNotExist,e:
+            log.warn(e.explain())
+            aws_environ = cfg.get_aws_credentials()
+            cluster_options = self.specified_options_dict
+            kwargs = {}
+            kwargs.update(aws_environ)
+            kwargs.update(cluster_options)
+            kwargs.update(tagdict)
+            scluster = cluster.Cluster(**kwargs)
+        if scluster.is_valid():
+            scluster.start(create=not self.opts.NO_CREATE)
+            #log.info('valid cluster')
+        else:
+            log.error('not valid cluster')
 
 class CmdStop(CmdBase):
-    """Shutdown a running cluster"""
+    """
+    stop <cluster>
+
+    Shutdown a running cluster
+    """
     names = ['stop']
     def execute(self, args):
         if not args:
@@ -170,7 +186,11 @@ class CmdStop(CmdBase):
             cluster.stop_cluster(cluster_name, cfg)
 
 class CmdSshMaster(CmdBase):
-    """SSH to a cluster's master node"""
+    """
+    sshmaster <cluster>
+
+    SSH to a cluster's master node
+    """
     names = ['sshmaster']
     def execute(self, args):
         if not args:
@@ -179,7 +199,11 @@ class CmdSshMaster(CmdBase):
             cluster.ssh_to_master(arg, self.cfg)
 
 class CmdSshNode(CmdBase):
-    """SSH to a cluster node"""
+    """
+    sshnode [<cluster>] <node>
+
+    SSH to a cluster node
+    """
     names = ['sshnode']
     def execute(self, args):
         if not args:
@@ -196,39 +220,57 @@ class CmdSshNode(CmdBase):
             cluster.ssh_to_cluster_node(scluster, node, self.cfg)
 
 class CmdListClusters(CmdBase):
-    """List all active clusters"""
+    """
+    listclusters 
+
+    List all active clusters
+    """
     names = ['listclusters']
     def execute(self, args):
         cfg = self.cfg
         cluster.list_clusters(cfg)
 
-class CmdCreateAmi(CmdBase):
-    """Create a new image (AMI) from a currently running EC2 instance"""
-    names = ['createami']
+class CmdCreateImage(CmdBase):
+    """
+    createimage <instance-id> <image_name> <bucket> 
+
+    Create a new image (AMI) from a currently running EC2 instance
+    """
+    names = ['createimage']
 
     def addopts(self, parser):
-        parser.add_option("-n","--host_number", dest="host_number", 
-                          help="host to use for making the image"),
-        parser.add_option("-b","--bucket", dest="bucket", 
-                          help="name of bucket to put the image in (required)")
-        parser.add_option("-p","--prefix", dest="prefix", 
-                          help="prefix for image files (eg 'my-image'). " + \
-                          "Defaults to 'image' (optional)")
-        parser.add_option("-d","--delete_image", dest="image_to_remove", 
-                          help="ami to remove from bucket (optional)")
-        parser.add_option("-c","--credentials", dest="credentials", 
-                          help="id_rsa file to use as credentials (optional)")
+        opt = parser.add_option(
+            "-r","--remove-image-files", dest="REMOVE_IMAGE_FILES",
+            action="store_true", default=False, 
+            help="Remove generated image files on the instance after registering")
 
     def execute(self, args):
+        if len(args) != 3:
+            log.error('you must specify an instance-id, image name, and bucket')
+            return
+        instanceid, image_name, bucket = args
         cfg = self.cfg
-        print cfg.aws
-        log.error('unimplemented')
-        #pprint(args)
-        #pprint(self.gopts)
-        #pprint(self.opts)
+        instance = node.get_node(instanceid, cfg)
+        if instance:
+            kwargs = {}
+            kwargs.update(cfg.aws)
+            kwargs.update(self.specified_options_dict)
+            kwargs.update({
+                'INSTANCE': instance,
+                'PREFIX': image_name,
+                'BUCKET': bucket,
+            })
+            icreator = image.EC2ImageCreator(**kwargs)
+            icreator.create_image()
+        else:
+            log.error('instance %s does not exist' % instanceid)
 
 class CmdCreateVolume(CmdBase):
-    """Create a new EBS volume for use with StarCluster"""
+    """
+    createvolume 
+
+    Create a new EBS volume for use with StarCluster
+    """
     names = ['createvolume']
     def execute(self, args):
         log.error('unimplemented')
@@ -237,21 +279,33 @@ class CmdCreateVolume(CmdBase):
         #pprint(self.opts)
 
 class CmdListImages(CmdBase):
-    """List all registered EC2 images (AMIs)"""
+    """
+    listimages
+
+    List all registered EC2 images (AMIs)
+    """
     names = ['listimages']
     def execute(self, args):
         ec2 = self.cfg.get_easy_ec2()
         ec2.list_registered_images()
 
 class CmdListBuckets(CmdBase):
-    """List all S3 buckets"""
+    """
+    listbuckets
+
+    List all S3 buckets
+    """
     names = ['listbuckets']
     def execute(self, args):
         s3 = self.cfg.get_easy_s3()
         buckets = s3.list_buckets()
 
 class CmdShowImage(CmdBase):
-    """Show all files on S3 for an EC2 image (AMI)"""
+    """
+    showimage <image_id>
+
+    Show all files on S3 for an EC2 image (AMI)
+    """
     names = ['showimage']
     def execute(self, args):
         if not args:
@@ -261,7 +315,11 @@ class CmdShowImage(CmdBase):
             ec2.list_image_files(arg)
    
 class CmdShowBucket(CmdBase):
-    """Show all files in a S3 bucket"""
+    """
+    showbucket <bucket>
+
+    Show all files in a S3 bucket
+    """
     names = ['showbucket']
     def execute(self, args):
         if not args:
@@ -271,23 +329,50 @@ class CmdShowBucket(CmdBase):
             bucket = s3.list_bucket(arg)
 
 class CmdRemoveImage(CmdBase):
-    """Deregister an EC2 image (AMI) and remove it from S3"""
+    """
+    removeami <imageid> 
+
+    Deregister an EC2 image (AMI) and remove it from S3
+
+    WARNING: This command *permanently* removes an AMI from 
+    EC2/S3. Be careful!
+    """
     names = ['removeimage']
+
+    def addopts(self, parser):
+        parser.add_option("-p","--pretend", dest="PRETEND", action="store_true",
+            default=False,
+            help="pretend run, dont actually remove anything")
+
     def execute(self, args):
-        log.error('unimplemented')
-        #pprint(args)
-        #pprint(self.gopts)
-        #pprint(self.opts)
+        for arg in args:
+            imageid = arg
+            pretend = self.specified_options_dict.get('PRETEND', False)
+            if not pretend:
+                resp = raw_input("**PERMANENTLY** delete %s (y/n)? " % imageid)
+                if resp not in ['y','Y', 'yes']:
+                    log.info("Aborting...")
+                    return
+            ec2 = self.cfg.get_easy_ec2()
+            ec2.remove_image(imageid, pretend=pretend)
 
 class CmdListInstances(CmdBase):
-    """List all running EC2 instances"""
+    """
+    listinstances
+
+    List all running EC2 instances
+    """
     names = ['listinstances']
     def execute(self, args):
         ec2 = self.cfg.get_easy_ec2()
         ec2.list_all_instances()
 
 class CmdHelp:
-    """Show StarCluster usage"""
+    """
+    help
+
+    Show StarCluster usage
+    """
     names =['help']
     def execute(self, args):
         import optparse
@@ -325,8 +410,9 @@ def parse_subcommands(gparser, subcmds):
     subcmds_map = {}
     gparser.usage += '\n\nAvailable Actions\n'
     for sc in subcmds:
+        helptxt = sc.__doc__.splitlines()[3].strip()
         gparser.usage += '- %s: %s\n' % (', '.join(sc.names),
-                                       sc.__doc__.splitlines()[0])
+                                       helptxt)
         for n in sc.names:
             assert n not in subcmds_map
             subcmds_map[n] = sc
@@ -381,10 +467,10 @@ def main():
         CmdListInstances(),
         CmdListImages(),
         CmdShowImage(),
+        CmdCreateImage(),
         CmdRemoveImage(),
         CmdListBuckets(),
         CmdShowBucket(),
-        CmdCreateAmi(),
         CmdCreateVolume(),
         CmdHelp(),
     ]
