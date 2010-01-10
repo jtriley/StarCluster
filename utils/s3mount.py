@@ -1,22 +1,23 @@
 #!/usr/bin/env python
 import os
 
-from starcluster import S3
-from starcluster.starclustercfg import *
+from starcluster.config import StarClusterConfig
 
 print 'Simple wrapper script for s3fs (http://s3fs.googlecode.com/)'
 
-conn = S3.AWSAuthConnection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
-buckets = conn.list_all_my_buckets()
-
+cfg = StarClusterConfig(); cfg.load()
+ec2 = cfg.get_easy_ec2()
+buckets = ec2.s3.get_buckets()
 counter = 0
-for bucket in buckets.entries:
+for bucket in buckets:
     print "[%d] %s" % (counter,bucket.name)
     counter += 1
 
 inp = int(raw_input('>>> Enter the bucket to mnt: '))
-selection = buckets.entries[inp].name
+selection = buckets[inp].name
 print 'you selected: %s' % selection
 mountpt = raw_input('>>> please enter the mnt point: ')
 print 'mounting %s at: %s' % (selection,mountpt)
-os.system('s3fs %s -o accessKeyId=%s -o secretAccessKey=%s %s' % (selection,AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,mountpt))
+os.system('s3fs %s -o accessKeyId=%s -o secretAccessKey=%s %s' % (selection,
+                                                                  cfg.aws.get('AWS_ACCESS_KEY_ID'),
+                                                                  cfg.aws.get('AWS_SECRET_ACCESS_KEY'),mountpt))
