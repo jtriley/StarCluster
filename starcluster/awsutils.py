@@ -13,6 +13,7 @@ import boto
 from starcluster import static
 from starcluster.logger import log
 from starcluster.utils import print_timing
+from starcluster.hacks import register_image as _register_image
 
 class EasyAWS(object):
     def __init__(self, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, CONNECTION_AUTHENTICATOR):
@@ -105,7 +106,7 @@ class EasyEC2(EasyAWS):
     def register_image(self, name, description=None, image_location=None,
                        architecture=None, kernel_id=None, ramdisk_id=None,
                        root_device_name=None, block_device_map=None):
-        return self.conn.register_image(name, description, image_location,
+        return _register_image(self.conn, name, description, image_location,
                            architecture, kernel_id, ramdisk_id,
                            root_device_name, block_device_map)
 

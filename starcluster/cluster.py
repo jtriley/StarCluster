@@ -369,13 +369,18 @@ class Cluster(object):
 
 The cluster has been started and configured. ssh into the master node as root by running: 
 
-$ starcluster sshmaster 
+$ starcluster sshmaster %(tag)s
 
 or as %(user)s directly:
 
 $ ssh -i %(key)s %(user)s@%(master)s
 
-        """ % {'master': self.master_node.dns_name, 'user': self.CLUSTER_USER, 'key': self.KEY_LOCATION})
+        """ % {
+            'master': self.master_node.dns_name, 
+            'user': self.CLUSTER_USER, 
+            'key': self.KEY_LOCATION,
+            'tag': self.CLUSTER_TAG,
+        })
 
     def is_valid(self): 
         CLUSTER_SIZE = self.CLUSTER_SIZE

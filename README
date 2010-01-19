@@ -73,9 +73,9 @@ Getting Started:
     $ starcluster --help // this will give you a template to create a configuration file with your EC2 info, preferences, etc
     $ vi ~/.starclustercfg  
     (create the configuration file using the template from starcluster --help)
-    $ starcluster -s // starts the cluster
+    $ starcluster start myclusterprofile myclustertag // starts a cluster called "myclustertag" from the myclusterprofile config profile
     (use the cluster for some amount of time)
-    $ starcluster -t // shuts down the cluster
+    $ starcluster stop myclustertag // shuts down the cluster "myclustertag"
     $ starcluster --help // to see the rest of the available options 
 
     To manage EC2 images (ie AMI's):

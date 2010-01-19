@@ -166,10 +166,12 @@ instances when starting cluster (uses existing instances instead)")
             kwargs.update(tagdict)
             scluster = cluster.Cluster(**kwargs)
         if scluster.is_valid():
-            scluster.start(create=not self.opts.NO_CREATE)
             #log.info('valid cluster')
+            scluster.start(create=not self.opts.NO_CREATE)
+            if self.opts.LOGIN_MASTER:
+                cluster.ssh_to_master(tag, self.cfg)
         else:
-            log.error('not valid cluster')
+            log.error('The cluster configuration provided is not valid...')
 
 class CmdStop(CmdBase):
     """
