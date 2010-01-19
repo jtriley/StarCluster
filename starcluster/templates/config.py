@@ -53,7 +53,7 @@ AVAILABILITY_ZONE = us-east-1c
 
 # attach volume to /home on master node 
 # NOTE: these settings are optional, uncomment to use them
-#ATTACH_VOLUME = vol-abcdefgh
+#VOLUME = vol-abcdefgh
 #VOLUME_DEVICE = /dev/sdd
 #VOLUME_PARTITION = /dev/sdd1
 
