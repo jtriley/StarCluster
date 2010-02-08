@@ -2,6 +2,7 @@
 
 # this is a temporary hack until the next version of boto. ImageLocation is
 # wrong in boto-1.9d
+from boto.resultset import ResultSet
 def register_image(conn, name=None, description=None, image_location=None,
                    architecture=None, kernel_id=None, ramdisk_id=None,
                    root_device_name=None, block_device_map=None):
