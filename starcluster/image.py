@@ -135,4 +135,6 @@ class EC2ImageCreator(object):
         conn.execute('rm -rf /root/*', silent=False)
         conn.execute('rm -f ~/.bash_history', silent=False)
         conn.execute('rm -rf /tmp/*', silent=False)
+        conn.execute('rm -rf /root/*.hist*', silent=False)
+        conn.execute('rm -rf /var/log/*.gz', silent=False)
 
