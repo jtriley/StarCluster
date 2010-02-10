@@ -298,13 +298,23 @@ class Cluster(object):
                 return False
         return True
 
+    def ips_up(self):
+        """
+        Checks that each node instance has a private_ip_address
+        """
+        for node in self.running_nodes:
+            if node.private_ip_address is None:
+                return False
+        return True
+
     def is_cluster_up(self):
         """
-        Check whether there are CLUSTER_SIZE nodes running
-        and that ssh (port 22) is up on all nodes
+        Check whether there are CLUSTER_SIZE nodes running,
+        that ssh (port 22) is up on all nodes, and that each node
+        has an internal ip address
         """
         if len(self.running_nodes) == self.CLUSTER_SIZE:
-            if self.is_ssh_up():
+            if self.is_ssh_up() and self.ips_up():
                 return True
             else:
                 return False
@@ -349,12 +359,9 @@ class Cluster(object):
         s = Spinner()
         log.log(INFO_NO_NEWLINE, "Waiting for cluster to start...")
         s.start()
-        while True:
-            if self.is_cluster_up():
-                s.stop()
-                break
-            else:  
-                time.sleep(15)
+        while not self.is_cluster_up():
+            time.sleep(15)
+        s.stop()
 
         log.info("The master node is %s" % self.master_node.dns_name)
 

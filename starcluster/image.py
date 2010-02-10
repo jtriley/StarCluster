@@ -51,6 +51,7 @@ class EC2ImageCreator(object):
         if self.host:
             self.config_dict['arch'] = self._get_arch()
 
+    @print_timing
     def create_image(self):
         self._bundle_image()
         self._upload_image()

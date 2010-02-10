@@ -98,7 +98,7 @@ class Node(object):
         return self.instance.key_name
 
     def stop(self):
-        return self.instance.stop
+        return self.instance.stop()
 
     def update(self):
         return self.instance.update()
