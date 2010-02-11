@@ -67,6 +67,7 @@ class StarClusterConfig(object):
     aws_settings = static.AWS_SETTINGS
     cluster_settings = static.CLUSTER_SETTINGS
     key_settings = static.KEY_SETTINGS
+    volume_settings = static.EBS_VOLUME_SETTINGS
 
     def __init__(self, config_file=None, cache=False):
         if config_file:
@@ -92,6 +93,7 @@ class StarClusterConfig(object):
         self.aws = AttributeDict()
         self.clusters = AttributeDict()
         self.keys = AttributeDict()
+        self.vols = AttributeDict()
         self.cache = cache
 
     def _get_int(self, config, section, option):
@@ -187,12 +189,30 @@ class StarClusterConfig(object):
         cluster_section['KEYNAME'] = keyname
         cluster_section['KEY_LOCATION'] = keypair.get('KEY_LOCATION')
 
+    def load_volumes(self, section_name, store):
+        cluster_section = store
+        volumes = cluster_section.get('VOLUMES')
+        if volumes is None:
+            return
+        volumes = [vol.strip() for vol in volumes.split(',')]
+        vols = AttributeDict()
+        for volume in volumes:
+            if self.vols.has_key(volume):
+                vols[volume] = self.vols.get(volume)
+            else:
+                log.warn("volume %s not defined in config" % volume)
+        cluster_section['VOLUMES'] = vols
+
     def load(self):
         self.load_settings('aws', 'info', self.aws_settings, self.aws)
         keys = [section.split()[1] for section in self.config.sections() if section.startswith('key')]
         for key in keys:
             self.keys[key] = AttributeDict()
             self.load_settings('key', key, self.key_settings, self.keys[key]) 
+        vols = [section.split()[1] for section in self.config.sections() if section.startswith('volume')]
+        for vol in vols:
+            self.vols[vol] = AttributeDict()
+            self.load_settings('volume', vol, self.volume_settings, self.vols[vol])
         clusters = [section.split()[1] for section in self.config.sections() if section.startswith('cluster')]
         for cluster in clusters:
             self.clusters[cluster] = AttributeDict()
@@ -202,6 +222,9 @@ class StarClusterConfig(object):
             self.load_extends_variables(cluster, self.clusters)
             self.load_defaults(self.cluster_settings, self.clusters[cluster])
             self.load_keypairs(cluster, self.clusters[cluster])
+
+        for cluster in clusters:
+            self.load_volumes(cluster, self.clusters[cluster])
 
     def get_aws_credentials(self):
         """Returns AWS credentials defined in the configuration
@@ -263,3 +286,4 @@ if __name__ == "__main__":
     pprint(cfg.aws)
     pprint(cfg.clusters)
     pprint(cfg.keys)
+    pprint(cfg.vols)

@@ -24,8 +24,7 @@ class ClusterSetup(object):
         self._master = self._cluster.master_node
         self._user = self._cluster.CLUSTER_USER
         self._user_shell = self._cluster.CLUSTER_SHELL
-        self._volume = self._cluster.VOLUME
-        self._volume_partition = self._cluster.VOLUME_PARTITION
+        self._volumes = self._cluster.VOLUMES
 
     def _setup_cluster_user(self):
         """ Create cluster user on all StarCluster nodes """
@@ -132,13 +131,19 @@ class ClusterSetup(object):
     def _setup_ebs_volume(self):
         """ Mount EBS volume, if specified, in ~/.starclustercfg to /home"""
         # setup /etc/fstab on master to use block device if specified
-        if self._volume is not None and self._volume_partition is not None:
-            log.info("Mounting EBS volume %s on /home..." % self._volume)
-            mconn = self._master.ssh
-            master_fstab = mconn.remote_file('/etc/fstab', mode='a')
-            print >> master_fstab, "%s /home ext3 noauto,defaults 0 0 " % self._volume_partition
-            master_fstab.close()
-            mconn.execute('mount /home')
+        for vol in self._volumes:
+            volume = vol
+            volume_partition = self._volumes[volume].get('PARTITION')
+            mount_path = self._volumes[volume].get('MOUNT_PATH')
+            if volume and volume_partition and mount_path:
+                log.info("Mounting EBS volume %s on %s..." % (volume, mount_path))
+                mconn = self._master.ssh
+                master_fstab = mconn.remote_file('/etc/fstab', mode='a')
+                print >> master_fstab, "%s %s ext3 noauto,defaults 0 0 " % (
+                    volume_partition, mount_path)
+                master_fstab.close()
+                mconn.execute('mkdir -p %s' % mount_path)
+                mconn.execute('mount %s' % mount_path)
 
     def _setup_nfs(self):
         """ Share /home and /opt/sge6 via nfs to all nodes"""
@@ -157,7 +162,9 @@ class ClusterSetup(object):
         etc_exports = mconn.remote_file('/etc/exports')
         for node in self._nodes:
             if not node.is_master():
-                etc_exports.write('/home/ ' + node.private_dns_name + nfs_export_settings + '\n')
+                for vol in self._volumes:
+                    mount_path = self._volumes[vol]['MOUNT_PATH']
+                    etc_exports.write(mount_path + ' ' + node.private_dns_name + nfs_export_settings + '\n')
                 etc_exports.write('/opt/sge6 ' + node.private_dns_name + nfs_export_settings + '\n')
         etc_exports.close()
         
@@ -165,7 +172,7 @@ class ClusterSetup(object):
         mconn.execute('mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs/')
         mconn.execute('/etc/init.d/nfs start')
         mconn.execute('/usr/sbin/exportfs -r')
-        mconn.execute('mount -t devpts none /dev/pts') # fix for xterm
+        mconn.execute('mount -t devpts none /dev/pts') # fix for xterm/mpi printing to stdout
 
         # setup /etc/fstab and mount /home and /opt/sge6 on each node
         for node in self._nodes:
@@ -174,9 +181,15 @@ class ClusterSetup(object):
                 nconn.execute('/etc/init.d/portmap start')
                 nconn.execute('mkdir /opt/sge6')
                 nconn.execute('chown -R %(user)s:%(user)s /opt/sge6' % {'user':self._user})
-                nconn.execute('echo "%s:/home /home nfs user,rw,exec 0 0" >> /etc/fstab' % master.private_dns_name)
+                for vol in self._volumes:
+                    mount_path = self._volumes[vol]['MOUNT_PATH']
+                    nconn.execute(
+                        'echo "%s:%s %s nfs user,rw,exec 0 0" >> /etc/fstab' %
+                                  (master.private_dns_name,mount_path,
+                                   mount_path))
+                    nconn.execute('mkdir -p %s' % mount_path)
+                    nconn.execute('mount %s' % mount_path)
                 nconn.execute('echo "%s:/opt/sge6 /opt/sge6 nfs user,rw,exec 0 0" >> /etc/fstab' % master.private_dns_name)
-                nconn.execute('mount /home')
                 nconn.execute('mount /opt/sge6')
                 nconn.execute('mount -t devpts none /dev/pts') # fix for xterm
 

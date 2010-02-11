@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+import re
 import time
 import socket
 import platform
@@ -113,9 +114,7 @@ class Cluster(object):
             AVAILABILITY_ZONE=None,
             KEYNAME=None,
             KEY_LOCATION=None,
-            VOLUME=None,
-            VOLUME_DEVICE=None,
-            VOLUME_PARTITION=None,
+            VOLUMES=[],
             setup_class=clustersetup.ClusterSetup,
             **kwargs):
 
@@ -139,9 +138,7 @@ class Cluster(object):
         self.AVAILABILITY_ZONE = AVAILABILITY_ZONE
         self.KEYNAME = KEYNAME
         self.KEY_LOCATION = KEY_LOCATION
-        self.VOLUME = VOLUME
-        self.VOLUME_DEVICE = VOLUME_DEVICE
-        self.VOLUME_PARTITION = VOLUME_PARTITION
+        self.VOLUMES = VOLUMES
 
         self.ec2 = awsutils.EasyEC2(
             AWS_ACCESS_KEY_ID = self.AWS_ACCESS_KEY_ID, 
@@ -181,9 +178,7 @@ class Cluster(object):
             'AVAILABILITY_ZONE': self.AVAILABILITY_ZONE,
             'KEYNAME': self.KEYNAME,
             'KEY_LOCATION': self.KEY_LOCATION,
-            'VOLUME': self.VOLUME,
-            'VOLUME_DEVICE': self.VOLUME_DEVICE,
-            'VOLUME_PARTITION': self.VOLUME_PARTITION,
+            'VOLUMES': self.VOLUMES,
         }
         return pprint.pformat(cfg)
 
@@ -256,9 +251,9 @@ class Cluster(object):
         return nodes
 
     @property
-    def volume(self):
-        vol = self.ec2.get_volume(self.VOLUME)
-        return vol
+    def volumes(self):
+        vols = [self.ec2.get_volume(vol) for vol in self.VOLUMES]
+        return vols
 
     def create_cluster(self):
         log.info("Launching a %d-node cluster..." % self.CLUSTER_SIZE)
@@ -324,19 +319,20 @@ class Cluster(object):
         else:
             return False
 
-    def attach_volume_to_master(self):
-        log.info("Attaching volume to master node...")
-        vol = self.volume
-        if vol.status != "available":
-            log.error('Volume not available...please check and try again')
-            return
-        resp = vol.attach(self.master_node.id, self.VOLUME_DEVICE)
-        log.debug("resp = %s" % resp)
-        while True:
-            vol.update()
-            if vol.attachment_state() == 'attached':
-                return True
-            time.sleep(5)
+    def attach_volumes_to_master(self):
+        for vol in self.volumes:
+            log.info("Attaching volume %s to master node..." % vol.id)
+            if vol.status != "available":
+                log.error('Volume %s not available...please check and try again'
+                         % vol.id)
+                continue
+            resp = vol.attach(self.master_node.id, self.VOLUMES[vol.id]['DEVICE'])
+            log.debug("resp = %s" % resp)
+            while True:
+                vol.update()
+                if vol.attachment_state() == 'attached':
+                    break
+                time.sleep(5)
 
     def stop_cluster(self):
         resp = raw_input(">>> Shutdown cluster ? (yes/no) ")
@@ -368,8 +364,8 @@ class Cluster(object):
 
         log.info("The master node is %s" % self.master_node.dns_name)
 
-        if self.VOLUME:
-            self.attach_volume_to_master()
+        if self.VOLUMES:
+            self.attach_volumes_to_master()
 
         log.info("Setting up the cluster...")
         setup = self._setup_class(self)
@@ -506,32 +502,69 @@ $ ssh -i %(key)s %(user)s@%(master)s
         
         return True
 
+    def _is_valid_device(self, dev):
+        regex = re.compile('/dev/sd[a-z]')
+        return len(dev) == 8 and regex.match(dev)
+
+    def _is_valid_partition(self, part):
+        regex = re.compile('/dev/sd[a-z][1-9][0-9]?')
+        return len(part) in [9,10] and regex.match(part)
+
     def _has_valid_ebs_settings(self):
-        #TODO check that VOLUME id exists
-        VOLUME = self.VOLUME
-        VOLUME_DEVICE = self.VOLUME_DEVICE
-        VOLUME_PARTITION = self.VOLUME_PARTITION
-        AVAILABILITY_ZONE = self.AVAILABILITY_ZONE
-        conn = self.ec2
-        if VOLUME is not None:
-            try:
-                vol = conn.get_volume(VOLUME)
-            except boto.exception.EC2ResponseError,e:
-                log.error('VOLUME = %s does not exist' % VOLUME)
+        # check vols for duplicate DEVICE/PARTITION/MOUNT_PATHs 
+        devices = []
+        mount_paths = []
+        for vol in self.VOLUMES:
+            device = self.VOLUMES[vol].get('DEVICE')
+            if not self._is_valid_device(device):
+                log.error("Invalid DEVICE value for volume %s" % vol)
                 return False
-            if VOLUME_DEVICE is None:
-                log.error('Must specify VOLUME_DEVICE when specifying VOLUME setting')
+            devices.append(device)
+            partition = self.VOLUMES[vol].get('PARTITION')
+            if not self._is_valid_partition(partition):
+                log.error("Invalid PARTITION value for volume %s" % vol)
                 return False
-            if VOLUME_PARTITION is None:
-                log.error('Must specify VOLUME_PARTITION when specifying VOLUME setting')
+            if not partition.startswith(device):
+                log.error("Volume partition must start with %s" % device)
                 return False
-            if AVAILABILITY_ZONE is not None:
-                if vol.zone != AVAILABILITY_ZONE:
-                    log.error('The VOLUME you specified is only available in region %(vol_zone)s, \
-    however, you specified AVAILABILITY_ZONE = %(availability_zone)s\nYou need to \
-    either change AVAILABILITY_ZONE or create a new volume in %(availability_zone)s' \
-                                % {'vol_zone': vol.region.name, 'availability_zone': AVAILABILITY_ZONE})
+            mount_path = self.VOLUMES[vol].get('MOUNT_PATH')
+            mount_paths.append(mount_path)
+            if not mount_path.startswith('/'):
+                log.error("Mount path for volume %s should start with /" % vol)
+                return False
+        for dev in devices:
+            if devices.count(dev) > 1:
+                log.error("Can't attach more than one volume on device %s" % dev)
+                return False
+        for path in mount_paths:
+            if mount_paths.count(path) > 1:
+                log.error("Can't mount more than one volume on %s" % path)
+                return False
+        for volume in self.VOLUMES:
+            VOLUME = volume
+            VOLUME_DEVICE = self.VOLUMES[volume].get('DEVICE')
+            VOLUME_PARTITION = self.VOLUMES[volume].get('PARTITION')
+            AVAILABILITY_ZONE = self.AVAILABILITY_ZONE
+            conn = self.ec2
+            if VOLUME is not None:
+                try:
+                    vol = conn.get_volume(VOLUME)
+                except boto.exception.EC2ResponseError,e:
+                    log.error('VOLUME = %s does not exist' % VOLUME)
                     return False
+                if VOLUME_DEVICE is None:
+                    log.error('Missing DEVICE setting for volume %s' % VOLUME)
+                    return False
+                if VOLUME_PARTITION is None:
+                    log.error('Missing PARTITION setting for volume %s' % VOLUME)
+                    return False
+                if AVAILABILITY_ZONE is not None:
+                    if vol.zone != AVAILABILITY_ZONE:
+                        log.error('The volume %(vol)s is only available in zone %(vol_zone)s, \
+however, you specified AVAILABILITY_ZONE = %(availability_zone)s\nYou either need to \
+change your AVAILABILITY_ZONE setting to %(vol_zone)s or create a new volume in %(availability_zone)s' \
+                                  % {'vol': vol.id, 'vol_zone': vol.zone, 'availability_zone': AVAILABILITY_ZONE})
+                        return False
         return True
 
     def _has_all_required_settings(self):
