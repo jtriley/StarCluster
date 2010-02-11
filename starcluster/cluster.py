@@ -231,6 +231,7 @@ class Cluster(object):
                 nodeid += 1
         else:
             for node in self._nodes:
+                log.debug('refreshing node %s' % node.dns_name)
                 node.update()
         return self._nodes
 
@@ -295,6 +296,7 @@ class Cluster(object):
                 s.connect((node.dns_name, 22))
                 s.close()
             except socket.error:
+                log.debug("ssh not up for %s" % node.dns_name)
                 return False
         return True
 
@@ -304,6 +306,7 @@ class Cluster(object):
         """
         for node in self.running_nodes:
             if node.private_ip_address is None:
+                log.debug("node %s has no private_ip_address" % node.dns_name)
                 return False
         return True
 

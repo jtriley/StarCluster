@@ -132,8 +132,25 @@ class EasyEC2(EasyAWS):
         if not instances:
             log.info("No instances found")
         for instance in instances:
-            print "%s %s %s" % (instance.id, instance.dns_name, instance.state)
-            #print instance.dns_name
+            id = instance.id
+            if not id: id = 'N/A'
+            dns_name = instance.dns_name
+            if not dns_name: dns_name = 'N/A'
+            state = instance.state
+            if not state: state = 'N/A'
+            private_ip = instance.private_ip_address
+            if not private_ip: private_ip = 'N/A'
+            public_ip = instance.ip_address
+            if not public_ip: public_ip = 'N/A'
+            zone = instance.placement
+            if not zone: zone = 'N/A'
+            print "id: %s" % id
+            print "dns_name: %s" % dns_name
+            print "state: %s" % state
+            print "public ip: %s" % public_ip 
+            print "private_ip: %s" % private_ip
+            print "zone: %s" % zone
+            print
             
     def list_registered_images(self):
         images = self.registered_images

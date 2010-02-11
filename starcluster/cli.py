@@ -88,7 +88,7 @@ class CmdStart(CmdBase):
                 cfg.load()
                 return optcomplete.ListCompleter(cfg.get_cluster_names())
             except Exception, e:
-                log.error('sometiing went wrong fix me: %s' % e)
+                log.error('something went wrong fix me: %s' % e)
 
     def addopts(self, parser):
         opt = parser.add_option("-x","--no-create", dest="NO_CREATE",

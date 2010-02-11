@@ -101,7 +101,10 @@ class Node(object):
         return self.instance.stop()
 
     def update(self):
-        return self.instance.update()
+        retval = self.instance.update()
+        if hasattr(self.instance.updated, 'private_ip_address'):
+            self.instance.private_ip_address = self.instance.updated.private_ip_address
+        return retval
 
     @property
     def ssh(self):
