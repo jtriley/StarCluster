@@ -369,6 +369,17 @@ class CmdListInstances(CmdBase):
         ec2 = self.cfg.get_easy_ec2()
         ec2.list_all_instances()
 
+class CmdListVolumes(CmdBase):
+    """
+    listvolumes
+
+    List all EBS volumes
+    """
+    names = ['listvolumes']
+    def execute(self, args):
+        ec2 = self.cfg.get_easy_ec2()
+        ec2.list_volumes()
+
 class CmdHelp:
     """
     help
@@ -429,8 +440,16 @@ def parse_subcommands(gparser, subcmds):
     subcmdname, subargs = args[0], args[1:]
 
     # load StarClusterConfig into global options
-    cfg = config.StarClusterConfig(gopts.CONFIG)
-    cfg.load()
+    try:
+        cfg = config.StarClusterConfig(gopts.CONFIG)
+        cfg.load()
+    except config.ConfigNotFound,e:
+        print e.template
+        log.error(e.msg)
+        sys.exit(1)
+    except config.ConfigError,e:
+        log.error(e.msg)
+        sys.exit(1)
     gopts.CONFIG = cfg
 
     # Parse command arguments and invoke command.
@@ -474,6 +493,7 @@ def main():
         CmdListBuckets(),
         CmdShowBucket(),
         CmdCreateVolume(),
+        CmdListVolumes(),
         CmdHelp(),
     ]
 

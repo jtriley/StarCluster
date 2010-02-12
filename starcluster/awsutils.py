@@ -279,16 +279,22 @@ class EasyEC2(EasyAWS):
         return self.conn.get_all_volumes()
 
     def get_volume(self, volume_id):
-        try:
-            return self.conn.get_all_volumes(volume_ids=[volume_id])[0]
-        except:
-            pass
+        return self.conn.get_all_volumes(volume_ids=[volume_id])[0]
 
     def list_volumes(self):
         vols = self.get_volumes()
         if vols is not None:
             for vol in vols:
-                print vol
+                print "volume_id: %s" % vol.id
+                print "size: %sGB" % vol.size
+                print "status: %s" % vol.status
+                print "availability_zone: %s" % vol.zone
+                if vol.snapshot_id:
+                    print "snapshot_id: %s" % vol.snapshot_id
+                snapshots=vol.snapshots()
+                if snapshots:
+                    print 'snapshots: %s' % ' '.join([snap.id for snap in snapshots])
+                print
 
     def get_security_group(self, groupname):
         return self.conn.get_all_security_groups(groupnames=[groupname])[0]

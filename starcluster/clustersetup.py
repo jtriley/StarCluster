@@ -132,11 +132,12 @@ class ClusterSetup(object):
         """ Mount EBS volume, if specified, in ~/.starclustercfg to /home"""
         # setup /etc/fstab on master to use block device if specified
         for vol in self._volumes:
-            volume = vol
-            volume_partition = self._volumes[volume].get('PARTITION')
-            mount_path = self._volumes[volume].get('MOUNT_PATH')
-            if volume and volume_partition and mount_path:
-                log.info("Mounting EBS volume %s on %s..." % (volume, mount_path))
+            vol = self._volumes[vol]
+            vol_id = vol.get("VOLUME_ID")
+            volume_partition = vol.get('PARTITION')
+            mount_path = vol.get('MOUNT_PATH')
+            if vol_id and volume_partition and mount_path:
+                log.info("Mounting EBS volume %s on %s..." % (vol_id, mount_path))
                 mconn = self._master.ssh
                 master_fstab = mconn.remote_file('/etc/fstab', mode='a')
                 print >> master_fstab, "%s %s ext3 noauto,defaults 0 0 " % (
@@ -163,7 +164,8 @@ class ClusterSetup(object):
         for node in self._nodes:
             if not node.is_master():
                 for vol in self._volumes:
-                    mount_path = self._volumes[vol]['MOUNT_PATH']
+                    vol = self._volumes[vol]
+                    mount_path = vol.get('MOUNT_PATH')
                     etc_exports.write(mount_path + ' ' + node.private_dns_name + nfs_export_settings + '\n')
                 etc_exports.write('/opt/sge6 ' + node.private_dns_name + nfs_export_settings + '\n')
         etc_exports.close()
@@ -182,7 +184,8 @@ class ClusterSetup(object):
                 nconn.execute('mkdir /opt/sge6')
                 nconn.execute('chown -R %(user)s:%(user)s /opt/sge6' % {'user':self._user})
                 for vol in self._volumes:
-                    mount_path = self._volumes[vol]['MOUNT_PATH']
+                    vol = self._volumes[vol]
+                    mount_path = vol.get('MOUNT_PATH')
                     nconn.execute(
                         'echo "%s:%s %s nfs user,rw,exec 0 0" >> /etc/fstab' %
                                   (master.private_dns_name,mount_path,

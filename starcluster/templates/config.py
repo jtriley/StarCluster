@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 config_template = """
+####################################
+## StarCluster Configuration File ##
+####################################
+
 # This is the global AWS section.
 # These settings apply to all clusters
 [aws]
@@ -17,6 +21,30 @@ KEY_LOCATION=/home/myuser/.ssh/id_rsa-gsg-keypair
 # You can of course have multiple keypair sections
 [key my-other-gsg-keypair]
 KEY_LOCATION=/home/myuser/.ssh/id_rsa-my-other-gsg-keypair
+
+# Sections starting with "volume" define your EBS volumes
+# Section name tags your volume e.g.:
+[volume biodata]
+# attach volume vol-c9999999 to /home
+VOLUME_ID = vol-c999999
+DEVICE = /dev/sdj
+PARTITION = /dev/sdj1
+MOUNT_PATH = /home
+
+# Same volume as above, but mounts to different location
+[volume biodata2]
+# attach volume vol-c9999999 to /opt/
+VOLUME_ID = vol-c999999
+DEVICE = /dev/sdj
+PARTITION = /dev/sdj1
+MOUNT_PATH = /opt/
+
+[volume oceandata]
+# attach volume vol-d7777777 to /mydata on master node 
+VOLUME_ID = vol-d7777777
+DEVICE = /dev/sdk
+PARTITION = /dev/sdk1
+MOUNT_PATH = /mydata
 
 # Sections starting with "cluster" define your cluster configurations
 # Section name is the name you give to your cluster e.g.:
@@ -51,23 +79,25 @@ INSTANCE_TYPE = m1.small
 # availability zone
 AVAILABILITY_ZONE = us-east-1c
 
-# attach volume to /home on master node 
-# NOTE: these settings are optional, uncomment to use them
-#VOLUME = vol-abcdefgh
-#VOLUME_DEVICE = /dev/sdd
-#VOLUME_PARTITION = /dev/sdd1
+# list of volumes to attach to the cluster's master node
+VOLUMES = oceandata, biodata
 
 # You can also define multiple clusters.
 # You can either supply all configuration options as with smallcluster above, or
-# create an EXTENDS=<cluster name> variable in the new cluster section to use all 
-# settings from another cluster section e.g.:
+# create an EXTENDS=<cluster_name> variable in the new cluster section to use all 
+# settings from <cluster_name> as defaults e.g.:
 [cluster mediumcluster]
+# Declares that this cluster uses smallcluster as defaults
 EXTENDS=smallcluster
+# This section is the same as smallcluster except for the following variables:
 KEYNAME=my-other-gsg-keypair
 INSTANCE_TYPE = c1.xlarge
 CLUSTER_SIZE=8
+VOLUMES = biodata2
 
 [cluster largecluster]
+# Declares that this cluster uses mediumcluster as defaults
 EXTENDS=mediumcluster
+# This section is the same as mediumcluster except for the following variables:
 CLUSTER_SIZE=16
 """

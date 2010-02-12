@@ -252,7 +252,7 @@ class Cluster(object):
 
     @property
     def volumes(self):
-        vols = [self.ec2.get_volume(vol) for vol in self.VOLUMES]
+        vols = [ self.ec2.get_volume(self.VOLUMES[vol].get('VOLUME_ID')) for vol in self.VOLUMES]
         return vols
 
     def create_cluster(self):
@@ -320,13 +320,17 @@ class Cluster(object):
             return False
 
     def attach_volumes_to_master(self):
-        for vol in self.volumes:
+        for vol in self.VOLUMES:
+            volume = self.VOLUMES[vol]
+            device = volume.get('DEVICE')
+            vol_id = volume.get('VOLUME_ID')
+            vol = self.ec2.get_volume(vol_id)
             log.info("Attaching volume %s to master node..." % vol.id)
             if vol.status != "available":
                 log.error('Volume %s not available...please check and try again'
                          % vol.id)
                 continue
-            resp = vol.attach(self.master_node.id, self.VOLUMES[vol.id]['DEVICE'])
+            resp = vol.attach(self.master_node.id, device)
             log.debug("resp = %s" % resp)
             while True:
                 vol.update()
@@ -334,12 +338,16 @@ class Cluster(object):
                     break
                 time.sleep(5)
 
+    def detach_volumes(self):
+        for vol in self.volumes:
+            log.info("Detaching volume %s from master" % vol.id)
+            vol.detach()
+
     def stop_cluster(self):
         resp = raw_input(">>> Shutdown cluster ? (yes/no) ")
         if resp == 'yes':
-            if self.VOLUME:
-                log.info("Detaching volume (%s) from master" % self.VOLUME)
-                self.volume.detach()
+            if self.VOLUMES:
+                self.detach_volumes()
                 
             for node in self.running_nodes:
                 log.info("Shutting down instance: %s " % node.id)
@@ -511,26 +519,62 @@ $ ssh -i %(key)s %(user)s@%(master)s
         return len(part) in [9,10] and regex.match(part)
 
     def _has_valid_ebs_settings(self):
-        # check vols for duplicate DEVICE/PARTITION/MOUNT_PATHs 
+        # check EBS vols for missing/duplicate DEVICE/PARTITION/MOUNT_PATHs 
+        vol_ids = []
         devices = []
         mount_paths = []
         for vol in self.VOLUMES:
-            device = self.VOLUMES[vol].get('DEVICE')
-            if not self._is_valid_device(device):
-                log.error("Invalid DEVICE value for volume %s" % vol)
-                return False
+            vol_name = vol
+            vol = self.VOLUMES[vol]
+            vol_id = vol.get('VOLUME_ID')
+            device = vol.get('DEVICE')
+            partition = vol.get('PARTITION') 
+            mount_path = vol.get("MOUNT_PATH")
+            mount_paths.append(mount_path)
             devices.append(device)
-            partition = self.VOLUMES[vol].get('PARTITION')
+            vol_ids.append(vol_id)
+            if not device:
+                log.error('Missing DEVICE setting for volume %s' % vol_name)
+                return False
+            if not self._is_valid_device(device):
+                log.error("Invalid DEVICE value for volume %s" % vol_name)
+                return False
+            if not partition:
+                log.error('Missing PARTITION setting for volume %s' % vol_name)
+                return False
             if not self._is_valid_partition(partition):
-                log.error("Invalid PARTITION value for volume %s" % vol)
+                log.error("Invalid PARTITION value for volume %s" % vol_name)
                 return False
             if not partition.startswith(device):
                 log.error("Volume partition must start with %s" % device)
                 return False
-            mount_path = self.VOLUMES[vol].get('MOUNT_PATH')
-            mount_paths.append(mount_path)
+            if not mount_path:
+                log.error('Missing MOUNT_PATH setting for volume %s' % vol_name)
+                return False
             if not mount_path.startswith('/'):
-                log.error("Mount path for volume %s should start with /" % vol)
+                log.error("Mount path for volume %s should start with /" %
+                          vol_name)
+                return False
+            zone = self.AVAILABILITY_ZONE
+            conn = self.ec2
+            try:
+                vol = conn.get_volume(vol_id)
+            except boto.exception.EC2ResponseError,e:
+                log.error('Volume %s (VOLUME_ID: %s) does not exist ' % (vol_name,vol_id))
+                return False
+            if zone:
+                if vol.zone != zone:
+                    log.error('The volume %(vol)s is only available in zone %(vol_zone)s, \
+however, you specified AVAILABILITY_ZONE = %(availability_zone)s\nYou either need to \
+change your AVAILABILITY_ZONE setting to %(vol_zone)s or create a new volume in %(availability_zone)s' \
+                              % {'vol': vol.id, 'vol_zone': vol.zone,
+                                 'availability_zone': zone})
+                    return False
+            else:
+                return False
+        for vol_id in vol_ids:
+            if vol_ids.count(vol_id) > 1:
+                log.error("Multiple configurations for volume %s specified.  Please choose one" % vol_id)
                 return False
         for dev in devices:
             if devices.count(dev) > 1:
@@ -540,31 +584,6 @@ $ ssh -i %(key)s %(user)s@%(master)s
             if mount_paths.count(path) > 1:
                 log.error("Can't mount more than one volume on %s" % path)
                 return False
-        for volume in self.VOLUMES:
-            VOLUME = volume
-            VOLUME_DEVICE = self.VOLUMES[volume].get('DEVICE')
-            VOLUME_PARTITION = self.VOLUMES[volume].get('PARTITION')
-            AVAILABILITY_ZONE = self.AVAILABILITY_ZONE
-            conn = self.ec2
-            if VOLUME is not None:
-                try:
-                    vol = conn.get_volume(VOLUME)
-                except boto.exception.EC2ResponseError,e:
-                    log.error('VOLUME = %s does not exist' % VOLUME)
-                    return False
-                if VOLUME_DEVICE is None:
-                    log.error('Missing DEVICE setting for volume %s' % VOLUME)
-                    return False
-                if VOLUME_PARTITION is None:
-                    log.error('Missing PARTITION setting for volume %s' % VOLUME)
-                    return False
-                if AVAILABILITY_ZONE is not None:
-                    if vol.zone != AVAILABILITY_ZONE:
-                        log.error('The volume %(vol)s is only available in zone %(vol_zone)s, \
-however, you specified AVAILABILITY_ZONE = %(availability_zone)s\nYou either need to \
-change your AVAILABILITY_ZONE setting to %(vol_zone)s or create a new volume in %(availability_zone)s' \
-                                  % {'vol': vol.id, 'vol_zone': vol.zone, 'availability_zone': AVAILABILITY_ZONE})
-                        return False
         return True
 
     def _has_all_required_settings(self):

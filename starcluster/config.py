@@ -12,6 +12,18 @@ from starcluster import exception
 
 from starcluster.logger import log
 
+class ConfigNotFound(Exception):
+    def __init__(self, msg, cfg, show_template=False, **kwargs):
+        self.msg = msg
+        self.cfg = cfg
+        self.template = None
+        if show_template:
+            self.template = config_template
+
+class ConfigError(Exception):
+    def __init__(self, msg, **kwargs):
+        self.msg = msg
+
 def get_easy_s3():
     """
     Factory for EasyS3 class that attempts to load AWS credentials from
@@ -60,7 +72,8 @@ class StarClusterConfig(object):
     print cluster_cfg
     """
 
-    DEFAULT_CFG_FILE = os.path.join(os.path.expanduser('~'),'.starclustercfg')
+    STARCLUSTER_CFG_DIR = os.path.join(os.path.expanduser('~'),'.starcluster')
+    DEFAULT_CFG_FILE = os.path.join(STARCLUSTER_CFG_DIR, 'config')
 
     # until i can find a way to query AWS for instance types...
     instance_types = static.INSTANCE_TYPES
@@ -70,20 +83,20 @@ class StarClusterConfig(object):
     volume_settings = static.EBS_VOLUME_SETTINGS
 
     def __init__(self, config_file=None, cache=False):
+        if not os.path.isdir(self.STARCLUSTER_CFG_DIR):
+            os.makedirs(self.STARCLUSTER_CFG_DIR)
         if config_file:
-            if os.path.exists(config_file):
-                if os.path.isfile(config_file):
-                    self.cfg_file = config_file
-                else:
-                    log.warn('config %s exists but is not a regular file, defaulting to %s' %
-                    (config_file,self.DEFAULT_CFG_FILE))
-                    self.cfg_file = self.DEFAULT_CFG_FILE
-            else:
-                log.warn('config %s does not exist, defaulting to %s' %
-                (config_file, self.DEFAULT_CFG_FILE))
-                self.cfg_file = self.DEFAULT_CFG_FILE
+            self.cfg_file = config_file
         else:
             self.cfg_file = self.DEFAULT_CFG_FILE
+        if os.path.exists(self.cfg_file):
+            if not os.path.isfile(self.cfg_file):
+                raise ConfigError('config %s exists but is not a regular file' %
+                                 self.cfg_file)
+        else:
+            raise ConfigNotFound(
+                "Config file %s does not exist" % self.cfg_file, self.cfg_file,
+            )
 
         self.type_validators = {
             int: self._get_int,
@@ -121,7 +134,6 @@ class StarClusterConfig(object):
     def config(self):
         # TODO: create the template file for them?
         CFG_FILE = self.cfg_file
-        #if not os.path.exists(CFG_FILE):
             #print config_template
             #log.info('It appears this is your first time using StarCluster.')
             #log.info('Please create %s using the template above.' % CFG_FILE)
@@ -161,7 +173,7 @@ class StarClusterConfig(object):
         extends = section['EXTENDS'] = section.get('EXTENDS')
         if extends is None:
             return
-        log.debug('%s extends %s' % (section, extends))
+        log.debug('%s extends %s' % (section_name, extends))
         extensions = [section]
         while True:
             extends = section.get('EXTENDS',None)
@@ -192,16 +204,16 @@ class StarClusterConfig(object):
     def load_volumes(self, section_name, store):
         cluster_section = store
         volumes = cluster_section.get('VOLUMES')
-        if volumes is None:
-            return
-        volumes = [vol.strip() for vol in volumes.split(',')]
         vols = AttributeDict()
+        cluster_section['VOLUMES'] = vols
+        if volumes is None:
+            return 
+        volumes = [vol.strip() for vol in volumes.split(',')]
         for volume in volumes:
             if self.vols.has_key(volume):
                 vols[volume] = self.vols.get(volume)
             else:
                 log.warn("volume %s not defined in config" % volume)
-        cluster_section['VOLUMES'] = vols
 
     def load(self):
         self.load_settings('aws', 'info', self.aws_settings, self.aws)
@@ -222,7 +234,6 @@ class StarClusterConfig(object):
             self.load_extends_variables(cluster, self.clusters)
             self.load_defaults(self.cluster_settings, self.clusters[cluster])
             self.load_keypairs(cluster, self.clusters[cluster])
-
         for cluster in clusters:
             self.load_volumes(cluster, self.clusters[cluster])
 

@@ -44,7 +44,7 @@ KEY_SETTINGS = {
 }
 
 EBS_VOLUME_SETTINGS = {
-    #'VOLUME': (str, False, None),
+    'VOLUME_ID': (str, True, None),
     'DEVICE': (str, True, None),
     'PARTITION': (str, True, None),
     'MOUNT_PATH': (str, True, None),
@@ -64,4 +64,5 @@ CLUSTER_SETTINGS = {
     'KEY_LOCATION': (str, True, None),
     'VOLUMES': (str, False, None),
     'EXTENDS': (str, False, None),
+    'PLUGIN': (str, False, None),
 }
