@@ -80,6 +80,7 @@ INSTANCE_TYPE = m1.small
 AVAILABILITY_ZONE = us-east-1c
 
 # list of volumes to attach to the cluster's master node
+# and nfs mount to each cluster node
 VOLUMES = oceandata, biodata
 
 # You can also define multiple clusters.
@@ -89,7 +90,7 @@ VOLUMES = oceandata, biodata
 [cluster mediumcluster]
 # Declares that this cluster uses smallcluster as defaults
 EXTENDS=smallcluster
-# This section is the same as smallcluster except for the following variables:
+# This section is the same as smallcluster except for the following settings:
 KEYNAME=my-other-gsg-keypair
 INSTANCE_TYPE = c1.xlarge
 CLUSTER_SIZE=8
@@ -101,3 +102,7 @@ EXTENDS=mediumcluster
 # This section is the same as mediumcluster except for the following variables:
 CLUSTER_SIZE=16
 """
+
+DASHES='-'*10
+copy_paste_template=DASHES + ' COPY BELOW THIS LINE ' + DASHES  + \
+    '\n' + config_template + '\n' + DASHES + ' END COPY ' + DASHES + '\n'

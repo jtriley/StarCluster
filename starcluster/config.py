@@ -7,18 +7,39 @@ from starcluster.cluster import Cluster
 from starcluster import static 
 from starcluster import awsutils 
 from starcluster.utils import AttributeDict
-from starcluster.templates.config import config_template
+from starcluster.templates.config import config_template, copy_paste_template
 from starcluster import exception 
 
 from starcluster.logger import log
 
 class ConfigNotFound(Exception):
-    def __init__(self, msg, cfg, show_template=False, **kwargs):
+    def __init__(self, msg, cfg, **kwargs):
         self.msg = msg
         self.cfg = cfg
-        self.template = None
-        if show_template:
-            self.template = config_template
+        self.template = copy_paste_template
+
+    def create_config(self):
+        cfg_parent_dir = os.path.dirname(self.cfg)
+        if not os.path.exists(cfg_parent_dir):
+            os.makedirs(cfg_parent_dir)
+        cfg_file = open(self.cfg, 'w')
+        cfg_file.write(config_template)
+        cfg_file.close()
+        log.info("Config template written to %s. Please customize this file." %
+                 self.cfg)
+
+    def display_options(self):
+        print 'Options:'
+        print '--------' 
+        print '[1] Show the StarCluster config template'
+        print '[2] Write config template to %s' % self.cfg
+        print '[q] Quit'
+        resp = raw_input('\nPlase enter your selection: ')
+        if resp == '1':
+            print self.template
+        elif resp == '2':
+            print
+            self.create_config()
 
 class ConfigError(Exception):
     def __init__(self, msg, **kwargs):
@@ -72,9 +93,6 @@ class StarClusterConfig(object):
     print cluster_cfg
     """
 
-    STARCLUSTER_CFG_DIR = os.path.join(os.path.expanduser('~'),'.starcluster')
-    DEFAULT_CFG_FILE = os.path.join(STARCLUSTER_CFG_DIR, 'config')
-
     # until i can find a way to query AWS for instance types...
     instance_types = static.INSTANCE_TYPES
     aws_settings = static.AWS_SETTINGS
@@ -83,19 +101,20 @@ class StarClusterConfig(object):
     volume_settings = static.EBS_VOLUME_SETTINGS
 
     def __init__(self, config_file=None, cache=False):
-        if not os.path.isdir(self.STARCLUSTER_CFG_DIR):
-            os.makedirs(self.STARCLUSTER_CFG_DIR)
+        if not os.path.isdir(static.STARCLUSTER_CFG_DIR):
+            os.makedirs(static.STARCLUSTER_CFG_DIR)
         if config_file:
             self.cfg_file = config_file
         else:
-            self.cfg_file = self.DEFAULT_CFG_FILE
+            self.cfg_file = static.DEFAULT_CFG_FILE
         if os.path.exists(self.cfg_file):
             if not os.path.isfile(self.cfg_file):
-                raise ConfigError('config %s exists but is not a regular file' %
+                raise ConfigError('Config %s exists but is not a regular file' %
                                  self.cfg_file)
         else:
             raise ConfigNotFound(
-                "Config file %s does not exist" % self.cfg_file, self.cfg_file,
+                ("Config file %s does not exist\n") %
+                self.cfg_file, self.cfg_file,
             )
 
         self.type_validators = {
@@ -158,6 +177,9 @@ class StarClusterConfig(object):
             value = func(self.config, section_key, name)
             if value:
                 section_conf[name] = value
+            elif required:
+                raise ConfigError('missing required option %s in section "%s"' %
+                                  (name, section_key))
 
     def load_defaults(self, settings, store):
         section_conf = store

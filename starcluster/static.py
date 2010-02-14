@@ -2,6 +2,10 @@
 """
 Module for storing static datastructures
 """
+import os
+
+STARCLUSTER_CFG_DIR = os.path.join(os.path.expanduser('~'),'.starcluster')
+DEFAULT_CFG_FILE = os.path.join(STARCLUSTER_CFG_DIR, 'config')
 
 # StarCluster BASE AMIs (i386/x86_64)
 BASE_AMI_32="ami-0330d16a"
@@ -34,7 +38,7 @@ AWS_SETTINGS = {
     # setting, type, required?, default
     'AWS_ACCESS_KEY_ID': (str, True, None),
     'AWS_SECRET_ACCESS_KEY': (str, True, None),
-    'AWS_USER_ID': (str, True, None),
+    'AWS_USER_ID': (str, False, None),
     'EC2_CERT': (str, False, None),
     'EC2_PRIVATE_KEY': (str, False, None),
 }

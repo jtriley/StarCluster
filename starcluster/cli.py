@@ -444,8 +444,8 @@ def parse_subcommands(gparser, subcmds):
         cfg = config.StarClusterConfig(gopts.CONFIG)
         cfg.load()
     except config.ConfigNotFound,e:
-        print e.template
         log.error(e.msg)
+        e.display_options()
         sys.exit(1)
     except config.ConfigError,e:
         log.error(e.msg)
@@ -512,7 +512,10 @@ def main():
         return -1
 
     gopts, sc, opts, args = parse_subcommands(gparser, subcmds)
-    sc.execute(args)
+    try:
+        sc.execute(args)
+    except config.ConfigError,e:
+        log.error(e.msg)
 
 def test():
     pass
