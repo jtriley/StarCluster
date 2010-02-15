@@ -65,7 +65,6 @@ CLUSTER_SETTINGS = {
     'AVAILABILITY_ZONE': (str, False, None),
     # SSH KEYPAIR OPTIONS
     'KEYNAME': (str, True, None),
-    'KEY_LOCATION': (str, True, None),
     'VOLUMES': (str, False, None),
     'EXTENDS': (str, False, None),
     'PLUGIN': (str, False, None),

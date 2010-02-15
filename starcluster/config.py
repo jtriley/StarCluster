@@ -177,7 +177,16 @@ class StarClusterConfig(object):
             value = func(self.config, section_key, name)
             if value:
                 section_conf[name] = value
-            elif required:
+
+    def check_required(self, section_prefix, section_name, settings, store):
+        section_key = ' '.join([section_prefix, section_name])
+        section_conf = store
+        for setting in settings:
+            name = setting
+            requirements = settings[setting]
+            required = requirements[1];
+            value = section_conf.get(name)
+            if not value and required:
                 raise ConfigError('missing required option %s in section "%s"' %
                                   (name, section_key))
 
@@ -226,6 +235,8 @@ class StarClusterConfig(object):
     def load_volumes(self, section_name, store):
         cluster_section = store
         volumes = cluster_section.get('VOLUMES')
+        if isinstance(volumes, AttributeDict):
+            return
         vols = AttributeDict()
         cluster_section['VOLUMES'] = vols
         if volumes is None:
@@ -239,14 +250,17 @@ class StarClusterConfig(object):
 
     def load(self):
         self.load_settings('aws', 'info', self.aws_settings, self.aws)
+        self.check_required('aws', 'info', self.aws_settings, self.aws)
         keys = [section.split()[1] for section in self.config.sections() if section.startswith('key')]
         for key in keys:
             self.keys[key] = AttributeDict()
             self.load_settings('key', key, self.key_settings, self.keys[key]) 
+            self.check_required('key', key, self.key_settings, self.keys[key]) 
         vols = [section.split()[1] for section in self.config.sections() if section.startswith('volume')]
         for vol in vols:
             self.vols[vol] = AttributeDict()
             self.load_settings('volume', vol, self.volume_settings, self.vols[vol])
+            self.check_required('volume', vol, self.volume_settings, self.vols[vol])
         clusters = [section.split()[1] for section in self.config.sections() if section.startswith('cluster')]
         for cluster in clusters:
             self.clusters[cluster] = AttributeDict()
@@ -256,8 +270,10 @@ class StarClusterConfig(object):
             self.load_extends_variables(cluster, self.clusters)
             self.load_defaults(self.cluster_settings, self.clusters[cluster])
             self.load_keypairs(cluster, self.clusters[cluster])
-        for cluster in clusters:
+        #for cluster in clusters:
             self.load_volumes(cluster, self.clusters[cluster])
+            self.check_required('cluster', cluster, self.cluster_settings,
+                               self.clusters[cluster])
 
     def get_aws_credentials(self):
         """Returns AWS credentials defined in the configuration
