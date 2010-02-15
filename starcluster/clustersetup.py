@@ -33,6 +33,9 @@ class ClusterSetup(object):
             nconn = node.ssh
             nconn.execute('useradd -m -s `which %s` %s' %
                           (self._user_shell, self._user))
+        mconn = self._master.ssh
+        mconn.execute('chown -R %(user)s:%(user)s /home/%(user)s' % {
+            'user': self._user})
 
     def _setup_scratch(self):
         """ Configure scratch space on all StarCluster nodes """
@@ -154,6 +157,7 @@ class ClusterSetup(object):
         mconn = master.ssh
 
         # copy fresh sge installation files to /opt/sge6 and make CLUSTER_USER the owner
+        mconn.execute('rm -rf /opt/sge6')
         mconn.execute('cp -r /opt/sge6-fresh /opt/sge6')
         mconn.execute('chown -R %(user)s:%(user)s /opt/sge6' % {'user':
                                                                 self._user})
