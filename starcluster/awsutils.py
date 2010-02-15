@@ -120,8 +120,15 @@ class EasyEC2(EasyAWS):
     def get_image_name(self, img):
         return img.location.split('/')[1].split('.manifest.xml')[0]
 
-    def get_all_instances(self):
-        reservations = self.conn.get_all_instances()
+    def get_instance(self, instance_id):
+        try:
+            res = self.conn.get_all_instances(instance_ids=[instance_id])
+            return res[0].instances[0]
+        except boto.exception.EC2ResponseError,e:
+            return
+
+    def get_all_instances(self, instance_ids=[]):
+        reservations = self.conn.get_all_instances(instance_ids)
         instances = []
         for res in reservations:
             instances.extend(res.instances)

@@ -369,6 +369,22 @@ class CmdListInstances(CmdBase):
         ec2 = self.cfg.get_easy_ec2()
         ec2.list_all_instances()
 
+class CmdShowConsole(CmdBase):
+    """
+    showconsole <instance-id>
+
+    Show console output for <instance-id>
+    """
+    names = ['showconsole']
+    def execute(self, args):
+        ec2 = self.cfg.get_easy_ec2()
+        instance = ec2.get_instance(args[0])
+        if instance:
+            print instance.get_console_output().output
+        else:
+            log.error("Instance does not exist")
+            sys.exit(1)
+
 class CmdListVolumes(CmdBase):
     """
     listvolumes
@@ -494,6 +510,7 @@ def main():
         CmdShowBucket(),
         CmdCreateVolume(),
         CmdListVolumes(),
+        CmdShowConsole(),
         CmdHelp(),
     ]
 
