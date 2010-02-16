@@ -15,7 +15,7 @@ def ssh_to_node(node_id, cfg, user='root'):
     if node:
         key = cfg.get_key(node.key_name)
         if key:
-            os.system('ssh -i %s %s@%s' % (key.KEY_LOCATION, user, 
+            os.system('ssh -i %s %s@%s' % (key.key_location, user, 
                                            node.dns_name))
         else:
             print 'key %s needed to ssh not found' % node.key_name
@@ -35,7 +35,7 @@ def get_node(node_id, cfg):
             node = instance
             break
     if node:
-        key_location = cfg.keys.get(node.key_name, {}).get('KEY_LOCATION')
+        key_location = cfg.keys.get(node.key_name, {}).get('key_location')
         alias = node_id
         node = Node(node, key_location, node_id)
         return node

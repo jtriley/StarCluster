@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 """
-Module for storing static datastructures
+Module for storing static data structures
 """
 import os
 
 STARCLUSTER_CFG_DIR = os.path.join(os.path.expanduser('~'),'.starcluster')
-DEFAULT_CFG_FILE = os.path.join(STARCLUSTER_CFG_DIR, 'config')
+STARCLUSTER_CFG_FILE = os.path.join(STARCLUSTER_CFG_DIR, 'config')
+STARCLUSTER_PLUGIN_DIR = os.path.join(STARCLUSTER_CFG_DIR, 'plugins')
 
 # StarCluster BASE AMIs (i386/x86_64)
 BASE_AMI_32="ami-0330d16a"
@@ -54,6 +55,10 @@ EBS_VOLUME_SETTINGS = {
     'MOUNT_PATH': (str, True, None),
 }
 
+PLUGIN_SETTINGS = {
+    'SETUP_CLASS': (str, True, None),
+}
+
 CLUSTER_SETTINGS = {
     # setting, type, required?, default
     'CLUSTER_SIZE': (int, True, None),
@@ -67,5 +72,5 @@ CLUSTER_SETTINGS = {
     'KEYNAME': (str, True, None),
     'VOLUMES': (str, False, None),
     'EXTENDS': (str, False, None),
-    'PLUGIN': (str, False, None),
+    'PLUGINS': (str, False, None),
 }

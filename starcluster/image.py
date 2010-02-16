@@ -10,22 +10,22 @@ def create_image(cfg):
     pass
 
 class EC2ImageCreator(object):
-    def __init__(self, INSTANCE=None, AWS_ACCESS_KEY_ID=None,
-                 AWS_SECRET_ACCESS_KEY=None,
-                 AWS_USER_ID=None, BUCKET=None, EC2_CERT=None, 
-                 EC2_PRIVATE_KEY=None, PREFIX='image', REMOVE_IMAGE_FILES=False):
-        self.host = INSTANCE # starcluster.node.Node instance
-        self.access_key = AWS_ACCESS_KEY_ID
-        self.secret_key = AWS_SECRET_ACCESS_KEY
-        self.userid = AWS_USER_ID
-        self.bucket = BUCKET
-        self.prefix = PREFIX
-        self.cert = EC2_CERT
-        self.private_key = EC2_PRIVATE_KEY
-        self.remove_image_files = REMOVE_IMAGE_FILES
+    def __init__(self, instance=None, aws_access_key_id=None,
+                 aws_secret_access_key=None,
+                 aws_user_id=None, bucket=None, ec2_cert=None, 
+                 ec2_private_key=None, prefix='image', remove_image_files=False):
+        self.host = instance # starcluster.node.Node instance
+        self.access_key = aws_access_key_id
+        self.secret_key = aws_secret_access_key
+        self.userid = aws_user_id
+        self.bucket = bucket
+        self.prefix = prefix
+        self.cert = ec2_cert
+        self.private_key = ec2_private_key
+        self.remove_image_files = remove_image_files
         self.ec2 = awsutils.EasyEC2(
-            AWS_ACCESS_KEY_ID = self.access_key, 
-            AWS_SECRET_ACCESS_KEY = self.secret_key,
+            aws_access_key_id = self.access_key, 
+            aws_secret_access_key = self.secret_key,
         )
         if not self.cert:
             try:

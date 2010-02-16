@@ -46,6 +46,18 @@ DEVICE = /dev/sdk
 PARTITION = /dev/sdk1
 MOUNT_PATH = /mydata
 
+# Sections starting with "plugin" define a custom python class
+# which can perform additional configurations to StarCluster's default
+# routines. These plugins can be assigned to a cluster section
+# (see "smallcluster" below) to completely customize the setup procedure 
+[plugin myplugin]
+# myplugin module either lives in ~/.starcluster/plugins or is 
+# in your PYTHONPATH
+SETUP_CLASS = myplugin.SetupClass
+# extra settings are passed as arguments to your plugin:
+SOME_PARAM_FOR_MY_PLUGIN = 1
+SOME_OTHER_PARAM = 2
+
 # Sections starting with "cluster" define your cluster configurations
 # Section name is the name you give to your cluster e.g.:
 [cluster smallcluster]
@@ -81,7 +93,12 @@ AVAILABILITY_ZONE = us-east-1c
 
 # list of volumes to attach to the cluster's master node
 # and nfs mount to each cluster node
+# (OPTIONAL)
 VOLUMES = oceandata, biodata
+
+# list of plugins to load after StarCluster's default ClusterSetup routine
+# (OPTIONAL)
+PLUGINS = myplugin
 
 # You can also define multiple clusters.
 # You can either supply all configuration options as with smallcluster above, or

@@ -320,12 +320,12 @@ class CmdShowBucket(CmdBase):
     """
     showbucket <bucket>
 
-    Show all files in a S3 bucket
+    Show all files in an S3 bucket
     """
     names = ['showbucket']
     def execute(self, args):
         if not args:
-            self.parser.error('please specify a S3 bucket')
+            self.parser.error('please specify an S3 bucket')
         for arg in args:
             s3 = self.cfg.get_easy_s3()
             bucket = s3.list_bucket(arg)
@@ -378,12 +378,15 @@ class CmdShowConsole(CmdBase):
     names = ['showconsole']
     def execute(self, args):
         ec2 = self.cfg.get_easy_ec2()
-        instance = ec2.get_instance(args[0])
-        if instance:
-            print instance.get_console_output().output
+        if args:
+            instance = ec2.get_instance(args[0])
+            if instance:
+                print instance.get_console_output().output
+            else:
+                log.error("Instance does not exist")
+                sys.exit(1)
         else:
-            log.error("Instance does not exist")
-            sys.exit(1)
+            self.parser.parse_args(['--help'])
 
 class CmdListVolumes(CmdBase):
     """

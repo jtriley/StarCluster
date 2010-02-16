@@ -136,9 +136,9 @@ class ClusterSetup(object):
         # setup /etc/fstab on master to use block device if specified
         for vol in self._volumes:
             vol = self._volumes[vol]
-            vol_id = vol.get("VOLUME_ID")
-            volume_partition = vol.get('PARTITION')
-            mount_path = vol.get('MOUNT_PATH')
+            vol_id = vol.get("volume_id")
+            volume_partition = vol.get('partition')
+            mount_path = vol.get('mount_path')
             if vol_id and volume_partition and mount_path:
                 log.info("Mounting EBS volume %s on %s..." % (vol_id, mount_path))
                 mconn = self._master.ssh
@@ -169,7 +169,7 @@ class ClusterSetup(object):
             if not node.is_master():
                 for vol in self._volumes:
                     vol = self._volumes[vol]
-                    mount_path = vol.get('MOUNT_PATH')
+                    mount_path = vol.get('mount_path')
                     etc_exports.write(mount_path + ' ' + node.private_dns_name + nfs_export_settings + '\n')
                 etc_exports.write('/opt/sge6 ' + node.private_dns_name + nfs_export_settings + '\n')
         etc_exports.close()
@@ -189,7 +189,7 @@ class ClusterSetup(object):
                 nconn.execute('chown -R %(user)s:%(user)s /opt/sge6' % {'user':self._user})
                 for vol in self._volumes:
                     vol = self._volumes[vol]
-                    mount_path = vol.get('MOUNT_PATH')
+                    mount_path = vol.get('mount_path')
                     nconn.execute(
                         'echo "%s:%s %s nfs user,rw,exec 0 0" >> /etc/fstab' %
                                   (master.private_dns_name,mount_path,

@@ -27,7 +27,7 @@ def get_cluster(cluster_name, cfg):
         return
     kwargs = {}
     kwargs.update(cfg.aws)
-    kwargs.update({'CLUSTER_TAG': cluster_name})
+    kwargs.update({'cluster_tag': cluster_name})
     return Cluster(**kwargs)
 
 def ssh_to_master(cluster_name, cfg):
@@ -36,10 +36,10 @@ def ssh_to_master(cluster_name, cfg):
         master = cluster.master_node
         if cfg.keys.has_key(master.key_name):
             key = cfg.keys.get(master.key_name)
-            os.system('ssh -i %s %s@%s' % (key.KEY_LOCATION, master.user,
+            os.system('ssh -i %s %s@%s' % (key.key_location, master.user,
                                            master.dns_name))
         else:
-            print 'key %s needed to ssh not found' % master.key_name
+            print 'ssh key %s not found' % master.key_name
 
 def ssh_to_cluster_node(cluster_name, node_id, cfg):
     cluster = get_cluster(cluster_name, cfg)
@@ -55,7 +55,7 @@ def ssh_to_cluster_node(cluster_name, node_id, cfg):
         if node:
             key = cfg.get_key(node.key_name)
             if key:
-                os.system('ssh -i %s %s@%s' % (key.KEY_LOCATION, node.user,
+                os.system('ssh -i %s %s@%s' % (key.key_location, node.user,
                                                node.dns_name))
             else:
                 print 'key %s needed to ssh not found' % node.key_name
@@ -99,50 +99,48 @@ def list_clusters(cfg):
 
 class Cluster(object):
     def __init__(self,
-            AWS_ACCESS_KEY_ID=None,
-            AWS_SECRET_ACCESS_KEY=None,
-            AWS_USER_ID=None,
-            CLUSTER_PROFILE=None,
-            CLUSTER_TAG=None,
-            CLUSTER_DESCRIPTION=None,
-            CLUSTER_SIZE=None,
-            CLUSTER_USER=None,
-            CLUSTER_SHELL=None,
-            MASTER_IMAGE_ID=None,
-            NODE_IMAGE_ID=None,
-            INSTANCE_TYPE=None,
-            AVAILABILITY_ZONE=None,
-            KEYNAME=None,
-            KEY_LOCATION=None,
-            VOLUMES=[],
-            setup_class=clustersetup.ClusterSetup,
+            aws_access_key_id=None,
+            aws_secret_access_key=None,
+            aws_user_id=None,
+            cluster_tag=None,
+            cluster_description=None,
+            cluster_size=None,
+            cluster_user=None,
+            cluster_shell=None,
+            master_image_id=None,
+            node_image_id=None,
+            instance_type=None,
+            availability_zone=None,
+            keyname=None,
+            key_location=None,
+            volumes=[],
+            plugins=None,
             **kwargs):
 
         now = time.strftime("%Y%m%d%H%M")
-        self.AWS_ACCESS_KEY_ID = AWS_ACCESS_KEY_ID
-        self.AWS_SECRET_ACCESS_KEY = AWS_SECRET_ACCESS_KEY
-        self.AWS_USER_ID = AWS_USER_ID
-        self.CLUSTER_PROFILE = CLUSTER_PROFILE
-        self.CLUSTER_TAG = CLUSTER_TAG
-        self.CLUSTER_DESCRIPTION = CLUSTER_DESCRIPTION
+        self.AWS_ACCESS_KEY_ID = aws_access_key_id
+        self.AWS_SECRET_ACCESS_KEY = aws_secret_access_key
+        self.AWS_USER_ID = aws_user_id
+        self.CLUSTER_TAG = cluster_tag
+        self.CLUSTER_DESCRIPTION = cluster_description
         if self.CLUSTER_TAG is None:
             self.CLUSTER_TAG = now
-        if CLUSTER_DESCRIPTION is None:
+        if cluster_description is None:
             self.CLUSTER_DESCRIPTION = "Cluster created at %s" % now 
-        self.CLUSTER_SIZE = CLUSTER_SIZE
-        self.CLUSTER_USER = CLUSTER_USER
-        self.CLUSTER_SHELL = CLUSTER_SHELL
-        self.MASTER_IMAGE_ID = MASTER_IMAGE_ID
-        self.NODE_IMAGE_ID = NODE_IMAGE_ID
-        self.INSTANCE_TYPE = INSTANCE_TYPE
-        self.AVAILABILITY_ZONE = AVAILABILITY_ZONE
-        self.KEYNAME = KEYNAME
-        self.KEY_LOCATION = KEY_LOCATION
-        self.VOLUMES = VOLUMES
+        self.CLUSTER_SIZE = cluster_size
+        self.CLUSTER_USER = cluster_user
+        self.CLUSTER_SHELL = cluster_shell
+        self.MASTER_IMAGE_ID = master_image_id
+        self.NODE_IMAGE_ID = node_image_id
+        self.INSTANCE_TYPE = instance_type
+        self.AVAILABILITY_ZONE = availability_zone
+        self.KEYNAME = keyname
+        self.KEY_LOCATION = key_location
+        self.VOLUMES = volumes
 
         self.ec2 = awsutils.EasyEC2(
-            AWS_ACCESS_KEY_ID = self.AWS_ACCESS_KEY_ID, 
-            AWS_SECRET_ACCESS_KEY = self.AWS_SECRET_ACCESS_KEY
+            aws_access_key_id = self.AWS_ACCESS_KEY_ID, 
+            aws_secret_access_key = self.AWS_SECRET_ACCESS_KEY
         )
         self.__instance_types = static.INSTANCE_TYPES
         self.__cluster_settings = static.CLUSTER_SETTINGS
@@ -151,7 +149,27 @@ class Cluster(object):
         self._node_reservation = None
         self._nodes = None
         self._master = None
-        self._setup_class = setup_class
+        self._plugins = self.load_plugins(plugins)
+
+    def load_plugins(self, plugins):
+        plugs = []
+        if plugins:
+            for plugin in plugins:
+                setup_class = plugin.get('setup_class')
+                mod_name = '.'.join(setup_class.split('.')[:-1])
+                class_name = setup_class.split('.')[-1]
+                mod = __import__(mod_name, globals(), locals(), [class_name])
+                klass = getattr(mod, class_name, None)
+                if klass:
+                    if issubclass(klass, clustersetup.ClusterSetup):
+                        plugs.append(klass)
+                    else:
+                        log.error("Plugin class %s must subclass starcluster.clustersetup.ClusterSetup")
+                else:
+                    log.error('Failed to load plugin %s' % plugin)
+        if not plugs:
+            plugs = [ clustersetup.ClusterSetup ]
+        return plugs
 
     def update(self, kwargs):
         for key in kwargs.keys():
@@ -166,7 +184,6 @@ class Cluster(object):
             'AWS_ACCESS_KEY_ID': self.AWS_ACCESS_KEY_ID,
             'AWS_SECRET_ACCESS_KEY': self.AWS_SECRET_ACCESS_KEY,
             'AWS_USER_ID': self.AWS_USER_ID,
-            'CLUSTER_PROFILE':  self.CLUSTER_PROFILE,
             'CLUSTER_TAG': self.CLUSTER_TAG,
             'CLUSTER_DESCRIPTION': self.CLUSTER_DESCRIPTION,
             'CLUSTER_SIZE': self.CLUSTER_SIZE,
@@ -179,6 +196,7 @@ class Cluster(object):
             'KEYNAME': self.KEYNAME,
             'KEY_LOCATION': self.KEY_LOCATION,
             'VOLUMES': self.VOLUMES,
+            'PLUGINS': self._plugins,
         }
         return pprint.pformat(cfg)
 
@@ -322,8 +340,8 @@ class Cluster(object):
     def attach_volumes_to_master(self):
         for vol in self.VOLUMES:
             volume = self.VOLUMES[vol]
-            device = volume.get('DEVICE')
-            vol_id = volume.get('VOLUME_ID')
+            device = volume.get('device')
+            vol_id = volume.get('volume_id')
             vol = self.ec2.get_volume(vol_id)
             log.info("Attaching volume %s to master node..." % vol.id)
             if vol.status != "available":
@@ -376,8 +394,13 @@ class Cluster(object):
             self.attach_volumes_to_master()
 
         log.info("Setting up the cluster...")
-        setup = self._setup_class(self)
-        setup.run()
+        for plugin in self._plugins:
+            try:
+                setup = plugin(self)
+                setup.run()
+            except Exception, e:
+                log.error("Error occured while running plugin '%s':" % plugin)
+                print e
             
         log.info("""
 
@@ -526,10 +549,10 @@ $ ssh -i %(key)s %(user)s@%(master)s
         for vol in self.VOLUMES:
             vol_name = vol
             vol = self.VOLUMES[vol]
-            vol_id = vol.get('VOLUME_ID')
-            device = vol.get('DEVICE')
-            partition = vol.get('PARTITION') 
-            mount_path = vol.get("MOUNT_PATH")
+            vol_id = vol.get('volume_id')
+            device = vol.get('device')
+            partition = vol.get('partition') 
+            mount_path = vol.get("mount_path")
             mount_paths.append(mount_path)
             devices.append(device)
             vol_ids.append(vol_id)

@@ -42,8 +42,9 @@ class ConfigNotFound(Exception):
             self.create_config()
 
 class ConfigError(Exception):
-    def __init__(self, msg, **kwargs):
-        self.msg = msg
+    def __init__(self, *args, **kwargs):
+        super(Exception, self).__init__(self, *args, **kwargs)
+        self.msg = args[0]
 
 def get_easy_s3():
     """
@@ -99,6 +100,7 @@ class StarClusterConfig(object):
     cluster_settings = static.CLUSTER_SETTINGS
     key_settings = static.KEY_SETTINGS
     volume_settings = static.EBS_VOLUME_SETTINGS
+    plugin_settings = static.PLUGIN_SETTINGS
 
     def __init__(self, config_file=None, cache=False):
         if not os.path.isdir(static.STARCLUSTER_CFG_DIR):
@@ -106,7 +108,7 @@ class StarClusterConfig(object):
         if config_file:
             self.cfg_file = config_file
         else:
-            self.cfg_file = static.DEFAULT_CFG_FILE
+            self.cfg_file = static.STARCLUSTER_CFG_FILE
         if os.path.exists(self.cfg_file):
             if not os.path.isfile(self.cfg_file):
                 raise ConfigError('Config %s exists but is not a regular file' %
@@ -126,6 +128,7 @@ class StarClusterConfig(object):
         self.clusters = AttributeDict()
         self.keys = AttributeDict()
         self.vols = AttributeDict()
+        self.plugins = AttributeDict()
         self.cache = cache
 
     def _get_int(self, config, section, option):
@@ -151,12 +154,7 @@ class StarClusterConfig(object):
 
     @property
     def config(self):
-        # TODO: create the template file for them?
         CFG_FILE = self.cfg_file
-            #print config_template
-            #log.info('It appears this is your first time using StarCluster.')
-            #log.info('Please create %s using the template above.' % CFG_FILE)
-            #sys.exit(1)
         if not self.cache or self._config is None:
             try:
                 self._config = ConfigParser.ConfigParser()
@@ -167,6 +165,7 @@ class StarClusterConfig(object):
 
     def load_settings(self, section_prefix, section_name, settings, store):
         section_key = ' '.join([section_prefix, section_name])
+        store.update(self.config._sections.get(section_key))
         section_conf = store
         for setting in settings:
             requirements = settings[setting]
@@ -176,7 +175,20 @@ class StarClusterConfig(object):
             default = requirements[2]
             value = func(self.config, section_key, name)
             if value:
-                section_conf[name] = value
+                section_conf[name.lower()] = value
+
+    #def load_settings(self, section_prefix, section_name, settings, store):
+        #section_key = ' '.join([section_prefix, section_name])
+        #section_conf = store
+        #for setting in settings:
+            #requirements = settings[setting]
+            #name = setting
+            #func = self.type_validators.get(requirements[0])
+            #required = requirements[1];
+            #default = requirements[2]
+            #value = func(self.config, section_key, name)
+            #if value:
+                #section_conf[name] = value
 
     def check_required(self, section_prefix, section_name, settings, store):
         section_key = ' '.join([section_prefix, section_name])
@@ -185,15 +197,15 @@ class StarClusterConfig(object):
             name = setting
             requirements = settings[setting]
             required = requirements[1];
-            value = section_conf.get(name)
+            value = section_conf.get(name.lower())
             if not value and required:
                 raise ConfigError('missing required option %s in section "%s"' %
-                                  (name, section_key))
+                                  (name.lower(), section_key))
 
     def load_defaults(self, settings, store):
         section_conf = store
         for setting in settings:
-            name = setting; default = settings[setting][2]
+            name = setting.lower(); default = settings[setting][2]
             if section_conf.get(name, None) is None:
                 if default:
                     log.warn('No %s setting specified. Defaulting to %s' % (name, default))
@@ -201,13 +213,13 @@ class StarClusterConfig(object):
 
     def load_extends_variables(self, section_name, store):
         section = store[section_name]
-        extends = section['EXTENDS'] = section.get('EXTENDS')
+        extends = section['extends'] = section.get('extends')
         if extends is None:
             return
         log.debug('%s extends %s' % (section_name, extends))
         extensions = [section]
         while True:
-            extends = section.get('EXTENDS',None)
+            extends = section.get('extends',None)
             if extends:
                 try:
                     section = store[extends]
@@ -224,44 +236,72 @@ class StarClusterConfig(object):
 
     def load_keypairs(self, section_name, store):
         cluster_section = store
-        keyname = cluster_section.get('KEYNAME')
+        keyname = cluster_section.get('keyname')
+        if not keyname:
+            return
         keypair = self.keys.get(keyname)
         if keypair is None:
-            log.warn("keypair %s not defined in config" % keyname)
-            return
-        cluster_section['KEYNAME'] = keyname
-        cluster_section['KEY_LOCATION'] = keypair.get('KEY_LOCATION')
+            raise ConfigError("keypair %s not defined in config" % keyname)
+        cluster_section['keyname'] = keyname
+        cluster_section['key_location'] = keypair.get('key_location')
 
     def load_volumes(self, section_name, store):
         cluster_section = store
-        volumes = cluster_section.get('VOLUMES')
-        if isinstance(volumes, AttributeDict):
+        volumes = cluster_section.get('volumes')
+        if not volumes or isinstance(volumes, AttributeDict):
             return
         vols = AttributeDict()
-        cluster_section['VOLUMES'] = vols
-        if volumes is None:
-            return 
+        cluster_section['volumes'] = vols
         volumes = [vol.strip() for vol in volumes.split(',')]
         for volume in volumes:
             if self.vols.has_key(volume):
                 vols[volume] = self.vols.get(volume)
             else:
-                log.warn("volume %s not defined in config" % volume)
+                raise ConfigError("volume %s not defined in config" % volume)
+
+    def load_plugins(self, section_name, store):
+        cluster_section = store
+        plugins = cluster_section.get('plugins')
+        if not plugins or isinstance(plugins, AttributeDict):
+            return
+        plugs = []
+        cluster_section['plugins'] = plugs
+        plugins = [plugin.strip() for plugin in plugins.split(',')]
+        for plugin in plugins:
+            if self.plugins.has_key(plugin):
+                p = self.plugins.get(plugin)
+                p['__name__'] = p['__name__'].split()[-1]
+                plugs.append(p)
+            else:
+                raise ConfigError("plugin %s not defined in config" % plugin)
 
     def load(self):
         self.load_settings('aws', 'info', self.aws_settings, self.aws)
         self.check_required('aws', 'info', self.aws_settings, self.aws)
-        keys = [section.split()[1] for section in self.config.sections() if section.startswith('key')]
+        keys = [section.split()[1] for section in self.config.sections() if 
+                section.startswith('key')]
         for key in keys:
             self.keys[key] = AttributeDict()
             self.load_settings('key', key, self.key_settings, self.keys[key]) 
             self.check_required('key', key, self.key_settings, self.keys[key]) 
-        vols = [section.split()[1] for section in self.config.sections() if section.startswith('volume')]
+        vols = [section.split()[1] for section in self.config.sections() if 
+                section.startswith('volume')]
         for vol in vols:
             self.vols[vol] = AttributeDict()
-            self.load_settings('volume', vol, self.volume_settings, self.vols[vol])
-            self.check_required('volume', vol, self.volume_settings, self.vols[vol])
-        clusters = [section.split()[1] for section in self.config.sections() if section.startswith('cluster')]
+            self.load_settings('volume', vol, self.volume_settings, 
+                               self.vols[vol])
+            self.check_required('volume', vol, self.volume_settings, 
+                                self.vols[vol])
+        plugins = [section.split()[1] for section in self.config.sections() if
+                   section.startswith('plugin')]
+        for plugin in plugins:
+            self.plugins[plugin] = AttributeDict()
+            self.load_settings('plugin', plugin, self.plugin_settings,
+                               self.plugins[plugin])
+            self.check_required('plugin', plugin, self.plugin_settings,
+                                self.plugins[plugin])
+        clusters = [section.split()[1] for section in self.config.sections() if 
+                    section.startswith('cluster')]
         for cluster in clusters:
             self.clusters[cluster] = AttributeDict()
             self.load_settings('cluster', cluster, self.cluster_settings,
@@ -270,8 +310,8 @@ class StarClusterConfig(object):
             self.load_extends_variables(cluster, self.clusters)
             self.load_defaults(self.cluster_settings, self.clusters[cluster])
             self.load_keypairs(cluster, self.clusters[cluster])
-        #for cluster in clusters:
             self.load_volumes(cluster, self.clusters[cluster])
+            self.load_plugins(cluster, self.clusters[cluster])
             self.check_required('cluster', cluster, self.cluster_settings,
                                self.clusters[cluster])
 
@@ -313,10 +353,10 @@ class StarClusterConfig(object):
         """
         Factory for EasyEC2 class that attempts to load AWS credentials from
         the StarCluster config file. Returns an EasyEC2 object if
-        successful.
+    .
         """
-        s3 = awsutils.EasyS3(self.aws['AWS_ACCESS_KEY_ID'],
-                             self.aws['AWS_SECRET_ACCESS_KEY'])
+        s3 = awsutils.EasyS3(self.aws['aws_access_key_id'],
+                             self.aws['aws_secret_access_key'])
         return s3
 
     def get_easy_ec2(self):
@@ -325,8 +365,8 @@ class StarClusterConfig(object):
         the StarCluster config file. Returns an EasyEC2 object if
         successful.
         """
-        ec2 = awsutils.EasyEC2(self.aws['AWS_ACCESS_KEY_ID'],
-                             self.aws['AWS_SECRET_ACCESS_KEY'])
+        ec2 = awsutils.EasyEC2(self.aws['aws_access_key_id'],
+                             self.aws['aws_secret_access_key'])
         return ec2
 
 if __name__ == "__main__":

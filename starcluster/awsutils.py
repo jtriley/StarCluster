@@ -16,7 +16,7 @@ from starcluster.utils import print_timing
 from starcluster.hacks import register_image as _register_image
 
 class EasyAWS(object):
-    def __init__(self, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, CONNECTION_AUTHENTICATOR):
+    def __init__(self, aws_access_key_id, aws_secret_access_key, connection_authenticator):
         """
         Create an EasyAWS object. 
 
@@ -24,12 +24,9 @@ class EasyAWS(object):
         and a CONNECTION_AUTHENTICATOR function that returns an
         authenticated AWS connection object
         """
-
-        #log.info('aws_access_key = %s' % AWS_ACCESS_KEY_ID)
-        #log.info('aws_secret_access_key = %s' % AWS_SECRET_ACCESS_KEY)
-        self.aws_access_key = AWS_ACCESS_KEY_ID
-        self.aws_secret_access_key = AWS_SECRET_ACCESS_KEY
-        self.connection_authenticator = CONNECTION_AUTHENTICATOR
+        self.aws_access_key = aws_access_key_id
+        self.aws_secret_access_key = aws_secret_access_key
+        self.connection_authenticator = connection_authenticator
         self._conn = None
 
     @property
@@ -42,14 +39,14 @@ class EasyAWS(object):
 
 
 class EasyEC2(EasyAWS):
-    def __init__(self, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, cache=False):
-        super(EasyEC2, self).__init__(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, boto.connect_ec2)
+    def __init__(self, aws_access_key_id, aws_secret_access_key, cache=False):
+        super(EasyEC2, self).__init__(aws_access_key_id, aws_secret_access_key, boto.connect_ec2)
         self.cache = cache
         self._instance_response = None
         self._keypair_response = None
         self._images = None
         self._security_group_response = None
-        self.s3 = EasyS3(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, cache)
+        self.s3 = EasyS3(aws_access_key_id, aws_secret_access_key, cache)
 
     @property
     def registered_images(self):
@@ -310,8 +307,8 @@ class EasyEC2(EasyAWS):
         return self.conn.get_all_security_groups()
 
 class EasyS3(EasyAWS):
-    def __init__(self, AWS_ACCESS_KEY_ID=None, AWS_SECRET_ACCESS_KEY=None, cache=False, **kwargs):
-        super(EasyS3, self).__init__(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, boto.connect_s3)
+    def __init__(self, aws_access_key_id=None, aws_secret_access_key=None, cache=False, **kwargs):
+        super(EasyS3, self).__init__(aws_access_key_id, aws_secret_access_key, boto.connect_s3)
         self.cache = cache
 
     def bucket_exists(self, bucket_name):
