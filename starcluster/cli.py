@@ -258,9 +258,9 @@ class CmdCreateImage(CmdBase):
             kwargs.update(cfg.aws)
             kwargs.update(self.specified_options_dict)
             kwargs.update({
-                'INSTANCE': instance,
-                'PREFIX': image_name,
-                'BUCKET': bucket,
+                'instance': instance,
+                'prefix': image_name,
+                'bucket': bucket,
             })
             icreator = image.EC2ImageCreator(**kwargs)
             icreator.create_image()

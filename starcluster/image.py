@@ -13,7 +13,8 @@ class EC2ImageCreator(object):
     def __init__(self, instance=None, aws_access_key_id=None,
                  aws_secret_access_key=None,
                  aws_user_id=None, bucket=None, ec2_cert=None, 
-                 ec2_private_key=None, prefix='image', remove_image_files=False):
+                 ec2_private_key=None, prefix='image', 
+                 remove_image_files=False, **kwargs):
         self.host = instance # starcluster.node.Node instance
         self.access_key = aws_access_key_id
         self.secret_key = aws_secret_access_key
