@@ -15,16 +15,23 @@ from starcluster.logger import log
 
 class ClusterSetup(object):
     """
-    Default ClusterSetup implementation for StarCluster
-
+    ClusterSetup Interface
     """
-    def __init__(self, cluster):
-        self._cluster = cluster
-        self._nodes = self._cluster.nodes
-        self._master = self._cluster.master_node
-        self._user = self._cluster.CLUSTER_USER
-        self._user_shell = self._cluster.CLUSTER_SHELL
-        self._volumes = self._cluster.VOLUMES
+
+    def run(self, nodes, master, user, user_shell, volumes):
+        """ Start cluster setup routines """
+        raise NotImplementedError('run method not implemented')
+
+class DefaultClusterSetup(ClusterSetup):
+    """
+    Default ClusterSetup implementation for StarCluster
+    """
+    def __init__(self):
+        self._nodes = None
+        self._master = None
+        self._user = None
+        self._user_shell = None
+        self._volumes = None
 
     def _setup_cluster_user(self):
         """ Create cluster user on all StarCluster nodes """
@@ -63,8 +70,7 @@ class ClusterSetup(object):
         """ Properly configure passwordless ssh for CLUSTER_USER on all StarCluster nodes"""
         log.info("Configuring passwordless ssh for root")
 
-        master = self._master
-        mconn = master.ssh
+        mconn = self._master.ssh
 
         # create local ssh key for root and copy to local tempdir
         # remove any old keys first
@@ -253,8 +259,13 @@ class ClusterSetup(object):
         #todo cleanup /tmp/pe.txt 
         log.info("Done Configuring Sun Grid Engine")
 
-    def run(self):
+    def run(self, nodes, master, user, user_shell, volumes):
         """Start cluster configuration"""
+        self._nodes = nodes
+        self._master = master
+        self._user = user
+        self._user_shell = user_shell
+        self._volumes = volumes
         self._setup_ebs_volume()
         self._setup_cluster_user()
         self._setup_scratch()

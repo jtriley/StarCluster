@@ -165,6 +165,14 @@ instances when starting cluster (uses existing instances instead)")
             kwargs.update(cluster_options)
             kwargs.update(tagdict)
             scluster = cluster.Cluster(**kwargs)
+        except exception.PluginSyntaxError,e:
+            log.error(e.msg)
+            sys.exit(1)
+        except exception.PluginError,e:
+            log.error(e.msg)
+            sys.exit(1)
+        print scluster
+        #from starcluster.utils import ipy_shell; ipy_shell();
         if scluster.is_valid():
             #log.info('valid cluster')
             scluster.start(create=not self.opts.NO_CREATE)
@@ -462,11 +470,11 @@ def parse_subcommands(gparser, subcmds):
     try:
         cfg = config.StarClusterConfig(gopts.CONFIG)
         cfg.load()
-    except config.ConfigNotFound,e:
+    except exception.ConfigNotFound,e:
         log.error(e.msg)
         e.display_options()
         sys.exit(1)
-    except config.ConfigError,e:
+    except exception.ConfigError,e:
         log.error(e.msg)
         sys.exit(1)
     gopts.CONFIG = cfg
@@ -534,7 +542,7 @@ def main():
     gopts, sc, opts, args = parse_subcommands(gparser, subcmds)
     try:
         sc.execute(args)
-    except config.ConfigError,e:
+    except exception.ConfigError,e:
         log.error(e.msg)
 
 def test():

@@ -25,3 +25,10 @@ def print_timing(func):
         log.info('%s took %0.3f mins' % (func.func_name, (time2-time1)/60.0))
         return res
     return wrapper
+
+try:
+    import IPython.Shell
+    ipy_shell = IPython.Shell.IPShellEmbed(argv=[])
+except ImportError,e:
+    def ipy_shell():
+        log.error("Unable to import IPython")

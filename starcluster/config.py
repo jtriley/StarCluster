@@ -7,44 +7,9 @@ from starcluster.cluster import Cluster
 from starcluster import static 
 from starcluster import awsutils 
 from starcluster.utils import AttributeDict
-from starcluster.templates.config import config_template, copy_paste_template
 from starcluster import exception 
 
 from starcluster.logger import log
-
-class ConfigNotFound(Exception):
-    def __init__(self, msg, cfg, **kwargs):
-        self.msg = msg
-        self.cfg = cfg
-        self.template = copy_paste_template
-
-    def create_config(self):
-        cfg_parent_dir = os.path.dirname(self.cfg)
-        if not os.path.exists(cfg_parent_dir):
-            os.makedirs(cfg_parent_dir)
-        cfg_file = open(self.cfg, 'w')
-        cfg_file.write(config_template)
-        cfg_file.close()
-        log.info("Config template written to %s. Please customize this file." %
-                 self.cfg)
-
-    def display_options(self):
-        print 'Options:'
-        print '--------' 
-        print '[1] Show the StarCluster config template'
-        print '[2] Write config template to %s' % self.cfg
-        print '[q] Quit'
-        resp = raw_input('\nPlase enter your selection: ')
-        if resp == '1':
-            print self.template
-        elif resp == '2':
-            print
-            self.create_config()
-
-class ConfigError(Exception):
-    def __init__(self, *args, **kwargs):
-        super(Exception, self).__init__(self, *args, **kwargs)
-        self.msg = args[0]
 
 def get_easy_s3():
     """
@@ -111,10 +76,10 @@ class StarClusterConfig(object):
             self.cfg_file = static.STARCLUSTER_CFG_FILE
         if os.path.exists(self.cfg_file):
             if not os.path.isfile(self.cfg_file):
-                raise ConfigError('Config %s exists but is not a regular file' %
+                raise exception.ConfigError('Config %s exists but is not a regular file' %
                                  self.cfg_file)
         else:
-            raise ConfigNotFound(
+            raise exception.ConfigNotFound(
                 ("Config file %s does not exist\n") %
                 self.cfg_file, self.cfg_file,
             )
@@ -199,7 +164,7 @@ class StarClusterConfig(object):
             required = requirements[1];
             value = section_conf.get(name.lower())
             if not value and required:
-                raise ConfigError('missing required option %s in section "%s"' %
+                raise exception.ConfigError('missing required option %s in section "%s"' %
                                   (name.lower(), section_key))
 
     def load_defaults(self, settings, store):
@@ -241,7 +206,7 @@ class StarClusterConfig(object):
             return
         keypair = self.keys.get(keyname)
         if keypair is None:
-            raise ConfigError("keypair %s not defined in config" % keyname)
+            raise exception.ConfigError("keypair %s not defined in config" % keyname)
         cluster_section['keyname'] = keyname
         cluster_section['key_location'] = keypair.get('key_location')
 
@@ -257,12 +222,12 @@ class StarClusterConfig(object):
             if self.vols.has_key(volume):
                 vols[volume] = self.vols.get(volume)
             else:
-                raise ConfigError("volume %s not defined in config" % volume)
+                raise exception.ConfigError("volume %s not defined in config" % volume)
 
     def load_plugins(self, section_name, store):
         cluster_section = store
         plugins = cluster_section.get('plugins')
-        if not plugins or isinstance(plugins, AttributeDict):
+        if not plugins or isinstance(plugins, list):
             return
         plugs = []
         cluster_section['plugins'] = plugs
@@ -273,7 +238,7 @@ class StarClusterConfig(object):
                 p['__name__'] = p['__name__'].split()[-1]
                 plugs.append(p)
             else:
-                raise ConfigError("plugin %s not defined in config" % plugin)
+                raise exception.ConfigError("plugin %s not defined in config" % plugin)
 
     def load(self):
         self.load_settings('aws', 'info', self.aws_settings, self.aws)

@@ -5,11 +5,13 @@ import time
 import socket
 import platform
 import pprint 
+import inspect
 
 from starcluster import ssh
 from starcluster import awsutils
 from starcluster import clustersetup
 from starcluster import static
+from starcluster import exception
 from starcluster.utils import print_timing
 from starcluster.spinner import Spinner
 from starcluster.logger import log, INFO_NO_NEWLINE
@@ -152,23 +154,51 @@ class Cluster(object):
         self._plugins = self.load_plugins(plugins)
 
     def load_plugins(self, plugins):
+        if not plugins:
+            return []
         plugs = []
-        if plugins:
-            for plugin in plugins:
-                setup_class = plugin.get('setup_class')
-                mod_name = '.'.join(setup_class.split('.')[:-1])
-                class_name = setup_class.split('.')[-1]
+        for plugin in plugins:
+            setup_class = plugin.get('setup_class')
+            plugin_name = plugin.get('__name__')
+            mod_name = '.'.join(setup_class.split('.')[:-1])
+            class_name = setup_class.split('.')[-1]
+            try:
                 mod = __import__(mod_name, globals(), locals(), [class_name])
-                klass = getattr(mod, class_name, None)
-                if klass:
-                    if issubclass(klass, clustersetup.ClusterSetup):
-                        plugs.append(klass)
-                    else:
-                        log.error("Plugin class %s must subclass starcluster.clustersetup.ClusterSetup")
+            except SyntaxError,e:
+                raise exception.PluginSyntaxError(
+                    "Plugin %s (%s) contains a syntax error at line %s" % \
+                    (plugin_name, e.filename, e.lineno)
+                )
+            klass = getattr(mod, class_name, None)
+            if klass:
+                if issubclass(klass, clustersetup.ClusterSetup):
+                    argspec = inspect.getargspec(klass.__init__)
+                    args = argspec.args[1:]
+                    nargs = len(args)
+                    ndefaults = 0
+                    if argspec.defaults:
+                        ndefaults = len(argspec.defaults)
+                    nrequired = nargs - ndefaults
+                    config_args = []
+                    for arg in argspec.args:
+                        if arg in plugin:
+                            config_args.append(plugin.get(arg))
+                    log.debug("config_args = %s" % config_args)
+                    log.debug("args = %s" % argspec.args)
+                    if nrequired != len(config_args):
+                        raise exception.PluginError(
+                        "Not enough settings provided for plugin" % \
+                            plugin_name
+                        )
+                    plugs.append((plugin_name,klass(*config_args)))
                 else:
-                    log.error('Failed to load plugin %s' % plugin)
-        if not plugs:
-            plugs = [ clustersetup.ClusterSetup ]
+                    raise exception.PluginError(
+"""Plugin %s must be a subclass of starcluster.clustersetup.ClusterSetup""" \
+                                               % setup_class)
+            else:
+                raise exception.PluginError(
+                    'Plugin class %s does not exist' % setup_class
+                )
         return plugs
 
     def update(self, kwargs):
@@ -394,10 +424,18 @@ class Cluster(object):
             self.attach_volumes_to_master()
 
         log.info("Setting up the cluster...")
+        default_setup = clustersetup.DefaultClusterSetup().run(
+            self.nodes, self.master_node, 
+            self.CLUSTER_USER, self.CLUSTER_SHELL, 
+            self.VOLUMES
+        )
         for plugin in self._plugins:
             try:
-                setup = plugin(self)
-                setup.run()
+                plugin_name = plugin[0]
+                plug = plugin[1]
+                log.info("Running plugin %s" % plugin_name)
+                plug.run(self.nodes, self.master_node, self.CLUSTER_USER,
+                              self.CLUSTER_SHELL, self.VOLUMES)
             except Exception, e:
                 log.error("Error occured while running plugin '%s':" % plugin)
                 print e
