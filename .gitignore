@@ -4,4 +4,4 @@
 StarCluster.egg-info
 build
 dist
-docs/_build
+docs/sphinx/_build
