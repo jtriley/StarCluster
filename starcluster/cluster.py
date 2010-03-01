@@ -95,7 +95,7 @@ def list_clusters(cfg):
         for scg in starcluster_groups:
             print scg.name
             for node in scg.instances():
-                print "  %s %s" % (node.id, node.dns_name)
+                print "  %s %s %s" % (node.id, node.state, node.dns_name)
     else:
         log.info("No clusters found...")
 

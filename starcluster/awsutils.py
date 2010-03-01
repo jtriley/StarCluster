@@ -132,29 +132,30 @@ class EasyEC2(EasyAWS):
         return instances
 
     def list_all_instances(self):
-        instances = self.get_all_instances()
-        if not instances:
+        reservations = self.conn.get_all_instances()
+        if not reservations:
             log.info("No instances found")
-        for instance in instances:
-            id = instance.id
-            if not id: id = 'N/A'
-            dns_name = instance.dns_name
-            if not dns_name: dns_name = 'N/A'
-            state = instance.state
-            if not state: state = 'N/A'
-            private_ip = instance.private_ip_address
-            if not private_ip: private_ip = 'N/A'
-            public_ip = instance.ip_address
-            if not public_ip: public_ip = 'N/A'
-            zone = instance.placement
-            if not zone: zone = 'N/A'
-            print "id: %s" % id
-            print "dns_name: %s" % dns_name
-            print "state: %s" % state
-            print "public ip: %s" % public_ip 
-            print "private_ip: %s" % private_ip
-            print "zone: %s" % zone
-            print
+        for res in reservations:
+            groups = ', '.join([ g.id for g in res.groups]) or 'N/A'
+            for instance in res.instances:
+                id = instance.id or 'N/A'
+                dns_name = instance.dns_name or 'N/A'
+                state = instance.state or 'N/A'
+                private_ip = instance.private_ip_address or 'N/A'
+                public_ip = instance.ip_address or 'N/A'
+                zone = instance.placement or 'N/A'
+                ami = instance.image_id or 'N/A'
+                keypair = instance.key_name or 'N/A'
+                print "id: %s" % id
+                print "dns_name: %s" % dns_name
+                print "state: %s" % state
+                print "public ip: %s" % public_ip 
+                print "private_ip: %s" % private_ip
+                print "zone: %s" % zone
+                print "ami: %s" % ami
+                print "groups: %s" % groups
+                print "keypair: %s" % keypair
+                print
             
     def list_registered_images(self):
         images = self.registered_images
@@ -354,5 +355,5 @@ class EasyS3(EasyAWS):
 if __name__ == "__main__":
     from starcluster.config import get_easy_ec2
     ec2 = get_easy_ec2()
-    ec2.get_volume('asdf')
+    ec2.list_all_instances()
     #ec2.list_registered_images()
