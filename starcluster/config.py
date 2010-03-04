@@ -104,7 +104,8 @@ class StarClusterConfig(object):
         except (ConfigParser.NoOptionError):
             opt = None
         except (ValueError):
-            log.warn("Expected integer value for option %s in %s, not setting option!" % (option,section))
+            raise exception.ConfigError(
+                "Expected integer value for setting %s in %s" % (option,section))
             opt = None
         return opt
 
@@ -173,7 +174,7 @@ class StarClusterConfig(object):
             name = setting.lower(); default = settings[setting][2]
             if section_conf.get(name, None) is None:
                 if default:
-                    log.warn('No %s setting specified. Defaulting to %s' % (name, default))
+                    log.warn('%s setting not specified. Defaulting to %s' % (name, default))
                 section_conf[name] = default
 
     def load_extends_variables(self, section_name, store):

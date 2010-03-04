@@ -171,13 +171,13 @@ instances when starting cluster (uses existing instances instead)")
         except exception.PluginError,e:
             log.error(e.msg)
             sys.exit(1)
-        print scluster
+            #print scluster
         #from starcluster.utils import ipy_shell; ipy_shell();
         if scluster.is_valid():
-            #log.info('valid cluster')
-            scluster.start(create=not self.opts.NO_CREATE)
+            log.info('valid cluster')
+            #scluster.start(create=not self.opts.NO_CREATE)
             if self.opts.LOGIN_MASTER:
-                cluster.ssh_to_master(tag, self.cfg)
+                   cluster.ssh_to_master(tag, self.cfg)
         else:
             log.error('The cluster configuration provided is not valid...')
 

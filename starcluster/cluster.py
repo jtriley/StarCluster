@@ -110,8 +110,9 @@ class Cluster(object):
             cluster_user=None,
             cluster_shell=None,
             master_image_id=None,
+            master_instance_type=None,
             node_image_id=None,
-            instance_type=None,
+            node_instance_type=None,
             availability_zone=None,
             keyname=None,
             key_location=None,
@@ -133,8 +134,9 @@ class Cluster(object):
         self.CLUSTER_USER = cluster_user
         self.CLUSTER_SHELL = cluster_shell
         self.MASTER_IMAGE_ID = master_image_id
+        self.MASTER_INSTANCE_TYPE = master_instance_type
         self.NODE_IMAGE_ID = node_image_id
-        self.INSTANCE_TYPE = instance_type
+        self.NODE_INSTANCE_TYPE = node_instance_type
         self.AVAILABILITY_ZONE = availability_zone
         self.KEYNAME = keyname
         self.KEY_LOCATION = key_location
@@ -220,8 +222,9 @@ class Cluster(object):
             'CLUSTER_USER': self.CLUSTER_USER,
             'CLUSTER_SHELL': self.CLUSTER_SHELL,
             'MASTER_IMAGE_ID': self.MASTER_IMAGE_ID,
+            'MASTER_INSTANCE_TYPE': self.MASTER_INSTANCE_TYPE,
             'NODE_IMAGE_ID': self.NODE_IMAGE_ID,
-            'INSTANCE_TYPE': self.INSTANCE_TYPE,
+            'NODE_INSTANCE_TYPE': self.NODE_INSTANCE_TYPE,
             'AVAILABILITY_ZONE': self.AVAILABILITY_ZONE,
             'KEYNAME': self.KEYNAME,
             'KEY_LOCATION': self.KEY_LOCATION,
@@ -250,6 +253,7 @@ class Cluster(object):
     @property
     def master_node(self):
         if not self._master:
+            reservations = self.ec2.conn.get_all_instances()
             # TODO: do this with reservation group info instead
             mgroup_instances = self.master_group.instances()
             cgroup_instances = [ node.id for node in self.cluster_group.instances() ]
@@ -307,13 +311,15 @@ class Cluster(object):
         log.info("Launching a %d-node cluster..." % self.CLUSTER_SIZE)
         if self.MASTER_IMAGE_ID is None:
             self.MASTER_IMAGE_ID = self.NODE_IMAGE_ID
+        if self.MASTER_INSTANCE_TYPE is None:
+            self.MASTER_INSTANCE_TYPE = self.NODE_INSTANCE_TYPE
         log.info("Launching master node...")
         log.info("Master AMI: %s" % self.MASTER_IMAGE_ID)
         conn = self.ec2
         master_sg = self.master_group.name
         cluster_sg = self.cluster_group.name
         master_response = conn.run_instances(image_id=self.MASTER_IMAGE_ID,
-            instance_type=self.INSTANCE_TYPE,
+            instance_type=self.MASTER_INSTANCE_TYPE,
             min_count=1, max_count=1,
             key_name=self.KEYNAME,
             security_groups=[master_sg, cluster_sg],
@@ -323,7 +329,7 @@ class Cluster(object):
             log.info("Launching worker nodes...")
             log.info("Node AMI: %s" % self.NODE_IMAGE_ID)
             instances_response = conn.run_instances(image_id=self.NODE_IMAGE_ID,
-                instance_type=self.INSTANCE_TYPE,
+                instance_type=self.NODE_INSTANCE_TYPE,
                 min_count=max((self.CLUSTER_SIZE-1)/2, 1),
                 max_count=max(self.CLUSTER_SIZE-1,1),
                 key_name=self.KEYNAME,
@@ -458,67 +464,53 @@ $ ssh -i %(key)s %(user)s@%(master)s
         })
 
     def is_valid(self): 
-        CLUSTER_SIZE = self.CLUSTER_SIZE
-        KEYNAME = self.KEYNAME
-        KEY_LOCATION = self.KEY_LOCATION
-        if not self._has_all_required_settings():
-            log.error('Please specify the required settings')
+        try:
+            self._has_all_required_settings()
+            self._validate_cluster_size()
+            self._validate_shell_setting()
+            self._validate_credentials()
+            self._validate_keypair()
+            self._validate_zone()
+            self._validate_ebs_settings()
+            self._validate_image_settings()
+            self._validate_instance_types()
+        except exception.ClusterValidationError,e:
+            log.error(e.msg)
             return False
-        if not self._has_valid_credentials():
-            log.error('Invalid AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY combination. Please check your settings')
-            return False
-        if not self._has_keypair():
-            log.error('Account does not contain a key with KEYNAME = %s. Please check your settings' % KEYNAME)
-            return False
-        if not os.path.exists(KEY_LOCATION):
-            log.error('KEY_LOCATION=%s does not exist. Please check your settings' % KEY_LOCATION)
-            return False
-        elif not os.path.isfile(KEY_LOCATION):
-            log.error('KEY_LOCATION=%s is not a file. Please check your settings' % KEY_LOCATION)
-            return False
-        if CLUSTER_SIZE <= 0:
-            log.error('CLUSTER_SIZE must be a positive integer. Please check your settings')
-            return False
-        if not self._has_valid_zone():
-            log.error('Your AVAILABILITY_ZONE setting is invalid. Please check your settings')
-            return False
-        if not self._has_valid_ebs_settings():
-            log.error('EBS settings are invalid. Please check your settings')
-            return False
-        if not self._has_valid_image_settings():
-            log.error('Your MASTER_IMAGE_ID/NODE_IMAGE_ID setting(s) are invalid. Please check your settings')
-            return False
-        if not self._has_valid_instance_type_settings():
-            log.error('Your INSTANCE_TYPE setting is invalid. Please check your settings')
-            return False
-        if not self._has_valid_shell_setting():
-            log.error('Your CLUSTER_SHELL setting %s is invalid. Please check your settings' % self.CLUSTER_SHELL)
         return True
 
-    def _has_valid_shell_setting(self):
+    def _validate_cluster_size(self):
+        if self.CLUSTER_SIZE <= 0:
+            raise exception.ClusterValidationError('CLUSTER_SIZE must be a positive integer. Please check your settings')
+        return True
+
+    def _validate_shell_setting(self):
         CLUSTER_SHELL = self.CLUSTER_SHELL
         if not self.__available_shells.get(CLUSTER_SHELL):
-            return False
+            raise exception.ClusterValidationError(
+                'Invalid user shell specified. Options are %s' % \
+                ' '.join(self.__available_shells.keys()))
         return True
 
-    def _has_valid_image_settings(self):
+    def _validate_image_settings(self):
         MASTER_IMAGE_ID = self.MASTER_IMAGE_ID
         NODE_IMAGE_ID = self.NODE_IMAGE_ID
         conn = self.ec2
         try:
             image = conn.get_image(NODE_IMAGE_ID)
         except boto.exception.EC2ResponseError,e:
-            log.error('NODE_IMAGE_ID %s does not exist' % NODE_IMAGE_ID)
-            return False
-        if MASTER_IMAGE_ID is not None:
+            raise exception.ClusterValidationError(
+                'NODE_IMAGE_ID %s does not exist' % NODE_IMAGE_ID
+            )
+        if MASTER_IMAGE_ID:
             try:
                 master_image = conn.get_image(MASTER_IMAGE_ID)
             except boto.exception.EC2ResponseError,e:
-                log.error('MASTER_IMAGE_ID %s does not exist' % MASTER_IMAGE_ID)
-                return False
+                raise exception.ClusterValidationError(
+                    'MASTER_IMAGE_ID %s does not exist' % MASTER_IMAGE_ID)
         return True
 
-    def _has_valid_zone(self):
+    def _validate_zone(self):
         conn = self.ec2
         AVAILABILITY_ZONE = self.AVAILABILITY_ZONE
         if AVAILABILITY_ZONE:
@@ -532,54 +524,86 @@ $ ssh -i %(key)s %(user)s@%(master)s
                 return False
         return True
 
-    def _has_valid_instance_type_settings(self):
-        MASTER_IMAGE_ID = self.MASTER_IMAGE_ID
-        NODE_IMAGE_ID = self.NODE_IMAGE_ID
-        INSTANCE_TYPE = self.INSTANCE_TYPE
-        instance_types = self.__instance_types
-        conn = self.ec2
-        if not instance_types.has_key(INSTANCE_TYPE):
-            log.error("You specified an invalid INSTANCE_TYPE %s \nPossible options are:\n%s" % (INSTANCE_TYPE,' '.join(instance_types.keys())))
-            return False
-
+    def __check_platform(self, image_id, instance_type):
+        """
+        Validates whether an image_id (AMI) is compatible with a given
+        instance_type. image_id_setting and instance_type_setting are the
+        setting labels in the config file.
+        """
         try:
-            node_image_platform = conn.get_image(NODE_IMAGE_ID).architecture
+            image_platform = self.ec2.conn.get_image(image_id).architecture
         except boto.exception.EC2ResponseError,e:
-            node_image_platform = None
-
-        instance_platform = instance_types[INSTANCE_TYPE]
-        if instance_platform != node_image_platform:
-            log.error('You specified an incompatible NODE_IMAGE_ID and INSTANCE_TYPE')
-            log.error('INSTANCE_TYPE = %(instance_type)s is for a %(instance_platform)s \
-    platform while NODE_IMAGE_ID = %(node_image_id)s is a %(node_image_platform)s platform' \
-                        % { 'instance_type': INSTANCE_TYPE, 'instance_platform': instance_platform, \
-                            'node_image_id': NODE_IMAGE_ID, 'node_image_platform': node_image_platform})
-            return False
-        
-        if MASTER_IMAGE_ID is not None:
-            try:
-                master_image_platform = conn.get_image(MASTER_IMAGE_ID).architecture
-            except boto.exception.EC2ResponseError,e:
-                master_image_platform = None
-            if instance_platform != master_image_platform:
-                log.error('You specified an incompatible MASTER_IMAGE_ID and INSTANCE_TYPE')
-                log.error('INSTANCE_TYPE = %(instance_type)s is for a %(instance_platform)s \
-    platform while MASTER_IMAGE_ID = %(master_image_id)s is a %(master_image_platform)s platform' \
-                            % { 'instance_type': INSTANCE_TYPE, 'instance_platform': instance_platform, \
-                                'image_id': MASETER_IMAGE_ID, 'master_image_platform': master_image_platform})
-                return False
-        
+            image_platform = None
+        instance_platform = self.__instance_types[instance_type]
+        if instance_platform != image_platform:
+            error_msg = "Instance type %(instance_type)s is for a " + \
+                          "%(instance_platform)s platform while " + \
+                          "%(image_id)s is an %(image_platform)s platform" 
+            error_dict = {'instance_type':instance_type, 
+                          'instance_platform': instance_platform, 
+                          'image_id': image_id,
+                          'image_platform': image_platform}
+            raise exception.ClusterValidationError(error_msg % error_dict)
         return True
 
-    def _is_valid_device(self, dev):
+    def _validate_instance_types(self):
+        MASTER_IMAGE_ID = self.MASTER_IMAGE_ID
+        NODE_IMAGE_ID = self.NODE_IMAGE_ID
+        MASTER_INSTANCE_TYPE = self.MASTER_INSTANCE_TYPE
+        NODE_INSTANCE_TYPE = self.NODE_INSTANCE_TYPE
+        instance_types = self.__instance_types
+        instance_type_list = ' '.join(instance_types.keys())
+        conn = self.ec2
+        if not instance_types.has_key(NODE_INSTANCE_TYPE):
+            raise exception.ClusterValidationError(
+                "You specified an invalid NODE_INSTANCE_TYPE %s \n" + 
+                "Possible options are:\n%s" % \
+                (NODE_INSTANCE_TYPE, instance_type_list))
+        elif MASTER_INSTANCE_TYPE:
+            if not instance_types.has_key(MASTER_INSTANCE_TYPE):
+                raise exception.ClusterValidationError(
+                    "You specified an invalid MASTER_INSTANCE_TYPE %s\n" + \
+                    "Possible options are:\n%s" % \
+                    (MASTER_INSTANCE_TYPE, instance_type_list))
+
+        try:
+            self.__check_platform(NODE_IMAGE_ID, NODE_INSTANCE_TYPE)
+        except exception.ClusterValidationError,e:
+            raise exception.ClusterValidationError( 
+                'Incompatible NODE_IMAGE_ID and NODE_INSTANCE_TYPE\n' + e.msg
+            )
+        if MASTER_IMAGE_ID and not MASTER_INSTANCE_TYPE:
+            try:
+                self.__check_platform(MASTER_IMAGE_ID, NODE_INSTANCE_TYPE)
+            except exception.ClusterValidationError,e:
+                raise exception.ClusterValidationError( 
+                    'Incompatible NODE_IMAGE_ID and NODE_INSTANCE_TYPE\n' + e.msg
+                )
+        elif MASTER_IMAGE_ID and MASTER_INSTANCE_TYPE:
+            try:
+                self.__check_platform(MASTER_IMAGE_ID, MASTER_INSTANCE_TYPE)
+            except exception.ClusterValidationError,e:
+                raise exception.ClusterValidationError( 
+                    'Incompatible MASTER_IMAGE_ID and MASTER_INSTANCE_TYPE\n' + e.msg
+                )
+        elif MASTER_INSTANCE_TYPE and not MASTER_IMAGE_ID:
+            try:
+                self.__check_platform(NODE_IMAGE_ID, MASTER_INSTANCE_TYPE)
+            except exception.ClusterValidationError,e:
+                raise exception.ClusterValidationError( 
+                    'Incompatible NODE_IMAGE_ID and MASTER_INSTANCE_TYPE\n' + e.msg
+                )
+        return True
+
+    def __is_valid_device(self, dev):
         regex = re.compile('/dev/sd[a-z]')
         return len(dev) == 8 and regex.match(dev)
 
-    def _is_valid_partition(self, part):
+    def __is_valid_partition(self, part):
         regex = re.compile('/dev/sd[a-z][1-9][0-9]?')
         return len(part) in [9,10] and regex.match(part)
 
-    def _has_valid_ebs_settings(self):
+    def _validate_ebs_settings(self):
         # check EBS vols for missing/duplicate DEVICE/PARTITION/MOUNT_PATHs 
         vol_ids = []
         devices = []
@@ -595,56 +619,61 @@ $ ssh -i %(key)s %(user)s@%(master)s
             devices.append(device)
             vol_ids.append(vol_id)
             if not device:
-                log.error('Missing DEVICE setting for volume %s' % vol_name)
-                return False
-            if not self._is_valid_device(device):
-                log.error("Invalid DEVICE value for volume %s" % vol_name)
-                return False
+                raise exception.ClusterValidationError(
+                    'Missing DEVICE setting for volume %s' % vol_name)
+            if not self.__is_valid_device(device):
+                raise exception.ClusterValidationError(
+                    "Invalid DEVICE value for volume %s" % vol_name)
             if not partition:
-                log.error('Missing PARTITION setting for volume %s' % vol_name)
-                return False
-            if not self._is_valid_partition(partition):
-                log.error("Invalid PARTITION value for volume %s" % vol_name)
-                return False
+                raise exception.ClusterValidationError(
+                    'Missing PARTITION setting for volume %s' % vol_name)
+            if not self.__is_valid_partition(partition):
+                raise exception.ClusterValidationError(
+                    "Invalid PARTITION value for volume %s" % vol_name)
             if not partition.startswith(device):
-                log.error("Volume partition must start with %s" % device)
-                return False
+                raise exception.ClusterValidationError(
+                    "Volume partition must start with %s" % device)
             if not mount_path:
-                log.error('Missing MOUNT_PATH setting for volume %s' % vol_name)
-                return False
+                raise exception.ClusterValidationError(
+                    'Missing MOUNT_PATH setting for volume %s' % vol_name)
             if not mount_path.startswith('/'):
-                log.error("Mount path for volume %s should start with /" %
-                          vol_name)
-                return False
+                raise exception.ClusterValidationError(
+                    "Mount path for volume %s should start with /" % vol_name)
             zone = self.AVAILABILITY_ZONE
+            if not zone:
+                raise exception.ClusterValidationError(
+                    'Missing AVAILABILITY_ZONE setting')
             conn = self.ec2
             try:
                 vol = conn.get_volume(vol_id)
             except boto.exception.EC2ResponseError,e:
-                log.error('Volume %s (VOLUME_ID: %s) does not exist ' % (vol_name,vol_id))
-                return False
-            if zone:
-                if vol.zone != zone:
-                    log.error('The volume %(vol)s is only available in zone %(vol_zone)s, \
-however, you specified AVAILABILITY_ZONE = %(availability_zone)s\nYou either need to \
-change your AVAILABILITY_ZONE setting to %(vol_zone)s or create a new volume in %(availability_zone)s' \
-                              % {'vol': vol.id, 'vol_zone': vol.zone,
-                                 'availability_zone': zone})
-                    return False
-            else:
-                return False
+                raise exception.ClusterValidationError(
+                    'Volume %s (VOLUME_ID: %s) does not exist ' % \
+                    (vol_name,vol_id))
+            if vol.zone != zone:
+                raise exception.ClusterValidationError(
+                    'Volume %(vol)s is only available in zone %(vol_zone)s, ' + \
+                    'however, you specified AVAILABILITY_ZONE = ' + \
+                    '%(availability_zone)s\n' +
+                    'You either need to change your AVAILABILITY_ZONE setting' + \
+                    'to %(vol_zone)s or create a new volume in ' + \
+                    '%(availability_zone)s'  % {
+                        'vol': vol.id, 
+                        'vol_zone': vol.zone, 
+                        'availability_zone': zone})
         for vol_id in vol_ids:
             if vol_ids.count(vol_id) > 1:
-                log.error("Multiple configurations for volume %s specified.  Please choose one" % vol_id)
-                return False
+                raise exception.ClusterValidationError(
+                    "Multiple configurations for volume %s specified. " + \
+                    "Please choose one" % vol_id)
         for dev in devices:
             if devices.count(dev) > 1:
-                log.error("Can't attach more than one volume on device %s" % dev)
-                return False
+                raise exception.ClusterValidationError(
+                    "Can't attach more than one volume on device %s" % dev)
         for path in mount_paths:
             if mount_paths.count(path) > 1:
-                log.error("Can't mount more than one volume on %s" % path)
-                return False
+                raise exception.ClusterValidationError(
+                    "Can't mount more than one volume on %s" % path)
         return True
 
     def _has_all_required_settings(self):
@@ -657,21 +686,34 @@ change your AVAILABILITY_ZONE setting to %(vol_zone)s or create a new volume in 
                 has_all_required = False
         return has_all_required
 
-    def _has_valid_credentials(self):
+    def _validate_credentials(self):
         try:
             self.ec2.get_all_instances()
-            return True
         except boto.exception.EC2ResponseError,e:
-            return False
+            raise exception.ClusterValidationError(
+                'Invalid AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY combination. '+ \
+                'Please check your settings')
+        return True
 
-    def _has_keypair(self):
+    def _validate_keypair(self):
+        KEY_LOCATION = self.KEY_LOCATION
+        if not os.path.exists(KEY_LOCATION):
+            raise exception.ClusterValidationError(
+                'KEY_LOCATION=%s does not exist. Please check your settings' % \
+                KEY_LOCATION)
+        elif not os.path.isfile(KEY_LOCATION):
+            raise exception.ClusterValidationError(
+                'KEY_LOCATION=%s is not a file. Please check your settings' % \
+                KEY_LOCATION)
         KEYNAME = self.KEYNAME
         conn = self.ec2
         try:
             keypair = conn.get_keypair(KEYNAME)
-            return True
         except boto.exception.EC2ResponseError,e:
-            return False
+            raise exception.ClusterValidationError(
+                'Account does not contain a key with KEYNAME = %s. ' + \
+                'Please check your settings' % KEYNAME)
+        return True
 
 if __name__ == "__main__":
     from starcluster.config import StarClusterConfig

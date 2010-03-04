@@ -277,7 +277,7 @@ class EasyEC2(EasyAWS):
         pass
 
     def terminate_instances(self, instances=None):
-        if instances is not None:
+        if instances:
             self.conn.terminate_instances(instances)
 
     def get_volumes(self):
@@ -288,7 +288,7 @@ class EasyEC2(EasyAWS):
 
     def list_volumes(self):
         vols = self.get_volumes()
-        if vols is not None:
+        if vols:
             for vol in vols:
                 print "volume_id: %s" % vol.id
                 print "size: %sGB" % vol.size

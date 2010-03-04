@@ -65,8 +65,9 @@ CLUSTER_SETTINGS = {
     'CLUSTER_USER': (str, False, 'sgeadmin'),
     'CLUSTER_SHELL': (str, False, 'bash'),
     'MASTER_IMAGE_ID': (str, False, None),
+    'MASTER_INSTANCE_TYPE': (str, False, None),
     'NODE_IMAGE_ID': (str, True, None),
-    'INSTANCE_TYPE': (str, True, None),
+    'NODE_INSTANCE_TYPE': (str, True, None),
     'AVAILABILITY_ZONE': (str, False, None),
     # SSH KEYPAIR OPTIONS
     'KEYNAME': (str, True, None),
