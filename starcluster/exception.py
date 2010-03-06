@@ -1,4 +1,5 @@
 import os
+from starcluster.logger import log
 from starcluster.templates.config import config_template, copy_paste_template
 
 class BaseException(Exception):
