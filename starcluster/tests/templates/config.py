@@ -35,14 +35,16 @@ default_config = {
  'c1_shell': 'zsh',
  'c1_master_id': 'ami-8f9e71e6',
  'c1_node_id': 'ami-8f9e71e6',
- 'c1_type': 'm1.small',
+ 'c1_master_type': 'm1.small',
+ 'c1_node_type': 'm1.small',
  'c1_vols': 'v1,v2,v3',
  'c1_plugs': 'p1,p2,p3',
  'c1_zone': 'us-east-1c',
  'c2_extends': 'c1',
  'c2_keyname': 'k2',
  'c2_size': 6,
- 'c2_type': 'c1.xlarge',
+ 'c2_master_type': 'c1.xlarge',
+ 'c2_node_type': 'c1.xlarge',
  'c2_vols': 'v1,v2',
  'c3_extends': 'c2',
  'c3_keyname': 'k3',
@@ -105,8 +107,9 @@ CLUSTER_SIZE = %(c1_size)s
 CLUSTER_USER = %(c1_user)s
 CLUSTER_SHELL = %(c1_shell)s
 MASTER_IMAGE_ID = %(c1_master_id)s
+MASTER_INSTANCE_TYPE = %(c1_master_type)s
 NODE_IMAGE_ID = %(c1_node_id)s
-NODE_INSTANCE_TYPE = %(c1_type)s
+NODE_INSTANCE_TYPE = %(c1_node_type)s
 AVAILABILITY_ZONE = %(c1_zone)s
 VOLUMES = %(c1_vols)s
 PLUGINS = %(c1_plugs)s
@@ -115,7 +118,8 @@ PLUGINS = %(c1_plugs)s
 EXTENDS=%(c2_extends)s
 KEYNAME = %(c2_keyname)s
 CLUSTER_SIZE= %(c2_size)s
-NODE_INSTANCE_TYPE = %(c2_type)s
+MASTER_INSTANCE_TYPE = %(c2_master_type)s
+NODE_INSTANCE_TYPE = %(c2_node_type)s
 VOLUMES = %(c2_vols)s
 
 [cluster c3]

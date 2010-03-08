@@ -480,7 +480,7 @@ $ ssh -i %(key)s %(user)s@%(master)s
         return True
 
     def _validate_cluster_size(self):
-        if self.CLUSTER_SIZE <= 0:
+        if self.CLUSTER_SIZE <= 0 or not isinstance(self.CLUSTER_SIZE, int):
             raise exception.ClusterValidationError('CLUSTER_SIZE must be a positive integer. Please check your settings')
         return True
 
@@ -511,6 +511,7 @@ $ ssh -i %(key)s %(user)s@%(master)s
         return True
 
     def _validate_zone(self):
+        #TODO: raise exceptions here instead of logging errors
         conn = self.ec2
         AVAILABILITY_ZONE = self.AVAILABILITY_ZONE
         if AVAILABILITY_ZONE:
@@ -556,14 +557,14 @@ $ ssh -i %(key)s %(user)s@%(master)s
         conn = self.ec2
         if not instance_types.has_key(NODE_INSTANCE_TYPE):
             raise exception.ClusterValidationError(
-                "You specified an invalid NODE_INSTANCE_TYPE %s \n" + 
-                "Possible options are:\n%s" % \
+                ("You specified an invalid NODE_INSTANCE_TYPE %s \n" + 
+                "Possible options are:\n%s") % \
                 (NODE_INSTANCE_TYPE, instance_type_list))
         elif MASTER_INSTANCE_TYPE:
             if not instance_types.has_key(MASTER_INSTANCE_TYPE):
                 raise exception.ClusterValidationError(
-                    "You specified an invalid MASTER_INSTANCE_TYPE %s\n" + \
-                    "Possible options are:\n%s" % \
+                    ("You specified an invalid MASTER_INSTANCE_TYPE %s\n" + \
+                    "Possible options are:\n%s") % \
                     (MASTER_INSTANCE_TYPE, instance_type_list))
 
         try:

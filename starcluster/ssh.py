@@ -164,7 +164,6 @@ class Connection(object):
             self._transport.close()
             self._tranport_live = False
 
-
     def interactive_shell(self):
         try:
             chan = self._transport.open_session()

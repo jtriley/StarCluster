@@ -100,24 +100,23 @@ class StarClusterConfig(object):
     def _get_int(self, config, section, option):
         try:
             opt = config.getint(section,option)
-        except (ConfigParser.NoSectionError):
-            opt = None
-        except (ConfigParser.NoOptionError):
-            opt = None
-        except (ValueError):
+            return opt
+        except ConfigParser.NoSectionError,e:
+            pass
+        except ConfigParser.NoOptionError,e:
+            pass
+        except ValueError,e:
             raise exception.ConfigError(
                 "Expected integer value for setting %s in %s" % (option,section))
-            opt = None
-        return opt
 
     def _get_string(self, config, section, option):
         try:
             opt = config.get(section,option)
-        except (ConfigParser.NoSectionError):
-            opt = None
-        except (ConfigParser.NoOptionError):
-            opt = None
-        return opt
+            return opt
+        except ConfigParser.NoSectionError,e:
+            pass
+        except ConfigParser.NoOptionError,e:
+            pass
 
     @property
     def config(self):
@@ -145,21 +144,8 @@ class StarClusterConfig(object):
             required = requirements[1];
             default = requirements[2]
             value = func(self.config, section_key, name)
-            if value:
+            if value is not None:
                 section_conf[name.lower()] = value
-
-    #def load_settings(self, section_prefix, section_name, settings, store):
-        #section_key = ' '.join([section_prefix, section_name])
-        #section_conf = store
-        #for setting in settings:
-            #requirements = settings[setting]
-            #name = setting
-            #func = self.type_validators.get(requirements[0])
-            #required = requirements[1];
-            #default = requirements[2]
-            #value = func(self.config, section_key, name)
-            #if value:
-                #section_conf[name] = value
 
     def check_required(self, section_prefix, section_name, settings, store):
         section_key = ' '.join([section_prefix, section_name])
@@ -169,7 +155,7 @@ class StarClusterConfig(object):
             requirements = settings[setting]
             required = requirements[1];
             value = section_conf.get(name.lower())
-            if not value and required:
+            if value is None and required:
                 raise exception.ConfigError('missing required option %s in section "%s"' %
                                   (name.lower(), section_key))
 

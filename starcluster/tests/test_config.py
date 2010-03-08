@@ -3,33 +3,12 @@ import unittest
 import tempfile
 from starcluster.logger import log
 from starcluster import exception
+from starcluster.tests import StarClusterTest
 from starcluster.static import STARCLUSTER_CFG_FILE
 from starcluster.config import StarClusterConfig
 from starcluster.tests.templates.config import default_config, config_test_template
 
-class TestStarClusterConfig(unittest.TestCase):
-    
-    __cfg = None
-
-    @property
-    def config(self):
-        """ Returns (valid) default test config """
-        if not self.__cfg:
-            tmp_file = tempfile.NamedTemporaryFile()
-            tmp_file.write(config_test_template % default_config)
-            tmp_file.flush()
-            self.__cfg = StarClusterConfig(tmp_file.name, cache=True); self.__cfg.load()
-        return self.__cfg
-
-    def get_custom_config(self, **kwargs):
-        tmp_file = tempfile.NamedTemporaryFile()
-        kwords = {}; 
-        kwords.update(default_config)
-        kwords.update(kwargs)
-        tmp_file.write(config_test_template % kwords);
-        tmp_file.flush()
-        cfg = StarClusterConfig(tmp_file.name, cache=True); cfg.load()
-        return cfg
+class TestStarClusterConfig(StarClusterTest):
 
     def test_valid_config_template(self):
         cfg = self.config
@@ -56,12 +35,14 @@ class TestStarClusterConfig(unittest.TestCase):
             raise Exception('config returned non-existent cluster')
 
     def test_int_required(self):
-        try:
-            cfg = self.get_custom_config(**{'c1_size':'-s'})
-        except exception.ConfigError,e:
-            pass
-        else:
-            raise Exception('config is not enforcing ints correctly')
+        cases = [{'c1_size':'-s'}, {'c1_size': 2.5}]
+        for case in cases:
+            try:
+                cfg = self.get_custom_config(**case)
+            except exception.ConfigError,e:
+                pass
+            else:
+                raise Exception('config is not enforcing ints correctly')
 
     def test_missing_required(self):
         pass
@@ -107,7 +88,7 @@ class TestStarClusterConfig(unittest.TestCase):
         c2 = self.config.clusters.get('c2')
         c3 = self.config.clusters.get('c3')
         c2_settings = ['__name__', 'extends', 'keyname', 'key_location', 'cluster_size', 'node_instance_type',
-                       'volumes']
+                       'master_instance_type', 'volumes']
         c3_settings = ['__name__', 'extends', 'keyname', 'key_location', 'cluster_size', 'volumes']
         for key in c1:
             if c2.has_key(key) and not key in c2_settings:
