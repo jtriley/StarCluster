@@ -387,8 +387,10 @@ class CmdShowConsole(CmdBase):
         ec2 = self.cfg.get_easy_ec2()
         if args:
             instance = ec2.get_instance(args[0])
+            import string
             if instance:
-                print instance.get_console_output().output
+                print ''.join([c for c in instance.get_console_output().output
+                               if c in string.printable])
             else:
                 log.error("Instance does not exist")
                 sys.exit(1)
