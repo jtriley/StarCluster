@@ -6,7 +6,7 @@ config_template = """
 
 # This is the global AWS section.
 # These settings apply to all clusters
-[aws]
+[aws info]
 #replace these with your AWS keys
 AWS_ACCESS_KEY_ID = #your_aws_access_key_id
 AWS_SECRET_ACCESS_KEY = #your_secret_access_key
@@ -86,7 +86,7 @@ MASTER_IMAGE_ID = ami-0330d16a
 NODE_IMAGE_ID = ami-0330d16a
 
 # instance type
-INSTANCE_TYPE = m1.small
+NODE_INSTANCE_TYPE = m1.small
 
 # availability zone
 AVAILABILITY_ZONE = us-east-1c
@@ -109,7 +109,7 @@ PLUGINS = myplugin
 EXTENDS=smallcluster
 # This section is the same as smallcluster except for the following settings:
 KEYNAME=my-other-gsg-keypair
-INSTANCE_TYPE = c1.xlarge
+NODE_INSTANCE_TYPE = c1.xlarge
 CLUSTER_SIZE=8
 VOLUMES = biodata2
 

@@ -141,6 +141,7 @@ class Cluster(object):
         self.KEYNAME = keyname
         self.KEY_LOCATION = key_location
         self.VOLUMES = volumes
+        self.PLUGINS = plugins
 
         self.ec2 = awsutils.EasyEC2(
             aws_access_key_id = self.AWS_ACCESS_KEY_ID, 
@@ -189,7 +190,7 @@ class Cluster(object):
                     log.debug("args = %s" % argspec.args)
                     if nrequired != len(config_args):
                         raise exception.PluginError(
-                        "Not enough settings provided for plugin" % \
+                        "Not enough settings provided for plugin %s" % \
                             plugin_name
                         )
                     plugs.append((plugin_name,klass(*config_args)))
@@ -253,7 +254,6 @@ class Cluster(object):
     @property
     def master_node(self):
         if not self._master:
-            reservations = self.ec2.conn.get_all_instances()
             # TODO: do this with reservation group info instead
             mgroup_instances = self.master_group.instances()
             cgroup_instances = [ node.id for node in self.cluster_group.instances() ]
@@ -651,13 +651,12 @@ $ ssh -i %(key)s %(user)s@%(master)s
                     'Volume %s (VOLUME_ID: %s) does not exist ' % \
                     (vol_name,vol_id))
             if vol.zone != zone:
-                raise exception.ClusterValidationError(
-                    'Volume %(vol)s is only available in zone %(vol_zone)s, ' + \
-                    'however, you specified AVAILABILITY_ZONE = ' + \
-                    '%(availability_zone)s\n' +
-                    'You either need to change your AVAILABILITY_ZONE setting' + \
-                    'to %(vol_zone)s or create a new volume in ' + \
-                    '%(availability_zone)s'  % {
+                msg = 'Volume %(vol)s is only available in zone %(vol_zone)s, '
+                msg += 'however, you specified availability_zone = '
+                msg += '%(availability_zone)s. You either need to change your '
+                msg += 'availability_zone setting to %(vol_zone)s or create a '
+                msg += 'new volume in %(availability_zone)s'  
+                raise exception.ClusterValidationError(msg % {
                         'vol': vol.id, 
                         'vol_zone': vol.zone, 
                         'availability_zone': zone})

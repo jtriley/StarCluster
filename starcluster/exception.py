@@ -13,6 +13,9 @@ class BaseException(Exception):
 class ConfigError(BaseException):
     """Base class for all config related errors"""
 
+class ConfigSectionMissing(ConfigError):
+    pass
+
 class ConfigNotFound(ConfigError):
     def __init__(self, *args, **kwargs):
         super(ConfigNotFound, self).__init__(*args, **kwargs)

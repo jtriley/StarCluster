@@ -59,13 +59,14 @@ class StarClusterConfig(object):
     print cluster_cfg
     """
 
-    # until i can find a way to query AWS for instance types...
-    instance_types = static.INSTANCE_TYPES
     aws_settings = static.AWS_SETTINGS
-    cluster_settings = static.CLUSTER_SETTINGS
     key_settings = static.KEY_SETTINGS
     volume_settings = static.EBS_VOLUME_SETTINGS
     plugin_settings = static.PLUGIN_SETTINGS
+    cluster_settings = static.CLUSTER_SETTINGS
+
+    # until i can find a way to query AWS for instance types...
+    instance_types = static.INSTANCE_TYPES
 
     def __init__(self, config_file=None, cache=False):
         if not os.path.isdir(static.STARCLUSTER_CFG_DIR):
@@ -131,7 +132,11 @@ class StarClusterConfig(object):
 
     def load_settings(self, section_prefix, section_name, settings, store):
         section_key = ' '.join([section_prefix, section_name])
-        store.update(self.config._sections.get(section_key))
+        section = self.config._sections.get(section_key)
+        if not section:
+            raise exception.ConfigSectionMissing('Missing section %s in config'\
+                                                 % section_key)
+        store.update(section)
         section_conf = store
         for setting in settings:
             requirements = settings[setting]
