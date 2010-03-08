@@ -173,11 +173,13 @@ class DefaultClusterSetup(ClusterSetup):
         etc_exports = mconn.remote_file('/etc/exports')
         for node in self._nodes:
             if not node.is_master():
+                etc_exports.write('/home ' + node.private_dns_name + nfs_export_settings + '\n')
+                etc_exports.write('/opt/sge6 ' + node.private_dns_name + nfs_export_settings + '\n')
                 for vol in self._volumes:
                     vol = self._volumes[vol]
                     mount_path = vol.get('mount_path')
-                    etc_exports.write(mount_path + ' ' + node.private_dns_name + nfs_export_settings + '\n')
-                etc_exports.write('/opt/sge6 ' + node.private_dns_name + nfs_export_settings + '\n')
+                    if not mount_path in ['/home','/opt/sge6']:
+                        etc_exports.write(mount_path + ' ' + node.private_dns_name + nfs_export_settings + '\n')
         etc_exports.close()
         
         mconn.execute('/etc/init.d/portmap start')
@@ -193,18 +195,21 @@ class DefaultClusterSetup(ClusterSetup):
                 nconn.execute('/etc/init.d/portmap start')
                 nconn.execute('mkdir /opt/sge6')
                 nconn.execute('chown -R %(user)s:%(user)s /opt/sge6' % {'user':self._user})
+                nconn.execute('echo "%s:/home /home nfs user,rw,exec 0 0" >> /etc/fstab' % master.private_dns_name)
+                nconn.execute('echo "%s:/opt/sge6 /opt/sge6 nfs user,rw,exec 0 0" >> /etc/fstab' % master.private_dns_name)
+                nconn.execute('mount /home')
+                nconn.execute('mount /opt/sge6')
+                nconn.execute('mount -t devpts none /dev/pts') # fix for xterm
                 for vol in self._volumes:
                     vol = self._volumes[vol]
                     mount_path = vol.get('mount_path')
-                    nconn.execute(
-                        'echo "%s:%s %s nfs user,rw,exec 0 0" >> /etc/fstab' %
-                                  (master.private_dns_name,mount_path,
-                                   mount_path))
-                    nconn.execute('mkdir -p %s' % mount_path)
-                    nconn.execute('mount %s' % mount_path)
-                nconn.execute('echo "%s:/opt/sge6 /opt/sge6 nfs user,rw,exec 0 0" >> /etc/fstab' % master.private_dns_name)
-                nconn.execute('mount /opt/sge6')
-                nconn.execute('mount -t devpts none /dev/pts') # fix for xterm
+                    if not mount_path in ['/home','/opt/sge6']:
+                        nconn.execute(
+                            'echo "%s:%s %s nfs user,rw,exec 0 0" >> /etc/fstab' %
+                                      (master.private_dns_name,mount_path,
+                                       mount_path))
+                        nconn.execute('mkdir -p %s' % mount_path)
+                        nconn.execute('mount %s' % mount_path)
 
     def _setup_sge(self):
         """ Install Sun Grid Engine with a default parallel environment on StarCluster"""
