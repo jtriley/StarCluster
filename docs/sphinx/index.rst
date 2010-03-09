@@ -12,11 +12,11 @@ Contents:
    :maxdepth: 2
 
    installation.rst
-   volumes.rst
    configuration.rst
+   volumes.rst
+   plugins.rst
    launch.rst
    getting_started.rst
-   plugins.rst
 
 Indices and tables
 ==================
