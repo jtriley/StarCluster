@@ -5,6 +5,7 @@ starcluster [<global-opts>] action [<action-opts>] [<action-args> ...]
 
 __description__ = """
 StarCluster - (http://web.mit.edu/starcluster)
+Software Tools for Academics and Researchers (STAR)
 Please submit bug reports to starcluster@mit.edu
 """
 
