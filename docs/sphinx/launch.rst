@@ -81,7 +81,7 @@ To login to the master node as root:
         $ starcluster sshmaster physicscluster
 
 Logging into the worker nodes
-----------------------------
+-----------------------------
 To login to a worker node as root:
 
 .. code-block:: none 
