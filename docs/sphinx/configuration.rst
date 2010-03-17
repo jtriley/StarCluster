@@ -2,11 +2,12 @@
 StarCluster Configuration File
 ******************************
 The StarCluster configuration file uses ini formatting (see http://en.wikipedia.org/wiki/INI_file). 
-It is made up of various sections which are described in detail here. This document goes through 
-defining each s
+It is made up of various sections which are described in detail here. This document explains how 
+to configure the three required sections **[aws info]**, **[keypair]**, and **[cluster]** as well as
+**[plugin]** and **[volume]** settings.
 
 Creating the config file
-========================
+------------------------
 The default starcluster config lives in ~/.starcluster/config. You can either create this file manually
 or have starcluster create it for you with an example configuration template (recommended).
 
@@ -35,7 +36,7 @@ Selecting 1 will print the example configuration file template to standard outpu
 Selecting 2 will write the configuration file template to ~/.starcluster/config
 
 Amazon Web Services Credentials
-===============================
+-------------------------------
 The first required section in the configuration file is **[aws info]**. This section specifies all of your
 AWS credentials. The following settings are required
 
@@ -51,7 +52,7 @@ AWS credentials. The following settings are required
     ec2_private_key = /path/to/your/ec2_pk.pem
 
 Amazon EC2 Keypairs
-===================
+-------------------
 In addition to supplying your **[aws info]** you must also define at least one **[keypair]** section that
 represents one of your keypairs on Amazon EC2. You can also define a new **[keypair]** section for each Amazon EC2
 keypair you want to use with StarCluster. 
@@ -74,7 +75,7 @@ These keypair sections can now be referenced in **[cluster]** sections as we'll 
 
 
 Defining Cluster Sections
-=========================
+-------------------------
 In order to launch StarCluster(s) on Amazon EC2, you must first provide a configuration *template* for 
 each cluster you want to launch. Once a cluster *template* has been defined, you can launch multiple StarClusters 
 from that template. Below is an example *template* called 'smallcluster' which defines a 2-node cluster using *m1.small*
@@ -118,7 +119,7 @@ EC2 instances and the mykeypair1 keypair we defined above.
     availability_zone = us-east-1c
 
 Defining Multiple Cluster Sections
-==================================
+----------------------------------
 You are not limited to defining just one cluster template. StarCluster allows you to define multiple independent cluster
 templates by simply creating a new **[cluster]** section as in the above example with all of the same settings. 
 
@@ -137,7 +138,7 @@ and over. To remedy this situation, StarCluster allows **[cluster]** sections to
     volumes = biodata2
 
 Amazon EBS Volumes
-==================
+------------------
 If you wish to use Amazon EBS volumes for persistent storage on your cluster(s) you will need to define a **[volume]** section
 in the configuration file for each volume you wish to use. Please note that using Amazon EBS volumes with StarCluster
 is optional. If you do not wish to use Amazon EBS volumes with StarCluster, simply do not define any **[volume]** sections.
@@ -153,23 +154,65 @@ we have two volumes we'd like to use: vol-c999999 and vol-c888888. Below is an e
 
     [volume myvoldata1]
     # this is the Amazon EBS volume id
-    VOLUME_ID=vol-c999999
+    volume_id=vol-c999999
     # the device to attach the EBS volume to
-    DEVICE=/dev/sdj
+    device=/dev/sdj
     # the partition on the EBS volume to use
-    PARTITION=/dev/sdj1
+    partition=/dev/sdj1
     # the path to mount this EBS volume to
-    MOUNT_PATH=/home
+    mount_path=/home
 
     [volume myvoldata2]
-    VOLUME_ID=vol-c888888
-    DEVICE=/dev/sdk
-    PARTITION=/dev/sdk1
-    MOUNT_PATH=/scratch
+    volume_id=vol-c888888
+    device=/dev/sdk
+    partition=/dev/sdk1
+    mount_path=/scratch
 
     [volume myvoldata2-alternate]
     # same volume as myvoldata2 but alternate device/partition/mount_path settings
-    VOLUME_ID=vol-c888888
-    DEVICE=/dev/sdh
-    PARTITION=/dev/sdh1
-    MOUNT_PATH=/scratch2
+    volume_id=vol-c888888
+    device=/dev/sdh
+    partition=/dev/sdh1
+    mount_path=/scratch2
+
+StarCluster Plugins
+-------------------
+StarCluster also has support for user contributed plugins (see here for details). 
+To configure a *cluster template* to use a particular plugin, we must first 
+create a plugin section for each plugin we wish to use. For example, suppose
+we have two plugins myplug1 and myplug2:
+
+.. code-block:: ini
+
+    [plugin myplug1]
+    setup_class = myplug1.SetupClass
+    myplug1_arg_one = 2
+
+    [plugin myplug2]
+    setup_class = myplug2.SetupClass
+    myplug2_arg_one = 3
+
+In this example, myplug{1,2}_arg_one are arguments to the plugin's *setup_class*.
+The 'myplug{1,2}_arg_one' variable names were made up for this example.
+The names of these arguments depend on the plugin being used. Some plugins may 
+not even have arguments. 
+
+After you've defined some **[plugin]** sections, you can reference them in 
+a cluster template like so:
+
+.. code-block:: ini
+
+    [cluster mediumcluster]
+    # Declares that this cluster uses smallcluster's settings as defaults
+    extends = smallcluster
+    # this rest of this section is identical to smallcluster except for the following settings:
+    keyname = mykeypair2
+    node_instance_type = c1.xlarge
+    cluster_size = 8
+    volumes = biodata2
+    plugins = myplug1, myplug2
+
+Notice the added *plugins* setting for the 'mediumcluster' template. This setting
+instructs StarCluster to first run the 'myplug1' plugin and then the 'myplug2'
+plugin afterwards. Reversing myplug1/myplug2 in the plugins setting in the above 
+example would reverse the order of execution.
