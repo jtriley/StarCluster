@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from starcluster import static
+
 config_template = """
 ####################################
 ## StarCluster Configuration File ##
@@ -76,14 +78,14 @@ CLUSTER_USER = sgeadmin
 CLUSTER_SHELL = bash
 
 # AMI for master node. Defaults to NODE_IMAGE_ID if not specified
-# The base i386 StarCluster AMI is ami-0330d16a
-# The base x86_64 StarCluster AMI is ami-0f30d166
-MASTER_IMAGE_ID = ami-0330d16a
+# The base i386 StarCluster AMI is %(x86_ami)s
+# The base x86_64 StarCluster AMI is %(x86_64_ami)s
+MASTER_IMAGE_ID = %(x86_ami)s
 
 # AMI for worker nodes. Also used for the master node if MASTER_IMAGE_ID is not specified
-# The base i386 StarCluster AMI is ami-0330d16a
-# The base x86_64 StarCluster AMI is ami-0f30d166
-NODE_IMAGE_ID = ami-0330d16a
+# The base i386 StarCluster AMI is %(x86_ami)s
+# The base x86_64 StarCluster AMI is %(x86_64_ami)s
+NODE_IMAGE_ID = %(x86_ami)s
 
 # instance type
 NODE_INSTANCE_TYPE = m1.small
@@ -118,7 +120,10 @@ VOLUMES = biodata2
 EXTENDS=mediumcluster
 # This section is the same as mediumcluster except for the following variables:
 CLUSTER_SIZE=16
-"""
+""" % {
+    'x86_ami': static.BASE_AMI_32,
+    'x86_64_ami': static.BASE_AMI_64,
+}
 
 DASHES='-'*10
 copy_paste_template=DASHES + ' COPY BELOW THIS LINE ' + DASHES  + \
