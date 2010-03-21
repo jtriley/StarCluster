@@ -309,8 +309,8 @@ class StarClusterConfig(object):
     def get_easy_s3(self):
         """
         Factory for EasyEC2 class that attempts to load AWS credentials from
-        the StarCluster config file. Returns an EasyEC2 object if
-    .
+        the StarCluster config file. Returns an EasyS3 object if
+        successful.
         """
         s3 = awsutils.EasyS3(self.aws['aws_access_key_id'],
                              self.aws['aws_secret_access_key'])

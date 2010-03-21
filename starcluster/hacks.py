@@ -17,11 +17,11 @@ def register_image(conn, name=None, description=None, image_location=None,
 
     :type image_location: string
     :param image_location: Full path to your AMI manifest in Amazon S3 storage.
-                           Only used for S3-based AMI's.
+    Only used for S3-based AMI's.
 
     :type architecture: string
-    :param architecture: The architecture of the AMI.  Valid choices are:
-                         i386 | x86_64
+    :param architecture: The architecture of the AMI.  
+    Valid choices are: i386 | x86_64
 
     :type kernel_id: string
     :param kernel_id: The ID of the kernel with which to launch the instances
@@ -30,9 +30,9 @@ def register_image(conn, name=None, description=None, image_location=None,
     :param root_device_name: The root device name (e.g. /dev/sdh)
 
     :type block_device_map: :class:`boto.ec2.blockdevicemapping.BlockDeviceMapping`
-    :param block_device_map: A BlockDeviceMapping data structure
-                             describing the EBS volumes associated
-                             with the Image.
+    :param block_device_map: 
+    A BlockDeviceMapping data structure describing the EBS volumes associated
+    with the Image.
 
     :rtype: string
     :return: The new image id

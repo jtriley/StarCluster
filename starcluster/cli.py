@@ -76,7 +76,8 @@ class CmdStart(CmdBase):
     Start a new cluster 
 
     example: 
-        starcluster start largecluster physics
+
+    starcluster start largecluster physics
     
     """
     names = ['start']

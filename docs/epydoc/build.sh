@@ -1,2 +1,2 @@
 #!/bin/bash
-epydoc --config scepydoc.conf
+epydoc -v --config scepydoc.conf
