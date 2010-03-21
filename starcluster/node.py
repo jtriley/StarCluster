@@ -1,3 +1,4 @@
+import os
 from starcluster import ssh
 from starcluster.logger import log
 

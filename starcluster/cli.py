@@ -225,9 +225,9 @@ class CmdSshNode(CmdBase):
                 return
             self.parser.error("please specify a node to connect to")
         scluster = args[0]
-        nodes = args[1:]
-        for node in nodes:
-            cluster.ssh_to_cluster_node(scluster, node, self.cfg)
+        ids = args[1:]
+        for id in ids:
+            cluster.ssh_to_cluster_node(scluster, id, self.cfg)
 
 class CmdListClusters(CmdBase):
     """
