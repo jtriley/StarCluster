@@ -10,43 +10,68 @@ import platform
 from pprint import pprint
 
 import boto
+import boto.ec2
+import boto.s3
 from starcluster import static
 from starcluster.logger import log
 from starcluster.utils import print_timing
 from starcluster.hacks import register_image as _register_image
 
 class EasyAWS(object):
-    def __init__(self, aws_access_key_id, aws_secret_access_key, connection_authenticator):
+    def __init__(self, aws_access_key_id, aws_secret_access_key,
+                 connection_authenticator, **kwargs):
         """
         Create an EasyAWS object. 
 
-        Requires AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY from an Amazon Web Services (AWS) account
-        and a CONNECTION_AUTHENTICATOR function that returns an
-        authenticated AWS connection object
+        Requires AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY from an Amazon Web 
+        Services (AWS) account and a CONNECTION_AUTHENTICATOR function that 
+        returns an authenticated AWS connection object
+
+        Providing only the keys will default to using Amazon EC2
+
+        kwargs are passed to the connection_authenticator constructor
         """
         self.aws_access_key = aws_access_key_id
         self.aws_secret_access_key = aws_secret_access_key
         self.connection_authenticator = connection_authenticator
         self._conn = None
+        self._kwargs = kwargs
 
     @property
     def conn(self):
         if self._conn is None:
-            log.debug('creating self._conn')
-            self._conn = self.connection_authenticator(self.aws_access_key,
-                self.aws_secret_access_key)
+            log.debug('creating self._conn w/ connection_authenticator kwargs' +
+                      ' = %s' % self._kwargs)
+            self._conn = self.connection_authenticator(
+                self.aws_access_key, self.aws_secret_access_key, **self._kwargs
+            )
         return self._conn
 
 
 class EasyEC2(EasyAWS):
-    def __init__(self, aws_access_key_id, aws_secret_access_key, cache=False):
-        super(EasyEC2, self).__init__(aws_access_key_id, aws_secret_access_key, boto.connect_ec2)
+    def __init__(self, aws_access_key_id, aws_secret_access_key, aws_ec2_path='/',
+                 aws_s3_path='/', aws_port=None, aws_region_name=None, 
+                 aws_is_secure=True, aws_region_host=None, cache=False, **kwargs):
+        aws_region = None
+        if aws_region_name and aws_region_host:
+            aws_region = boto.ec2.regioninfo.RegionInfo(name=aws_region_name, 
+                                                        endpoint=aws_region_host)
+        kwargs = dict(is_secure=aws_is_secure, region=aws_region, 
+                      port=aws_port, path=aws_ec2_path)
+        super(EasyEC2, self).__init__(aws_access_key_id, aws_secret_access_key, 
+                                      boto.connect_ec2, **kwargs)
+
+        kwargs = dict(aws_s3_path=aws_s3_path, aws_port=aws_port,
+                      aws_is_secure=aws_is_secure,
+                      cache=cache)
+        if aws_region_host:
+            kwargs.update(dict(aws_region_host=aws_region_host))
+        self.s3 = EasyS3(aws_access_key_id, aws_secret_access_key, **kwargs)
         self.cache = cache
         self._instance_response = None
         self._keypair_response = None
         self._images = None
         self._security_group_response = None
-        self.s3 = EasyS3(aws_access_key_id, aws_secret_access_key, cache)
 
     @property
     def registered_images(self):
@@ -308,8 +333,16 @@ class EasyEC2(EasyAWS):
         return self.conn.get_all_security_groups()
 
 class EasyS3(EasyAWS):
-    def __init__(self, aws_access_key_id=None, aws_secret_access_key=None, cache=False, **kwargs):
-        super(EasyS3, self).__init__(aws_access_key_id, aws_secret_access_key, boto.connect_s3)
+    DefaultHost = 's3.amazonaws.com'
+    _calling_format=boto.s3.connection.OrdinaryCallingFormat()
+    def __init__(self, aws_access_key_id, aws_secret_access_key,  
+                 aws_s3_path='/', aws_port=None, aws_is_secure=True, 
+                 aws_region_host=DefaultHost, cache=False):
+        kwargs = dict(is_secure=aws_is_secure, host=aws_region_host, 
+                      calling_format=self._calling_format, port=aws_port, 
+                      path=aws_s3_path)
+        super(EasyS3, self).__init__(aws_access_key_id, aws_secret_access_key,
+                                     boto.connect_s3, **kwargs)
         self.cache = cache
 
     def bucket_exists(self, bucket_name):

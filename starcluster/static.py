@@ -42,6 +42,12 @@ AWS_SETTINGS = {
     'AWS_USER_ID': (str, False, None),
     'EC2_CERT': (str, False, None),
     'EC2_PRIVATE_KEY': (str, False, None),
+    'AWS_PORT': (int, False, None),
+    'AWS_EC2_PATH': (str, False, None),
+    'AWS_S3_PATH': (str, False, None),
+    'AWS_IS_SECURE': (bool, False, None),
+    'AWS_REGION_NAME': (str, False, None),
+    'AWS_REGION_HOST': (str, False, None),
 }
 
 KEY_SETTINGS = {

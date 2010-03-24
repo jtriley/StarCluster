@@ -88,6 +88,7 @@ class StarClusterConfig(object):
         self.type_validators = {
             int: self._get_int,
             str: self._get_string,
+            bool: self._get_bool,
         }
         self._config = None
         self.aws = AttributeDict()
@@ -96,6 +97,18 @@ class StarClusterConfig(object):
         self.vols = AttributeDict()
         self.plugins = AttributeDict()
         self.cache = cache
+
+    def _get_bool(self, config, section, option):
+        try:
+            opt = config.getboolean(section,option)
+            return opt
+        except ConfigParser.NoSectionError,e:
+            pass
+        except ConfigParser.NoOptionError,e:
+            pass
+        except ValueError,e:
+            raise exception.ConfigError(
+                "Expected True/False value for setting %s in %s" % (option,section))
 
     def _get_int(self, config, section, option):
         try:
@@ -312,8 +325,7 @@ class StarClusterConfig(object):
         the StarCluster config file. Returns an EasyS3 object if
         successful.
         """
-        s3 = awsutils.EasyS3(self.aws['aws_access_key_id'],
-                             self.aws['aws_secret_access_key'])
+        s3 = awsutils.EasyS3(**self.aws)
         return s3
 
     def get_easy_ec2(self):
@@ -322,8 +334,7 @@ class StarClusterConfig(object):
         the StarCluster config file. Returns an EasyEC2 object if
         successful.
         """
-        ec2 = awsutils.EasyEC2(self.aws['aws_access_key_id'],
-                             self.aws['aws_secret_access_key'])
+        ec2 = awsutils.EasyEC2(**self.aws)
         return ec2
 
 if __name__ == "__main__":
