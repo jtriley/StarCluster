@@ -271,7 +271,9 @@ class EasyEC2(EasyAWS):
         bucketname = image.location.split('/')[0]
         bucket = self.s3.get_bucket(bucketname)
         files = bucket.list(prefix=os.path.basename(image.location).split('.manifest.xml')[0])
-        files = [ file for file in files ]
+        # boto with eucalyptus returns boto.s3.prefix.Prefix class at the 
+        # end of the list, we ignore these by checking for delete method
+        files = [ file for file in files if hasattr(file,'delete')]
         return files
 
     def list_image_files(self, image_id):
