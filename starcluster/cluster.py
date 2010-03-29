@@ -344,7 +344,7 @@ class Cluster(object):
     def is_ssh_up(self):
         for node in self.running_nodes:
             s = socket.socket()
-            s.settimeout(1.0)
+            s.settimeout(5.0)
             try:
                 s.connect((node.dns_name, 22))
                 s.close()
