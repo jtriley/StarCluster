@@ -121,7 +121,7 @@ class Cluster(object):
             availability_zone=None,
             keyname=None,
             key_location=None,
-            volumes=[],
+            volumes=None,
             plugins=None,
             **kwargs):
 
@@ -612,6 +612,8 @@ $ ssh -i %(key)s %(user)s@%(master)s
 
     def _validate_ebs_settings(self):
         # check EBS vols for missing/duplicate DEVICE/PARTITION/MOUNT_PATHs 
+        if not self.VOLUMES:
+            return True
         vol_ids = []
         devices = []
         mount_paths = []
