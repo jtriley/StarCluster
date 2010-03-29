@@ -123,29 +123,32 @@ instances when starting cluster (uses existing instances instead)")
         parser.add_option("-n","--node-image-id", dest="NODE_IMAGE_ID",
             action="store", type="string", default=None, 
             help="image to use for node")
-        opt = parser.add_option("-i","--instance-type", dest="INSTANCE_TYPE",
+        opt = parser.add_option("-I","--master-instance-type", dest="MASTER_INSTANCE_TYPE",
             action="store", choices=static.INSTANCE_TYPES.keys(),
-            default=None, help="specify machine type for cluster")
+            default=None, help="specify machine type for the master instance")
+        opt = parser.add_option("-i","--node-instance-type", dest="NODE_INSTANCE_TYPE",
+            action="store", choices=static.INSTANCE_TYPES.keys(),
+            default=None, help="specify machine type for the node instances")
         if optcomplete:
             opt.completer = optcomplete.ListCompleter(opt.choices)
         parser.add_option("-a","--availability-zone", dest="AVAILABILITY_ZONE",
             action="store", type="string", default=None, 
-            help="availability zone to launch ec2 instances in ")
+            help="availability zone to launch ec2 instances in")
         parser.add_option("-k","--keyname", dest="KEYNAME",
             action="store", type="string", default=None, 
             help="name of AWS ssh key to use for cluster")
         parser.add_option("-K","--key-location", dest="KEY_LOCATION",
             action="store", type="string", default=None, metavar="FILE",
             help="path to ssh key used for this cluster")
-        parser.add_option("-v","--volume", dest="VOLUME",
-            action="store", type="string", default=None, 
-            help="EBS volume to attach to master node")
-        parser.add_option("-D","--volume-device", dest="VOLUME_DEVICE",
-            action="store", type="string", default=None, 
-            help="Device label to use for EBS volume")
-        parser.add_option("-p","--volume-partition", dest="VOLUME_PARTITION",
-            action="store", type="string", default=None, 
-            help="EBS Volume partition to mount on master node")
+        #parser.add_option("-v","--volume", dest="VOLUME",
+            #action="store", type="string", default=None, 
+            #help="EBS volume to attach to master node")
+        #parser.add_option("-D","--volume-device", dest="VOLUME_DEVICE",
+            #action="store", type="string", default=None, 
+            #help="Device label to use for EBS volume")
+        #parser.add_option("-p","--volume-partition", dest="VOLUME_PARTITION",
+            #action="store", type="string", default=None, 
+            #help="EBS Volume partition to mount on master node")
 
     def execute(self, args):
         if len(args) != 2:

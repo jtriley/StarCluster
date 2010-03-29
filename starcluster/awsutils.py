@@ -147,7 +147,10 @@ class EasyEC2(EasyAWS):
             res = self.conn.get_all_instances(instance_ids=[instance_id])
             return res[0].instances[0]
         except boto.exception.EC2ResponseError,e:
-            return
+            pass
+        except IndexError,e:
+            # for eucalyptus, invalid instance_id returns []
+            pass
 
     def get_all_instances(self, instance_ids=[]):
         reservations = self.conn.get_all_instances(instance_ids)
@@ -348,18 +351,29 @@ class EasyS3(EasyAWS):
         self.cache = cache
 
     def bucket_exists(self, bucket_name):
-        exists = (self.conn.check_bucket_exists(bucket_name).reason == 'OK')
-        if not exists:
+        try:
+            self.conn.get_bucket(bucket_name)
+            return True
+        except boto.exception.S3ResponseError,e:
             log.error('bucket %s does not exist' % bucket_name)
-        return exists
+            return False
+
+    def get_bucket_or_none(self, bucket_name):
+        try:
+            return self.conn.get_bucket(bucket_name)
+        except boto.exception.S3ResponseError,e:
+            pass
 
     def get_bucket(self, bucketname):
         return self.conn.get_bucket(bucketname)
 
     def list_bucket(self, bucketname):
-        bucket = self.get_bucket(bucketname)
-        for file in bucket.list():
-            print file.name
+        bucket = self.get_bucket_or_none(bucketname)
+        if bucket:
+            for file in bucket.list():
+                if file.name: print file.name
+        else:
+            log.error('bucket %s does not exist' % bucketname)
 
     def get_buckets(self):
         buckets = self.conn.get_all_buckets()
