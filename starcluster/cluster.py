@@ -344,7 +344,7 @@ class Cluster(object):
     def is_ssh_up(self):
         for node in self.running_nodes:
             s = socket.socket()
-            s.settimeout(0.25)
+            s.settimeout(1.0)
             try:
                 s.connect((node.dns_name, 22))
                 s.close()
@@ -522,7 +522,8 @@ $ ssh -i %(key)s %(user)s@%(master)s
             try:
                 zone = conn.get_zone(AVAILABILITY_ZONE)
                 if zone.state != 'available':
-                    log.error('The AVAILABILITY_ZONE = %s is not available at this time')
+                    log.error('The AVAILABILITY_ZONE = %s ' % zone +
+                              'is not available at this time')
                     return False
             except boto.exception.EC2ResponseError,e:
                 log.error('AVAILABILITY_ZONE = %s does not exist' % AVAILABILITY_ZONE)
