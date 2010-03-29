@@ -485,7 +485,7 @@ $ ssh -i %(key)s %(user)s@%(master)s
 
     def _validate_cluster_size(self):
         if self.CLUSTER_SIZE <= 0 or not isinstance(self.CLUSTER_SIZE, int):
-            raise exception.ClusterValidationError('CLUSTER_SIZE must be a positive integer. Please check your settings')
+            raise exception.ClusterValidationError('CLUSTER_SIZE must be a positive integer.')
         return True
 
     def _validate_shell_setting(self):
@@ -699,19 +699,18 @@ $ ssh -i %(key)s %(user)s@%(master)s
             self.ec2.get_all_instances()
         except boto.exception.EC2ResponseError,e:
             raise exception.ClusterValidationError(
-                'Invalid AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY combination. '+ \
-                'Please check your settings')
+                'Invalid AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY combination.')
         return True
 
     def _validate_keypair(self):
         KEY_LOCATION = self.KEY_LOCATION
         if not os.path.exists(KEY_LOCATION):
             raise exception.ClusterValidationError(
-                'KEY_LOCATION=%s does not exist. Please check your settings' % \
+                'KEY_LOCATION=%s does not exist.' % \
                 KEY_LOCATION)
         elif not os.path.isfile(KEY_LOCATION):
             raise exception.ClusterValidationError(
-                'KEY_LOCATION=%s is not a file. Please check your settings' % \
+                'KEY_LOCATION=%s is not a file.' % \
                 KEY_LOCATION)
         KEYNAME = self.KEYNAME
         conn = self.ec2
@@ -719,8 +718,8 @@ $ ssh -i %(key)s %(user)s@%(master)s
             keypair = conn.get_keypair(KEYNAME)
         except boto.exception.EC2ResponseError,e:
             raise exception.ClusterValidationError(
-                'Account does not contain a key with KEYNAME = %s. ' + \
-                'Please check your settings' % KEYNAME)
+                'Account does not contain a key with KEYNAME = %s. ' % KEYNAME
+            )
         return True
 
 if __name__ == "__main__":
