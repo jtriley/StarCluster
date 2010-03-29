@@ -522,11 +522,12 @@ $ ssh -i %(key)s %(user)s@%(master)s
             try:
                 zone = conn.get_zone(AVAILABILITY_ZONE)
                 if zone.state != 'available':
-                    log.error('The AVAILABILITY_ZONE = %s ' % zone +
+                    log.warn('The AVAILABILITY_ZONE = %s ' % zone +
                               'is not available at this time')
-                    return False
             except boto.exception.EC2ResponseError,e:
-                log.error('AVAILABILITY_ZONE = %s does not exist' % AVAILABILITY_ZONE)
+                raise exception.ClusterValidationError(
+                    'AVAILABILITY_ZONE = %s does not exist' % AVAILABILITY_ZONE
+                )
                 return False
         return True
 
