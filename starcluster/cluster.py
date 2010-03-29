@@ -103,7 +103,12 @@ class Cluster(object):
     def __init__(self,
             aws_access_key_id=None,
             aws_secret_access_key=None,
-            aws_user_id=None,
+            aws_port=None,
+            aws_is_secure=True,
+            aws_ec2_path='/',
+            aws_s3_path='/',
+            aws_region_name=None,
+            aws_region_host=None,
             cluster_tag=None,
             cluster_description=None,
             cluster_size=None,
@@ -121,9 +126,15 @@ class Cluster(object):
             **kwargs):
 
         now = time.strftime("%Y%m%d%H%M")
-        self.AWS_ACCESS_KEY_ID = aws_access_key_id
-        self.AWS_SECRET_ACCESS_KEY = aws_secret_access_key
-        self.AWS_USER_ID = aws_user_id
+
+        self.ec2 = awsutils.EasyEC2(
+            aws_access_key_id, aws_secret_access_key,
+            aws_port = aws_port, aws_is_secure = aws_is_secure,
+            aws_ec2_path = aws_ec2_path, aws_s3_path = aws_s3_path,
+            aws_region_name = aws_region_name, 
+            aws_region_host = aws_region_host,
+        )
+
         self.CLUSTER_TAG = cluster_tag
         self.CLUSTER_DESCRIPTION = cluster_description
         if self.CLUSTER_TAG is None:
@@ -143,10 +154,6 @@ class Cluster(object):
         self.VOLUMES = volumes
         self.PLUGINS = plugins
 
-        self.ec2 = awsutils.EasyEC2(
-            aws_access_key_id = self.AWS_ACCESS_KEY_ID, 
-            aws_secret_access_key = self.AWS_SECRET_ACCESS_KEY
-        )
         self.__instance_types = static.INSTANCE_TYPES
         self.__cluster_settings = static.CLUSTER_SETTINGS
         self.__available_shells = static.AVAILABLE_SHELLS
@@ -214,9 +221,6 @@ class Cluster(object):
 
     def __str__(self):
         cfg = {
-            'AWS_ACCESS_KEY_ID': self.AWS_ACCESS_KEY_ID,
-            'AWS_SECRET_ACCESS_KEY': self.AWS_SECRET_ACCESS_KEY,
-            'AWS_USER_ID': self.AWS_USER_ID,
             'CLUSTER_TAG': self.CLUSTER_TAG,
             'CLUSTER_DESCRIPTION': self.CLUSTER_DESCRIPTION,
             'CLUSTER_SIZE': self.CLUSTER_SIZE,

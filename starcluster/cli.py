@@ -71,13 +71,17 @@ class CmdBase(CmdComplete):
 
 class CmdStart(CmdBase):
     """
-    start <cluster_config> <tagname>
+    start <cluster_template> <tagname>
 
     Start a new cluster 
 
-    example: 
+    Example: 
 
-    starcluster start largecluster physics
+        starcluster start largecluster physics
+    
+    This will launch a cluster tagged "physics" using the
+    settings from the cluster template "largecluster" defined
+    in the configuration file
     
     """
     names = ['start']
@@ -152,7 +156,7 @@ instances when starting cluster (uses existing instances instead)")
 
     def execute(self, args):
         if len(args) != 2:
-            self.parser.error("Please specify a cluster config and tag name")
+            self.parser.error("Please specify a <cluster_template> and <tagname>")
         cfg = self.cfg
         cluster_config = args[0]
         tag = args[1]
@@ -190,6 +194,12 @@ class CmdStop(CmdBase):
     stop <cluster>
 
     Shutdown a running cluster
+
+    Example:
+
+        starcluster stop physics
+
+    This will stop a currently running cluster tagged "physics"
     """
     names = ['stop']
     def execute(self, args):
@@ -249,6 +259,16 @@ class CmdCreateImage(CmdBase):
     createimage <instance-id> <image_name> <bucket> 
 
     Create a new image (AMI) from a currently running EC2 instance
+
+    Example:
+
+        starcluster createimage i-999999 my-new-image mybucket
+
+    NOTE: It is recommended not to create a new StarCluster AMI from
+    an instance launched by StarCluster. Rather, launch a single 
+    StarCluster instance using elasticfox or the ec2-api-tools, modify
+    it how you like, and then use this command to create a new AMI from 
+    the instance.
     """
     names = ['createimage']
 
@@ -318,7 +338,11 @@ class CmdShowImage(CmdBase):
     """
     showimage <image_id>
 
-    Show all files on S3 for an EC2 image (AMI)
+    Show all AMI parts and manifest files on S3 for an EC2 image (AMI)
+
+    Example:
+
+        starcluster showimage ami-999999
     """
     names = ['showimage']
     def execute(self, args):
@@ -349,7 +373,11 @@ class CmdRemoveImage(CmdBase):
     Deregister an EC2 image (AMI) and remove it from S3
 
     WARNING: This command *permanently* removes an AMI from 
-    EC2/S3. Be careful!
+    EC2/S3 including all AMI parts and manifest. Be careful!
+
+    Example:
+
+        removeami ami-999999
     """
     names = ['removeimage']
 
@@ -386,6 +414,13 @@ class CmdShowConsole(CmdBase):
     showconsole <instance-id>
 
     Show console output for <instance-id>
+
+    Example:
+
+        showconsole i-999999
+
+    This will print out the startup logs for instance 
+    i-999999
     """
     names = ['showconsole']
     def execute(self, args):
