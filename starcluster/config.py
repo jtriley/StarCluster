@@ -178,7 +178,7 @@ class StarClusterConfig(object):
             name = setting.lower(); default = settings[setting][2]
             if section_conf.get(name, None) is None:
                 if default:
-                    log.warn('%s setting not specified. Defaulting to %s' % (name, default))
+                    log.debug('%s setting not specified. Defaulting to %s' % (name, default))
                 section_conf[name] = default
 
     def load_extends_variables(self, section_name, store):

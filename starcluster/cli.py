@@ -24,6 +24,7 @@ __author__ = "Justin Riley <justin.t.riley@gmail.com>"
 import os
 import sys
 import time
+import logging
 from pprint import pprint, pformat
 from starcluster import cluster
 from starcluster import node
@@ -581,6 +582,8 @@ def main():
         return -1
 
     gopts, sc, opts, args = parse_subcommands(gparser, subcmds)
+    if gopts.DEBUG:
+        log.setLevel(logging.DEBUG)
     try:
         sc.execute(args)
     except exception.ConfigError,e:
