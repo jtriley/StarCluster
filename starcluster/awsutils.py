@@ -86,9 +86,21 @@ class EasyEC2(EasyAWS):
             if image.id == image_id:
                 return image
 
+    def create_group(self, name, description, auth_ssh=True,
+                     auth_group_traffic=False):
+        if not name:
+            return None
+        log.info("Creating security group %s..." % name)
+        sg = self.conn.create_security_group(name, description)
+        if auth_ssh:
+            sg.authorize('tcp', 22, 22, '0.0.0.0/0')
+        if auth_group_traffic:
+            sg.authorize(src_group=self.get_group_or_none(name))
+        return sg
+
     def get_group_or_none(self, name):
         try:
-            sg = self.conn.get_all_security_groups(group_names=[name])[0]
+            sg = self.conn.get_all_security_groups(groupnames=[name])[0]
             return sg
         except boto.exception.EC2ResponseError, e:
             pass
@@ -106,15 +118,11 @@ class EasyEC2(EasyAWS):
                 groupnames=[name])[0]
             return sg
         except boto.exception.EC2ResponseError, e:
-            if not name:
-                return None
-            log.info("Creating security group %s..." % name)
-            sg = self.conn.create_security_group(name, description)
-            if auth_ssh:
-                sg.authorize('tcp', 22, 22, '0.0.0.0/0')
-            if auth_group_traffic:
-                sg.authorize(src_group=sg)
-            return sg
+            pass
+        except IndexError,e:
+            pass
+        return self.create_group(name, description, auth_ssh,
+                                 auth_group_traffic)
 
     def run_instances(self, image_id, instance_type='m1.small', min_count=1,
                       max_count=1, key_name=None, security_groups=None,

@@ -121,8 +121,8 @@ class Cluster(object):
             availability_zone=None,
             keyname=None,
             key_location=None,
-            volumes=None,
-            plugins=None,
+            volumes=[],
+            plugins=[],
             **kwargs):
 
         now = time.strftime("%Y%m%d%H%M")
@@ -164,8 +164,6 @@ class Cluster(object):
         self._plugins = self.load_plugins(plugins)
 
     def load_plugins(self, plugins):
-        if not plugins:
-            return []
         plugs = []
         for plugin in plugins:
             setup_class = plugin.get('setup_class')
@@ -274,6 +272,8 @@ class Cluster(object):
             master = self.master_node
             nodeid = 1
             for node in nodes:
+                if node.state not in ['pending','running']:
+                    continue
                 if node.id == master.id:
                     self._nodes.insert(0,master)
                     continue
@@ -612,8 +612,6 @@ $ ssh -i %(key)s %(user)s@%(master)s
 
     def _validate_ebs_settings(self):
         # check EBS vols for missing/duplicate DEVICE/PARTITION/MOUNT_PATHs 
-        if not self.VOLUMES:
-            return True
         vol_ids = []
         devices = []
         mount_paths = []
