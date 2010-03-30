@@ -104,6 +104,8 @@ class EasyEC2(EasyAWS):
             return sg
         except boto.exception.EC2ResponseError, e:
             pass
+        except IndexError, e:
+            pass
 
     def get_or_create_group(self, name, description, auth_ssh=True, auth_group_traffic=False):
         """ 
@@ -113,16 +115,11 @@ class EasyEC2(EasyAWS):
 
         Authorizes all traffic between members of the group
         """
-        try:
-            sg = self.conn.get_all_security_groups(
-                groupnames=[name])[0]
-            return sg
-        except boto.exception.EC2ResponseError, e:
-            pass
-        except IndexError,e:
-            pass
-        return self.create_group(name, description, auth_ssh,
-                                 auth_group_traffic)
+        sg = self.get_group_or_none(name)
+        if not sg:
+            sg = self.create_group(name, description, auth_ssh,
+                                     auth_group_traffic)
+        return sg
 
     def run_instances(self, image_id, instance_type='m1.small', min_count=1,
                       max_count=1, key_name=None, security_groups=None,
