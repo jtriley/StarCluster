@@ -1,4 +1,5 @@
 import os
+import socket
 from starcluster import ssh
 from starcluster.logger import log
 
@@ -100,6 +101,37 @@ class Node(object):
 
     def stop(self):
         return self.instance.stop()
+
+    def is_ssh_up(self):
+        s = socket.socket()
+        s.settimeout(5.0)
+        try:
+            s.connect((self.dns_name, 22))
+            s.close()
+            return True
+        except socket.error:
+            log.debug("ssh not up for %s" % self.dns_name)
+            return False
+
+    def is_up(self):
+        self.update()
+        if not self.is_ssh_up():
+            return False
+        if self.private_ip_address is None:
+            log.debug("instance %s has no private_ip_address" % self.id)
+            log.debug(
+                "attempting to determine private_ip_address for instance %s" % \
+                self.id)
+            try:
+                private_ip = self.ssh.execute(
+                    'python -c "import socket; print socket.gethostbyname(\'%s\')"' %\
+                    self.private_dns_name)[0].strip()
+                log.debug("determined instance %s's private ip to be %s" %
+                          self.id, private_ip)
+                self.instance.private_ip_address = private_ip
+            except Exception,e:
+                return False
+        return True
 
     def update(self):
         retval = self.instance.update()

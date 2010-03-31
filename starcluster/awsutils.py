@@ -185,6 +185,7 @@ class EasyEC2(EasyAWS):
             for instance in res.instances:
                 id = instance.id or 'N/A'
                 dns_name = instance.dns_name or 'N/A'
+                private_dns_name = instance.private_dns_name or 'N/A'
                 state = instance.state or 'N/A'
                 private_ip = instance.private_ip_address or 'N/A'
                 public_ip = instance.ip_address or 'N/A'
@@ -193,6 +194,7 @@ class EasyEC2(EasyAWS):
                 keypair = instance.key_name or 'N/A'
                 print "id: %s" % id
                 print "dns_name: %s" % dns_name
+                print "private_dns_name: %s" % private_dns_name
                 print "state: %s" % state
                 print "public ip: %s" % public_ip 
                 print "private_ip: %s" % private_ip

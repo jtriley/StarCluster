@@ -2,7 +2,6 @@
 import os
 import re
 import time
-import socket
 import platform
 import pprint 
 import inspect
@@ -280,7 +279,7 @@ class Cluster(object):
                 nodeid += 1
         else:
             for node in self._nodes:
-                log.debug('refreshing node %s' % node.dns_name)
+                log.debug('refreshing instance %s' % node.id)
                 node.update()
         return self._nodes
 
@@ -339,39 +338,18 @@ class Cluster(object):
                 placement=self.AVAILABILITY_ZONE)
             print instances_response
 
-    def is_ssh_up(self):
-        for node in self.running_nodes:
-            s = socket.socket()
-            s.settimeout(5.0)
-            try:
-                s.connect((node.dns_name, 22))
-                s.close()
-            except socket.error:
-                log.debug("ssh not up for %s" % node.dns_name)
-                return False
-        return True
-
-    def ips_up(self):
-        """
-        Checks that each node instance has a private_ip_address
-        """
-        for node in self.running_nodes:
-            if node.private_ip_address is None:
-                log.debug("node %s has no private_ip_address" % node.dns_name)
-                return False
-        return True
-
     def is_cluster_up(self):
         """
         Check whether there are CLUSTER_SIZE nodes running,
         that ssh (port 22) is up on all nodes, and that each node
-        has an internal ip address
+        has an internal ip address associated with it
         """
-        if len(self.running_nodes) == self.CLUSTER_SIZE:
-            if self.is_ssh_up() and self.ips_up():
-                return True
-            else:
-                return False
+        nodes = self.running_nodes
+        if len(nodes) == self.CLUSTER_SIZE:
+            for node in nodes:
+                if not node.is_up():
+                    return False
+            return True
         else:
             return False
 
