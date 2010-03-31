@@ -138,7 +138,12 @@ class EasyEC2(EasyAWS):
                            root_device_name, block_device_map)
 
     def get_keypair(self, keypair):
-        return self.conn.get_all_key_pairs(keynames=[keypair])[0]
+        try:
+            return self.conn.get_all_key_pairs(keynames=[keypair])[0]
+        except boto.exception.EC2ResponseError,e:
+            pass
+        except IndexError,e:
+            pass
 
     def __print_header(self, msg):
         print msg
@@ -156,6 +161,13 @@ class EasyEC2(EasyAWS):
         except IndexError,e:
             # for eucalyptus, invalid instance_id returns []
             pass
+
+    def is_valid_conn(self):
+        try:
+            self.get_all_instances()
+            return True
+        except boto.exception.EC2ResponseError,e:
+            return False
 
     def get_all_instances(self, instance_ids=[]):
         reservations = self.conn.get_all_instances(instance_ids)
@@ -265,14 +277,18 @@ class EasyEC2(EasyAWS):
     def get_zone(self, zone):
         try:
             return self.conn.get_all_zones(zones=[zone])[0]
+        except boto.exception.EC2ResponseError,e:
+            pass
         except IndexError,e:
-            return None
+            pass
 
     def get_image(self, image_id):
         try:
             return self.conn.get_all_images(image_ids=[image_id])[0]
+        except boto.exception.EC2ResponseError,e:
+            pass
         except IndexError,e:
-            return None
+            pass
 
     def get_image_files(self, image_id):
         image = self.get_image(image_id)
@@ -316,10 +332,18 @@ class EasyEC2(EasyAWS):
             self.conn.terminate_instances(instances)
 
     def get_volumes(self):
-        return self.conn.get_all_volumes()
+        try:
+            return self.conn.get_all_volumes()
+        except boto.exception.EC2ResponseError,e:
+            pass
 
     def get_volume(self, volume_id):
-        return self.conn.get_all_volumes(volume_ids=[volume_id])[0]
+        try:
+            return self.conn.get_all_volumes(volume_ids=[volume_id])[0]
+        except boto.exception.EC2ResponseError,e:
+            pass
+        except IndexError,e:
+            pass
 
     def list_volumes(self):
         vols = self.get_volumes()

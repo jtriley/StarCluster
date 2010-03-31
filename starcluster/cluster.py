@@ -17,8 +17,6 @@ from starcluster.spinner import Spinner
 from starcluster.logger import log, INFO_NO_NEWLINE
 from starcluster.node import Node
 
-import boto
-
 def get_cluster(cluster_name, cfg):
     """Factory for Cluster class"""
     try:
@@ -500,35 +498,29 @@ $ ssh -i %(key)s %(user)s@%(master)s
         MASTER_IMAGE_ID = self.MASTER_IMAGE_ID
         NODE_IMAGE_ID = self.NODE_IMAGE_ID
         conn = self.ec2
-        try:
-            image = conn.get_image(NODE_IMAGE_ID)
-        except boto.exception.EC2ResponseError,e:
+        image = conn.get_image(NODE_IMAGE_ID)
+        if not image or image.id != NODE_IMAGE_ID:
             raise exception.ClusterValidationError(
                 'NODE_IMAGE_ID %s does not exist' % NODE_IMAGE_ID
             )
         if MASTER_IMAGE_ID:
-            try:
-                master_image = conn.get_image(MASTER_IMAGE_ID)
-            except boto.exception.EC2ResponseError,e:
+            master_image = conn.get_image(MASTER_IMAGE_ID)
+            if not master_image or master_image.id != MASTER_IMAGE_ID:
                 raise exception.ClusterValidationError(
                     'MASTER_IMAGE_ID %s does not exist' % MASTER_IMAGE_ID)
         return True
 
     def _validate_zone(self):
-        #TODO: raise exceptions here instead of logging errors
-        conn = self.ec2
         AVAILABILITY_ZONE = self.AVAILABILITY_ZONE
         if AVAILABILITY_ZONE:
-            try:
-                zone = conn.get_zone(AVAILABILITY_ZONE)
-                if zone.state != 'available':
-                    log.warn('The AVAILABILITY_ZONE = %s ' % zone +
-                              'is not available at this time')
-            except boto.exception.EC2ResponseError,e:
+            zone = self.ec2.get_zone(AVAILABILITY_ZONE)
+            if not zone:
                 raise exception.ClusterValidationError(
                     'AVAILABILITY_ZONE = %s does not exist' % AVAILABILITY_ZONE
                 )
-                return False
+            if zone.state != 'available':
+                log.warn('The AVAILABILITY_ZONE = %s ' % zone +
+                          'is not available at this time')
         return True
 
     def __check_platform(self, image_id, instance_type):
@@ -537,10 +529,11 @@ $ ssh -i %(key)s %(user)s@%(master)s
         instance_type. image_id_setting and instance_type_setting are the
         setting labels in the config file.
         """
-        try:
-            image_platform = self.ec2.conn.get_image(image_id).architecture
-        except boto.exception.EC2ResponseError,e:
-            image_platform = None
+        image = self.ec2.get_image(image_id)
+        if not image:
+            raise exception.ClusterValidationError('Image %s does not exist' %
+                                                   image_id)
+        image_platform = image.architecture
         instance_platform = self.__instance_types[instance_type]
         if instance_platform != image_platform:
             error_msg = "Instance type %(instance_type)s is for a " + \
@@ -651,9 +644,8 @@ $ ssh -i %(key)s %(user)s@%(master)s
                 raise exception.ClusterValidationError(
                     'Missing AVAILABILITY_ZONE setting')
             conn = self.ec2
-            try:
-                vol = conn.get_volume(vol_id)
-            except boto.exception.EC2ResponseError,e:
+            vol = conn.get_volume(vol_id)
+            if not vol:
                 raise exception.ClusterValidationError(
                     'Volume %s (VOLUME_ID: %s) does not exist ' % \
                     (vol_name,vol_id))
@@ -693,9 +685,7 @@ $ ssh -i %(key)s %(user)s@%(master)s
         return has_all_required
 
     def _validate_credentials(self):
-        try:
-            self.ec2.get_all_instances()
-        except boto.exception.EC2ResponseError,e:
+        if not self.ec2.is_valid_conn():
             raise exception.ClusterValidationError(
                 'Invalid AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY combination.')
         return True
@@ -712,9 +702,8 @@ $ ssh -i %(key)s %(user)s@%(master)s
                 KEY_LOCATION)
         KEYNAME = self.KEYNAME
         conn = self.ec2
-        try:
-            keypair = conn.get_keypair(KEYNAME)
-        except boto.exception.EC2ResponseError,e:
+        keypair = self.ec2.get_keypair(KEYNAME)
+        if not keypair:
             raise exception.ClusterValidationError(
                 'Account does not contain a key with KEYNAME = %s. ' % KEYNAME
             )

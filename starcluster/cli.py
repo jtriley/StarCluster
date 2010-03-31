@@ -72,7 +72,7 @@ class CmdBase(CmdComplete):
 
 class CmdStart(CmdBase):
     """
-    start <cluster_template> <tagname>
+    start [options] <cluster_template> <tagname>
 
     Start a new cluster 
 
@@ -99,8 +99,11 @@ class CmdStart(CmdBase):
 
     def addopts(self, parser):
         opt = parser.add_option("-x","--no-create", dest="NO_CREATE",
-            action="store_true", default=False, help="Do not launch new ec2 \
-instances when starting cluster (uses existing instances instead)")
+            action="store_true", default=False, help="Do not launch new ec2 " + \
+"instances when starting cluster (uses existing instances instead)")
+        opt = parser.add_option("-v","--validate-only", dest="VALIDATE_ONLY",
+            action="store_true", default=False, help="Only validate cluster " + \
+"settings, do not start a cluster")
         parser.add_option("-l","--login-master", dest="LOGIN_MASTER",
             action="store_true", default=False, 
             help="ssh to ec2 cluster master node after launch")
@@ -182,13 +185,15 @@ instances when starting cluster (uses existing instances instead)")
             log.error(e.msg)
             sys.exit(1)
         #from starcluster.utils import ipy_shell; ipy_shell();
+        log.info("Validating cluster settings...")
         if scluster.is_valid():
-            #log.info('valid cluster')
-            scluster.start(create=not self.opts.NO_CREATE)
-            if self.opts.LOGIN_MASTER:
-                   cluster.ssh_to_master(tag, self.cfg)
+            log.info('Cluster settings are valid')
+            if not self.opts.VALIDATE_ONLY:
+                scluster.start(create=not self.opts.NO_CREATE)
+                if self.opts.LOGIN_MASTER:
+                       cluster.ssh_to_master(tag, self.cfg)
         else:
-            log.error('The cluster configuration provided is not valid...')
+            log.error('The cluster settings provided are not valid')
 
 class CmdStop(CmdBase):
     """
@@ -257,7 +262,7 @@ class CmdListClusters(CmdBase):
 
 class CmdCreateImage(CmdBase):
     """
-    createimage <instance-id> <image_name> <bucket> 
+    createimage [options] <instance-id> <image_name> <bucket> 
 
     Create a new image (AMI) from a currently running EC2 instance
 
@@ -369,7 +374,7 @@ class CmdShowBucket(CmdBase):
 
 class CmdRemoveImage(CmdBase):
     """
-    removeami <imageid> 
+    removeami [options] <imageid> 
 
     Deregister an EC2 image (AMI) and remove it from S3
 
