@@ -3,6 +3,7 @@
 Utils module for StarCluster
 """
 
+import re
 import time
 from starcluster.logger import log
 
@@ -26,9 +27,20 @@ def print_timing(func):
         return res
     return wrapper
 
+def is_valid_device(dev):
+    regex = re.compile('/dev/sd[a-z]')
+    return len(dev) == 8 and regex.match(dev)
+
+def is_valid_partition(part):
+    regex = re.compile('/dev/sd[a-z][1-9][0-9]?')
+    return len(part) in [9,10] and regex.match(part)
+
 try:
+    import tester
     import IPython.Shell
     ipy_shell = IPython.Shell.IPShellEmbed(argv=[])
 except ImportError,e:
     def ipy_shell():
-        log.error("Unable to import IPython")
+        log.error("Unable to load IPython.")
+        log.error("Please check that IPython is installed and working.")
+        log.error("If not, you can install it via: easy_install ipython")

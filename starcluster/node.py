@@ -124,19 +124,22 @@ class Node(object):
                 self.id)
             try:
                 private_ip = self.ssh.execute(
-                    'python -c "import socket; print socket.gethostbyname(\'%s\')"' %\
+                    'python -c "import socket; print socket.gethostbyname(\'%s\')"' % \
                     self.private_dns_name)[0].strip()
-                log.debug("determined instance %s's private ip to be %s" %
-                          self.id, private_ip)
+                log.debug("determined instance %s's private ip to be %s" % \
+                          (self.id, private_ip))
                 self.instance.private_ip_address = private_ip
             except Exception,e:
+                print e
                 return False
         return True
 
     def update(self):
         retval = self.instance.update()
         if hasattr(self.instance.updated, 'private_ip_address'):
-            self.instance.private_ip_address = self.instance.updated.private_ip_address
+            updated_ip = self.instance.updated.private_ip_address
+            if updated_ip and not self.instance.private_ip_address:
+                self.instance.private_ip_address = updated_ip
         return retval
 
     @property
@@ -147,20 +150,9 @@ class Node(object):
                                        private_key=self.key_location)
         return self._ssh
 
-    @property
-    def network_names(self):
-        """ Returns all network names for this node in a dictionary"""
-        names = {}
-        names['INTERNAL_IP'] = self.private_ip_address
-        names['INTERNAL_NAME'] = self.private_dns_name
-        names['INTERNAL_NAME_SHORT'] = self.private_dns_name_short
-        names['INTERNAL_ALIAS'] = self.alias
-        return names
-
     def get_hosts_entry(self):
         """ Returns /etc/hosts entry for this node """
-        etc_hosts_line = "%(INTERNAL_IP)s %(INTERNAL_NAME)s %(INTERNAL_NAME_SHORT)s %(INTERNAL_ALIAS)s" 
-        etc_hosts_line = etc_hosts_line % self.network_names
+        etc_hosts_line = "%s %s" % self.private_ip_address, self.alias
         return etc_hosts_line
 
     def __del__(self):

@@ -49,7 +49,7 @@ class TestStarClusterConfig(StarClusterTest):
 
     def test_volumes(self):
         c1 = self.config.get_cluster('c1')
-        vols = c1.VOLUMES
+        vols = c1.volumes
         assert len(vols) == 3
         assert vols.has_key('v1')
         v1 = vols['v1']
@@ -105,7 +105,7 @@ class TestStarClusterConfig(StarClusterTest):
 
     def test_plugins(self):
         c1 = self.config.get_cluster('c1')
-        plugs = c1.PLUGINS
+        plugs = c1.plugins
         assert len(plugs) == 3
         # test that order is preserved 
         p1 = plugs[0]

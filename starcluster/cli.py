@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-starcluster [<global-opts>] action [<action-opts>] [<action-args> ...]
+starcluster [global-opts] action [action-opts] [<action-args> ...]
 """
 
 __description__ = """
@@ -33,6 +33,7 @@ from starcluster import exception
 from starcluster import static
 from starcluster import optcomplete
 from starcluster import image
+from starcluster import volume
 CmdComplete = optcomplete.CmdComplete
 
 from starcluster.logger import log
@@ -70,6 +71,11 @@ class CmdBase(CmdComplete):
     def cfg(self):
         return self.goptions_dict.get('CONFIG')
 
+    def execute(self, args):
+        if args[0] == 'help':
+            self.parser.usage()
+        
+
 class CmdStart(CmdBase):
     """
     start [options] <cluster_template> <tagname>
@@ -98,73 +104,61 @@ class CmdStart(CmdBase):
                 log.error('something went wrong fix me: %s' % e)
 
     def addopts(self, parser):
-        opt = parser.add_option("-x","--no-create", dest="NO_CREATE",
+        opt = parser.add_option("-x","--no-create", dest="no_create",
             action="store_true", default=False, help="Do not launch new ec2 " + \
 "instances when starting cluster (uses existing instances instead)")
-        opt = parser.add_option("-v","--validate-only", dest="VALIDATE_ONLY",
+        opt = parser.add_option("-v","--validate-only", dest="validate_only",
             action="store_true", default=False, help="Only validate cluster " + \
 "settings, do not start a cluster")
-        parser.add_option("-l","--login-master", dest="LOGIN_MASTER",
+        parser.add_option("-l","--login-master", dest="login_master",
             action="store_true", default=False, 
             help="ssh to ec2 cluster master node after launch")
-        #parser.add_option("-t","--tag", dest="CLUSTER_TAG",
-            #action="store", type="string", default=time.strftime("%Y%m%d%H%M"), 
-            #help="tag to identify cluster")
-        parser.add_option("-d","--description", dest="CLUSTER_DESCRIPTION",
+        parser.add_option("-d","--description", dest="cluster_description",
             action="store", type="string", 
             default="Cluster requested at %s" % time.strftime("%Y%m%d%H%M"), 
             help="brief description of cluster")
-        parser.add_option("-s","--cluster-size", dest="CLUSTER_SIZE",
+        parser.add_option("-s","--cluster-size", dest="cluster_size",
             action="store", type="int", default=None, 
             help="number of ec2 nodes to launch")
-        parser.add_option("-u","--cluster-user", dest="CLUSTER_USER",
+        parser.add_option("-u","--cluster-user", dest="cluster_user",
             action="store", type="string", default=None, 
             help="name of user to create on cluster (defaults to sgeadmin)")
-        opt = parser.add_option("-S","--cluster-shell", dest="CLUSTER_SHELL",
+        opt = parser.add_option("-S","--cluster-shell", dest="cluster_shell",
             action="store", choices=static.AVAILABLE_SHELLS.keys(),
             default=None, help="shell for cluster user ")
         if optcomplete:
             opt.completer = optcomplete.ListCompleter(opt.choices)
-        parser.add_option("-m","--master-image-id", dest="MASTER_IMAGE_ID",
+        parser.add_option("-m","--master-image-id", dest="master_image_id",
             action="store", type="string", default=None, 
             help="image to use for master")
-        parser.add_option("-n","--node-image-id", dest="NODE_IMAGE_ID",
+        parser.add_option("-n","--node-image-id", dest="node_image_id",
             action="store", type="string", default=None, 
             help="image to use for node")
-        opt = parser.add_option("-I","--master-instance-type", dest="MASTER_INSTANCE_TYPE",
+        opt = parser.add_option("-I","--master-instance-type", dest="master_instance_type",
             action="store", choices=static.INSTANCE_TYPES.keys(),
             default=None, help="specify machine type for the master instance")
-        opt = parser.add_option("-i","--node-instance-type", dest="NODE_INSTANCE_TYPE",
+        opt = parser.add_option("-i","--node-instance-type", dest="node_instance_type",
             action="store", choices=static.INSTANCE_TYPES.keys(),
             default=None, help="specify machine type for the node instances")
         if optcomplete:
             opt.completer = optcomplete.ListCompleter(opt.choices)
-        parser.add_option("-a","--availability-zone", dest="AVAILABILITY_ZONE",
+        parser.add_option("-a","--availability-zone", dest="availability_zone",
             action="store", type="string", default=None, 
             help="availability zone to launch ec2 instances in")
-        parser.add_option("-k","--keyname", dest="KEYNAME",
+        parser.add_option("-k","--keyname", dest="keyname",
             action="store", type="string", default=None, 
             help="name of AWS ssh key to use for cluster")
-        parser.add_option("-K","--key-location", dest="KEY_LOCATION",
+        parser.add_option("-K","--key-location", dest="key_location",
             action="store", type="string", default=None, metavar="FILE",
             help="path to ssh key used for this cluster")
-        #parser.add_option("-v","--volume", dest="VOLUME",
-            #action="store", type="string", default=None, 
-            #help="EBS volume to attach to master node")
-        #parser.add_option("-D","--volume-device", dest="VOLUME_DEVICE",
-            #action="store", type="string", default=None, 
-            #help="Device label to use for EBS volume")
-        #parser.add_option("-p","--volume-partition", dest="VOLUME_PARTITION",
-            #action="store", type="string", default=None, 
-            #help="EBS Volume partition to mount on master node")
 
     def execute(self, args):
         if len(args) != 2:
             self.parser.error("Please specify a <cluster_template> and <tagname>")
         cfg = self.cfg
-        cluster_config = args[0]
-        tag = args[1]
-        tagdict={'CLUSTER_TAG': tag}
+        cluster_config, tag = args
+        tagdict={'cluster_tag': tag}
+        #pprint(self.specified_options_dict)
         try:
             scluster = cfg.get_cluster(cluster_config)
             scluster.update(self.specified_options_dict)
@@ -188,9 +182,9 @@ class CmdStart(CmdBase):
         log.info("Validating cluster settings...")
         if scluster.is_valid():
             log.info('Cluster settings are valid')
-            if not self.opts.VALIDATE_ONLY:
-                scluster.start(create=not self.opts.NO_CREATE)
-                if self.opts.LOGIN_MASTER:
+            if not self.opts.validate_only:
+                scluster.start(create=not self.opts.no_create)
+                if self.opts.login_master:
                        cluster.ssh_to_master(tag, self.cfg)
         else:
             log.error('The cluster settings provided are not valid')
@@ -307,16 +301,43 @@ class CmdCreateImage(CmdBase):
 
 class CmdCreateVolume(CmdBase):
     """
-    createvolume 
+    createvolume [options] <volume_size> <volume_zone>
 
     Create a new EBS volume for use with StarCluster
     """
+
     names = ['createvolume']
+
+    def addopts(self, parser):
+        opt = parser.add_option(
+            "-i","--image-id", dest="image_id",
+            action="store", type="string", default=None,
+            help="Use image_id AMI when launching volume host instance")
+        opt = parser.add_option(
+            "-s","--shutdown", dest="shutdown_instance",
+            action="store_true", default=False,
+            help="Detach volume and shutdown instance after creating volume")
+        opt = parser.add_option(
+            "-a","--add-to-config", dest="add_to_cfg",
+            action="store_true", default=False,
+            help="Add a new volume section to the config after creating volume")
     def execute(self, args):
-        log.error('unimplemented')
-        #pprint(args)
-        #pprint(self.gopts)
-        #pprint(self.opts)
+        if len(args) != 2:
+            log.error("you must specify a size (in GB) and availability zone")
+        size, zone = args
+        vc = volume.VolumeCreator(self.cfg, **self.specified_options_dict)
+        vc.create(size, zone)
+
+class CmdListZones(CmdBase):
+    """
+    listzones
+
+    List all EC2 availability zones
+    """
+    names = ['listzones']
+    def execute(self, args):
+        ec2 = self.cfg.get_easy_ec2()
+        ec2.list_zones()
 
 class CmdListImages(CmdBase):
     """
@@ -371,6 +392,31 @@ class CmdShowBucket(CmdBase):
         for arg in args:
             s3 = self.cfg.get_easy_s3()
             bucket = s3.list_bucket(arg)
+
+class CmdRemoveVolume(CmdBase):
+    """
+    removevolume <volume_id> 
+
+    Delete one or more EBS volumes
+
+    WARNING: This command *permanently* removes an EBS volume.
+    Be careful!
+
+    Example:
+
+        removevolume vol-999999
+    """
+    names = ['removevolume']
+
+    def execute(self, args):
+        for arg in args:
+            volid = arg
+            resp = raw_input("**PERMANENTLY** delete %s (y/n)? " % volid)
+            if resp not in ['y','Y', 'yes']:
+                log.info("Aborting...")
+                return
+            ec2 = self.cfg.get_easy_ec2()
+            ec2.remove_volume(volid)
 
 class CmdRemoveImage(CmdBase):
     """
@@ -453,6 +499,25 @@ class CmdListVolumes(CmdBase):
     def execute(self, args):
         ec2 = self.cfg.get_easy_ec2()
         ec2.list_volumes()
+
+class CmdShell(CmdBase):
+    """
+    shell
+
+    Load interactive ipython shell for starcluster development
+    
+    The following objects are automatically available at the prompt:
+
+        cfg - starcluster.config.StarClusterConfig instance
+        ec2 - starcluster.awsutils.EasyEC2 instance
+        s3 - starcluster.awsutils.EasyS3 instance
+    """
+    names = ['shell']
+    def execute(self,args):
+        cfg = self.cfg
+        ec2 = cfg.get_easy_ec2()
+        s3 = ec2.s3
+        from starcluster.utils import ipy_shell; ipy_shell();
 
 class CmdHelp:
     """
@@ -568,7 +633,10 @@ def main():
         CmdShowBucket(),
         CmdCreateVolume(),
         CmdListVolumes(),
+        CmdRemoveVolume(),
         CmdShowConsole(),
+        CmdListZones(),
+        CmdShell(),
         CmdHelp(),
     ]
 
@@ -591,7 +659,7 @@ def main():
         log.setLevel(logging.DEBUG)
     try:
         sc.execute(args)
-    except exception.ConfigError,e:
+    except exception.BaseException,e:
         log.error(e.msg)
 
 def test():

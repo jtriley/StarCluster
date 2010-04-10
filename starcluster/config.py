@@ -316,7 +316,7 @@ class StarClusterConfig(object):
     def get_key(self, keyname):
         try:
             return self.keys[keyname]
-        except:
+        except KeyError:
             pass
 
     def get_easy_s3(self):

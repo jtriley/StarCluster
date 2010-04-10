@@ -54,8 +54,11 @@ class PluginLoadError(PluginError):
 class PluginSyntaxError(PluginError):
     """Raised when plugin contains syntax errors"""
 
-class ClusterValidationError(BaseException):
-    """Base class for cluster validation related settings"""
+class ValidationError(BaseException):
+    """Base class for validation related errors"""
+
+class ClusterValidationError(ValidationError):
+    """Cluster validation related errors"""
 
 class IncompatibleSettings(ClusterValidationError):
     """Raised when two or more settings conflict with each other"""

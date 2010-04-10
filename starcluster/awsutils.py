@@ -271,10 +271,21 @@ class EasyEC2(EasyAWS):
             log.info('Deregistering ami: %s' % ami)
             self.conn.deregister_image(ami)
 
+    def remove_volume(self, volume_id):
+        vol = self.get_volume(volume_id)
+        vol.delete()
+
     def list_image_files(self, image_name, bucket=None):
         files = self.get_image_files(image_name, bucket)
         for file in files:
             print file
+
+    def list_zones(self):
+        for zone in self.conn.get_all_zones():
+            print 'name: ', zone.name
+            print 'region: ', zone.region.name
+            print 'status: ', zone.state
+            print
 
     def get_zone(self, zone):
         try:
@@ -308,7 +319,7 @@ class EasyEC2(EasyAWS):
             print file.name
 
     @property
-    def instances():
+    def instances(self):
         if not self.cache or self._instance_response is None:
             log.debug('instance_response = %s, cache = %s' %
             (self._instance_response, self.cache))
@@ -316,11 +327,11 @@ class EasyEC2(EasyAWS):
         return self._instance_response
             
     @property
-    def keypair():
+    def keypairs(self):
         if not self.cache or self._keypair_response is None:
             log.debug('keypair_response = %s, cache = %s' %
             (self._keypair_response, self.cache))
-            self._keypair_response = self.conn.get_all_keypairs()
+            self._keypair_response = self.conn.get_all_key_pairs()
         return self._keypair_response
 
     def get_running_instances(self):
