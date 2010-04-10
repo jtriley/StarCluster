@@ -224,7 +224,7 @@ class Cluster(object):
 
     @property
     def _security_group(self):
-        return static.SECURITY_GROUP_TEMPLATE % self.CLUSTER_TAG
+        return static.SECURITY_GROUP_TEMPLATE % self.cluster_tag
 
     @property
     def master_group(self):
@@ -235,7 +235,7 @@ class Cluster(object):
     @property
     def cluster_group(self):
         sg = self.ec2.get_or_create_group(self._security_group,
-                                          self.CLUSTER_DESCRIPTION,
+                                          self.cluster_description,
                                           auth_group_traffic=True)
         return sg
             
@@ -244,7 +244,7 @@ class Cluster(object):
         if not self._master:
             # TODO: do this with reservation group info instead
             mgroup_instances = self.master_group.instances()
-            cgroup_instances = [ node.id for node in self.cluster_group.instances() ]
+            cgroup_instances = [node.id for node in self.cluster_group.instances()]
             for node in mgroup_instances:
                 if node.id in cgroup_instances:
                     self._master = Node(node, self.key_location, 'master')
@@ -412,11 +412,13 @@ class Cluster(object):
             
         log.info("""
 
-The cluster has been started and configured. ssh into the master node as root by running: 
+The cluster has been started and configured. 
+
+Login into the master node as root by running: 
 
 $ starcluster sshmaster %(tag)s
 
-or as %(user)s directly:
+or manually as %(user)s:
 
 $ ssh -i %(key)s %(user)s@%(master)s
 
@@ -445,7 +447,8 @@ $ ssh -i %(key)s %(user)s@%(master)s
 
     def _validate_cluster_size(self):
         if self.cluster_size <= 0 or not isinstance(self.cluster_size, int):
-            raise exception.ClusterValidationError('cluster_size must be a positive integer.')
+            raise exception.ClusterValidationError(
+                'cluster_size must be a positive integer.')
         return True
 
     def _validate_shell_setting(self):
