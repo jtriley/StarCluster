@@ -252,8 +252,6 @@ class EasyEC2(EasyAWS):
     @print_timing
     def remove_image(self, image_name, pretend=True):
         image = self.get_image(image_name)
-        if image is None:
-            raise exception.AWSError("AMI %s does not exist" % image_name)
         if pretend:
             log.info("Pretending to remove AMI: %s" % image_name)
         else:
