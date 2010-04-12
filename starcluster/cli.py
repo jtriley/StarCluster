@@ -71,11 +71,6 @@ class CmdBase(CmdComplete):
     def cfg(self):
         return self.goptions_dict.get('CONFIG')
 
-    def execute(self, args):
-        if args[0] == 'help':
-            self.parser.usage()
-        
-
 class CmdStart(CmdBase):
     """
     start [options] <cluster_template> <tagname>
@@ -187,7 +182,7 @@ class CmdStart(CmdBase):
                 if self.opts.login_master:
                        cluster.ssh_to_master(tag, self.cfg)
         else:
-            log.error('The cluster settings provided are not valid')
+            log.error('the cluster settings provided are not valid')
 
 class CmdStop(CmdBase):
     """
@@ -266,9 +261,9 @@ class CmdCreateImage(CmdBase):
 
     NOTE: It is recommended not to create a new StarCluster AMI from
     an instance launched by StarCluster. Rather, launch a single 
-    StarCluster instance using elasticfox or the ec2-api-tools, modify
+    StarCluster instance using elasticfox or the EC2 API tools, modify
     it how you like, and then use this command to create a new AMI from 
-    the instance.
+    the running instance.
     """
     names = ['createimage']
 
@@ -280,24 +275,20 @@ class CmdCreateImage(CmdBase):
 
     def execute(self, args):
         if len(args) != 3:
-            log.error('you must specify an instance-id, image name, and bucket')
-            return
+            self.parser.error('you must specify an instance-id, image name, and bucket')
         instanceid, image_name, bucket = args
         cfg = self.cfg
         instance = node.get_node(instanceid, cfg)
-        if instance:
-            kwargs = {}
-            kwargs.update(cfg.aws)
-            kwargs.update(self.specified_options_dict)
-            kwargs.update({
-                'instance': instance,
-                'prefix': image_name,
-                'bucket': bucket,
-            })
-            icreator = image.EC2ImageCreator(**kwargs)
-            icreator.create_image()
-        else:
-            log.error('instance %s does not exist' % instanceid)
+        kwargs = {}
+        kwargs.update(cfg.aws)
+        kwargs.update(self.specified_options_dict)
+        kwargs.update({
+            'instance': instance,
+            'prefix': image_name,
+            'bucket': bucket,
+        })
+        icreator = image.EC2ImageCreator(**kwargs)
+        icreator.create_image()
 
 class CmdCreateVolume(CmdBase):
     """
@@ -323,7 +314,7 @@ class CmdCreateVolume(CmdBase):
             help="Add a new volume section to the config after creating volume")
     def execute(self, args):
         if len(args) != 2:
-            log.error("you must specify a size (in GB) and availability zone")
+            self.parser.error("you must specify a size (in GB) and an availability zone")
         size, zone = args
         vc = volume.VolumeCreator(self.cfg, **self.specified_options_dict)
         vc.create(size, zone)
@@ -409,6 +400,8 @@ class CmdRemoveVolume(CmdBase):
     names = ['removevolume']
 
     def execute(self, args):
+        if not args:
+            self.parser.error("no volumes specified. exiting...")
         for arg in args:
             volid = arg
             resp = raw_input("**PERMANENTLY** delete %s (y/n)? " % volid)
@@ -437,17 +430,25 @@ class CmdRemoveImage(CmdBase):
         parser.add_option("-p","--pretend", dest="PRETEND", action="store_true",
             default=False,
             help="pretend run, dont actually remove anything")
+        parser.add_option("-c","--confirm", dest="CONFIRM", action="store_true",
+            default=False,
+            help="do not prompt for confirmation, just remove the image")
 
     def execute(self, args):
+        if not args:
+            self.parser.error("no images specified. exiting...")
         for arg in args:
             imageid = arg
-            pretend = self.specified_options_dict.get('PRETEND', False)
-            if not pretend:
-                resp = raw_input("**PERMANENTLY** delete %s (y/n)? " % imageid)
-                if resp not in ['y','Y', 'yes']:
-                    log.info("Aborting...")
-                    return
             ec2 = self.cfg.get_easy_ec2()
+            image = ec2.get_image(imageid)
+            confirmed = self.opts.CONFIRM
+            pretend = self.opts.PRETEND
+            if not confirmed:
+                if not pretend:
+                    resp = raw_input("**PERMANENTLY** delete %s (y/n)? " % imageid)
+                    if resp not in ['y','Y', 'yes']:
+                        log.info("Aborting...")
+                        return
             ec2.remove_image(imageid, pretend=pretend)
 
 class CmdListInstances(CmdBase):
@@ -465,7 +466,7 @@ class CmdShowConsole(CmdBase):
     """
     showconsole <instance-id>
 
-    Show console output for <instance-id>
+    Show console output for an EC2 instance
 
     Example:
 
@@ -484,7 +485,7 @@ class CmdShowConsole(CmdBase):
                 print ''.join([c for c in instance.get_console_output().output
                                if c in string.printable])
             else:
-                log.error("Instance does not exist")
+                log.error("instance does not exist")
                 sys.exit(1)
         else:
             self.parser.parse_args(['--help'])
@@ -657,10 +658,14 @@ def main():
     gopts, sc, opts, args = parse_subcommands(gparser, subcmds)
     if gopts.DEBUG:
         log.setLevel(logging.DEBUG)
+    if args and args[0] =='help':
+        print sc.parser.usage
+        sys.exit(0)
     try:
         sc.execute(args)
     except exception.BaseException,e:
         log.error(e.msg)
+        sys.exit(1)
 
 def test():
     pass

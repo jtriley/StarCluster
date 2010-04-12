@@ -1,5 +1,6 @@
 import os
 import socket
+from starcluster import exception
 from starcluster import ssh
 from starcluster.logger import log
 
@@ -36,11 +37,12 @@ def get_node(node_id, cfg):
         elif instance.id == node_id:
             node = instance
             break
-    if node:
-        key_location = cfg.keys.get(node.key_name, {}).get('key_location')
-        alias = node_id
-        node = Node(node, key_location, node_id)
-        return node
+    if not node:
+        raise exception.InstanceDoesNotExist(node_id)
+    key_location = cfg.keys.get(node.key_name, {}).get('key_location')
+    alias = node_id
+    node = Node(node, key_location, node_id)
+    return node
 
 class Node(object):
     """

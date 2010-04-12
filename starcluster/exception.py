@@ -10,6 +10,17 @@ class BaseException(Exception):
     def explain(self):
         return "%s: %s" % (self.__class__.__name__, self.msg)
 
+class AWSError(BaseException):
+    pass
+
+class AMIDoesNotExist(AWSError):
+    def __init__(self, image_id):
+        self.msg = "AMI %s does not exist" % image_id
+
+class InstanceDoesNotExist(AWSError):
+    def __init__(self, instance_id):
+        self.msg = "instance %s does not exist" % instance_id
+
 class ConfigError(BaseException):
     """Base class for all config related errors"""
 

@@ -36,7 +36,6 @@ def is_valid_partition(part):
     return len(part) in [9,10] and regex.match(part)
 
 try:
-    import tester
     import IPython.Shell
     ipy_shell = IPython.Shell.IPShellEmbed(argv=[])
 except ImportError,e:

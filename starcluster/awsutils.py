@@ -13,6 +13,7 @@ import boto
 import boto.ec2
 import boto.s3
 from starcluster import static
+from starcluster import exception
 from starcluster.logger import log
 from starcluster.utils import print_timing
 from starcluster.hacks import register_image as _register_image
@@ -157,10 +158,10 @@ class EasyEC2(EasyAWS):
             res = self.conn.get_all_instances(instance_ids=[instance_id])
             return res[0].instances[0]
         except boto.exception.EC2ResponseError,e:
-            pass
+            raise exception.InstanceDoesNotExist(instance_id)
         except IndexError,e:
             # for eucalyptus, invalid instance_id returns []
-            pass
+            raise exception.InstanceDoesNotExist(instance_id)
 
     def is_valid_conn(self):
         try:
@@ -252,10 +253,9 @@ class EasyEC2(EasyAWS):
     def remove_image(self, image_name, pretend=True):
         image = self.get_image(image_name)
         if image is None:
-            log.error('AMI %s does not exist' % image_name)
-            return
+            raise exception.AWSError("AMI %s does not exist" % image_name)
         if pretend:
-            log.info("Pretending to remove AMI: %s" % imageid)
+            log.info("Pretending to remove AMI: %s" % image_name)
         else:
             log.info("Removing AMI: %s" % image_name)
 
@@ -299,8 +299,14 @@ class EasyEC2(EasyAWS):
         try:
             return self.conn.get_all_images(image_ids=[image_id])[0]
         except boto.exception.EC2ResponseError,e:
-            pass
+            raise exception.AMIDoesNotExist(image_id)
         except IndexError,e:
+            raise exception.AMIDoesNotExist(image_id)
+
+    def get_image_or_none(self, image_id):
+        try:
+            self.get_image(image_id)
+        except:
             pass
 
     def get_image_files(self, image_id):

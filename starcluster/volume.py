@@ -21,16 +21,32 @@ class VolumeCreator(object):
         self._image_id = image_id or BASE_AMI_32
         self._shutdown = shutdown_instance
 
+    @property
+    def security_group(self):
+        sg = self._ec2.get_or_create_group(static.VOLUME_GROUP, 
+                                           static.VOLUME_GROUP_DESCRIPTION)
+        return sg
+
     def _request_instance(self):
-        if not self._resv:
+        for i in self.security_group.instances():
+            if i.state in ['pending','running']:
+                log.info("Using existing instance %s in group %s" % \
+                         (i.id,self.security_group.name))
+                self._instance = Node(i, self._key_location, 'vol_host')
+                break
+        if not self._instance:
+            log.info("No instance in group %s, launching one now..." % \
+                     self.security_group.name)
             self._resv = self._ec2.run_instances(image_id=self._image_id,
                 instance_type='m1.small',
                 min_count=1, max_count=1,
+                security_groups=[self.security_group.name],
                 key_name=self._keypair)
             instance = self._resv.instances[0]
             self._instance = Node(instance, self._key_location, 'vol_host')
-            while not self._instance.is_up():
-                time.sleep(15)
+        while not self._instance.is_up():
+            log.info("Waiting for instance %s to come up..." % self._instance.id)
+            time.sleep(15)
         return self._instance
 
     def _create_volume(self, size, zone):
@@ -73,6 +89,9 @@ class VolumeCreator(object):
     def _validate_size(self, size):
         try:
             volume_size = int(size)
+            if volume_size < 1:
+                raise exception.ValidationError(
+                    "volume_size must be an integer >= 1")
         except ValueError:
             raise exception.ValidationError("volume_size must be an integer")
 
@@ -132,9 +151,16 @@ class VolumeCreator(object):
             log.info("Formatting volume")
             self._format_volume_partitions()
             if self._shutdown:
+                log.info("Detaching volume %s from instance %s" %
+                         (vol.id,self._instance.id))
                 vol.detach()
                 time.sleep(5)
-                instance.terminate()
+                for i in self.security_group.instances():
+                    log.info("Shutting down instance %s" % i.id)
+                    i.stop()
+                log.info("Removing security group %s" % \
+                         self.security_group.name)
+                self.security_group.delete()
             #except Exception,e:
                 #log.error("exception thrown: %s" % e)
                 #if self._volume:

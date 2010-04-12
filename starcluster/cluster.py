@@ -463,13 +463,13 @@ $ ssh -i %(key)s %(user)s@%(master)s
         master_image_id = self.master_image_id
         node_image_id = self.node_image_id
         conn = self.ec2
-        image = conn.get_image(node_image_id)
+        image = conn.get_image_or_none(node_image_id)
         if not image or image.id != node_image_id:
             raise exception.ClusterValidationError(
                 'node_image_id %s does not exist' % node_image_id
             )
         if master_image_id:
-            master_image = conn.get_image(master_image_id)
+            master_image = conn.get_image_or_none(master_image_id)
             if not master_image or master_image.id != master_image_id:
                 raise exception.ClusterValidationError(
                     'master_image_id %s does not exist' % master_image_id)
@@ -494,7 +494,7 @@ $ ssh -i %(key)s %(user)s@%(master)s
         instance_type. image_id_setting and instance_type_setting are the
         setting labels in the config file.
         """
-        image = self.ec2.get_image(image_id)
+        image = self.ec2.get_image_or_none(image_id)
         if not image:
             raise exception.ClusterValidationError('Image %s does not exist' %
                                                    image_id)
