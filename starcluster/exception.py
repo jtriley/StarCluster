@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+"""
+StarCluster Exception Classes
+"""
 import os
 from starcluster.logger import log
 from starcluster.templates.config import config_template, copy_paste_template
@@ -20,6 +24,22 @@ class AMIDoesNotExist(AWSError):
 class InstanceDoesNotExist(AWSError):
     def __init__(self, instance_id):
         self.msg = "instance %s does not exist" % instance_id
+
+class SecurityGroupDoesNotExist(AWSError):
+    def __init__(self, sg_name):
+        self.msg = "security group %s does not exist" % sg_name
+
+class KeyPairDoesNotExist(AWSError):
+    def __init__(self, keyname):
+        self.msg = "keypair %s does not exist" % keyname
+
+class ZoneDoesNotExist(AWSError):
+    def __init__(self, zone):
+        self.msg = "zone %s does not exist" % zone
+
+class VolumeDoesNotExist(AWSError):
+    def __init__(self, vol_id):
+        self.msg = "volume %s does not exist" % vol_id
 
 class ConfigError(BaseException):
     """Base class for all config related errors"""
@@ -56,6 +76,10 @@ class ConfigNotFound(ConfigError):
             print
             self.create_config()
 
+class KeyNotFound(ConfigError):
+    def __init__(self, keyname):
+        self.msg = "key %s not found in config" % keyname
+
 class PluginError(BaseException):
     """Base class for plugin errors"""
 
@@ -73,7 +97,17 @@ class ClusterValidationError(ValidationError):
 
 class IncompatibleSettings(ClusterValidationError):
     """Raised when two or more settings conflict with each other"""
-    pass
+
+class ClusterTemplateDoesNotExist(BaseException):
+    """
+    Exception raised when user requests a cluster template that does not exist
+    """
+    def __init__(self, cluster_name):
+        self.msg = "cluster template %s does not exist" % cluster_name
 
 class ClusterDoesNotExist(BaseException):
-    """Exception raised when user requests a cluster that does not exist"""
+    """
+    Exception raised when user requests a running cluster that does not exist
+    """
+    def __init__(self, cluster_name):
+        self.msg = "cluster %s does not exist" % cluster_name

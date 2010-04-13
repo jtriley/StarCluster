@@ -142,8 +142,14 @@ class EasyEC2(EasyAWS):
         try:
             return self.conn.get_all_key_pairs(keynames=[keypair])[0]
         except boto.exception.EC2ResponseError,e:
-            pass
+            raise exception.KeyPairDoesNotExist(keypair)
         except IndexError,e:
+            raise exception.KeyPairDoesNotExist(keypair)
+
+    def get_keypair_or_none(self, keypair):
+        try:
+            return self.get_keypair(keypair)
+        except: 
             pass
 
     def __print_header(self, msg):
@@ -289,8 +295,14 @@ class EasyEC2(EasyAWS):
         try:
             return self.conn.get_all_zones(zones=[zone])[0]
         except boto.exception.EC2ResponseError,e:
-            pass
+            raise exception.ZoneDoesNotExist(zone)
         except IndexError,e:
+            raise exception.ZoneDoesNotExist(zone)
+
+    def get_zone_or_none(self, zone):
+        try:
+            return self.get_zone(zone)
+        except:
             pass
 
     def get_image(self, image_id):
@@ -303,7 +315,7 @@ class EasyEC2(EasyAWS):
 
     def get_image_or_none(self, image_id):
         try:
-            self.get_image(image_id)
+            return self.get_image(image_id)
         except:
             pass
 
@@ -358,8 +370,14 @@ class EasyEC2(EasyAWS):
         try:
             return self.conn.get_all_volumes(volume_ids=[volume_id])[0]
         except boto.exception.EC2ResponseError,e:
-            pass
+            raise exception.VolumeDoesNotExist(volume_id)
         except IndexError,e:
+            raise exception.VolumeDoesNotExist(volume_id)
+
+    def get_volume_or_none(self, volume_id):
+        try:
+            return self.get_volume(volume_id)
+        except:
             pass
 
     def list_volumes(self):
@@ -378,7 +396,12 @@ class EasyEC2(EasyAWS):
                 print
 
     def get_security_group(self, groupname):
-        return self.conn.get_all_security_groups(groupnames=[groupname])[0]
+        try:
+            return self.conn.get_all_security_groups(groupnames=[groupname])[0]
+        except boto.exception.EC2ResponseError,e:
+            raise exception.SecurityGroupDoesNotExist(groupname)
+        except IndexError:
+            raise exception.SecurityGroupDoesNotExist(groupname)
 
     def get_security_groups(self):
         return self.conn.get_all_security_groups()

@@ -34,7 +34,6 @@ from starcluster import static
 from starcluster import optcomplete
 from starcluster import image
 from starcluster import volume
-CmdComplete = optcomplete.CmdComplete
 
 from starcluster.logger import log
 
@@ -44,7 +43,7 @@ from starcluster.logger import log
 #except ImportError,e:
     #optcomplete, CmdComplete = None, object
 
-class CmdBase(CmdComplete):
+class CmdBase(optcomplete.CmdComplete):
     parser = None
     opts = None
     gopts = None
@@ -149,30 +148,13 @@ class CmdStart(CmdBase):
 
     def execute(self, args):
         if len(args) != 2:
-            self.parser.error("Please specify a <cluster_template> and <tagname>")
+            self.parser.error("please specify a <cluster_template> and <tagname>")
         cfg = self.cfg
         cluster_config, tag = args
         tagdict={'cluster_tag': tag}
-        #pprint(self.specified_options_dict)
-        try:
-            scluster = cfg.get_cluster(cluster_config)
-            scluster.update(self.specified_options_dict)
-            scluster.update(tagdict)
-        except exception.ClusterDoesNotExist,e:
-            log.warn(e.explain())
-            aws_environ = cfg.get_aws_credentials()
-            cluster_options = self.specified_options_dict
-            kwargs = {}
-            kwargs.update(aws_environ)
-            kwargs.update(cluster_options)
-            kwargs.update(tagdict)
-            scluster = cluster.Cluster(**kwargs)
-        except exception.PluginSyntaxError,e:
-            log.error(e.msg)
-            sys.exit(1)
-        except exception.PluginError,e:
-            log.error(e.msg)
-            sys.exit(1)
+        scluster = cfg.get_cluster(cluster_config)
+        scluster.update(self.specified_options_dict)
+        scluster.update(tagdict)
         #from starcluster.utils import ipy_shell; ipy_shell();
         log.info("Validating cluster settings...")
         if scluster.is_valid():
@@ -209,34 +191,123 @@ class CmdSshMaster(CmdBase):
     sshmaster <cluster>
 
     SSH to a cluster's master node
+
+    e.g.
+
+    sshmaster mycluster # ssh's to mycluster master node
     """
     names = ['sshmaster']
+
+    @property
+    def completer(self):
+        if optcomplete:
+            try:
+                cfg = config.StarClusterConfig()
+                cfg.load()
+                clusters = cluster.get_cluster_security_groups(cfg)
+                completion_list = [sg.name.replace(static.SECURITY_GROUP_PREFIX+'-','') for sg in clusters]
+                return optcomplete.ListCompleter(completion_list)
+            except Exception, e:
+                log.error('something went wrong fix me: %s' % e)
+
+    def addopts(self, parser):
+        opt = parser.add_option("-u","--user", dest="USER", action="store", 
+                                type="string", default='root', 
+                                help="login as USER (defaults to root)")
+
     def execute(self, args):
         if not args:
             self.parser.error("please specify a cluster")
         for arg in args:
-            cluster.ssh_to_master(arg, self.cfg)
+            cluster.ssh_to_master(arg, self.cfg, user=self.opts.USER)
 
 class CmdSshNode(CmdBase):
     """
-    sshnode [<cluster>] <node>
+    sshnode <cluster> <node>
 
     SSH to a cluster node
+
+    e.g.
+
+    sshnode mycluster 0 #ssh's to mycluster master
+    sshnode mycluster 1 #ssh's to mycluster node001
     """
     names = ['sshnode']
+
+    @property
+    def completer(self):
+        if optcomplete:
+            try:
+                cfg = config.StarClusterConfig()
+                cfg.load()
+                clusters = cluster.get_cluster_security_groups(cfg)
+                completion_list = [sg.name.replace(static.SECURITY_GROUP_PREFIX+'-','') for sg in clusters]
+                max_num_nodes = 0
+                for scluster in clusters:
+                    num_instances = len(scluster.instances())
+                    if num_instances > max_num_nodes:
+                        max_num_nodes = num_instances
+                completion_list.extend([str(i) for i in range(0,num_instances)])
+                return optcomplete.ListCompleter(completion_list)
+            except Exception, e:
+                print e
+                log.error('something went wrong fix me: %s' % e)
+
+    def addopts(self, parser):
+        opt = parser.add_option("-u","--user", dest="USER", action="store",
+                                type="string", default='root', 
+                                help="login as USER (defaults to root)")
+
     def execute(self, args):
-        if not args:
+        if not args or len(args) < 1:
             self.parser.error("please specify a cluster and node to connect to")
-        elif len(args) == 1:
-            scluster = args[0]
-            if scluster.startswith("ec2-"):
-                node.ssh_to_node(scluster, self.cfg)
-                return
-            self.parser.error("please specify a node to connect to")
         scluster = args[0]
         ids = args[1:]
         for id in ids:
-            cluster.ssh_to_cluster_node(scluster, id, self.cfg)
+            cluster.ssh_to_cluster_node(scluster, id, self.cfg,
+                                        user=self.opts.USER)
+
+class CmdSshInstance(CmdBase):
+    """
+    sshintance <instance-id>
+
+    SSH to an EC2 instance
+
+    e.g.
+
+    sshinstance ec2-123-123-123-12.compute-1.amazonaws.com 
+    
+    sshinstance i-14e9157c
+    """
+    names = ['sshinstance']
+
+    @property
+    def completer(self):
+        if optcomplete:
+            try:
+                cfg = config.StarClusterConfig()
+                cfg.load()
+                ec2 = cfg.get_easy_ec2()
+                instances = ec2.get_all_instances()
+                completion_list = [i.id for i in instances]
+                completion_list.extend([i.dns_name for i in instances])
+                return optcomplete.ListCompleter(completion_list)
+            except Exception, e:
+                log.error('something went wrong fix me: %s' % e)
+
+    def addopts(self, parser):
+        opt = parser.add_option("-u","--user", dest="USER", action="store", 
+                                type="string", default='root', 
+                                help="login as USER (defaults to root)")
+
+    def execute(self, args):
+        if not args:
+            self.parser.error(
+                "please specify an instance id or dns name to connect to")
+        for arg in args:
+            # user specified dns name or instance id
+            instance = args[0]
+            node.ssh_to_node(instance, self.cfg, user=self.opts.USER)
 
 class CmdListClusters(CmdBase):
     """
@@ -404,12 +475,13 @@ class CmdRemoveVolume(CmdBase):
             self.parser.error("no volumes specified. exiting...")
         for arg in args:
             volid = arg
+            ec2 = self.cfg.get_easy_ec2()
+            vol = ec2.get_volume(volid)
             resp = raw_input("**PERMANENTLY** delete %s (y/n)? " % volid)
             if resp not in ['y','Y', 'yes']:
                 log.info("Aborting...")
+                vol.delete()
                 return
-            ec2 = self.cfg.get_easy_ec2()
-            ec2.remove_volume(volid)
 
 class CmdRemoveImage(CmdBase):
     """
@@ -476,6 +548,20 @@ class CmdShowConsole(CmdBase):
     i-999999
     """
     names = ['showconsole']
+
+    @property
+    def completer(self):
+        if optcomplete:
+            try:
+                cfg = config.StarClusterConfig()
+                cfg.load()
+                ec2 = cfg.get_easy_ec2()
+                instances = ec2.get_all_instances()
+                completion_list = [i.id for i in instances]
+                return optcomplete.ListCompleter(completion_list)
+            except Exception, e:
+                log.error('something went wrong fix me: %s' % e)
+
     def execute(self, args):
         ec2 = self.cfg.get_easy_ec2()
         if args:
@@ -625,6 +711,7 @@ def main():
         CmdListClusters(),
         CmdSshMaster(),
         CmdSshNode(),
+        CmdSshInstance(),
         CmdListInstances(),
         CmdListImages(),
         CmdShowImage(),
@@ -659,7 +746,7 @@ def main():
     if gopts.DEBUG:
         log.setLevel(logging.DEBUG)
     if args and args[0] =='help':
-        print sc.parser.usage
+        sc.parser.print_help()
         sys.exit(0)
     try:
         sc.execute(args)

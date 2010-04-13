@@ -17,11 +17,8 @@ def ssh_to_node(node_id, cfg, user='root'):
             break
     if node:
         key = cfg.get_key(node.key_name)
-        if key:
-            os.system('ssh -i %s %s@%s' % (key.key_location, user, 
-                                           node.dns_name))
-        else:
-            print 'key %s needed to ssh not found' % node.key_name
+        os.system('ssh -i %s %s@%s' % (key.key_location, user, 
+                                       node.dns_name))
     else:
         log.error("node %s does not exist" % node_id)
 

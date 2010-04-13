@@ -30,18 +30,15 @@ def get_cluster(cluster_name, cfg):
     kwargs.update({'cluster_tag': cluster_name})
     return Cluster(**kwargs)
 
-def ssh_to_master(cluster_name, cfg):
+def ssh_to_master(cluster_name, cfg, user='root'):
     cluster = get_cluster(cluster_name, cfg)
     if cluster:
         master = cluster.master_node
-        if cfg.keys.has_key(master.key_name):
-            key = cfg.keys.get(master.key_name)
-            os.system('ssh -i %s %s@%s' % (key.key_location, master.user,
-                                           master.dns_name))
-        else:
-            print 'ssh key %s not found' % master.key_name
+        key = cfg.get_key(master.key_name)
+        os.system('ssh -i %s %s@%s' % (key.key_location, user,
+                                       master.dns_name))
 
-def ssh_to_cluster_node(cluster_name, node_id, cfg):
+def ssh_to_cluster_node(cluster_name, node_id, cfg, user='root'):
     cluster = get_cluster(cluster_name, cfg)
     node = None
     if cluster:
@@ -54,11 +51,8 @@ def ssh_to_cluster_node(cluster_name, node_id, cfg):
                 node = cluster.get_node_by_dns_name(node_id)
         if node:
             key = cfg.get_key(node.key_name)
-            if key:
-                os.system('ssh -i %s %s@%s' % (key.key_location, node.user,
-                                               node.dns_name))
-            else:
-                print 'key %s needed to ssh not found' % node.key_name
+            os.system('ssh -i %s %s@%s' % (key.key_location, user,
+                                           node.dns_name))
         else:
             log.error("node %s does not exist" % node_id)
 
@@ -69,19 +63,18 @@ def _get_cluster_name(cluster_name):
 
 def stop_cluster(cluster_name, cfg):
     ec2 = cfg.get_easy_ec2()
-    cluster_name = _get_cluster_name(cluster_name)
+    cname = _get_cluster_name(cluster_name)
     try:
-        cluster = ec2.get_security_group(cluster_name)
+        cluster = ec2.get_security_group(cname)
         for node in cluster.instances():
             log.info('Shutting down %s' % node.id)
             node.stop()
         log.info('Removing cluster security group %s' % cluster.name)
         cluster.delete()
-    except Exception,e:
-        #print e
-        log.error("cluster %s does not exist" % cluster_name)
+    except exception.SecurityGroupDoesNotExist,e:
+        raise exception.ClusterDoesNotExist(cluster_name)
 
-def list_clusters(cfg):
+def get_cluster_security_groups(cfg):
     ec2 = cfg.get_easy_ec2()
     sgs = ec2.get_security_groups()
     starcluster_groups = []
@@ -89,6 +82,10 @@ def list_clusters(cfg):
         is_starcluster = sg.name.startswith(static.SECURITY_GROUP_PREFIX)
         if is_starcluster and sg.name != static.MASTER_GROUP:
             starcluster_groups.append(sg)
+    return starcluster_groups
+
+def list_clusters(cfg):
+    starcluster_groups = get_cluster_security_groups(cfg)
     if starcluster_groups:
         for scg in starcluster_groups:
             print scg.name
@@ -601,7 +598,7 @@ $ ssh -i %(key)s %(user)s@%(master)s
                 raise exception.ClusterValidationError(
                     'Missing availability_zone setting')
             conn = self.ec2
-            vol = conn.get_volume(vol_id)
+            vol = conn.get_volume_or_none(vol_id)
             if not vol:
                 raise exception.ClusterValidationError(
                     'Volume %s (VOLUME_ID: %s) does not exist ' % \
@@ -659,7 +656,7 @@ $ ssh -i %(key)s %(user)s@%(master)s
                 key_location)
         keyname = self.keyname
         conn = self.ec2
-        keypair = self.ec2.get_keypair(keyname)
+        keypair = self.ec2.get_keypair_or_none(keyname)
         if not keypair:
             raise exception.ClusterValidationError(
                 'Account does not contain a key with keyname = %s. ' % keyname

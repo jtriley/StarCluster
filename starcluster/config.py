@@ -304,8 +304,7 @@ class StarClusterConfig(object):
             clust = Cluster(**kwargs)
             return clust
         except KeyError,e:
-            raise exception.ClusterDoesNotExist(
-                'config for cluster %s does not exist' % cluster_name)
+            raise exception.ClusterTemplateDoesNotExist(cluster_name)
 
     def get_clusters(self):
         clusters = []
@@ -317,7 +316,7 @@ class StarClusterConfig(object):
         try:
             return self.keys[keyname]
         except KeyError:
-            pass
+            raise exception.KeyNotFound(keyname)
 
     def get_easy_s3(self):
         """

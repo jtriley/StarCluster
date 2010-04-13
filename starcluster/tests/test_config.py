@@ -29,7 +29,7 @@ class TestStarClusterConfig(StarClusterTest):
         cluster = self.config.get_cluster('c1')
         try:
             self.config.get_cluster('no_such_cluster')
-        except exception.ClusterDoesNotExist,e:
+        except exception.ClusterTemplateDoesNotExist,e:
             pass
         else:
             raise Exception('config returned non-existent cluster')
