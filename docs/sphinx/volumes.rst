@@ -48,7 +48,11 @@ Tag (ie description) you want to apply (leave **SNAP ID** blank)
 
 Partitioning and Formatting the New Volume
 ------------------------------------------
-The previous steps created a new Elastic Block Storage device. However, this device has not yet been partitioned and formatted. To do this, we'll launch a m1.small instance in the same availability zone that we created the volume in. We will then attach the EBS device to this instance, partition the device with one partition that takes up the entire device, and then format that partition using the ext3 filesystem.
+The previous steps created a new Elastic Block Storage device. However, this device 
+has not yet been partitioned and formatted. To do this, we'll launch a m1.small instance 
+in the same availability zone that we created the volume in. We will then attach the EBS 
+device to this instance, partition the device with one partition that takes up the entire 
+device, and then format that partition using the ext3 filesystem.
 
 1. In ElasticFox switch over to the Images tab, type StarCluster into the search 
 box, and right click the 'StarCluster i386' image and select Launch instance(s) 

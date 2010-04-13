@@ -17,6 +17,7 @@ Contents:
    plugins.rst
    launch.rst
    getting_started.rst
+   shell_completion.rst
 
 Indices and tables
 ==================
