@@ -98,6 +98,16 @@ class Node(object):
     def key_name(self):
         return self.instance.key_name
 
+    @property
+    def network_names(self):
+        """ Returns all network names for this node in a dictionary"""
+        names = {}
+        names['INTERNAL_IP'] = self.private_ip_address
+        names['INTERNAL_NAME'] = self.private_dns_name
+        names['INTERNAL_NAME_SHORT'] = self.private_dns_name_short
+        names['INTERNAL_ALIAS'] = self.alias
+        return names
+
     def stop(self):
         return self.instance.stop()
 
@@ -151,7 +161,8 @@ class Node(object):
 
     def get_hosts_entry(self):
         """ Returns /etc/hosts entry for this node """
-        etc_hosts_line = "%s %s" % (self.private_ip_address, self.alias)
+        etc_hosts_line = "%(INTERNAL_IP)s %(INTERNAL_NAME)s %(INTERNAL_NAME_SHORT)s %(INTERNAL_ALIAS)s" 
+        etc_hosts_line = etc_hosts_line % self.network_names
         return etc_hosts_line
 
     def __del__(self):
