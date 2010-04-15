@@ -4,7 +4,7 @@ StarCluster Configuration File
 The StarCluster configuration file uses ini formatting (see http://en.wikipedia.org/wiki/INI_file). 
 It is made up of various sections which are described in detail here. This document explains how 
 to configure the three required sections **[aws info]**, **[keypair]**, and **[cluster]** as well as
-**[plugin]** and **[volume]** settings.
+optional **[plugin]** and **[volume]** sections.
 
 Creating the config file
 ------------------------

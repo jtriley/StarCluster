@@ -151,7 +151,7 @@ class Node(object):
 
     def get_hosts_entry(self):
         """ Returns /etc/hosts entry for this node """
-        etc_hosts_line = "%s %s" % self.private_ip_address, self.alias
+        etc_hosts_line = "%s %s" % (self.private_ip_address, self.alias)
         return etc_hosts_line
 
     def __del__(self):

@@ -14,10 +14,10 @@ Contents:
    installation.rst
    configuration.rst
    volumes.rst
-   plugins.rst
    launch.rst
    getting_started.rst
    shell_completion.rst
+   plugins.rst
 
 Indices and tables
 ==================

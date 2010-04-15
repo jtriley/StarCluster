@@ -165,6 +165,7 @@ will reduce the suggestions to only dns names:
 Similarly for instance ids:
 
 .. code-block:: none
+
         user@localhost % starcluster sshinstance i-
         i-91zz1bea  i-91zz1be8  i-91zz1bee  i-91zz1be6  i-91zz1be4
         i-91zz1bf8  i-91zz1bfe  i-91zz1bfc  i-91zz2eca  i-91zz1bde
