@@ -137,7 +137,7 @@ class EC2ImageCreator(object):
         # register image in s3 with ec2
         conn = self.ec2
         config_dict = self.config_dict
-        conn.register_image(
+        return conn.register_image(
             self.prefix,
             image_location= "%(bucket)s/%(prefix)s.manifest.xml" % config_dict,
             architecture=config_dict.get('arch'),
