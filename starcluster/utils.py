@@ -4,6 +4,7 @@ Utils module for StarCluster
 """
 
 import re
+import string
 import time
 from starcluster.logger import log
 
@@ -34,6 +35,42 @@ def is_valid_device(dev):
 def is_valid_partition(part):
     regex = re.compile('/dev/sd[a-z][1-9][0-9]?')
     return len(part) in [9,10] and regex.match(part)
+
+def is_valid_bucket_name(bucket_name):
+    length = len(bucket_name)
+    valid_length = length >= 3 and length <= 255
+    if not valid_length:
+        return False
+    numbers_or_letters = string.ascii_lowercase + string.digits 
+    valid_chars = numbers_or_letters + '._-'
+    if not bucket_name[0] in numbers_or_letters:
+        return False
+    for c in bucket_name:
+        if c not in valid_chars:
+            return False
+    if validate_ip(bucket_name):
+        return False
+    return True
+
+def validate_ip(ip_address):
+    pattern = r"\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|"
+    pattern += r"[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25"
+    pattern += r"[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"
+    if re.match(pattern, ip_address):
+        return True
+    else:
+        return False
+
+def is_valid_image_name(image_name):
+    length = len(image_name)
+    valid_length = length>=3 and length <=128
+    valid_chars = string.letters + string.digits + "().-/_"
+    if not valid_length:
+        return False
+    for c in image_name:
+        if c not in valid_chars:
+            return False
+    return True
 
 try:
     import IPython.Shell
