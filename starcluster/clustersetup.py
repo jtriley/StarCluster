@@ -17,6 +17,8 @@ class ClusterSetup(object):
     """
     ClusterSetup Interface
     """
+    def __init__(self):
+        pass
 
     def run(self, nodes, master, user, user_shell, volumes):
         """ Start cluster setup routines """
