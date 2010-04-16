@@ -41,6 +41,34 @@ class VolumeDoesNotExist(AWSError):
     def __init__(self, vol_id):
         self.msg = "volume %s does not exist" % vol_id
 
+class InstanceNotRunning(AWSError):
+    def __init__(self, instance_id):
+        self.msg = "instance %s is not running" % instance_id
+
+class InvalidBucketName(AWSError):
+    def __init__(self, bucket_name):
+        self.msg = "bucket name %s is not valid" % bucket_name 
+
+class InvalidImageName(AWSError):
+    def __init__(self, image_name):
+        self.msg = "image name %s is not valid" % image_name
+
+class EC2CertRequired(AWSError):
+    def __init__(self):
+        self.msg = "No certificate file (pem) file specified"
+
+class EC2PrivateKeyRequired(AWSError):
+    def __init__(self):
+        self.msg = "No certificate file (pem) file specified"
+
+class EC2CertDoesNotExist(AWSError):
+    def __init__(self, key):
+        self.msg = "EC2 certificate file %s does not exist" % key
+
+class EC2PrivateKeyDoesNotExist(AWSError):
+    def __init__(self, key):
+        self.msg = "EC2 private key file %s does not exist" % key
+
 class ConfigError(BaseException):
     """Base class for all config related errors"""
 
