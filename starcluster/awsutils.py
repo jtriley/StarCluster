@@ -183,13 +183,15 @@ class EasyEC2(EasyAWS):
             instances.extend(res.instances)
         return instances
 
-    def list_all_instances(self):
+    def list_all_instances(self, show_terminated=False):
         reservations = self.conn.get_all_instances()
         if not reservations:
             log.info("No instances found")
         for res in reservations:
             groups = ', '.join([ g.id for g in res.groups]) or 'N/A'
             for instance in res.instances:
+                if instance.state == 'terminated' and not show_terminated:
+                    continue
                 id = instance.id or 'N/A'
                 dns_name = instance.dns_name or 'N/A'
                 private_dns_name = instance.private_dns_name or 'N/A'
