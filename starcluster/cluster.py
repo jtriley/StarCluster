@@ -414,7 +414,8 @@ class Cluster(object):
                 plug.run(self.nodes, self.master_node, self.cluster_user,
                               self.cluster_shell, self.volumes)
             except Exception, e:
-                log.error("Error occured while running plugin '%s':" % plugin)
+                log.error("Error occured while running plugin '%s':" % \
+                          plugin_name)
                 print e
             
         log.info("""
