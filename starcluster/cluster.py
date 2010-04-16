@@ -22,13 +22,23 @@ def get_cluster(cluster_name, cfg):
     try:
         ec2 = cfg.get_easy_ec2()
         cluster = ec2.get_security_group(_get_cluster_name(cluster_name))
+        cluster_key = cluster.instances()[0].key_name
     except Exception,e:
-        log.error("cluster %s does not exist" % cluster_name)
-        return
+        raise ClusterDoesNotExist(cluster_name)
     kwargs = {}
     kwargs.update(cfg.aws)
+    kwargs.update(cfg.get_key(cluster_key))
     kwargs.update({'cluster_tag': cluster_name})
     return Cluster(**kwargs)
+
+def get_cluster_or_none(cluster_name,cfg):
+    try:
+        return get_cluster(cluster_name, cfg)
+    except Exception,e:
+        pass
+
+def cluster_exists(tag_name, cfg):
+    return get_cluster_or_none(tag_name, cfg) is not None
 
 def ssh_to_master(cluster_name, cfg, user='root'):
     cluster = get_cluster(cluster_name, cfg)
