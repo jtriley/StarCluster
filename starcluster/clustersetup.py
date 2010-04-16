@@ -17,7 +17,7 @@ class ClusterSetup(object):
     """
     ClusterSetup Interface
     """
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         pass
 
     def run(self, nodes, master, user, user_shell, volumes):
@@ -81,6 +81,7 @@ class DefaultClusterSetup(ClusterSetup):
         tempdir = tempfile.mkdtemp(prefix="starcluster-")
         temprsa = os.path.join(tempdir, 'id_rsa')
         temprsa_pub = os.path.join(tempdir, 'id_rsa.pub')
+        tempknown_hosts = os.path.join(tempdir, 'known_hosts')
         mconn.get('/root/.ssh/id_rsa', temprsa)
         mconn.get('/root/.ssh/id_rsa.pub', temprsa_pub)
 
@@ -92,9 +93,6 @@ class DefaultClusterSetup(ClusterSetup):
             conn.execute('chmod 400 /root/.ssh/id_rsa*')
             conn.execute('cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys')
 
-        # no longer need the temp directory after copying over newly generated keys
-        # leave for now to debug
-        #shutil.rmtree(tempdir)
 
         # Now that root's passwordless ssh is setup:
         # 1. Make initial connections to all nodes to skip host key checking on first use.
@@ -103,6 +101,16 @@ class DefaultClusterSetup(ClusterSetup):
         for node in self._nodes:
             for name in node.network_names.values():
                 mconn.execute('ssh -o "StrictHostKeyChecking=no" %s hostname' % name)
+
+        # Fetch the newly generated known_hosts file and distribute it to rest
+        # of nodes in /root/.ssh
+        mconn.get('/root/.ssh/known_hosts', tempknown_hosts)
+        for node in self._nodes:
+            conn = node.ssh.put(tempknown_hosts, '/root/.ssh/known_hosts')
+
+        # no longer need the temp directory after copying over newly generated keys
+        # leave for now to debug
+        #shutil.rmtree(tempdir)
 
         log.info("Configuring passwordless ssh for user: %s" % self._user)
         # only needed on master, nfs takes care of the rest

@@ -123,8 +123,30 @@ class Connection(object):
         self._sftp_connect()
         self._sftp.put(localpath, remotepath)
 
+    def execute_async(self, command):
+        """
+        Executes a remote command without blocking
+        
+        NOTE: this method will not block, however, if your process does not
+        complete or background itself before the python process executing this 
+        code exits, it will not persist on the remote machine
+        """
+
+        channel = self._transport.open_session()
+        channel.exec_command(command)
+
     def execute(self, command, silent = True, only_printable = False):
-        """Execute the given commands on a remote machine."""
+        """
+        Execute a remote command and return stdout/stderr
+
+        NOTE: this function blocks until the process finishes
+
+        kwargs:
+        silent - do not print output
+        only_printable - filter the command's output to allow only printable
+                        characters
+        returns List of output lines
+        """
         channel = self._transport.open_session()
         channel.exec_command(command)
         stdout = channel.makefile('rb', -1)
