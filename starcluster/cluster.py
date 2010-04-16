@@ -253,8 +253,9 @@ class Cluster(object):
             mgroup_instances = self.master_group.instances()
             cgroup_instances = [node.id for node in self.cluster_group.instances()]
             for node in mgroup_instances:
-                if node.id in cgroup_instances:
+                if node.id in cgroup_instances and node.state in ['pending','running']:
                     self._master = Node(node, self.key_location, 'master')
+                    break
         return self._master
 
     @property
