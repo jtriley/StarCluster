@@ -82,12 +82,17 @@ CLUSTER_SHELL = bash
 # The base x86_64 StarCluster AMI is %(x86_64_ami)s
 MASTER_IMAGE_ID = %(x86_ami)s
 
+# instance type for the master node defaults to NODE_INSTANCE_TYPE if not
+# specified
+MASTER_INSTANCE_TYPE = m1.small
+
 # AMI for worker nodes. Also used for the master node if MASTER_IMAGE_ID is not specified
 # The base i386 StarCluster AMI is %(x86_ami)s
 # The base x86_64 StarCluster AMI is %(x86_64_ami)s
 NODE_IMAGE_ID = %(x86_ami)s
 
-# instance type
+# instance type for all worker nodes (also applies to master if
+# MASTER_INSTANCE_TYPE is not specified)
 NODE_INSTANCE_TYPE = m1.small
 
 # availability zone
