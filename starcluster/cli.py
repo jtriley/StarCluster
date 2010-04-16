@@ -155,6 +155,14 @@ class CmdStart(CmdBase):
         scluster = cfg.get_cluster(cluster_config)
         scluster.update(self.specified_options_dict)
         scluster.update(tagdict)
+        if cluster.cluster_exists(tag,cfg) and not self.opts.no_create:
+            log.error("Cluster with tagname %s already exists." % tag)
+            log.error("Either choose a different tagname, or stop the " + \
+                      "existing cluster using:")
+            log.error("starcluster stop %s" % tag)
+            log.error("If you wish to use these existing instances anyway, " + \
+                      "pass --no-create to the start action")
+            sys.exit(1)
         #from starcluster.utils import ipy_shell; ipy_shell();
         log.info("Validating cluster settings...")
         if scluster.is_valid():
@@ -338,9 +346,23 @@ class CmdCreateImage(CmdBase):
     """
     names = ['createimage']
 
+    @property
+    def completer(self):
+        if optcomplete:
+            try:
+                cfg = config.StarClusterConfig()
+                cfg.load()
+                ec2 = cfg.get_easy_ec2()
+                instances = ec2.get_all_instances()
+                completion_list = [i.id for i in instances]
+                completion_list.extend([i.dns_name for i in instances])
+                return optcomplete.ListCompleter(completion_list)
+            except Exception, e:
+                log.error('something went wrong fix me: %s' % e)
+
     def addopts(self, parser):
         opt = parser.add_option(
-            "-r","--remove-image-files", dest="REMOVE_IMAGE_FILES",
+            "-r","--remove-image-files", dest="remove_image_files",
             action="store_true", default=False, 
             help="Remove generated image files on the instance after registering")
 
@@ -349,17 +371,9 @@ class CmdCreateImage(CmdBase):
             self.parser.error('you must specify an instance-id, image name, and bucket')
         instanceid, image_name, bucket = args
         cfg = self.cfg
-        instance = node.get_node(instanceid, cfg)
-        kwargs = {}
-        kwargs.update(cfg.aws)
-        kwargs.update(self.specified_options_dict)
-        kwargs.update({
-            'instance': instance,
-            'prefix': image_name,
-            'bucket': bucket,
-        })
-        icreator = image.EC2ImageCreator(**kwargs)
-        icreator.create_image()
+        ami_id = image.create_image(instanceid, image_name, bucket, cfg,
+                           **self.specified_options_dict)
+        log.info("Your new AMI id is: %s" % ami_id)
 
 class CmdCreateVolume(CmdBase):
     """

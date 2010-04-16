@@ -3,13 +3,31 @@ import os
 import pickle
 from optparse import OptionParser
 from starcluster import awsutils
+from starcluster import exception
+from starcluster import utils
+from starcluster import node
 from starcluster.logger import log
 from starcluster.utils import print_timing
 
-def create_image(cfg):
-    pass
+def create_image(instanceid, image_name, bucket, cfg, **kwargs):
+    instance = node.get_node(instanceid, cfg)
+    if instance.state != 'running':
+        raise exception.InstanceNotRunning(instance.id)
+    kwargs.update(cfg.aws)
+    kwargs.update({
+        'instance': instance,
+        'prefix': image_name,
+        'bucket': bucket,
+    })
+    icreator = EC2ImageCreator(**kwargs)
+    return icreator.create_image()
 
 class EC2ImageCreator(object):
+    """
+    Class for creating a new AMI from a running instance
+
+    instance must be a starcluster.node.Node instance
+    """
     def __init__(self, instance=None, aws_access_key_id=None,
                  aws_secret_access_key=None,
                  aws_user_id=None, bucket=None, ec2_cert=None, 
@@ -24,6 +42,10 @@ class EC2ImageCreator(object):
         self.cert = ec2_cert
         self.private_key = ec2_private_key
         self.remove_image_files = remove_image_files
+        if not utils.is_valid_bucket_name(self.bucket):
+            raise exception.InvalidBucketName(self.bucket)
+        if not utils.is_valid_image_name(self.prefix):
+            raise exception.InvalidImageName(self.prefix)
         self.ec2 = awsutils.EasyEC2(
             aws_access_key_id = self.access_key, 
             aws_secret_access_key = self.secret_key,
@@ -32,12 +54,16 @@ class EC2ImageCreator(object):
             try:
                 self.cert = os.environ['EC2_CERT']
             except KeyError,e:
-                log.error('No certificate (pem) file found')
+                raise exception.EC2CertRequired()
         if not self.private_key:
             try:
                 self.private_key = os.environ['EC2_PRIVATE_KEY']
             except KeyError,e:
-                log.error('No private key (pem) file found')
+                raise exception.EC2PrivateKeyRequired()
+        if not os.path.exists(self.cert):
+            raise exception.EC2CertDoesNotExist(self.cert)
+        if not os.path.exists(self.private_key):
+            raise exception.EC2PrivateKeyDoesNotExist(self.private_key)
         self.config_dict = { 
             'access_key': self.access_key, 
             'secret_key': self.secret_key, 
@@ -46,22 +72,25 @@ class EC2ImageCreator(object):
             'cert': os.path.split(self.cert)[-1], 
             'bucket': self.bucket, 
             'prefix': self.prefix,
-            #'arch': self._get_arch(),
-            'arch': None,
+            'arch': self.host.arch,
         }
-        if self.host:
-            self.config_dict['arch'] = self._get_arch()
 
     @print_timing
     def create_image(self):
+        # first remove any image files from a previous run
+        self._remove_image_files()
         self._bundle_image()
         self._upload_image()
-        self._register_image()
+        ami_id = self._register_image()
         if self.remove_image_files:
+            # remove image files from this run if user says to
             self._remove_image_files()
+        return ami_id
 
-    def remove_image_files(self):
+    def _remove_image_files(self):
         conn = self.host.ssh
+        conn.execute('umount /mnt/img-mnt')
+        conn.execute('rm -rf /mnt/img-mnt')
         conn.execute('rm -rf /mnt/%(prefix)s*' % self.config_dict)
 
     def _transfer_pem_files(self):
@@ -69,19 +98,6 @@ class EC2ImageCreator(object):
         conn = self.host.ssh
         conn.put(self.private_key, "/mnt/" + os.path.basename(self.private_key))
         conn.put(self.cert, "/mnt/" + os.path.basename(self.cert))
-
-    def _get_arch(self):
-        conn = self.host.ssh
-        arch = conn.execute(
-            'python -c "import platform; print platform.architecture()[0]"'
-        )[0]
-        if arch == "32bit":
-            arch = "i386"
-        elif arch == "64bit":
-            arch = "x86_64"
-        else: 
-            arch = "i386"
-        return arch
 
     @print_timing
     def _bundle_image(self):
@@ -92,7 +108,8 @@ class EC2ImageCreator(object):
         self.__clean_private_data()
         log.info('Creating the bundled image:')
         conn.execute('ec2-bundle-vol -d /mnt -k /mnt/%(private_key)s \
--c /mnt/%(cert)s -p %(prefix)s -u %(userid)s -r %(arch)s' % config_dict, 
+-c /mnt/%(cert)s -p %(prefix)s -u %(userid)s -r %(arch)s -e /root/.ssh' % \
+                     config_dict, 
                      silent=False)
         self._cleanup_pem_files()
 
@@ -114,7 +131,7 @@ class EC2ImageCreator(object):
         log.info('Cleaning up...')
         # delete keys and remove bash history
         conn = self.host.ssh
-        conn.execute('rm -f /mnt/pk-*.pem /mnt/cert-*.pem', silent=False)
+        conn.execute('rm -f /mnt/*.pem /mnt/*.pem', silent=False)
 
     def _register_image(self):
         # register image in s3 with ec2
@@ -131,7 +148,6 @@ class EC2ImageCreator(object):
         conn = self.host.ssh
         conn.execute('find /home -maxdepth 1 -type d -exec rm -rf {}/.ssh \;',
                      silent=False) 
-        conn.execute('rm -rf ~/.ssh/*', silent=False)
         conn.execute('rm -f /var/log/secure', silent=False)
         conn.execute('rm -f /var/log/lastlog', silent=False)
         conn.execute('rm -rf /root/*', silent=False)
@@ -139,4 +155,3 @@ class EC2ImageCreator(object):
         conn.execute('rm -rf /tmp/*', silent=False)
         conn.execute('rm -rf /root/*.hist*', silent=False)
         conn.execute('rm -rf /var/log/*.gz', silent=False)
-
