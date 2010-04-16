@@ -99,6 +99,10 @@ class Node(object):
         return self.instance.key_name
 
     @property
+    def arch(self):
+        return self.instance.architecture
+
+    @property
     def network_names(self):
         """ Returns all network names for this node in a dictionary"""
         names = {}
@@ -112,12 +116,16 @@ class Node(object):
         return self.instance.stop()
 
     def is_ssh_up(self):
+        timeout = 10.0
         s = socket.socket()
-        s.settimeout(5.0)
+        s.settimeout(timeout)
         try:
             s.connect((self.dns_name, 22))
             s.close()
             return True
+        except socket.timeout:
+            log.debug(
+                "connecting to port 22 on timed out after % seconds" % timeout)
         except socket.error:
             log.debug("ssh not up for %s" % self.dns_name)
             return False
