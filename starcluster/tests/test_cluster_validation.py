@@ -11,7 +11,7 @@ class TestClusterValidation(StarClusterTest):
 
     def test_aws_credentials_validation(self):
         ec2 = self.config.get_easy_ec2()
-        cluster = self.config.get_cluster('c1')
+        cluster = self.config.get_cluster_template('c1')
         try:
             cluster._validate_credentials()
         except ClusterValidationError,e:
@@ -21,7 +21,7 @@ class TestClusterValidation(StarClusterTest):
 
     def test_plugin_loading(self):
         # default test template should have valid plugins by default
-        cluster = self.config.get_cluster('c1')
+        cluster = self.config.get_cluster_template('c1')
         # make them invalid
         cases = [
             {'p1_class': 'None'}, 
@@ -30,7 +30,7 @@ class TestClusterValidation(StarClusterTest):
         for case in cases:
             cfg = self.get_custom_config(**case)
             try:
-                cluster = cfg.get_cluster('c1')
+                cluster = cfg.get_cluster_template('c1')
             except PluginError,e:
                 pass
             else:
@@ -46,7 +46,7 @@ class TestClusterValidation(StarClusterTest):
         for case in cases:
             cfg = self.get_custom_config(**case)
             try:
-                cluster = cfg.get_cluster('c1')
+                cluster = cfg.get_cluster_template('c1')
                 cluster._validate_cluster_size()
             except ClusterValidationError,e:
                 pass
@@ -63,7 +63,7 @@ class TestClusterValidation(StarClusterTest):
         for case in cases:
             cfg = self.get_custom_config(**case)
             try:
-                cluster = cfg.get_cluster('c1')
+                cluster = cfg.get_cluster_template('c1')
                 cluster._validate_shell_setting()
             except ClusterValidationError,e:
                 pass
@@ -79,7 +79,7 @@ class TestClusterValidation(StarClusterTest):
         cases = [{'k1_location': tmp_file}, {'k1_location':tmpdir}]
         for case in cases:
             cfg = self.get_custom_config(**case)
-            cluster = cfg.get_cluster('c1')
+            cluster = cfg.get_cluster_template('c1')
             try:
                 cluster._validate_keypair()
             except ClusterValidationError,e:
@@ -91,7 +91,7 @@ class TestClusterValidation(StarClusterTest):
     def __test_for_validation_error(self, cases, test, cluster_name='c1'):
         for case in cases:
             cfg = self.get_custom_config(**case)
-            cluster = cfg.get_cluster(cluster_name)
+            cluster = cfg.get_cluster_template(cluster_name)
             try:
                 getattr(cluster,test)()
             except ClusterValidationError,e:

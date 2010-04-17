@@ -93,7 +93,6 @@ class DefaultClusterSetup(ClusterSetup):
             conn.execute('chmod 400 /root/.ssh/id_rsa*')
             conn.execute('cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys')
 
-
         # Now that root's passwordless ssh is setup:
         # 1. Make initial connections to all nodes to skip host key checking on first use.
         # 2. This populates /root/.ssh/known_hosts which is copied to CLUSTER_USER's
@@ -109,7 +108,7 @@ class DefaultClusterSetup(ClusterSetup):
             conn = node.ssh.put(tempknown_hosts, '/root/.ssh/known_hosts')
 
         # no longer need the temp directory after copying over newly generated keys
-        # leave for now to debug
+        # and known_hosts. leave for now to debug
         #shutil.rmtree(tempdir)
 
         log.info("Configuring passwordless ssh for user: %s" % self._user)

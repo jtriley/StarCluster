@@ -5,6 +5,7 @@ import time
 import platform
 import pprint 
 import inspect
+import cPickle
 
 from starcluster import ssh
 from starcluster import awsutils
@@ -23,15 +24,19 @@ def get_cluster(cluster_name, cfg):
         ec2 = cfg.get_easy_ec2()
         cluster = ec2.get_security_group(_get_cluster_name(cluster_name))
         cluster_key = cluster.instances()[0].key_name
-    except Exception,e:
-        raise ClusterDoesNotExist(cluster_name)
-    kwargs = {}
-    kwargs.update(cfg.aws)
-    kwargs.update(cfg.get_key(cluster_key))
-    kwargs.update({'cluster_tag': cluster_name})
-    return Cluster(**kwargs)
+        kwargs = {}
+        kwargs.update(cfg.aws)
+        kwargs.update(cfg.get_key(cluster_key))
+        kwargs.update({'cluster_tag': cluster_name})
+        return Cluster(**kwargs)
+    except exception.SecurityGroupDoesNotExist,e:
+        raise exception.ClusterDoesNotExist(cluster_name)
 
 def get_cluster_or_none(cluster_name,cfg):
+    """
+    Same as get_cluster only returns None instead of throwing an exception
+    if the cluster is not found
+    """
     try:
         return get_cluster(cluster_name, cfg)
     except Exception,e:
@@ -98,11 +103,25 @@ def list_clusters(cfg):
     starcluster_groups = get_cluster_security_groups(cfg)
     if starcluster_groups:
         for scg in starcluster_groups:
+            print
             print scg.name
             for node in scg.instances():
                 print "  %s %s %s" % (node.id, node.state, node.dns_name)
     else:
         log.info("No clusters found...")
+
+def run_plugin(plugin_name, cluster_tag, cfg):
+    ec2 = cfg.get_easy_ec2()
+    cl = get_cluster(cluster_tag)
+    cl.load_receipt()
+    plug = cfg.get_plugin(plugin_name)
+    plugins = {}
+    plugins[plugin_name] = plug
+    plugins = cl.load_plugins(plugins)
+    master = cl.master_node
+    for p in plugins:
+        p.run(cl.nodes, cl.master_node, cl.cluster_user, cl.cluster_shell, 
+              volumes)
 
 class Cluster(object):
     def __init__(self,
@@ -228,6 +247,53 @@ class Cluster(object):
             if not key.startswith('_'):
                 cfg[key] = getattr(self,key)
         return pprint.pformat(cfg)
+
+    def load_receipt(self):
+        """
+        Fetch the StarCluster receipt file from the master node and use it to
+        populate this object's attributes. This is used to restore the state of
+        this object's settings as they were at the time of creating the cluster.
+        """
+        try:
+            f = self.master_node.ssh.remote_file(static.STARCLUSTER_RECEIPT_FILE,'r')
+            cfg = cPickle.load(f)
+            f.close()
+            for key in cfg:
+                setattr(self, key, cfg.get(key))
+            #self._plugins = self.load_plugins(self.plugins)
+            return True
+        except IOError,e:
+            raise exception.ClusterReceiptError(
+                'cluster receipt does not exist')
+        except Exception,e:
+            raise exception.ClusterReceiptError(
+                'failed to load cluster receipt')
+
+    def create_receipt(self):
+        """
+        Create a 'receipt' file on the master node that contains this Cluster
+        object's attributes. This receipt can then be used by self.load_receipt
+        to restore a Cluster object's state to the way 
+        """
+        try:
+            cfg = {}
+            for key in self.__dict__.keys():
+                if not key.startswith('_'):
+                    val = getattr(self,key)
+                    if type(val) in [str, bool, int, float, list, dict]:
+                        cfg[key] = val
+                    elif type(val) is utils.AttributeDict:
+                        cfg[key] = dict(val)
+            self.master_node.ssh.execute('mkdir -p %s' % \
+                                    static.STARCLUSTER_RECEIPT_DIR)
+            f = self.master_node.ssh.remote_file(static.STARCLUSTER_RECEIPT_FILE)
+            cPickle.dump(cfg, f)
+            f.close()
+        except Exception,e:
+            print e
+            raise exception.ClusterReceiptError(
+                'failed to create cluster receipt')
+        return True
 
     @property
     def _security_group(self):
@@ -407,6 +473,7 @@ class Cluster(object):
             self.cluster_user, self.cluster_shell, 
             self.volumes
         )
+        self.create_receipt()
         for plugin in self._plugins:
             try:
                 plugin_name = plugin[0]
@@ -678,6 +745,6 @@ $ ssh -i %(key)s %(user)s@%(master)s
 if __name__ == "__main__":
     from starcluster.config import StarClusterConfig
     cfg = StarClusterConfig(); cfg.load()
-    sc =  cfg.get_cluster('smallcluster')
+    sc =  cfg.get_cluster_template('smallcluster', 'mynewcluster')
     if sc.is_valid():
         sc.start(create=True)

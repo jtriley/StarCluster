@@ -286,9 +286,11 @@ class StarClusterConfig(object):
                                self.clusters[cluster])
 
     def get_aws_credentials(self):
-        """Returns AWS credentials defined in the configuration
+        """
+        Returns AWS credentials defined in the configuration
         file. Defining any of the AWS settings in the environment
-        overrides the configuration file."""
+        overrides the configuration file.
+        """
         # first override with environment settings if they exist
         self.aws.update(get_aws_from_environ())
         return self.aws
@@ -296,21 +298,37 @@ class StarClusterConfig(object):
     def get_cluster_names(self):
         return self.clusters
 
-    def get_cluster(self, cluster_name):
+    def get_cluster_template(self, template_name, tag_name=None):
+        """
+        Returns a 
+        template_name is the name of a cluster section defined in the config
+
+        tag_name, if specified, will be passed to Cluster instance as cluster_tag
+
+        Returns Cluster instance configured with the settings in the config file.
+        """
         try:
             kwargs = {}
+            if tag_name:
+                kwargs.update(dict(cluster_tag=tag_name))
             kwargs.update(**self.aws)
-            kwargs.update(self.clusters[cluster_name])
+            kwargs.update(self.clusters[template_name])
             clust = Cluster(**kwargs)
             return clust
         except KeyError,e:
-            raise exception.ClusterTemplateDoesNotExist(cluster_name)
+            raise exception.ClusterTemplateDoesNotExist(template_name)
 
     def get_clusters(self):
         clusters = []
         for cluster in self.clusters:
             clusters.append(self.get_cluster(cluster))
         return clusters
+
+    def get_plugin(self, plugin):
+        try:
+            return self.plugins[plugin]
+        except KeyError:
+            raise exception.PluginNotFound(plugin)
 
     def get_key(self, keyname):
         try:

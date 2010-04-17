@@ -120,6 +120,9 @@ class PluginSyntaxError(PluginError):
 class ValidationError(BaseException):
     """Base class for validation related errors"""
 
+class ClusterReceiptError(BaseException):
+    """Raised when Cluster class fails to create a receipt on the master node"""
+
 class ClusterValidationError(ValidationError):
     """Cluster validation related errors"""
 

@@ -7,6 +7,8 @@ import os
 STARCLUSTER_CFG_DIR = os.path.join(os.path.expanduser('~'),'.starcluster')
 STARCLUSTER_CFG_FILE = os.path.join(STARCLUSTER_CFG_DIR, 'config')
 STARCLUSTER_PLUGIN_DIR = os.path.join(STARCLUSTER_CFG_DIR, 'plugins')
+STARCLUSTER_RECEIPT_DIR = "/var/run/starcluster"
+STARCLUSTER_RECEIPT_FILE = os.path.join(STARCLUSTER_RECEIPT_DIR, "receipt.pkl")
 
 # StarCluster BASE AMIs (i386/x86_64)
 BASE_AMI_32="ami-8f9e71e6"
