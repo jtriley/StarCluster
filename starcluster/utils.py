@@ -72,6 +72,26 @@ def is_valid_image_name(image_name):
             return False
     return True
 
+def make_one_liner(script):
+    """
+    Returns command to execute python script as a one-line python program
+
+    e.g. 
+    
+        import os
+        script = '''
+        import os
+        print os.path.exists('hi')
+        '''
+        os.system(make_one_liner(script))
+
+    Will print out:
+
+        <module 'os' from ...>
+        False
+    """
+    return 'python -c "%s"' % script.strip().replace('\n',';')
+
 try:
     import IPython.Shell
     ipy_shell = IPython.Shell.IPShellEmbed(argv=[])
