@@ -150,9 +150,9 @@ class CmdStart(CmdBase):
         if len(args) != 2:
             self.parser.error("please specify a <cluster_template> and <tagname>")
         cfg = self.cfg
-        cluster_config, tag = args
+        template, tag = args
         tagdict={'cluster_tag': tag}
-        scluster = cfg.get_cluster(cluster_config)
+        scluster = cfg.get_cluster_template(template)
         scluster.update(self.specified_options_dict)
         scluster.update(tagdict)
         if cluster.cluster_exists(tag,cfg) and not self.opts.no_create:
@@ -187,12 +187,38 @@ class CmdStop(CmdBase):
     This will stop a currently running cluster tagged "physics"
     """
     names = ['stop']
+
+    @property
+    def completer(self):
+        if optcomplete:
+            try:
+                cfg = config.StarClusterConfig()
+                cfg.load()
+                clusters = cluster.get_cluster_security_groups(cfg)
+                completion_list = [sg.name.replace(static.SECURITY_GROUP_PREFIX+'-','') for sg in clusters]
+                return optcomplete.ListCompleter(completion_list)
+            except Exception, e:
+                log.error('something went wrong fix me: %s' % e)
+                
+    def addopts(self, parser):
+        opt = parser.add_option("-c","--confirm", dest="confirm", 
+                                action="store_true", default=False, 
+                                help="Do not prompt for confirmation, " + \
+                                "just shutdown the cluster")
+
     def execute(self, args):
         if not args:
             self.parser.error("please specify a cluster")
         cfg = self.cfg
         for cluster_name in args:
-            cluster.stop_cluster(cluster_name, cfg)
+            cl = cluster.get_cluster(cluster_name,cfg)
+            if not self.opts.confirm:
+                resp = raw_input("Shutdown cluster %s (y/n)? " % cluster_name)
+                if resp not in ['y','Y', 'yes']:
+                    log.info("Aborting...")
+                    continue
+            print 'stop_cluster'
+            #cluster.stop_cluster(cluster_name, cfg)
 
 class CmdSshMaster(CmdBase):
     """
@@ -422,9 +448,19 @@ class CmdListImages(CmdBase):
     List all registered EC2 images (AMIs)
     """
     names = ['listimages']
+
+    def addopts(self, parser):
+        opt = parser.add_option(
+            "-x","--executable-by-me", dest="executable",
+            action="store_true", default=False,
+            help="Show images that you have permission to execute")
+
     def execute(self, args):
         ec2 = self.cfg.get_easy_ec2()
-        ec2.list_registered_images()
+        if self.opts.executable:
+            ec2.list_executable_images()
+        else:
+            ec2.list_registered_images()
 
 class CmdListBuckets(CmdBase):
     """
@@ -606,6 +642,26 @@ class CmdListVolumes(CmdBase):
     def execute(self, args):
         ec2 = self.cfg.get_easy_ec2()
         ec2.list_volumes()
+
+class CmdRunPlugin(CmdBase):
+    """
+    runplugin <plugin_name> <cluster_tag>
+
+    Run a StarCluster plugin on a runnning cluster
+
+    plugin_name - name of plugin section defined in the config
+    cluster_tag - tag name of a running StarCluster
+
+    e.g.
+
+    runplugin myplugin physicscluster
+    """
+    names = ['runplugin']
+    def execute(self,args):
+        if len(args) != 2:
+            self.parser.error("Please provide a plugin_name and <cluster_tag>")
+        plugin_name, cluster_tag = args
+        cluster.run_plugin(plugin_name, cluster_tag, self.cfg)
 
 class CmdShell(CmdBase):
     """

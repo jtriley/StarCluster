@@ -72,6 +72,7 @@ class EasyEC2(EasyAWS):
         self._instance_response = None
         self._keypair_response = None
         self._images = None
+        self._executable_images = None
         self._security_group_response = None
 
     @property
@@ -79,6 +80,12 @@ class EasyEC2(EasyAWS):
         if not self.cache or self._images is None:
             self._images = self.conn.get_all_images(owners=["self"])
         return self._images
+
+    @property
+    def executable_images(self):
+        if not self.cache or self._images is None:
+            self._executable_images = self.conn.get_all_images(executable_by=["self"])
+        return self._executable_images
 
     def get_registered_image(self, image_id):
         if not image_id.startswith('ami') or len(image_id) != 12:
@@ -212,18 +219,29 @@ class EasyEC2(EasyAWS):
                 print "groups: %s" % groups
                 print "keypair: %s" % keypair
                 print
-            
-    def list_registered_images(self):
-        images = self.registered_images
+
+    def list_images(self, images):
         def get_key(obj):
             return str(obj.region) + ' ' + str(obj.location)
         imgs_i386 = [ img for img in images if img.architecture == "i386" ]
         imgs_i386.sort(key=get_key)
         imgs_x86_64 = [ img for img in images if img.architecture == "x86_64" ]
         imgs_x86_64.sort(key=get_key)
-        self.__list_images("Your 32bit Images:", imgs_i386)
-        self.__list_images("\nYour 64bit Images:", imgs_x86_64)
-        print "\ntotal registered images: %d" % len(images)
+        print
+        self.__list_images("32bit Images:", imgs_i386)
+        self.__list_images("\n64bit Images:", imgs_x86_64)
+        print "\ntotal images: %d" % len(images)
+        print
+            
+    def list_registered_images(self):
+        images = self.registered_images
+        log.info("Your registered images:")
+        self.list_images(images)
+
+    def list_executable_images(self):
+        images = self.executable_images
+        log.info("Images executable by you:")
+        self.list_images(images)
 
     def __list_images(self, msg, imgs):
         counter = 0
@@ -458,12 +476,9 @@ class EasyS3(EasyAWS):
         files = []
         try:
             bucket = self.get_bucket(bucketname)
+            files = [ file for file in bucket.list() ]
         except:
-            return 
-        if self.bucket_exists(bucket_name):
-            files = [ entry.key for entry in self.conn.list_bucket(bucket_name).entries] 
-        else:
-            files = []
+            pass
         return files
 
     def show_bucket_files(self, bucket_name):
