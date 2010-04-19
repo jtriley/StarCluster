@@ -217,8 +217,7 @@ class CmdStop(CmdBase):
                 if resp not in ['y','Y', 'yes']:
                     log.info("Aborting...")
                     continue
-            print 'stop_cluster'
-            #cluster.stop_cluster(cluster_name, cfg)
+            cluster.stop_cluster(cluster_name, cfg)
 
 class CmdSshMaster(CmdBase):
     """
