@@ -83,8 +83,9 @@ class Node(object):
     def id(self):
         return self.instance.id
 
-    def is_master(self):
-        return self.alias == "master"
+    @property
+    def block_device_mapping(self):
+        return self.instance.block_device_mapping
 
     @property
     def dns_name(self):
@@ -111,6 +112,9 @@ class Node(object):
         names['INTERNAL_NAME_SHORT'] = self.private_dns_name_short
         names['INTERNAL_ALIAS'] = self.alias
         return names
+
+    def is_master(self):
+        return self.alias == "master"
 
     def stop(self):
         return self.instance.stop()

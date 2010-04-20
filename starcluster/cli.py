@@ -425,18 +425,21 @@ class CmdCreateVolume(CmdBase):
             "-n","--no-shutdown", dest="shutdown_instance",
             action="store_false", default=True,
             help="Detach volume and shutdown instance after creating volume")
-        opt = parser.add_option(
-            "-a","--add-to-config", dest="add_to_cfg",
-            action="store_true", default=False,
-            help="Add a new volume section to the config after creating volume")
+        #opt = parser.add_option(
+            #"-a","--add-to-config", dest="add_to_cfg",
+            #action="store_true", default=False,
+            #help="Add a new volume section to the config after creating volume")
     def execute(self, args):
         if len(args) != 2:
             self.parser.error("you must specify a size (in GB) and an availability zone")
         size, zone = args
         vc = volume.VolumeCreator(self.cfg, **self.specified_options_dict)
         volid = vc.create(size, zone)
-        log.info("Your new %dGB volume %s has been created successfully" % \
-                 (size,volid))
+        if volid:
+            log.info("Your new %sGB volume %s has been created successfully" % \
+                     (size,volid))
+        else:
+            log.error("failed to create new volume")
 
 class CmdListZones(CmdBase):
     """

@@ -114,12 +114,15 @@ class VolumeCreator(object):
             raise exception.ValidationError("volume device %s is not valid" % \
                                             device)
 
+    def validate(self, size, zone, device, image):
+        self._validate_size(size)
+        self._validate_zone(zone)
+        self._validate_device(device)
+        self._validate_image(image)
+
     def is_valid(self, size, zone, device, image):
         try:
-            self._validate_size(size)
-            self._validate_zone(zone)
-            self._validate_device(device)
-            self._validate_image(image)
+            self.validate(size, zone, device, image)
             return True
         except exception.ValidationError,e:
             log.error(e.msg)
@@ -150,39 +153,39 @@ class VolumeCreator(object):
                 return
 
     def create(self, volume_size, volume_zone):
-        if self.is_valid(volume_size, volume_zone, self._device, self._image_id):
-            try:
-                self._load_keypair()
-                log.info(("Requesting host instance in zone %s to attach volume" + \
-                         " to...") % volume_zone)
-                instance = self._request_instance(volume_zone)
-                self._determine_device()
-                log.info("Creating %sGB volume in zone %s" % (volume_size, 
-                                                              volume_zone))
-                vol = self._create_volume(volume_size, volume_zone)
-                log.info("New volume id: %s" % vol.id)
-                log.info("Attaching volume to instance %s" % instance.id)
-                self._attach_volume(instance.id, self._device)
-                log.info("Partitioning the volume")
-                self._partition_volume()
-                log.info("Formatting volume")
-                self._format_volume_partitions()
-                if self._shutdown:
-                    log.info("Detaching volume %s from instance %s" %
-                             (vol.id,self._instance.id))
-                    vol.detach()
-                    time.sleep(5)
-                    for i in self.security_group.instances():
-                        log.info("Shutting down instance %s" % i.id)
-                        i.stop()
-                    log.info("Removing security group %s" % \
-                             self.security_group.name)
-                    self.security_group.delete()
-                return vol.id
-            except Exception,e:
-                log.error("exception thrown: %s" % e)
-                if self._volume:
-                    self._volume.detach()
-                    time.sleep(5)
-                if self._instance:
-                    self._instance.terminate()
+        self.validate(volume_size, volume_zone, self._device, self._image_id)
+        try:
+            self._load_keypair()
+            log.info(("Requesting host instance in zone %s to attach volume" + \
+                     " to...") % volume_zone)
+            instance = self._request_instance(volume_zone)
+            self._determine_device()
+            log.info("Creating %sGB volume in zone %s" % (volume_size, 
+                                                          volume_zone))
+            vol = self._create_volume(volume_size, volume_zone)
+            log.info("New volume id: %s" % vol.id)
+            log.info("Attaching volume to instance %s" % instance.id)
+            self._attach_volume(instance.id, self._device)
+            log.info("Partitioning the volume")
+            self._partition_volume()
+            log.info("Formatting volume")
+            self._format_volume_partitions()
+            if self._shutdown:
+                log.info("Detaching volume %s from instance %s" % \
+                         (vol.id,self._instance.id))
+                vol.detach()
+                time.sleep(5)
+                for i in self.security_group.instances():
+                    log.info("Shutting down instance %s" % i.id)
+                    i.stop()
+                log.info("Removing security group %s" % \
+                         self.security_group.name)
+                self.security_group.delete()
+            return vol.id
+        except Exception,e:
+            log.error("exception thrown: %s" % e)
+            if self._volume:
+                self._volume.detach()
+                time.sleep(5)
+            if self._instance:
+                self._instance.stop()
