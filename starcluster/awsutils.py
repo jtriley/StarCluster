@@ -288,12 +288,20 @@ class EasyEC2(EasyAWS):
         self.remove_image_files(image_name, pretend = pretend)
 
         # then deregister ami
-        ami = image.id
         if pretend:
-            log.info('Would run deregister_image for ami: %s)' % ami)
+            log.info('Would run deregister_image for ami: %s)' % image.id)
         else:
-            log.info('Deregistering ami: %s' % ami)
-            self.conn.deregister_image(ami)
+            log.info('Deregistering ami: %s' % image.id)
+            image.deregister()
+
+    def list_starcluster_public_images(self):
+        images = self.conn.get_all_images(owners=[static.STARCLUSTER_OWNER_ID])
+        id = 0
+        images = sorted(images, key=lambda image: image.location)
+        for image in images:
+            if image.is_public:
+                print "[%d] %s %s" % (id, image.id,image.location)
+                id +=1
 
     def remove_volume(self, volume_id):
         vol = self.get_volume(volume_id)

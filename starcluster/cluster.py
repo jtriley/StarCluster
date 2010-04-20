@@ -23,10 +23,14 @@ def get_cluster(cluster_name, cfg):
     try:
         ec2 = cfg.get_easy_ec2()
         cluster = ec2.get_security_group(_get_cluster_name(cluster_name))
-        cluster_key = cluster.instances()[0].key_name
         kwargs = {}
         kwargs.update(cfg.aws)
-        kwargs.update(cfg.get_key(cluster_key))
+        try:
+            cluster_key = cluster.instances()[0].key_name
+            key = cfg.get_key(cluster_key)
+        except IndexError:
+            key = dict(keyname=None, key_location=None)
+        kwargs.update(key)
         kwargs.update({'cluster_tag': cluster_name})
         return Cluster(**kwargs)
     except exception.SecurityGroupDoesNotExist,e:

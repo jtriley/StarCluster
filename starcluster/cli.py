@@ -415,8 +415,8 @@ class CmdCreateVolume(CmdBase):
             action="store", type="string", default=None,
             help="Use image_id AMI when launching volume host instance")
         opt = parser.add_option(
-            "-s","--shutdown", dest="shutdown_instance",
-            action="store_true", default=False,
+            "-n","--no-shutdown", dest="shutdown_instance",
+            action="store_false", default=True,
             help="Detach volume and shutdown instance after creating volume")
         opt = parser.add_option(
             "-a","--add-to-config", dest="add_to_cfg",
@@ -427,7 +427,9 @@ class CmdCreateVolume(CmdBase):
             self.parser.error("you must specify a size (in GB) and an availability zone")
         size, zone = args
         vc = volume.VolumeCreator(self.cfg, **self.specified_options_dict)
-        vc.create(size, zone)
+        volid = vc.create(size, zone)
+        log.info("Your new %dGB volume %s has been created successfully" % \
+                 (size,volid))
 
 class CmdListZones(CmdBase):
     """
@@ -526,11 +528,21 @@ class CmdRemoveVolume(CmdBase):
             volid = arg
             ec2 = self.cfg.get_easy_ec2()
             vol = ec2.get_volume(volid)
+            if vol.status in ['attaching', 'in-use']:
+                log.error("volume is currently in use. aborting...")
+                return
+            if vol.status == 'detaching':
+                log.error("volume is currently detaching. " + \
+                          "please wait a few moments and try again...")
+                return
             resp = raw_input("**PERMANENTLY** delete %s (y/n)? " % volid)
             if resp not in ['y','Y', 'yes']:
                 log.info("Aborting...")
-                vol.delete()
                 return
+            if vol.delete():
+                log.info("Volume %s deleted successfully" % vol.id)
+            else:
+                log.error("Error deleting volume %s" % vol.id)
 
 class CmdRemoveImage(CmdBase):
     """
@@ -641,6 +653,18 @@ class CmdListVolumes(CmdBase):
     def execute(self, args):
         ec2 = self.cfg.get_easy_ec2()
         ec2.list_volumes()
+
+class CmdListPublic(CmdBase):
+    """
+    listpublic
+
+    List all public StarCluster images on EC2
+    """
+    names = ['listpublic']
+    def execute(self, args):
+        log.info("Listing all public StarCluster images...\n")
+        ec2 = self.cfg.get_easy_ec2()
+        ec2.list_starcluster_public_images()
 
 class CmdRunPlugin(CmdBase):
     """
@@ -799,6 +823,7 @@ def main():
         CmdRemoveVolume(),
         CmdShowConsole(),
         CmdListZones(),
+        CmdListPublic(),
         CmdShell(),
         CmdHelp(),
     ]
