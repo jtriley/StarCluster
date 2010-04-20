@@ -72,7 +72,8 @@ class DefaultClusterSetup(ClusterSetup):
         log.info("Creating cluster user: %s" % self._user)
         for node in self._nodes:
             nconn = node.ssh
-            nconn.execute('useradd -u %s -g %s -m -s `which %s` %s' %
+            nconn.execute('groupadd -o -g %s %s' % (gid, self._user))
+            nconn.execute('useradd -o -u %s -g %s -m -s `which %s` %s' %
                           (uid, gid, self._user_shell, self._user))
 
     def _setup_scratch(self):
