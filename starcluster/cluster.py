@@ -51,29 +51,41 @@ def cluster_exists(tag_name, cfg):
 
 def ssh_to_master(cluster_name, cfg, user='root'):
     cluster = get_cluster(cluster_name, cfg)
-    if cluster:
-        master = cluster.master_node
-        key = cfg.get_key(master.key_name)
-        os.system('ssh -i %s %s@%s' % (key.key_location, user,
-                                       master.dns_name))
+    master = cluster.master_node
+    key = cfg.get_key(master.key_name)
+    os.system('ssh -i %s %s@%s' % (key.key_location, user,
+                                   master.dns_name))
+def _get_node_number(alias):
+    """
+    Maps aliases master, node001, etc to 0,1,etc
+
+    Returns an integer (>=0) representing the node "number" if successful, 
+    and returns None otherwise
+    """
+    if alias == "master":
+        return 0
+    else:
+        pattern = re.compile(r"node([0-9][0-9][0-9])")
+        if pattern.match(alias) and len(alias) == 7:
+            return int(pattern.match(alias).groups()[0])
 
 def ssh_to_cluster_node(cluster_name, node_id, cfg, user='root'):
     cluster = get_cluster(cluster_name, cfg)
+    node_num = _get_node_number(node_id) 
     node = None
-    if cluster:
-        try:
-            node = cluster.nodes[int(node_id)]
-        except:
-            if node_id.startswith('i-') and len(node_id) == 10:
-                node = cluster.get_node_by_id(node_id)
-            else:
-                node = cluster.get_node_by_dns_name(node_id)
-        if node:
-            key = cfg.get_key(node.key_name)
-            os.system('ssh -i %s %s@%s' % (key.key_location, user,
-                                           node.dns_name))
+    try:
+        node = cluster.nodes[int(node_num)]
+    except:
+        if node_id.startswith('i-') and len(node_id) == 10:
+            node = cluster.get_node_by_id(node_id)
         else:
-            log.error("node %s does not exist" % node_id)
+            node = cluster.get_node_by_dns_name(node_id)
+    if node:
+        key = cfg.get_key(node.key_name)
+        os.system('ssh -i %s %s@%s' % (key.key_location, user,
+                                       node.dns_name))
+    else:
+        log.error("node '%s' does not exist" % node_id)
 
 def _get_cluster_name(cluster_name):
     if not cluster_name.startswith(static.SECURITY_GROUP_PREFIX):

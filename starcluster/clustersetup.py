@@ -60,10 +60,9 @@ class DefaultClusterSetup(ClusterSetup):
             uid_db = {}
             files = mconn.ls('/home')
             for file in files:
-                path = os.path.join('/home',file)
                 if mconn.isdir(file):
                     f = mconn.stat(file)
-                    uid_db[f.st_uid] = (file, gid)
+                    uid_db[f.st_uid] = (file, f.st_gid)
             max_uid = max(uid_db.keys())
             max_gid = uid_db[max_uid][1]
             uid, gid = max_uid+1, max_gid+1

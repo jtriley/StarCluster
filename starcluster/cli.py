@@ -262,6 +262,11 @@ class CmdSshNode(CmdBase):
 
     e.g.
 
+    sshnode mycluster master #ssh's to mycluster master
+    sshnode mycluster node001 #ssh's to mycluster node001
+
+    or in shorthand:
+
     sshnode mycluster 0 #ssh's to mycluster master
     sshnode mycluster 1 #ssh's to mycluster node001
     """
@@ -280,7 +285,9 @@ class CmdSshNode(CmdBase):
                     num_instances = len(scluster.instances())
                     if num_instances > max_num_nodes:
                         max_num_nodes = num_instances
+                completion_list.extend(['master'])
                 completion_list.extend([str(i) for i in range(0,num_instances)])
+                completion_list.extend(["node%03d" % i for i in range(1,num_instances)])
                 return optcomplete.ListCompleter(completion_list)
             except Exception, e:
                 print e
