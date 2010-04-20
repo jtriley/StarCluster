@@ -170,7 +170,7 @@ class CmdStart(CmdBase):
             if not self.opts.validate_only:
                 scluster.start(create=not self.opts.no_create)
                 if self.opts.login_master:
-                       cluster.ssh_to_master(tag, self.cfg)
+                    cluster.ssh_to_master(tag, self.cfg)
         else:
             log.error('the cluster settings provided are not valid')
 

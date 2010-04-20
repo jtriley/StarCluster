@@ -142,6 +142,7 @@ class VolumeCreator(object):
             log.info("Creating %sGB volume in zone %s" % (volume_size,
                                                           volume_zone))
             vol = self._create_volume(volume_size, volume_zone)
+            log.info("New volume id: %s" % vol.id)
             log.info("Requesting instance")
             instance = self._request_instance()
             log.info("Attaching volume to instance")
