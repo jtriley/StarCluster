@@ -7,6 +7,7 @@ modified by justin riley (justin.t.riley@gmail.com)
 """
 
 import os
+import stat
 import string
 import tempfile
 import paramiko
@@ -108,6 +109,53 @@ class Connection(object):
         rfile = self._sftp.open(file, mode)
         rfile.name=file
         return rfile
+
+    def path_exists(self, path):
+        """
+        Test whether a remote path exists.  Returns False for broken symbolic links
+        """
+        self._sftp_connect()
+        try:
+            self.stat(path)
+            return True
+        except IOError,e:
+            return False
+
+    def ls(self, path):
+        """
+        Return a list containing the names of the entries in the remote path.
+        """
+        self._sftp_connect()
+        return [os.path.join(path,f) for f in self._sftp.listdir(path)]
+
+    def isdir(self, path):
+        """
+        Return true if the remote path refers to an existing directory.
+        """
+        self._sftp_connect()
+        try:
+            s = self.stat(path)
+        except IOError,e:
+            return False
+        return stat.S_ISDIR(s.st_mode)
+
+    def isfile(self, path):
+        """
+        Return true if the remote path refers to an existing file.
+        """
+        self._sftp_connect()
+        try:
+            s = self.stat(path)
+        except IOError,e:
+            return False
+        return stat.S_ISREG(s.st_mode)
+
+    def stat(self, path):
+        """
+        Perform a stat system call on the given remote path.
+        """
+        self._sftp_connect()
+        return self._sftp.stat(path)
 
     def get(self, remotepath, localpath = None):
         """Copies a file between the remote host and the local host."""

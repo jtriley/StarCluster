@@ -36,15 +36,44 @@ class DefaultClusterSetup(ClusterSetup):
         self._volumes = None
 
     def _setup_cluster_user(self):
-        """ Create cluster user on all StarCluster nodes """
+        """ 
+        Create cluster user on all StarCluster nodes 
+
+        This command takes care to examine existing folders in /home
+        and set the new cluster_user's uid/gid accordingly. This is necessary
+        for the case of EBS volumes containing /home with large amounts of data 
+        in them. It's much less expensive in this case to set the uid/gid of the 
+        new user to be the existing uid/gid of the dir in EBS rather than
+        chowning potentially terabytes of data.
+        """
+        mconn = self._master.ssh
+        home_folder = '/home/%s' % self._user
+        uid, gid = None, None
+        if mconn.path_exists(home_folder):
+            # get /home/user's owner/group uid and create user with that uid/gid
+            s = mconn.stat(home_folder)
+            uid = s.st_uid
+            gid = s.st_gid
+        else:
+            # get highest uid/gid of dirs in /home/*, increment by 1 and create user
+            # with that uid/gid
+            uid_db = {}
+            files = mconn.ls('/home')
+            for file in files:
+                path = os.path.join('/home',file)
+                if mconn.isdir(file):
+                    f = mconn.stat(file)
+                    uid_db[f.st_uid] = (file, gid)
+            max_uid = max(uid_db.keys())
+            max_gid = uid_db[max_uid][1]
+            uid, gid = max_uid+1, max_gid+1
+
+        log.debug("Cluster user gid/uid: (%d, %d)" % (uid,gid))
         log.info("Creating cluster user: %s" % self._user)
         for node in self._nodes:
             nconn = node.ssh
-            nconn.execute('useradd -m -s `which %s` %s' %
-                          (self._user_shell, self._user))
-        mconn = self._master.ssh
-        mconn.execute('chown -R %(user)s:%(user)s /home/%(user)s' % {
-            'user': self._user})
+            nconn.execute('useradd -u %s -g %s -m -s `which %s` %s' %
+                          (uid, gid, self._user_shell, self._user))
 
     def _setup_scratch(self):
         """ Configure scratch space on all StarCluster nodes """
