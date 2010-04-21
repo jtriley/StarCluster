@@ -189,7 +189,7 @@ class DefaultClusterSetup(ClusterSetup):
                 log.info("Mounting EBS volume %s on %s..." % (vol_id, mount_path))
                 mconn = self._master.ssh
                 master_fstab = mconn.remote_file('/etc/fstab', mode='a')
-                print >> master_fstab, "%s %s ext3 noauto,defaults 0 0 " % (
+                print >> master_fstab, "%s %s auto noauto,defaults 0 0 " % (
                     volume_partition, mount_path)
                 master_fstab.close()
                 mconn.execute('mkdir -p %s' % mount_path)
