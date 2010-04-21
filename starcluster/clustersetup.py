@@ -63,9 +63,11 @@ class DefaultClusterSetup(ClusterSetup):
                 if mconn.isdir(file):
                     f = mconn.stat(file)
                     uid_db[f.st_uid] = (file, f.st_gid)
-            max_uid = max(uid_db.keys())
-            max_gid = uid_db[max_uid][1]
-            uid, gid = max_uid+1, max_gid+1
+            uid, gid = 1000,1000
+            if uid_db.keys():
+                max_uid = max(uid_db.keys())
+                max_gid = uid_db[max_uid][1]
+                uid, gid = max_uid+1, max_gid+1
 
         log.debug("Cluster user gid/uid: (%d, %d)" % (uid,gid))
         log.info("Creating cluster user: %s" % self._user)
