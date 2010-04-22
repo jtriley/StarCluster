@@ -71,7 +71,7 @@ def _get_node_number(alias):
 
 def ssh_to_cluster_node(cluster_name, node_id, cfg, user='root'):
     cluster = get_cluster(cluster_name, cfg)
-    node_num = _get_node_number(node_id) 
+    node_num = _get_node_number(node_id) or node_id
     node = None
     try:
         node = cluster.nodes[int(node_num)]
