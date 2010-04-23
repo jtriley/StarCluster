@@ -24,8 +24,14 @@ __author__ = "Justin Riley <justin.t.riley@gmail.com>"
 import os
 import sys
 import time
-import logging
+from datetime import datetime, timedelta
 from pprint import pprint, pformat
+
+# hack for now to ignore pycrypto 2.0.1 using md5 and sha
+# why is pycrypto 2.1.0 not on pypi?
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
 from starcluster import cluster
 from starcluster import node
 from starcluster import config
@@ -34,8 +40,8 @@ from starcluster import static
 from starcluster import optcomplete
 from starcluster import image
 from starcluster import volume
-
-from starcluster.logger import log
+from starcluster import utils
+from starcluster.logger import log, DEBUG
 
 #try:
     #import optcomplete
@@ -696,6 +702,53 @@ class CmdRunPlugin(CmdBase):
         plugin_name, cluster_tag = args
         cluster.run_plugin(plugin_name, cluster_tag, self.cfg)
 
+class CmdSpotHistory(CmdBase):
+    """
+    spothistory [options] <instance_type>
+
+    Show spot instance pricing history stats (last 30 days by default)
+    """
+    names = ['spothistory']
+
+    def addopts(self, parser):
+        now_tup = datetime.now()
+        now = utils.datetime_tuple_to_iso(now_tup)
+        thirty_days_ago = utils.datetime_tuple_to_iso(now_tup - timedelta(days=30))
+        parser.add_option("-d","--days", dest="days_ago",
+            action="store", type="float", 
+            help="provide history in the last DAYS_AGO days " + \
+                          "(overrides -s and -e options)") 
+        parser.add_option("-s","--start-time", dest="start_time",
+            action="store", type="string", 
+            default=thirty_days_ago, 
+            help="show price history after START_TIME" + \
+                          "(e.g. 2010-01-15T22:22:22)")
+        parser.add_option("-e","--end-time", dest="end_time",
+            action="store", type="string", 
+            default=now, 
+            help="show price history up until END_TIME" + \
+                          "(e.g. 2010-02-15T22:22:22)")
+        parser.add_option("-p","--plot", dest="plot",
+            action="store_true",  default=False,
+            help="plot spot history using matplotlib")
+
+    def execute(self,args):
+        if len(args) != 1:
+            self.parser.error('expecting instance type as argument')
+        instance_type = args[0]
+        if not static.INSTANCE_TYPES.has_key(instance_type):
+            self.parser.error('invalid instance type. possible options: %s' % \
+                              ' '.join(static.INSTANCE_TYPES.keys()))
+        start = self.opts.start_time
+        end = self.opts.end_time
+        if self.opts.days_ago:
+            now =  datetime.now()
+            end = utils.datetime_tuple_to_iso(now)
+            start = utils.datetime_tuple_to_iso(
+                now - timedelta(days=self.opts.days_ago))
+        ec2 = self.cfg.get_easy_ec2()
+        ec2.get_spot_history(instance_type, start, end, self.opts.plot)
+
 class CmdShell(CmdBase):
     """
     shell
@@ -834,6 +887,7 @@ def main():
         CmdShowConsole(),
         CmdListZones(),
         CmdListPublic(),
+        CmdSpotHistory(),
         CmdShell(),
         CmdHelp(),
     ]
@@ -854,7 +908,7 @@ def main():
 
     gopts, sc, opts, args = parse_subcommands(gparser, subcmds)
     if gopts.DEBUG:
-        log.setLevel(logging.DEBUG)
+        log.setLevel(DEBUG)
     if args and args[0] =='help':
         sc.parser.print_help()
         sys.exit(0)

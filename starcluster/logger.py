@@ -3,6 +3,7 @@ import types
 import logging
 import logging.handlers
 import platform
+from logging import INFO, DEBUG, WARN, ERROR, FATAL
 
 INFO_NO_NEWLINE = logging.INFO + 1
 

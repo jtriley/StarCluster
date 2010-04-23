@@ -69,6 +69,15 @@ class EC2PrivateKeyDoesNotExist(AWSError):
     def __init__(self, key):
         self.msg = "EC2 private key file %s does not exist" % key
 
+class SpotHistoryError(AWSError):
+    def __init__(self, start, end):
+        self.msg = "no spot price history for the dates specified: " + \
+                "%s - %s" % (start, end)
+
+class InvalidIsoDate(BaseException):
+    def __init__(self, date):
+        self.msg = "Invalid date specified: %s" % date
+
 class ConfigError(BaseException):
     """Base class for all config related errors"""
 

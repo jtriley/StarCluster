@@ -6,6 +6,7 @@ Utils module for StarCluster
 import re
 import string
 import time
+from datetime import datetime
 from starcluster.logger import log
 
 class AttributeDict(dict):
@@ -91,6 +92,22 @@ def make_one_liner(script):
         False
     """
     return 'python -c "%s"' % script.strip().replace('\n',';')
+
+def is_iso_time(iso):
+    try:
+        iso_to_datetime_tuple(iso)
+        return True
+    except ValueError,e:
+        return False
+
+def iso_to_datetime_tuple(iso):
+    #remove timezone
+    iso = iso.split('.')[0]
+    return datetime.strptime(iso, "%Y-%m-%dT%H:%M:%S")
+
+def datetime_tuple_to_iso(tup):
+    iso = datetime.strftime(tup, "%Y-%m-%dT%H:%M:%S")
+    return iso
 
 try:
     import IPython.Shell

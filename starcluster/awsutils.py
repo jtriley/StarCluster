@@ -13,6 +13,7 @@ import boto
 import boto.ec2
 import boto.s3
 from starcluster import static
+from starcluster import utils
 from starcluster import exception
 from starcluster.logger import log
 from starcluster.utils import print_timing
@@ -433,6 +434,38 @@ class EasyEC2(EasyAWS):
 
     def get_security_groups(self):
         return self.conn.get_all_security_groups()
+
+    def get_spot_history(self, instance_type, start=None, end=None, plot=False):
+        if not utils.is_iso_time(start):
+            raise exception.InvalidIsoDate(start)
+        if not utils.is_iso_time(end):
+            raise exception.InvalidIsoDate(end)
+        hist = self.conn.get_spot_price_history(start_time=start, 
+                                        end_time=end,
+                                        instance_type=instance_type, 
+                                        product_description="Linux/UNIX")
+        if not hist:
+            raise exception.SpotHistoryError(start,end)
+        dates = [ utils.iso_to_datetime_tuple(i.timestamp) for i in hist]
+        prices = [ i.price for i in hist ]
+        maximum = max(prices)
+        avg = sum(prices)/len(prices)
+        log.info("Max price: $%.2f" % maximum)
+        log.info("Average price: $%.2f" % avg)
+        if plot:
+            try:
+                import pylab
+                pylab.plot_date(pylab.date2num(dates), prices, linestyle='-') 
+                pylab.xlabel('date')
+                pylab.ylabel('price (cents)')
+                pylab.title('%s Price vs Date (%s - %s)' % (instance_type, start, end))
+                pylab.grid(True)
+                pylab.show()
+            except ImportError:
+                log.error("cannot import pylab, please check that matplotlib is")
+                log.error("installed and that python -c 'import pylab'")
+                log.error("completes without error")
+        return zip(dates,prices)
 
 class EasyS3(EasyAWS):
     DefaultHost = 's3.amazonaws.com'
