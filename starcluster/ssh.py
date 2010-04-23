@@ -183,7 +183,8 @@ class Connection(object):
         channel = self._transport.open_session()
         channel.exec_command(command)
 
-    def execute(self, command, silent = True, only_printable = False):
+    def execute(self, command, silent = True, only_printable = False,
+                ignore_exit_status=False):
         """
         Execute a remote command and return stdout/stderr
 
@@ -215,9 +216,16 @@ class Connection(object):
             for line in stderr.readlines():
                 output.append(line)
                 print line;
-
         output = [ line.strip() for line in output ]
-
+        #TODO: warn about command failures
+        exit_status = channel.recv_exit_status()
+        if exit_status != 0:
+            if not ignore_exist_status:
+                log.error("command %s failed with status %d" % (command,
+                                                                exit_status))
+            else:
+                log.debug("command %s failed with status %d" % (command,
+                                                                exit_status))
         if silent:
             for line in output:
                 log.debug(line.strip())

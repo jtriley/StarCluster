@@ -113,6 +113,10 @@ class CmdStart(CmdBase):
         parser.add_option("-l","--login-master", dest="login_master",
             action="store_true", default=False, 
             help="ssh to ec2 cluster master node after launch")
+        opt = parser.add_option("-b","--bid", dest="spot_bid",
+            action="store", type="float", default=None, help="Requests spot instances instead " + \
+"of the usual flat rate instances. Uses SPOT_BID as max bid for the request." + \
+"Attempts to use ")
         parser.add_option("-d","--description", dest="cluster_description",
             action="store", type="string", 
             default="Cluster requested at %s" % time.strftime("%Y%m%d%H%M"), 

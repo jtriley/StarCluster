@@ -300,12 +300,11 @@ class StarClusterConfig(object):
 
     def get_cluster_template(self, template_name, tag_name=None):
         """
-        Returns a 
+        Returns Cluster instance configured with the settings in the config file.
+
         template_name is the name of a cluster section defined in the config
 
         tag_name, if specified, will be passed to Cluster instance as cluster_tag
-
-        Returns Cluster instance configured with the settings in the config file.
         """
         try:
             kwargs = {}

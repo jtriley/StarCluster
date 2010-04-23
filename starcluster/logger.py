@@ -42,6 +42,18 @@ log.setLevel(logging.INFO)
 mfh = MultipleFormatHandler()
 log.addHandler(mfh)
 
+#import os, tempfile
+#tmp_dir = tempfile.gettempdir()
+#debug_file = os.path.join(tmp_dir, 'starcluster-debug.log')
+#log.debug("Logging to %s" % debug_file)
+#rotating_file_handler = logging.handlers.RotatingFileHandler(debug_file, 
+                                                             #maxBytes=16384,
+                                                             #backupCount=5)
+#formatter = logging.Formatter("%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n")
+#rotating_file_handler.setFormatter(formatter)
+#rotating_file_handler.setLevel(DEBUG)
+#log.addHandler(rotating_file_handler)
+
 if platform.system() == "Linux":
     import os
     log_device = '/dev/log'

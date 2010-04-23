@@ -183,11 +183,29 @@ class DefaultClusterSetup(ClusterSetup):
         for vol in self._volumes:
             vol = self._volumes[vol]
             vol_id = vol.get("volume_id")
+            device = vol.get("device")
             volume_partition = vol.get('partition')
             mount_path = vol.get('mount_path')
             if vol_id and volume_partition and mount_path:
                 log.info("Mounting EBS volume %s on %s..." % (vol_id, mount_path))
                 mconn = self._master.ssh
+                if not mconn.path_exists(device):
+                    log.warn("Cannot find device %s for volume %s" % (device,
+                                                                      vol))
+                    log.warn("Not mounting %s on %s" % (vol_id,
+                                                        mount_path))
+                    log.warn("This usually means there was a problem" + \
+                             "attaching the EBS volume to the master node")
+                    continue
+                if not mconn.path_exists(volume_partition):
+                    log.warn("Cannot find partition %s on volume %s" %
+                             (volume_partition, vol_id))
+                    log.warn("Not mounting %s on %s" % (vol_id,
+                                                        mount_path))
+                    log.warn("This either means that the volume has not been" + \
+                             "partitioned or that the partition specified" + \
+                             "does not exist on the volume")
+                    continue
                 master_fstab = mconn.remote_file('/etc/fstab', mode='a')
                 print >> master_fstab, "%s %s auto noauto,defaults 0 0 " % (
                     volume_partition, mount_path)

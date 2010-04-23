@@ -149,6 +149,7 @@ class Cluster(object):
             aws_s3_path='/',
             aws_region_name=None,
             aws_region_host=None,
+            spot_bid=None,
             cluster_tag=None,
             cluster_description=None,
             cluster_size=None,
@@ -174,7 +175,7 @@ class Cluster(object):
             aws_region_name = aws_region_name, 
             aws_region_host = aws_region_host,
         )
-
+        self.spot_bid = spot_bid
         self.cluster_tag = cluster_tag
         self.cluster_description = cluster_description
         if self.cluster_tag is None:
@@ -382,6 +383,25 @@ class Cluster(object):
                 nodes.append(node)
         return nodes
 
+    def run_instances(self, price=None, image_id=None, instance_type='m1.small', 
+                      min_count=1, max_count=1, count=1, key_name=None,
+                      security_groups=None, launch_group=None, placement=None):
+        conn = self.ec2
+        if price:
+            return conn.request_spot_instances(price, image_id, 
+                                               instance_type=instance_type, 
+                                               count=count, 
+                                               launch_group=launch_group, 
+                                               key_name=key_name, 
+                                               security_groups=security_groups, 
+                                               placement=placement)
+        else:
+            return conn.run_instances(image_id, instance_type=instance_type, 
+                                      min_count=min_count, max_count=max_count, 
+                                      key_name=self.keyname, 
+                                      security_groups=[master_sg, cluster_sg], 
+                                      placement=self.availability_zone)
+
     def create_cluster(self):
         log.info("Launching a %d-node cluster..." % self.cluster_size)
         if self.master_image_id is None:
@@ -390,25 +410,29 @@ class Cluster(object):
             self.master_instance_type = self.node_instance_type
         log.info("Launching master node...")
         log.info("Master AMI: %s" % self.master_image_id)
-        conn = self.ec2
         master_sg = self.master_group.name
         cluster_sg = self.cluster_group.name
-        master_response = conn.run_instances(image_id=self.master_image_id,
+        master_response = self.run_instances(self.spot_bid,
+            image_id=self.master_image_id,
             instance_type=self.master_instance_type,
-            min_count=1, max_count=1,
+            min_count=1, max_count=1, count=1,
             key_name=self.keyname,
             security_groups=[master_sg, cluster_sg],
+            launch_group=cluster_sg,
             placement=self.availability_zone)
         print master_response
         if self.cluster_size > 1:
             log.info("Launching worker nodes...")
             log.info("Node AMI: %s" % self.node_image_id)
-            instances_response = conn.run_instances(image_id=self.node_image_id,
+            instances_response = self.run_instances(self.spot_bid,
+                image_id=self.node_image_id,
                 instance_type=self.node_instance_type,
                 min_count=max((self.cluster_size-1)/2, 1),
                 max_count=max(self.cluster_size-1,1),
+                count=max(self.cluster_size-1,1),
                 key_name=self.keyname,
                 security_groups=[cluster_sg],
+                launch_group=cluster_sg,
                 placement=self.availability_zone)
             print instances_response
 
@@ -475,7 +499,7 @@ class Cluster(object):
         log.log(INFO_NO_NEWLINE, "Waiting for cluster to start...")
         s.start()
         while not self.is_cluster_up():
-            time.sleep(15)
+            time.sleep(60)
         s.stop()
 
         log.info("The master node is %s" % self.master_node.dns_name)
@@ -524,6 +548,7 @@ $ ssh -i %(key)s %(user)s@%(master)s
     def is_valid(self): 
         try:
             self._has_all_required_settings()
+            self._validate_spot_bid()
             self._validate_cluster_size()
             self._validate_shell_setting()
             self._validate_credentials()
@@ -536,6 +561,9 @@ $ ssh -i %(key)s %(user)s@%(master)s
             log.error(e.msg)
             return False
         return True
+
+    def _validate_spot_bid(self):
+        pass
 
     def _validate_cluster_size(self):
         if self.cluster_size <= 0 or not isinstance(self.cluster_size, int):
