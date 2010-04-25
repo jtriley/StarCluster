@@ -921,6 +921,13 @@ def main():
     except exception.BaseException,e:
         log.error(e.msg)
         sys.exit(1)
+    except Exception,e:
+        import traceback
+        traceback.print_exc()
+        print
+        log.error("Oops! Looks like you've found a bug in StarCluster")
+        log.error("Please submit this bug to starcluster@mit.edu")
+        sys.exit(1)
 
 def test():
     pass
