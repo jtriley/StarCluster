@@ -220,7 +220,7 @@ class Connection(object):
         #TODO: warn about command failures
         exit_status = channel.recv_exit_status()
         if exit_status != 0:
-            if not ignore_exist_status:
+            if not ignore_exit_status:
                 log.error("command %s failed with status %d" % (command,
                                                                 exit_status))
             else:
