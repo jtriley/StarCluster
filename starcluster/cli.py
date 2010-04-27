@@ -382,8 +382,8 @@ class CmdCreateImage(CmdBase):
 
     NOTE: It is recommended not to create a new StarCluster AMI from
     an instance launched by StarCluster. Rather, launch a single 
-    StarCluster instance using elasticfox or the EC2 API tools, modify
-    it how you like, and then use this command to create a new AMI from 
+    StarCluster instance using ElasticFox or the EC2 API tools, modify
+    it to your liking, and then use this command to create a new AMI from 
     the running instance.
     """
     names = ['createimage']
@@ -404,6 +404,10 @@ class CmdCreateImage(CmdBase):
 
     def addopts(self, parser):
         opt = parser.add_option(
+            "-c","--confirm", dest="confirm",
+            action="store_true", default=False, 
+            help="Do not warn about re-imaging StarCluster instances")
+        opt = parser.add_option(
             "-r","--remove-image-files", dest="remove_image_files",
             action="store_true", default=False, 
             help="Remove generated image files on the instance after registering")
@@ -413,6 +417,30 @@ class CmdCreateImage(CmdBase):
             self.parser.error('you must specify an instance-id, image name, and bucket')
         instanceid, image_name, bucket = args
         cfg = self.cfg
+        ec2 = cfg.get_easy_ec2()
+        i = ec2.get_instance(instanceid)
+        if not self.opts.confirm:
+            for group in i.groups:
+                if group.id.startswith(static.SECURITY_GROUP_PREFIX):
+                    log.warn("Instance %s is a StarCluster instance" % i.id)
+                    print
+                    log.warn("Creating an image from a StarCluster instance " + \
+                    "can lead to problems when attempting to use the resulting " + \
+                    "image with StarCluster later on")
+                    print
+                    log.warn(
+                    "The recommended way to re-image a StarCluster AMI is " + \
+                    "to launch a single instance using either ElasticFox, the " +\
+                    "EC2 command line tools, or the AWS management console. " +\
+                    "Then login to the instance, modify it, and use this " + \
+                    "command to create a new AMI from it.")
+                    print
+                    resp = raw_input("Continue anyway (y/n)? ")
+                    if resp not in ['y','Y','yes']:
+                        log.info("Aborting...")
+                        sys.exit(1)
+                    break
+
         ami_id = image.create_image(instanceid, image_name, bucket, cfg,
                            **self.specified_options_dict)
         log.info("Your new AMI id is: %s" % ami_id)
@@ -541,6 +569,11 @@ class CmdRemoveVolume(CmdBase):
     """
     names = ['removevolume']
 
+    def addopts(self, parser):
+        parser.add_option("-c","--confirm", dest="confirm", action="store_true",
+            default=False,
+            help="do not prompt for confirmation, just remove the volume")
+
     def execute(self, args):
         if not args:
             self.parser.error("no volumes specified. exiting...")
@@ -555,10 +588,11 @@ class CmdRemoveVolume(CmdBase):
                 log.error("volume is currently detaching. " + \
                           "please wait a few moments and try again...")
                 return
-            resp = raw_input("**PERMANENTLY** delete %s (y/n)? " % volid)
-            if resp not in ['y','Y', 'yes']:
-                log.info("Aborting...")
-                return
+            if not self.opts.confirm:
+                resp = raw_input("**PERMANENTLY** delete %s (y/n)? " % volid)
+                if resp not in ['y','Y', 'yes']:
+                    log.info("Aborting...")
+                    return
             if vol.delete():
                 log.info("Volume %s deleted successfully" % vol.id)
             else:
@@ -580,10 +614,10 @@ class CmdRemoveImage(CmdBase):
     names = ['removeimage']
 
     def addopts(self, parser):
-        parser.add_option("-p","--pretend", dest="PRETEND", action="store_true",
+        parser.add_option("-p","--pretend", dest="pretend", action="store_true",
             default=False,
             help="pretend run, dont actually remove anything")
-        parser.add_option("-c","--confirm", dest="CONFIRM", action="store_true",
+        parser.add_option("-c","--confirm", dest="confirm", action="store_true",
             default=False,
             help="do not prompt for confirmation, just remove the image")
 
@@ -594,8 +628,8 @@ class CmdRemoveImage(CmdBase):
             imageid = arg
             ec2 = self.cfg.get_easy_ec2()
             image = ec2.get_image(imageid)
-            confirmed = self.opts.CONFIRM
-            pretend = self.opts.PRETEND
+            confirmed = self.opts.confirm
+            pretend = self.opts.pretend
             if not confirmed:
                 if not pretend:
                     resp = raw_input("**PERMANENTLY** delete %s (y/n)? " % imageid)

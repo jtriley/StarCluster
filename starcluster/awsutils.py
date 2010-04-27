@@ -181,7 +181,10 @@ class EasyEC2(EasyAWS):
     def get_instance(self, instance_id):
         try:
             res = self.conn.get_all_instances(instance_ids=[instance_id])
-            return res[0].instances[0]
+            i = res[0].instances[0]
+            # set group info 
+            i.groups = res[0].groups
+            return i
         except boto.exception.EC2ResponseError,e:
             raise exception.InstanceDoesNotExist(instance_id)
         except IndexError,e:
@@ -199,7 +202,11 @@ class EasyEC2(EasyAWS):
         reservations = self.conn.get_all_instances(instance_ids)
         instances = []
         for res in reservations:
-            instances.extend(res.instances)
+            insts = res.instances
+            for i in insts:
+                # set group info 
+                i.groups = res.groups
+            instances.extend(insts)
         return instances
 
     def list_all_instances(self, show_terminated=False):
