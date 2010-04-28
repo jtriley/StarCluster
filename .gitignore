@@ -6,3 +6,4 @@ build
 dist
 docs/sphinx/_build
 docs/epydoc/apidocs
+src
