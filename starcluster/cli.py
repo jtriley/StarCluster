@@ -68,7 +68,7 @@ class CmdBase(optcomplete.CmdComplete):
         specified = {}
         options = self.options_dict
         for opt in options:
-            if options[opt]:
+            if options[opt] is not None:
                 specified[opt] = options[opt]
         return specified
 
@@ -798,12 +798,23 @@ class CmdShell(CmdBase):
         cfg - starcluster.config.StarClusterConfig instance
         ec2 - starcluster.awsutils.EasyEC2 instance
         s3 - starcluster.awsutils.EasyS3 instance
+
+    All starcluster modules are automatically imported in the ipython session
     """
     names = ['shell']
     def execute(self,args):
         cfg = self.cfg
         ec2 = cfg.get_easy_ec2()
         s3 = ec2.s3
+        import starcluster
+        for modname in starcluster.__all__:
+            log.info('Importing module %s' % modname)
+            fullname = starcluster.__name__ + '.' + modname
+            try:
+                __import__(fullname)
+            except ImportError,e:
+                log.error("Error loading module %s" % modname)
+            locals()[modname] = sys.modules[fullname]
         from starcluster.utils import ipy_shell; ipy_shell();
 
 class CmdHelp:
