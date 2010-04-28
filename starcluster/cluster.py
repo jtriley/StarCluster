@@ -2,6 +2,7 @@
 import os
 import re
 import time
+import string
 import platform
 import pprint 
 import inspect
@@ -192,7 +193,7 @@ class Cluster(object):
         self.availability_zone = availability_zone
         self.keyname = keyname
         self.key_location = key_location
-        self.volumes = volumes
+        self.volumes = self.load_volumes(volumes)
         self.plugins = plugins
 
         self.__instance_types = static.INSTANCE_TYPES
@@ -203,6 +204,36 @@ class Cluster(object):
         self._nodes = None
         self._master = None
         self._plugins = self.load_plugins(plugins)
+
+    def load_volumes(self, vols):
+        """
+        Iterate through vols and set device/partition settings automatically if
+        not specified.
+
+        This method assigns the first volume to /dev/sdz, second to /dev/sdy,
+        etc for all volumes that do not include a device/partition setting
+        """
+        devices = [ '/dev/sd%s' % s for s in string.lowercase ]
+        for volname in vols:
+            vol = vols.get(volname)
+            dev = vol.get('device')
+            if dev in devices:
+                # rm user-defined devices from the list of auto-assigned devices
+                devices.remove(dev)
+        for volname in vols:
+            vol = vols.get(volname)
+            device = vol.get('device')
+            if not device:
+                device = devices.pop()
+            if not utils.is_valid_device(device):
+                raise exception.InvalidDevice(device)
+            vol['device'] = device
+            part = vol.get('partition',1)
+            partition = device + str(part)
+            if not utils.is_valid_partition(partition):
+                raise exception.InvalidPartition(part)
+            vol['partition'] = partition
+        return vols
 
     def load_plugins(self, plugins):
         plugs = []
@@ -217,6 +248,10 @@ class Cluster(object):
                 raise exception.PluginSyntaxError(
                     "Plugin %s (%s) contains a syntax error at line %s" % \
                     (plugin_name, e.filename, e.lineno)
+                )
+            except ImportError,e:
+                raise exception.PluginLoadError(
+                    "Failed to import plugin %s: %s" % (plugin_name, e.message)
                 )
             klass = getattr(mod, class_name, None)
             if klass:
@@ -457,7 +492,8 @@ class Cluster(object):
             device = volume.get('device')
             vol_id = volume.get('volume_id')
             vol = self.ec2.get_volume(vol_id)
-            log.info("Attaching volume %s to master node..." % vol.id)
+            log.info("Attaching volume %s to master node on %s ..." % (vol.id,
+                                                                      device))
             if vol.status != "available":
                 log.error('Volume %s not available...please check and try again'
                          % vol.id)
@@ -555,6 +591,7 @@ $ ssh -i %(key)s %(user)s@%(master)s
             self._validate_keypair()
             self._validate_zone()
             self._validate_ebs_settings()
+            self._validate_ebs_aws_settings()
             self._validate_image_settings()
             self._validate_instance_types()
         except exception.ClusterValidationError,e:
@@ -563,7 +600,14 @@ $ ssh -i %(key)s %(user)s@%(master)s
         return True
 
     def _validate_spot_bid(self):
-        pass
+        if self.spot_bid is not None:
+            if type(self.spot_bid) not in [int,float]:
+                raise exception.ClusterValidationError( \
+                    'spot_bid must be integer or float')
+            if self.spot_bid <= 0:
+                raise exception.ClusterValidationError(
+                    'spot_bid must be > 0')
+        return True
 
     def _validate_cluster_size(self):
         if self.cluster_size <= 0 or not isinstance(self.cluster_size, int):
@@ -662,7 +706,7 @@ $ ssh -i %(key)s %(user)s@%(master)s
                 self.__check_platform(master_image_id, node_instance_type)
             except exception.ClusterValidationError,e:
                 raise exception.ClusterValidationError( 
-                    'Incompatible node_image_id and node_instance_type\n' + e.msg
+                    'Incompatible master_image_id and node_instance_type\n' + e.msg
                 )
         elif master_image_id and master_instance_type:
             try:
@@ -680,8 +724,42 @@ $ ssh -i %(key)s %(user)s@%(master)s
                 )
         return True
 
+    def _validate_ebs_aws_settings(self):
+        """
+        Verify EBS volumes exists on Amazon and that each volume's zone matches
+        this cluster's zone setting. Requires AWS credentials.
+        """
+        for vol in self.volumes:
+            vol_name = vol
+            vol = self.volumes.get(vol)
+            vol_id = vol.get('volume_id')
+
+            zone = self.availability_zone
+            if not zone:
+                raise exception.ClusterValidationError(
+                    'Missing availability_zone setting')
+            conn = self.ec2
+            vol = conn.get_volume_or_none(vol_id)
+            if not vol:
+                raise exception.ClusterValidationError(
+                    'Volume %s (VOLUME_ID: %s) does not exist ' % \
+                    (vol_name,vol_id))
+            if vol.zone != zone:
+                msg = 'Volume %(vol)s is only available in zone %(vol_zone)s, '
+                msg += 'however, you specified availability_zone = '
+                msg += '%(availability_zone)s. You either need to change your '
+                msg += 'availability_zone setting to %(vol_zone)s or create a '
+                msg += 'new volume in %(availability_zone)s'  
+                raise exception.ClusterValidationError(msg % {
+                        'vol': vol.id, 
+                        'vol_zone': vol.zone, 
+                        'availability_zone': zone})
+
     def _validate_ebs_settings(self):
-        # check EBS vols for missing/duplicate DEVICE/PARTITION/MOUNT_PATHs 
+        """
+        Check EBS vols for missing/duplicate DEVICE/PARTITION/MOUNT_PATHs 
+        and validate these settings. Does not require AWS credentials.
+        """
         vol_ids = []
         devices = []
         mount_paths = []
@@ -716,31 +794,11 @@ $ ssh -i %(key)s %(user)s@%(master)s
             if not mount_path.startswith('/'):
                 raise exception.ClusterValidationError(
                     "Mount path for volume %s should start with /" % vol_name)
-            zone = self.availability_zone
-            if not zone:
-                raise exception.ClusterValidationError(
-                    'Missing availability_zone setting')
-            conn = self.ec2
-            vol = conn.get_volume_or_none(vol_id)
-            if not vol:
-                raise exception.ClusterValidationError(
-                    'Volume %s (VOLUME_ID: %s) does not exist ' % \
-                    (vol_name,vol_id))
-            if vol.zone != zone:
-                msg = 'Volume %(vol)s is only available in zone %(vol_zone)s, '
-                msg += 'however, you specified availability_zone = '
-                msg += '%(availability_zone)s. You either need to change your '
-                msg += 'availability_zone setting to %(vol_zone)s or create a '
-                msg += 'new volume in %(availability_zone)s'  
-                raise exception.ClusterValidationError(msg % {
-                        'vol': vol.id, 
-                        'vol_zone': vol.zone, 
-                        'availability_zone': zone})
         for vol_id in vol_ids:
             if vol_ids.count(vol_id) > 1:
                 raise exception.ClusterValidationError(
-                    "Multiple configurations for volume %s specified. " + \
-                    "Please choose one" % vol_id)
+                    ("Multiple configurations for volume %s specified. " + \
+                    "Please choose one") % vol_id)
         for dev in devices:
             if devices.count(dev) > 1:
                 raise exception.ClusterValidationError(

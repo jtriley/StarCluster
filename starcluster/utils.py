@@ -31,13 +31,22 @@ def print_timing(func):
 
 def is_valid_device(dev):
     regex = re.compile('/dev/sd[a-z]')
-    return len(dev) == 8 and regex.match(dev)
+    try:
+        return len(dev) == 8 and regex.match(dev)
+    except TypeError,e:
+        return False
 
 def is_valid_partition(part):
     regex = re.compile('/dev/sd[a-z][1-9][0-9]?')
-    return len(part) in [9,10] and regex.match(part)
+    try:
+        return len(part) in [9,10] and regex.match(part)
+    except TypeError,e:
+        return False
 
 def is_valid_bucket_name(bucket_name):
+    """
+    Check if bucket_name is a valid S3 bucket name(as defined by the AWS docs)
+    """
     length = len(bucket_name)
     valid_length = length >= 3 and length <= 255
     if not valid_length:
@@ -63,6 +72,9 @@ def validate_ip(ip_address):
         return False
 
 def is_valid_image_name(image_name):
+    """
+    Check if image_name is a valid AWS image name (as defined by the AWS docs)
+    """
     length = len(image_name)
     valid_length = length>=3 and length <=128
     valid_chars = string.letters + string.digits + "().-/_"

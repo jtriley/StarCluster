@@ -62,8 +62,8 @@ KEY_SETTINGS = {
 
 EBS_VOLUME_SETTINGS = {
     'VOLUME_ID': (str, True, None),
-    'DEVICE': (str, True, None),
-    'PARTITION': (str, True, None),
+    'DEVICE': (str, False, None),
+    'PARTITION': (int, False, 1),
     'MOUNT_PATH': (str, True, None),
 }
 

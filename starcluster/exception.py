@@ -117,6 +117,14 @@ class KeyNotFound(ConfigError):
     def __init__(self, keyname):
         self.msg = "key %s not found in config" % keyname
 
+class InvalidDevice(BaseException):
+    def __init__(self, device):
+        self.msg = "invalid device specified: %s" % device
+
+class InvalidPartition(BaseException):
+    def __init__(self, part):
+        self.msg = "invalid partition specified: %s" % part
+
 class PluginError(BaseException):
     """Base class for plugin errors"""
 

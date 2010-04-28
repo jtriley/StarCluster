@@ -224,10 +224,10 @@ class StarClusterConfig(object):
         cluster_section['volumes'] = vols
         volumes = [vol.strip() for vol in volumes.split(',')]
         for volume in volumes:
-            if self.vols.has_key(volume):
-                vols[volume] = self.vols.get(volume)
-            else:
+            if not self.vols.has_key(volume):
                 raise exception.ConfigError("volume %s not defined in config" % volume)
+            vol = self.vols.get(volume)
+            vols[volume] = vol
 
     def load_plugins(self, section_name, store):
         cluster_section = store
@@ -260,6 +260,7 @@ class StarClusterConfig(object):
             self.vols[vol] = AttributeDict()
             self.load_settings('volume', vol, self.volume_settings, 
                                self.vols[vol])
+            self.load_defaults(self.volume_settings, self.vols[vol])
             self.check_required('volume', vol, self.volume_settings, 
                                 self.vols[vol])
         plugins = [section.split()[1] for section in self.config.sections() if
@@ -320,7 +321,7 @@ class StarClusterConfig(object):
     def get_clusters(self):
         clusters = []
         for cluster in self.clusters:
-            clusters.append(self.get_cluster(cluster))
+            clusters.append(self.get_cluster_template(cluster))
         return clusters
 
     def get_plugin(self, plugin):
