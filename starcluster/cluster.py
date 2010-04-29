@@ -434,7 +434,7 @@ class Cluster(object):
             return conn.run_instances(image_id, instance_type=instance_type, 
                                       min_count=min_count, max_count=max_count, 
                                       key_name=self.keyname, 
-                                      security_groups=[master_sg, cluster_sg], 
+                                      security_groups=security_groups, 
                                       placement=self.availability_zone)
 
     def create_cluster(self):
