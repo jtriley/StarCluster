@@ -23,11 +23,13 @@ try:
 except ImportError:
     HAS_TERMIOS = False
 
+from starcluster import exception
 from starcluster.logger import log
 
 class Connection(object):
-    """Connects and logs into the specified hostname. 
-    Arguments that are not given are guessed from the environment.""" 
+    """Establishes an ssh connection to a remote host using either password or private
+    key authentication. Once established, this object allows executing and
+    copying files to/from the remote host"""
 
     def __init__(self,
                  host,
@@ -36,7 +38,9 @@ class Connection(object):
                  private_key = None,
                  private_key_pass = None,
                  port = 22,
+                 timeout=30,
                  ):
+        self._timeout = timeout
         self._sftp_live = False
         self._sftp = None
         if not username:
@@ -47,37 +51,53 @@ class Connection(object):
         paramiko.util.log_to_file(templog)
 
         # Begin the SSH transport.
-        self._transport = paramiko.Transport((host, port))
-        self._tranport_live = True
+        self._transport_live = False
+        try:
+            sock = self._get_socket(host, port)
+            self._transport = paramiko.Transport(sock)
+        except socket.error:
+            raise exception.SSHConnectionError(host, port)
+        self._transport_live = True
         # Authenticate the transport.
         if password:
             # Using Password.
-            self._transport.connect(username = username, password = password)
-        else:
+            try:
+                self._transport.connect(username = username, password = password)
+            except paramiko.AuthenticationException:
+                raise exception.SSHAuthException(username,host)
+        elif private_key:
             # Use Private Key.
             pkey = None
-            if private_key:
-                log.debug('private key specified')
-                if private_key.endswith('rsa') or private_key.count('rsa'):
-                    pkey = self._load_rsa_key(private_key, private_key_pass)
-                elif private_key.endswith('dsa') or private_key.count('dsa'):
-                    pkey = self._load_dsa_key(private_key, private_key_pass)
-                else:
-                    log.warn("specified key does not end in either rsa or dsa, trying both")
-                    pkey = self._load_rsa_key(private_key, private_key_pass)
-                    if pkey is None:
-                        pkey = self._load_dsa_key(private_key, private_key_pass)
+            log.debug('private key specified')
+            if private_key.endswith('rsa') or private_key.count('rsa'):
+                pkey = self._load_rsa_key(private_key, private_key_pass)
+            elif private_key.endswith('dsa') or private_key.count('dsa'):
+                pkey = self._load_dsa_key(private_key, private_key_pass)
             else:
-                log.debug('no private_key specified')
-                # Try to use default key.
-                if os.path.exists(os.path.expanduser('~/.ssh/id_rsa')):
-                    pkey = self._load_rsa_key('~/.ssh/id_rsa')
-                elif os.path.exists(os.path.expanduser('~/.ssh/id_dsa')):
-                    pkey = self._load_dsa_key('~/.ssh/id_dsa')
-                else:
-                    raise TypeError, "You have not specified a password or key."
+                log.warn("specified key does not end in either rsa or dsa, trying both")
+                pkey = self._load_rsa_key(private_key, private_key_pass)
+                if pkey is None:
+                    pkey = self._load_dsa_key(private_key, private_key_pass)
+            try:
+                self._transport.connect(username = username, pkey = pkey)
+            except paramiko.AuthenticationException:
+                raise exception.SSHAuthException(username, host)
+        else:
+            raise exception.SSHNoCredentialsError()
 
-            self._transport.connect(username = username, pkey = pkey)
+    def _get_socket(self, hostname, port):
+        for (family, socktype, proto, canonname, sockaddr) in \
+        socket.getaddrinfo(hostname, port, socket.AF_UNSPEC, socket.SOCK_STREAM):
+            if socktype == socket.SOCK_STREAM:
+                af = family
+                addr = sockaddr
+                break
+            else:
+                raise exception.SSHError('No suitable address family for %s' % hostname)
+        sock = socket.socket(af, socket.SOCK_STREAM)
+        sock.settimeout(self._timeout)
+        sock.connect((hostname, port))
+        return sock
 
     def _load_rsa_key(self, private_key, private_key_pass=None):
         private_key_file = os.path.expanduser(private_key)
@@ -238,9 +258,9 @@ class Connection(object):
             self._sftp.close()
             self._sftp_live = False
         # Close the SSH Transport.
-        if self._tranport_live:
+        if self._transport_live:
             self._transport.close()
-            self._tranport_live = False
+            self._transport_live = False
 
     def interactive_shell(self):
         try:
@@ -327,11 +347,10 @@ class Connection(object):
 def main():
     """Little test when called directly."""
     # Set these to your own details.
-    myssh = Connection('example.com')
+    myssh = Connection('somehost.domain.com')
     print myssh.execute('hostname')
     #myssh.put('ssh.py')
     myssh.close()
 
-# start the ball rolling.
 if __name__ == "__main__":
     main()

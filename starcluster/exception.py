@@ -14,6 +14,23 @@ class BaseException(Exception):
     def explain(self):
         return "%s: %s" % (self.__class__.__name__, self.msg)
 
+class SSHError(BaseException):
+    """Base class for all SSH related errors"""
+
+class SSHConnectionError(SSHError):
+    """Raised when ssh fails to to connect to a host (socket error)"""
+    def __init__(self, host, port):
+        self.msg = "failed to connect to host %s on port %s" % (host,port)
+
+class SSHAuthException(SSHError):
+    """Raised when an ssh connection fails to authenticate"""
+    def __init__(self, user, host):
+        self.msg = "failed to authenticate to host %s as user %s" % (user, host)
+
+class SSHNoCredentialsError(BaseException):
+    def __init__(self, *args):
+        self.msg = "No password or key specified"
+
 class AWSError(BaseException):
     pass
 
