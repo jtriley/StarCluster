@@ -89,7 +89,8 @@ class EasyEC2(EasyAWS):
     @property
     def executable_images(self):
         if not self.cache or self._images is None:
-            self._executable_images = self.conn.get_all_images(executable_by=["self"])
+            self._executable_images = self.conn.get_all_images(
+                executable_by=["self"])
         return self._executable_images
 
     def get_registered_image(self, image_id):
@@ -121,7 +122,8 @@ class EasyEC2(EasyAWS):
         except IndexError, e:
             pass
 
-    def get_or_create_group(self, name, description, auth_ssh=True, auth_group_traffic=False):
+    def get_or_create_group(self, name, description, auth_ssh=True, 
+                            auth_group_traffic=False):
         """ 
         Try to return a security group by name.
         If the group is not found, attempt to create it. 
@@ -135,15 +137,18 @@ class EasyEC2(EasyAWS):
                                      auth_group_traffic)
         return sg
 
-    def request_spot_instances(self, price, image_id, instance_type='m1.small', 
-                               count=1, launch_group=None, key_name=None, 
-                               security_groups=None, placement=None):
+    def request_spot_instances(self, price, image_id, instance_type='m1.small',
+                               count=1, launch_group=None, key_name=None,
+                               availability_zone_group=None, security_groups=None,
+                               placement=None):
         return self.conn.request_spot_instances(price, image_id,
                                                 instance_type=instance_type,
                                                 count=count,
                                                 launch_group=launch_group,
                                                 key_name=key_name,
                                                 security_groups=security_groups,
+                                                availability_zone_group = \
+                                                availability_zone_group,
                                                 placement=placement)
 
     def run_instances(self, image_id, instance_type='m1.small', min_count=1,
