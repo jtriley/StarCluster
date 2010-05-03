@@ -68,7 +68,8 @@ class DefaultClusterSetup(ClusterSetup):
                 max_uid = max(uid_db.keys())
                 max_gid = uid_db[max_uid][1]
                 uid, gid = max_uid+1, max_gid+1
-
+        uid = max(uid, 1000)
+        gid = max(gid, 1000)
         log.debug("Cluster user gid/uid: (%d, %d)" % (uid,gid))
         log.info("Creating cluster user: %s" % self._user)
         for node in self._nodes:
