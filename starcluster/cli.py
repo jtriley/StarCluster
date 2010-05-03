@@ -32,6 +32,7 @@ from pprint import pprint, pformat
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
+from boto.exception import EC2ResponseError
 from starcluster import cluster
 from starcluster import node
 from starcluster import config
@@ -182,7 +183,8 @@ class CmdStart(CmdBase):
                 if self.opts.login_master:
                     cluster.ssh_to_master(tag, self.cfg)
         else:
-            log.error('the cluster settings provided are not valid')
+            log.error('settings for cluster template "%s" are not valid' % template)
+            sys.exit(1)
 
 class CmdStop(CmdBase):
     """
@@ -876,6 +878,9 @@ def parse_subcommands(gparser, subcmds):
         raise SystemExit("\nError: you must specify an action.")
     subcmdname, subargs = args[0], args[1:]
 
+    # set debug level if specified
+    if gopts.DEBUG:
+        log.setLevel(DEBUG)
     # load StarClusterConfig into global options
     try:
         cfg = config.StarClusterConfig(gopts.CONFIG)
@@ -913,7 +918,7 @@ def main():
         help="print debug messages (useful for diagnosing problems)")
     gparser.add_option("-c","--config", dest="CONFIG", action="store",
         metavar="FILE",
-        help="use alternate config file (default: ~/.starclustercfg)")
+        help="use alternate config file (default: ~/.starcluster/config)")
 
     # Declare subcommands.
     subcmds = [
@@ -956,8 +961,6 @@ def main():
         return -1
 
     gopts, sc, opts, args = parse_subcommands(gparser, subcmds)
-    if gopts.DEBUG:
-        log.setLevel(DEBUG)
     if args and args[0] =='help':
         sc.parser.print_help()
         sys.exit(0)
@@ -965,6 +968,9 @@ def main():
         sc.execute(args)
     except exception.BaseException,e:
         log.error(e.msg)
+        sys.exit(1)
+    except EC2ResponseError,e:
+        log.error("%s: %s" % (e.error_code, e.error_message))
         sys.exit(1)
     except Exception,e:
         import traceback

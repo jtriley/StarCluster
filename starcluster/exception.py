@@ -101,6 +101,10 @@ class ConfigError(BaseException):
 class ConfigSectionMissing(ConfigError):
     pass
 
+class ConfigHasNoSections(ConfigError):
+    def __init__(self, cfg_file):
+        self.msg = "No valid sections defined in config file %s" % cfg_file
+
 class ConfigNotFound(ConfigError):
     def __init__(self, *args, **kwargs):
         super(ConfigNotFound, self).__init__(*args, **kwargs)
@@ -162,6 +166,16 @@ class ClusterValidationError(ValidationError):
 
 class IncompatibleSettings(ClusterValidationError):
     """Raised when two or more settings conflict with each other"""
+
+class InvalidZone(ClusterValidationError):
+    """Raised when user specified a zone that is not the same as the zone of the
+    volumes being attached"""
+    def __init__(self, zone, common_vol_zone):
+        self.msg = "zone %s does not match common volume zone %s" % (zone, common_vol_zone)
+
+class VolumesZoneError(ClusterValidationError):
+    def __init__(self, volumes):
+        self.msg = 'Volumes %s are not in the same availability zone' % ', '.join(volumes)
 
 class ClusterTemplateDoesNotExist(BaseException):
     """

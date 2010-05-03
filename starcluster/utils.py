@@ -5,6 +5,7 @@ Utils module for StarCluster
 
 import re
 import string
+import urlparse
 import time
 from datetime import datetime
 from starcluster.logger import log
@@ -104,6 +105,18 @@ def make_one_liner(script):
         False
     """
     return 'python -c "%s"' % script.strip().replace('\n',';')
+
+def is_url(url):
+    try:
+        parts = urlparse.urlparse(url)
+        scheme = parts[0]
+        netloc = parts[1]
+        if scheme and netloc:
+            return True
+        else:
+            return False
+    except:
+        return False
 
 def is_iso_time(iso):
     try:

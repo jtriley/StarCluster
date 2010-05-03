@@ -204,6 +204,38 @@ class Cluster(object):
         self._nodes = None
         self._master = None
         self._plugins = self.load_plugins(plugins)
+        self._zone = None
+
+    @property
+    def zone(self):
+        """
+        If volumes are specified, this method determines the common availability
+        zone between those volumes. If an availability zone is explicitly
+        specified in the config and does not match the common availability zone
+        of the volumes, an exception is raised. If all volumes are not in the same
+        availabilty zone an exception is raised. If no volumes are specified,
+        returns the user specified availability zone if it exists.
+        """
+        if not self._zone:
+            zone = None
+            if self.availability_zone:
+                zone = self.ec2.get_zone(self.availability_zone).name
+            common_zone = None
+            for volume in self.volumes:
+                volid = self.volumes.get(volume).get('volume_id')
+                vol = self.ec2.get_volume(volid)
+                if not common_zone:
+                    common_zone = vol.zone
+                elif vol.zone != common_zone:
+                    vols = [ self.volumes.get(v).get('volume_id') 
+                         for v in self.volumes ]
+                    raise exception.VolumesZoneError(vols)
+            if common_zone and zone and zone != common_zone:
+                raise exception.InvalidZone(zone, common_zone)
+            if not zone and common_zone:
+                zone = common_zone
+            self._zone=zone
+        return self._zone
 
     def load_volumes(self, vols):
         """
@@ -420,7 +452,8 @@ class Cluster(object):
 
     def run_instances(self, price=None, image_id=None, instance_type='m1.small', 
                       min_count=1, max_count=1, count=1, key_name=None,
-                      security_groups=None, launch_group=None, placement=None):
+                      security_groups=None, launch_group=None,
+                      availability_zone_group=None, placement=None):
         conn = self.ec2
         if price:
             return conn.request_spot_instances(price, image_id, 
@@ -429,13 +462,14 @@ class Cluster(object):
                                                launch_group=launch_group, 
                                                key_name=key_name, 
                                                security_groups=security_groups, 
+                                               availability_zone_group=availability_zone_group,
                                                placement=placement)
         else:
             return conn.run_instances(image_id, instance_type=instance_type, 
                                       min_count=min_count, max_count=max_count, 
-                                      key_name=self.keyname, 
+                                      key_name=key_name, 
                                       security_groups=security_groups, 
-                                      placement=self.availability_zone)
+                                      placement=placement)
 
     def create_cluster(self):
         log.info("Launching a %d-node cluster..." % self.cluster_size)
@@ -447,14 +481,16 @@ class Cluster(object):
         log.info("Master AMI: %s" % self.master_image_id)
         master_sg = self.master_group.name
         cluster_sg = self.cluster_group.name
+        zone = self.zone
         master_response = self.run_instances(self.spot_bid,
             image_id=self.master_image_id,
             instance_type=self.master_instance_type,
             min_count=1, max_count=1, count=1,
             key_name=self.keyname,
             security_groups=[master_sg, cluster_sg],
+            availability_zone_group=cluster_sg,
             launch_group=cluster_sg,
-            placement=self.availability_zone)
+            placement=zone)
         print master_response
         if self.cluster_size > 1:
             log.info("Launching worker nodes...")
@@ -467,8 +503,9 @@ class Cluster(object):
                 count=max(self.cluster_size-1,1),
                 key_name=self.keyname,
                 security_groups=[cluster_sg],
+                availability_zone_group=cluster_sg,
                 launch_group=cluster_sg,
-                placement=self.availability_zone)
+                placement=zone)
             print instances_response
 
     def is_cluster_up(self):
@@ -573,6 +610,12 @@ $ starcluster sshmaster %(tag)s
 or manually as %(user)s:
 
 $ ssh -i %(key)s %(user)s@%(master)s
+
+When you are finished using the cluster, run:
+
+$ starcluster stop %(tag)s
+
+to shutdown the cluster and stop paying for service
 
         """ % {
             'master': self.master_node.dns_name, 
@@ -729,31 +772,7 @@ $ ssh -i %(key)s %(user)s@%(master)s
         Verify EBS volumes exists on Amazon and that each volume's zone matches
         this cluster's zone setting. Requires AWS credentials.
         """
-        for vol in self.volumes:
-            vol_name = vol
-            vol = self.volumes.get(vol)
-            vol_id = vol.get('volume_id')
-
-            zone = self.availability_zone
-            if not zone:
-                raise exception.ClusterValidationError(
-                    'Missing availability_zone setting')
-            conn = self.ec2
-            vol = conn.get_volume_or_none(vol_id)
-            if not vol:
-                raise exception.ClusterValidationError(
-                    'Volume %s (VOLUME_ID: %s) does not exist ' % \
-                    (vol_name,vol_id))
-            if vol.zone != zone:
-                msg = 'Volume %(vol)s is only available in zone %(vol_zone)s, '
-                msg += 'however, you specified availability_zone = '
-                msg += '%(availability_zone)s. You either need to change your '
-                msg += 'availability_zone setting to %(vol_zone)s or create a '
-                msg += 'new volume in %(availability_zone)s'  
-                raise exception.ClusterValidationError(msg % {
-                        'vol': vol.id, 
-                        'vol_zone': vol.zone, 
-                        'availability_zone': zone})
+        zone = self.zone
 
     def _validate_ebs_settings(self):
         """
@@ -787,13 +806,13 @@ $ ssh -i %(key)s %(user)s@%(master)s
                     "Invalid PARTITION value for volume %s" % vol_name)
             if not partition.startswith(device):
                 raise exception.ClusterValidationError(
-                    "Volume partition must start with %s" % device)
+                    "Volume PARTITION must start with %s" % device)
             if not mount_path:
                 raise exception.ClusterValidationError(
                     'Missing MOUNT_PATH setting for volume %s' % vol_name)
             if not mount_path.startswith('/'):
                 raise exception.ClusterValidationError(
-                    "Mount path for volume %s should start with /" % vol_name)
+                    "MOUNT_PATH for volume %s should start with /" % vol_name)
         for vol_id in vol_ids:
             if vol_ids.count(vol_id) > 1:
                 raise exception.ClusterValidationError(

@@ -1,6 +1,9 @@
 import os
-import unittest
 import tempfile
+
+import logging
+logging.disable(logging.WARN)
+
 from starcluster.logger import log
 from starcluster import exception
 from starcluster.tests import StarClusterTest
@@ -152,11 +155,30 @@ class TestStarClusterConfig(StarClusterTest):
         else:
             raise Exception('config allows non-existent keypairs to be specified')
 
-    def test_empty_config(self):
+    def test_invalid_config(self):
+        """
+        Test that reading a non-INI formatted file raises an exception
+        """
+        tmp_file = tempfile.NamedTemporaryFile()
+        tmp_file.write("""<html>random garbage file with no section headings</html>""")
+        tmp_file.flush()
         try:
-            tmp_file = tempfile.NamedTemporaryFile()
             cfg = StarClusterConfig(tmp_file.name, cache=True); cfg.load()
-        except exception.ConfigSectionMissing,e:
+        except exception.ConfigHasNoSections,e:
             pass
         else:
-            raise Exception('config ignores missing sections')
+            raise Exception("config allows non-INI formatted files")
+
+    def test_empty_config(self):
+        """
+        Test that reading an empty config generates no errors and that aws
+        credentials can be read from the environment.
+        """
+        aws_key = 'testkey'
+        aws_secret_key = 'testsecret'
+        os.environ['AWS_ACCESS_KEY_ID'] = aws_key
+        os.environ['AWS_SECRET_ACCESS_KEY'] = aws_secret_key
+        tmp_file = tempfile.NamedTemporaryFile()
+        cfg = StarClusterConfig(tmp_file.name, cache=True); cfg.load()
+        assert cfg.aws['aws_access_key_id'] == aws_key
+        assert cfg.aws['aws_secret_access_key'] == aws_secret_key

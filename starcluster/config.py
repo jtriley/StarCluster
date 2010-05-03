@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 import os
 import sys
+import urllib
 import ConfigParser
 
 from starcluster.cluster import Cluster
 from starcluster import static 
 from starcluster import awsutils 
+from starcluster import utils
 from starcluster.utils import AttributeDict
 from starcluster import exception 
 
@@ -29,14 +31,6 @@ def get_easy_ec2():
     cfg = StarClusterConfig(); cfg.load()
     return cfg.get_easy_ec2()
 
-def get_aws_from_environ():
-    """Returns AWS credentials defined in the user's shell
-    environment."""
-    awscreds = {}
-    for key in static.AWS_SETTINGS:
-        if os.environ.has_key(key):
-            awscreds[key] = os.environ.get(key)
-    return awscreds
 
 def get_config(config_file=None, cache=False):
     """Factory for StarClusterConfig object"""
@@ -69,22 +63,7 @@ class StarClusterConfig(object):
     instance_types = static.INSTANCE_TYPES
 
     def __init__(self, config_file=None, cache=False):
-        if not os.path.isdir(static.STARCLUSTER_CFG_DIR):
-            os.makedirs(static.STARCLUSTER_CFG_DIR)
-        if config_file:
-            self.cfg_file = config_file
-        else:
-            self.cfg_file = static.STARCLUSTER_CFG_FILE
-        if os.path.exists(self.cfg_file):
-            if not os.path.isfile(self.cfg_file):
-                raise exception.ConfigError('Config %s exists but is not a regular file' %
-                                 self.cfg_file)
-        else:
-            raise exception.ConfigNotFound(
-                ("Config file %s does not exist\n") %
-                self.cfg_file, self.cfg_file,
-            )
-
+        self.cfg_file = config_file
         self.type_validators = {
             int: self._get_int,
             str: self._get_string,
@@ -97,6 +76,33 @@ class StarClusterConfig(object):
         self.vols = AttributeDict()
         self.plugins = AttributeDict()
         self.cache = cache
+
+    def _get_urlfp(self, url):
+        import socket
+        try:
+            fp = urllib.urlopen(url)
+            if fp.getcode() == 404:
+                raise exception.ConfigError("url %s does not exist" % url)
+            fp.name = url
+            return fp
+        except IOError,e:
+            raise exception.ConfigError("error loading config from url %s\n%s"
+                                        % (url,e))
+
+    def _get_fp(self, config_file):
+        if not os.path.isdir(static.STARCLUSTER_CFG_DIR):
+            os.makedirs(static.STARCLUSTER_CFG_DIR)
+        cfg_file = config_file or static.STARCLUSTER_CFG_FILE
+        if os.path.exists(cfg_file):
+            if not os.path.isfile(cfg_file):
+                raise exception.ConfigError('config %s exists but is not a regular file' %
+                                 cfg_file)
+        else:
+            raise exception.ConfigNotFound(
+                ("config file %s does not exist\n") %
+                cfg_file, cfg_file,
+            )
+        return open(cfg_file)
 
     def _get_bool(self, config, section, option):
         try:
@@ -131,15 +137,36 @@ class StarClusterConfig(object):
         except ConfigParser.NoOptionError,e:
             pass
 
+    def __load_config(self):
+        """
+        Populates self._config with a new ConfigParser instance
+        """
+        cfg = self.cfg_file
+        if utils.is_url(cfg):
+            log.debug("Loading url")
+            cfg = self._get_urlfp(cfg)
+        else:
+            log.debug("Loading file")
+            cfg = self._get_fp(cfg)
+        try:
+            cp = ConfigParser.ConfigParser()
+            cp.readfp(cfg)
+            return cp
+        except ConfigParser.MissingSectionHeaderError,e:
+            raise exception.ConfigHasNoSections(cfg.name)
+
+    def reload(self):
+        """
+        Reloads the configuration file
+        """
+        self._config = self.__load_config()
+        self.load()
+
     @property
     def config(self):
-        CFG_FILE = self.cfg_file
-        if not self.cache or self._config is None:
-            try:
-                self._config = ConfigParser.ConfigParser()
-                self._config.read(CFG_FILE)
-            except ConfigParser.MissingSectionHeaderError,e:
-                log.warn('No sections defined in settings file %s' % CFG_FILE)
+        cfg = self.cfg_file
+        if self._config is None:
+            self._config = self.__load_config()
         return self._config
 
     def load_settings(self, section_prefix, section_name, settings, store):
@@ -246,8 +273,14 @@ class StarClusterConfig(object):
                 raise exception.ConfigError("plugin %s not defined in config" % plugin)
 
     def load(self):
-        self.load_settings('aws', 'info', self.aws_settings, self.aws)
-        self.check_required('aws', 'info', self.aws_settings, self.aws)
+        log.debug('Loading config')
+        try:
+            self.load_settings('aws', 'info', self.aws_settings, self.aws)
+            self.check_required('aws', 'info', self.aws_settings, self.aws)
+        except exception.ConfigSectionMissing,e:
+            log.warn("no [aws info] section found in config")
+            log.warn("attempting to load credentials from environment...")
+            self.aws.update(self.get_aws_from_environ())
         keys = [section.split()[1] for section in self.config.sections() if 
                 section.startswith('key')]
         for key in keys:
@@ -286,6 +319,15 @@ class StarClusterConfig(object):
             self.check_required('cluster', cluster, self.cluster_settings,
                                self.clusters[cluster])
 
+    def get_aws_from_environ(self):
+        """Returns AWS credentials defined in the user's shell
+        environment."""
+        awscreds = {}
+        for key in static.AWS_SETTINGS:
+            if os.environ.has_key(key):
+                awscreds[key.lower()] = os.environ.get(key)
+        return awscreds
+
     def get_aws_credentials(self):
         """
         Returns AWS credentials defined in the configuration
@@ -293,7 +335,7 @@ class StarClusterConfig(object):
         overrides the configuration file.
         """
         # first override with environment settings if they exist
-        self.aws.update(get_aws_from_environ())
+        self.aws.update(self.get_aws_from_environ())
         return self.aws
 
     def get_cluster_names(self):
@@ -342,8 +384,12 @@ class StarClusterConfig(object):
         the StarCluster config file. Returns an EasyS3 object if
         successful.
         """
-        s3 = awsutils.EasyS3(**self.aws)
-        return s3
+        aws = self.get_aws_credentials()
+        try:
+            s3 = awsutils.EasyS3(**aws)
+            return s3
+        except TypeError,e:
+            raise exception.ConfigError("no aws credentials found")
 
     def get_easy_ec2(self):
         """
@@ -351,8 +397,12 @@ class StarClusterConfig(object):
         the StarCluster config file. Returns an EasyEC2 object if
         successful.
         """
-        ec2 = awsutils.EasyEC2(**self.aws)
-        return ec2
+        aws = self.get_aws_credentials()
+        try:
+            ec2 = awsutils.EasyEC2(**aws)
+            return ec2
+        except TypeError,e:
+            raise exception.ConfigError("no aws credentials found")
 
 if __name__ == "__main__":
     from pprint import pprint
