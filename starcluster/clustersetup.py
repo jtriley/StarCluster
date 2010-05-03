@@ -103,12 +103,10 @@ class DefaultClusterSetup(ClusterSetup):
     def _setup_passwordless_ssh(self):
         """ Properly configure passwordless ssh for CLUSTER_USER on all StarCluster nodes"""
         log.info("Configuring passwordless ssh for root")
-
         mconn = self._master.ssh
-
         # create local ssh key for root and copy to local tempdir
         # remove any old keys first
-        mconn.execute('rm /root/.ssh/id_rsa*')
+        mconn.execute('rm /root/.ssh/id_rsa*', ignore_exit_status=True)
         mconn.execute('ssh-keygen -q -t rsa -f /root/.ssh/id_rsa -P ""')
         tempdir = tempfile.mkdtemp(prefix="starcluster-")
         temprsa = os.path.join(tempdir, 'id_rsa')
@@ -245,7 +243,8 @@ class DefaultClusterSetup(ClusterSetup):
         mconn.execute('mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs/')
         mconn.execute('/etc/init.d/nfs start')
         mconn.execute('/usr/sbin/exportfs -r')
-        mconn.execute('mount -t devpts none /dev/pts') # fix for xterm/mpi printing to stdout
+        # fix for xterm/mpi printing to stdout
+        mconn.execute('mount -t devpts none /dev/pts', ignore_exit_status=True) 
 
         # setup /etc/fstab and mount /home and /opt/sge6 on each node
         for node in self._nodes:
@@ -258,7 +257,9 @@ class DefaultClusterSetup(ClusterSetup):
                 nconn.execute('echo "%s:/opt/sge6 /opt/sge6 nfs user,rw,exec 0 0" >> /etc/fstab' % master.private_dns_name)
                 nconn.execute('mount /home')
                 nconn.execute('mount /opt/sge6')
-                nconn.execute('mount -t devpts none /dev/pts') # fix for xterm
+                # fix for xterm
+                nconn.execute('mount -t devpts none /dev/pts',
+                              ignore_exit_status=True) 
                 for vol in self._volumes:
                     vol = self._volumes[vol]
                     mount_path = vol.get('mount_path')
