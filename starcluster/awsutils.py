@@ -76,6 +76,10 @@ class EasyEC2(EasyAWS):
         self._executable_images = None
         self._security_group_response = None
 
+    def __check_for_auth_failure(self, e):
+        if e.error_code == "AuthFailure":
+            raise e
+
     @property
     def registered_images(self):
         if not self.cache or self._images is None:
@@ -112,6 +116,7 @@ class EasyEC2(EasyAWS):
             sg = self.conn.get_all_security_groups(groupnames=[name])[0]
             return sg
         except boto.exception.EC2ResponseError, e:
+            self.__check_for_auth_failure(e)
             pass
         except IndexError, e:
             pass
@@ -161,6 +166,7 @@ class EasyEC2(EasyAWS):
         try:
             return self.conn.get_all_key_pairs(keynames=[keypair])[0]
         except boto.exception.EC2ResponseError,e:
+            self.__check_for_auth_failure(e)
             raise exception.KeyPairDoesNotExist(keypair)
         except IndexError,e:
             raise exception.KeyPairDoesNotExist(keypair)
@@ -186,6 +192,7 @@ class EasyEC2(EasyAWS):
             i.groups = res[0].groups
             return i
         except boto.exception.EC2ResponseError,e:
+            self.__check_for_auth_failure(e)
             raise exception.InstanceDoesNotExist(instance_id)
         except IndexError,e:
             # for eucalyptus, invalid instance_id returns []
@@ -317,6 +324,7 @@ class EasyEC2(EasyAWS):
         images = self.conn.get_all_images(owners=[static.STARCLUSTER_OWNER_ID])
         id = 0
         images = sorted(images, key=lambda image: image.location)
+        log.info("Listing all public StarCluster images...\n")
         for image in images:
             if image.is_public:
                 print "[%d] %s %s" % (id, image.id,image.location)
@@ -342,6 +350,7 @@ class EasyEC2(EasyAWS):
         try:
             return self.conn.get_all_zones(zones=[zone])[0]
         except boto.exception.EC2ResponseError,e:
+            self.__check_for_auth_failure(e)
             raise exception.ZoneDoesNotExist(zone)
         except IndexError,e:
             raise exception.ZoneDoesNotExist(zone)
@@ -356,6 +365,7 @@ class EasyEC2(EasyAWS):
         try:
             return self.conn.get_all_images(image_ids=[image_id])[0]
         except boto.exception.EC2ResponseError,e:
+            self.__check_for_auth_failure(e)
             raise exception.AMIDoesNotExist(image_id)
         except IndexError,e:
             raise exception.AMIDoesNotExist(image_id)
@@ -411,12 +421,14 @@ class EasyEC2(EasyAWS):
         try:
             return self.conn.get_all_volumes()
         except boto.exception.EC2ResponseError,e:
+            self.__check_for_auth_failure(e)
             pass
 
     def get_volume(self, volume_id):
         try:
             return self.conn.get_all_volumes(volume_ids=[volume_id])[0]
         except boto.exception.EC2ResponseError,e:
+            self.__check_for_auth_failure(e)
             raise exception.VolumeDoesNotExist(volume_id)
         except IndexError,e:
             raise exception.VolumeDoesNotExist(volume_id)
@@ -446,6 +458,7 @@ class EasyEC2(EasyAWS):
         try:
             return self.conn.get_all_security_groups(groupnames=[groupname])[0]
         except boto.exception.EC2ResponseError,e:
+            self.__check_for_auth_failure(e)
             raise exception.SecurityGroupDoesNotExist(groupname)
         except IndexError:
             raise exception.SecurityGroupDoesNotExist(groupname)
@@ -499,11 +512,16 @@ class EasyS3(EasyAWS):
                                      boto.connect_s3, **kwargs)
         self.cache = cache
 
+    def __check_for_auth_failure(self,e):
+        if e.error_code == "InvalidAccessKeyId":
+            raise e
+
     def bucket_exists(self, bucket_name):
         try:
             self.conn.get_bucket(bucket_name)
             return True
         except boto.exception.S3ResponseError,e:
+            self.__check_for_auth_failure(e)
             log.error('bucket %s does not exist' % bucket_name)
             return False
 
@@ -511,7 +529,7 @@ class EasyS3(EasyAWS):
         try:
             return self.conn.get_bucket(bucket_name)
         except boto.exception.S3ResponseError,e:
-            pass
+            self.__check_for_auth_failure(e)
 
     def get_bucket(self, bucketname):
         return self.conn.get_bucket(bucketname)
@@ -525,7 +543,11 @@ class EasyS3(EasyAWS):
             log.error('bucket %s does not exist' % bucketname)
 
     def get_buckets(self):
-        buckets = self.conn.get_all_buckets()
+        try:
+            buckets = self.conn.get_all_buckets()
+        except TypeError,e:
+            #hack until boto fixes get_all_buckets
+            raise exception.AWSError("AWS credentials are not valid")
         return buckets
 
     def list_buckets(self):

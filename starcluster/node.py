@@ -104,6 +104,18 @@ class Node(object):
         return self.instance.architecture
 
     @property
+    def instance_type(self):
+        return self.instance.instance_type
+
+    @property
+    def image_id(self):
+        return self.instance.image_id
+
+    @property
+    def placement(self):
+        return self.instance.placement
+
+    @property
     def network_names(self):
         """ Returns all network names for this node in a dictionary"""
         names = {}

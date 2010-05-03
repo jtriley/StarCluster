@@ -21,7 +21,6 @@ MASTER_GROUP_DESCRIPTION="StarCluster Master Nodes"
 VOLUME_GROUP="%s-volumecreator" % SECURITY_GROUP_PREFIX
 VOLUME_GROUP_DESCRIPTION="StarCluster createvolume instances"
 SECURITY_GROUP_TEMPLATE=SECURITY_GROUP_PREFIX+"-%s"
-DEFAULT_CLUSTER_GROUP = "%s-@default"
 
 INSTANCE_TYPES = {
     'm1.small':  'i386',
