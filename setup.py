@@ -10,8 +10,8 @@ setup(
     scripts=['bin/starcluster',],
 
     install_requires=[
-        "paramiko",
-        "boto",
+        "paramiko>=1.7.6",
+        "boto>=1.9b",
     ],
 
     zip_safe = True,
