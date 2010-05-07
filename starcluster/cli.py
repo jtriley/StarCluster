@@ -24,6 +24,7 @@ __author__ = "Justin Riley <justin.t.riley@gmail.com>"
 import os
 import sys
 import time
+import socket
 from datetime import datetime, timedelta
 from pprint import pprint, pformat
 
@@ -971,6 +972,10 @@ def main():
         sys.exit(1)
     except EC2ResponseError,e:
         log.error("%s: %s" % (e.error_code, e.error_message))
+        sys.exit(1)
+    except socket.gaierror,e:
+        log.error("Unable to connect: %s" % e)
+        log.error("Check your internet connection?")
         sys.exit(1)
     except Exception,e:
         import traceback
