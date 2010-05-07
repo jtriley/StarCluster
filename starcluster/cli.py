@@ -33,7 +33,7 @@ from pprint import pprint, pformat
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-from boto.exception import EC2ResponseError
+from boto.exception import EC2ResponseError, S3ResponseError
 from starcluster import cluster
 from starcluster import node
 from starcluster import config
@@ -80,18 +80,24 @@ class CmdBase(optcomplete.CmdComplete):
 
 class CmdStart(CmdBase):
     """
-    start [options] <cluster_template> <tagname>
+    start [options] <cluster_tag>
 
     Start a new cluster 
 
     Example: 
 
-        starcluster start largecluster physics
-    
-    This will launch a cluster tagged "physics" using the
-    settings from the cluster template "largecluster" defined
-    in the configuration file
-    
+        $ starcluster start mynewcluster
+
+    This will launch a cluster tagged "mynewcluster" using the
+    settings from the "default" cluster template defined
+    in the configuration file. The default cluster template
+    is the template that has DEFAULT=True in the configuration file.
+
+        $ starcluster start --cluster largecluster mynewcluster
+
+    This will do the same thing only using the "largecluster" 
+    cluster template rather than the "default" template assuming 
+    "largecluster" has been defined in the configuration file.
     """
     names = ['start']
 
@@ -119,6 +125,9 @@ class CmdStart(CmdBase):
             action="store", type="float", default=None, help="Requests spot instances instead " + \
 "of the usual flat rate instances. Uses SPOT_BID as max bid for the request." + \
 "Attempts to use ")
+        parser.add_option("-c","--cluster-template", dest="cluster_template",
+            action="store", type="string", default=None, 
+            help="cluster template to use from config")
         parser.add_option("-d","--description", dest="cluster_description",
             action="store", type="string", 
             default="Cluster requested at %s" % time.strftime("%Y%m%d%H%M"), 
@@ -159,26 +168,37 @@ class CmdStart(CmdBase):
             help="path to ssh key used for this cluster")
 
     def execute(self, args):
-        if len(args) != 2:
-            self.parser.error("please specify a <cluster_template> and <tagname>")
+        if len(args) != 1:
+            self.parser.error("please specify a <tag_name> for this cluster")
         cfg = self.cfg
-        template, tag = args
-        tagdict={'cluster_tag': tag}
-        scluster = cfg.get_cluster_template(template)
+        tag = args[0]
+        template = self.opts.cluster_template
+        if not template:
+            template = cfg.get_default_cluster_template(tag)
+            log.info("Using default cluster template: %s" % template)
+        scluster = cfg.get_cluster_template(template, tag)
         scluster.update(self.specified_options_dict)
-        scluster.update(tagdict)
         if cluster.cluster_exists(tag,cfg) and not self.opts.no_create:
             log.error("Cluster with tagname %s already exists." % tag)
-            log.error("Either choose a different tagname, or stop the " + \
+            log.error("Either choose a different tag name, or stop the " + \
                       "existing cluster using:")
             log.error("starcluster stop %s" % tag)
             log.error("If you wish to use these existing instances anyway, " + \
                       "pass --no-create to the start action")
             sys.exit(1)
         #from starcluster.utils import ipy_shell; ipy_shell();
-        log.info("Validating cluster settings...")
+        check_running = self.opts.no_create
+        if check_running:
+            log.info("Validating existing instances...")
+            if scluster.is_running_valid():
+                log.info('Existing instances are valid')
+            else:
+                log.error('existing instances are not compatible with cluster' + \
+                          ' template settings')
+                sys.exit(1)
+        log.info("Validating cluster template settings...")
         if scluster.is_valid():
-            log.info('Cluster settings are valid')
+            log.info('Cluster template settings are valid')
             if not self.opts.validate_only:
                 scluster.start(create=not self.opts.no_create)
                 if self.opts.login_master:
@@ -189,15 +209,15 @@ class CmdStart(CmdBase):
 
 class CmdStop(CmdBase):
     """
-    stop <cluster>
+    stop [options] <cluster>
 
     Shutdown a running cluster
 
     Example:
 
-        starcluster stop physics
+        $ starcluster stop mycluster
 
-    This will stop a currently running cluster tagged "physics"
+    This will stop a currently running cluster tagged "mycluster"
     """
     names = ['stop']
 
@@ -234,7 +254,7 @@ class CmdStop(CmdBase):
 
 class CmdSshMaster(CmdBase):
     """
-    sshmaster <cluster>
+    sshmaster [options] <cluster>
 
     SSH to a cluster's master node
 
@@ -322,7 +342,7 @@ class CmdSshNode(CmdBase):
 
 class CmdSshInstance(CmdBase):
     """
-    sshintance <instance-id>
+    sshintance [options] <instance-id>
 
     SSH to an EC2 instance
 
@@ -381,7 +401,7 @@ class CmdCreateImage(CmdBase):
 
     Example:
 
-        starcluster createimage i-999999 my-new-image mybucket
+        $ starcluster createimage i-999999 my-new-image mybucket
 
     NOTE: It is recommended not to create a new StarCluster AMI from
     an instance launched by StarCluster. Rather, launch a single 
@@ -495,7 +515,7 @@ class CmdListZones(CmdBase):
 
 class CmdListImages(CmdBase):
     """
-    listimages
+    listimages [options]
 
     List all registered EC2 images (AMIs)
     """
@@ -533,7 +553,7 @@ class CmdShowImage(CmdBase):
 
     Example:
 
-        starcluster showimage ami-999999
+        $ starcluster showimage ami-999999
     """
     names = ['showimage']
     def execute(self, args):
@@ -548,6 +568,10 @@ class CmdShowBucket(CmdBase):
     showbucket <bucket>
 
     Show all files in an S3 bucket
+
+    Example:
+
+        $ starcluster showbucket mybucket
     """
     names = ['showbucket']
     def execute(self, args):
@@ -559,7 +583,7 @@ class CmdShowBucket(CmdBase):
 
 class CmdRemoveVolume(CmdBase):
     """
-    removevolume <volume_id> 
+    removevolume [options] <volume_id> 
 
     Delete one or more EBS volumes
 
@@ -568,7 +592,7 @@ class CmdRemoveVolume(CmdBase):
 
     Example:
 
-        removevolume vol-999999
+        $ starcluster removevolume vol-999999
     """
     names = ['removevolume']
 
@@ -612,7 +636,7 @@ class CmdRemoveImage(CmdBase):
 
     Example:
 
-        removeami ami-999999
+        $ starcluster removeami ami-999999
     """
     names = ['removeimage']
 
@@ -643,7 +667,7 @@ class CmdRemoveImage(CmdBase):
 
 class CmdListInstances(CmdBase):
     """
-    listinstances
+    listinstances [options]
 
     List all running EC2 instances
     """
@@ -666,7 +690,7 @@ class CmdShowConsole(CmdBase):
 
     Example:
 
-        showconsole i-999999
+        $ starcluster showconsole i-999999
 
     This will print out the startup logs for instance 
     i-999999
@@ -719,7 +743,6 @@ class CmdListPublic(CmdBase):
     """
     names = ['listpublic']
     def execute(self, args):
-        log.info("Listing all public StarCluster images...\n")
         ec2 = self.cfg.get_easy_ec2()
         ec2.list_starcluster_public_images()
 
@@ -732,9 +755,9 @@ class CmdRunPlugin(CmdBase):
     plugin_name - name of plugin section defined in the config
     cluster_tag - tag name of a running StarCluster
 
-    e.g.
+    Example: 
 
-    runplugin myplugin physicscluster
+       $ starcluster runplugin myplugin mycluster
     """
     names = ['runplugin']
     def execute(self,args):
@@ -748,6 +771,16 @@ class CmdSpotHistory(CmdBase):
     spothistory [options] <instance_type>
 
     Show spot instance pricing history stats (last 30 days by default)
+
+    Example:
+
+    To show the current, max, and average spot price for m1.small instance type:
+
+        $ starcluster spothistory m1.small
+
+    Do the same thing but also plot the spot history over time using matplotlib:
+
+        $ starcluster spothistory -p m1.small
     """
     names = ['spothistory']
 
@@ -815,9 +848,9 @@ class CmdShell(CmdBase):
             fullname = starcluster.__name__ + '.' + modname
             try:
                 __import__(fullname)
+                locals()[modname] = sys.modules[fullname]
             except ImportError,e:
-                log.error("Error loading module %s" % modname)
-            locals()[modname] = sys.modules[fullname]
+                log.error("Error loading module %s: %s" % (modname, e))
         from starcluster.utils import ipy_shell; ipy_shell();
 
 class CmdHelp:
@@ -971,6 +1004,9 @@ def main():
         log.error(e.msg)
         sys.exit(1)
     except EC2ResponseError,e:
+        log.error("%s: %s" % (e.error_code, e.error_message))
+        sys.exit(1)
+    except S3ResponseError,e:
         log.error("%s: %s" % (e.error_code, e.error_message))
         sys.exit(1)
     except socket.gaierror,e:

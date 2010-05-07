@@ -63,6 +63,10 @@ SOME_OTHER_PARAM = 2
 # Sections starting with "cluster" define your cluster configurations
 # Section name is the name you give to your cluster e.g.:
 [cluster smallcluster]
+# Set this template to be the "default" cluster when running the start command
+# Only one template is allowed to be the "default".
+DEFAULT=True
+
 # change this to the name of one of the keypair sections defined above 
 # (see the EC2 getting started guide tutorial on using ec2-add-keypair to learn
 # how to create new keypairs)

@@ -105,6 +105,29 @@ class ConfigHasNoSections(ConfigError):
     def __init__(self, cfg_file):
         self.msg = "No valid sections defined in config file %s" % cfg_file
 
+class PluginNotFound(ConfigError):
+    def __init__(self, plugin):
+        self.msg = 'Plugin "%s" not found in config' % plugin
+
+class MultipleDefaultTemplates(ConfigError):
+    def __init__(self, defaults):
+        msg = 'Cluster templates %s each have DEFAULT=True in your config.'
+        msg += ' Only one cluster can be the default. Please pick one.'
+        l = ''
+        if len(defaults) == 2:
+            tmpl_list = ' and '.join(defaults)
+        else:
+            first = defaults[0:-1]
+            last = defaults[-1]
+            tmpl_list = ', and '.join([', '.join(first), last])
+        self.msg = msg % tmpl_list
+
+class NoDefaultTemplateFound(ConfigError):
+    def __init__(self):
+        msg = "No default cluster template found. Set DEFAULT=True in one of"
+        msg += " the cluster templates in the config to make it the default template."
+        self.msg = msg
+
 class ConfigNotFound(ConfigError):
     def __init__(self, *args, **kwargs):
         super(ConfigNotFound, self).__init__(*args, **kwargs)

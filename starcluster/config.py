@@ -211,6 +211,7 @@ class StarClusterConfig(object):
     def load_extends_variables(self, section_name, store):
         section = store[section_name]
         extends = section['extends'] = section.get('extends')
+        default = section.get('default')
         if extends is None:
             return
         log.debug('%s extends %s' % (section_name, extends))
@@ -229,6 +230,8 @@ class StarClusterConfig(object):
         transform = AttributeDict()
         for extension in extensions:
             transform.update(extension)
+        # do not inherit default setting from other cluster sections
+        transform.update(dict(default=default))
         store[section_name] = transform
 
     def load_keypairs(self, section_name, store):
@@ -359,6 +362,25 @@ class StarClusterConfig(object):
             return clust
         except KeyError,e:
             raise exception.ClusterTemplateDoesNotExist(template_name)
+
+    def get_default_cluster_template(self, tag_name=None):
+        """
+        Returns the cluster template with "DEFAULT=True" in the config
+        If more than one found, raises MultipleDefaultTemplates exception.
+        If no cluster template has "DEFAULT=True", raises NoDefaultTemplateFound
+        exception.
+        """
+        defaults = []
+        for template_name in self.clusters:
+            cl = self.clusters[template_name]
+            if cl.default:
+                defaults.append(template_name)
+        num_defaults = len(defaults)
+        if num_defaults > 1:
+            raise exception.MultipleDefaultTemplates(defaults)
+        elif num_defaults == 0:
+            raise exception.NoDefaultTemplateFound()
+        return defaults[0]
 
     def get_clusters(self):
         clusters = []

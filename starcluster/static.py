@@ -72,6 +72,7 @@ PLUGIN_SETTINGS = {
 
 CLUSTER_SETTINGS = {
     # setting, type, required?, default
+    'DEFAULT': (bool, False, False),
     'CLUSTER_SIZE': (int, True, None),
     'CLUSTER_USER': (str, False, 'sgeadmin'),
     'CLUSTER_SHELL': (str, False, 'bash'),

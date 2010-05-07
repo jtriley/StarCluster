@@ -322,6 +322,65 @@ class Cluster(object):
             if hasattr(self, key):
                 self.__dict__[key] = kwargs[key]
 
+    def _validate_running_instances(self):
+        """
+        Validate existing instances against this template's settings 
+        """
+        self._validate_instance_types()
+        num_running = len(self.running_nodes)
+        if num_running != self.cluster_size:
+            raise exception.ClusterValidationError(
+                "Number of pending/running instances (%s) != %s" % \
+                (num_running, self.cluster_size))
+        mtype = self.master_node.instance_type
+        mastertype = self.master_instance_type or self.node_instance_type
+        if mtype != mastertype:
+            raise exception.ClusterValidationError(
+                "The running master node's instance type (%s) != %s" % \
+                (mtype, mastertype))
+        masterimage = self.master_image_id or self.node_image_id
+        mimage = self.master_node.image_id
+        if mimage != masterimage:
+            raise exception.ClusterValidationError(
+                "The running master node's image id (%s) != %s" % \
+                (mimage, masterimage))
+        mkey = self.master_node.key_name
+        if mkey != self.keyname:
+            raise exception.ClusterValidationError(
+                "The running master's keypair (%s) != %s" % \
+                (mkey, self.keyname))
+        try:
+            nodes = self.nodes[1:self.cluster_size]
+        except IndexError,e:
+            raise exception.ClusterValidationError("Cluster has no running instances")
+        mazone = self.master_node.placement
+        for n in nodes:
+            ntype = n.instance_type
+            if ntype != self.node_instance_type:
+                raise exception.ClusterValidationError(
+                    "Running node's instance type (%s) != %s" % \
+                    (ntype, self.node_instance_type))
+            nimage = n.image_id
+            if nimage != self.node_image_id:
+                raise exception.ClusterValidationError(
+                    "Running node's image id (%s) != %s" % \
+                    (nimage, self.node_image_id))
+            if n.key_name != self.keyname:
+                raise exception.ClusterValidationError(
+                    "Running node's key_name (%s) != %s" % \
+                    (n.key_name, self.keyname))
+            nazone = n.placement
+            if mazone != nazone:
+                raise exception.ClusterValidationError(
+                    "Running master zone (%s) does not match node zone (%s)" % \
+                    (mazone, nazone))
+        # reset zone 
+        self._zone = None
+        if self.zone and self.zone != mazone:
+            raise exception.ClusterValidationError(
+                "Running cluster's availability_zone (%s) != %s" % \
+                (azone, self.zone))
+
     def get(self, name):
         return self.__dict__.get(name)
 
@@ -356,8 +415,9 @@ class Cluster(object):
     def create_receipt(self):
         """
         Create a 'receipt' file on the master node that contains this Cluster
-        object's attributes. This receipt can then be used by self.load_receipt
-        to restore a Cluster object's state to the way 
+        object's attributes. This receipt is useful for loading
+        the settings used to create the cluster at a later time using
+        load_receipt().
         """
         try:
             cfg = {}
@@ -492,6 +552,12 @@ class Cluster(object):
             launch_group=cluster_sg,
             placement=zone)
         print master_response
+        # Make sure nodes are in same zone as master
+        if self.spot_bid:
+            launch_spec = master_response[0].launch_specification
+            zone = launch_spec.placement
+        else:
+            zone = master_response.instances[0].placement
         if self.cluster_size > 1:
             log.info("Launching worker nodes...")
             log.info("Node AMI: %s" % self.node_image_id)
@@ -603,7 +669,7 @@ class Cluster(object):
 
 The cluster has been started and configured. 
 
-Login into the master node as root by running: 
+Login to the master node as root by running: 
 
 $ starcluster sshmaster %(tag)s
 
@@ -624,7 +690,22 @@ to shutdown the cluster and stop paying for service
             'tag': self.cluster_tag,
         })
 
-    def is_valid(self): 
+    def is_running_valid(self):
+        """
+        Checks whether the current running instances are compatible
+        with this cluster template's settings
+        """
+        try:
+            self._validate_running_instances()
+            return True
+        except exception.ClusterValidationError,e:
+            log.error(e.msg)
+            return False
+
+    def is_valid(self):
+        """
+        Checks that all cluster template settings are valid
+        """
         try:
             self._has_all_required_settings()
             self._validate_spot_bid()
@@ -637,10 +718,10 @@ to shutdown the cluster and stop paying for service
             self._validate_ebs_aws_settings()
             self._validate_image_settings()
             self._validate_instance_types()
+            return True
         except exception.ClusterValidationError,e:
             log.error(e.msg)
             return False
-        return True
 
     def _validate_spot_bid(self):
         if self.spot_bid is not None:
@@ -708,7 +789,7 @@ to shutdown the cluster and stop paying for service
         image_platform = image.architecture
         instance_platform = self.__instance_types[instance_type]
         if instance_platform != image_platform:
-            error_msg = "Instance type %(instance_type)s is for a " + \
+            error_msg = "Instance type %(instance_type)s is for an " + \
                           "%(instance_platform)s platform while " + \
                           "%(image_id)s is an %(image_platform)s platform" 
             error_dict = {'instance_type':instance_type, 
@@ -859,8 +940,13 @@ to shutdown the cluster and stop paying for service
         keypair = self.ec2.get_keypair_or_none(keyname)
         if not keypair:
             raise exception.ClusterValidationError(
-                'Account does not contain a key with keyname = %s. ' % keyname
-            )
+                'Account does not contain a key with keyname = %s. ' % keyname)
+        if self.zone:
+            z = self.ec2.get_zone(self.zone)
+            if keypair.region != z.region:
+                raise exception.ClusterValidationError(
+                    'Keypair %s not in availability zone region %s' % (keyname,
+                                                                       z.region))
         return True
 
 if __name__ == "__main__":
