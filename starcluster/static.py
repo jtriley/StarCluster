@@ -3,6 +3,10 @@
 Module for storing static data structures
 """
 import os
+import tempfile
+
+TMP_DIR = tempfile.gettempdir()
+DEBUG_FILE = os.path.join(TMP_DIR, 'starcluster-debug.log')
 
 STARCLUSTER_CFG_DIR = os.path.join(os.path.expanduser('~'),'.starcluster')
 STARCLUSTER_CFG_FILE = os.path.join(STARCLUSTER_CFG_DIR, 'config')

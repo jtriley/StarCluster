@@ -43,7 +43,7 @@ from starcluster import optcomplete
 from starcluster import image
 from starcluster import volume
 from starcluster import utils
-from starcluster.logger import log, DEBUG
+from starcluster.logger import log, console, DEBUG
 
 #try:
     #import optcomplete
@@ -258,9 +258,9 @@ class CmdSshMaster(CmdBase):
 
     SSH to a cluster's master node
 
-    e.g.
+    Example:
 
-    sshmaster mycluster # ssh's to mycluster master node
+        $ sshmaster mycluster
     """
     names = ['sshmaster']
 
@@ -293,15 +293,17 @@ class CmdSshNode(CmdBase):
 
     SSH to a cluster node
 
-    e.g.
+    Examples:
 
-    sshnode mycluster master #ssh's to mycluster master
-    sshnode mycluster node001 #ssh's to mycluster node001
+        $ starcluster sshnode mycluster master
+        $ starcluster sshnode mycluster node001
+        ...
 
-    or in shorthand:
+    or same thing in shorthand:
 
-    sshnode mycluster 0 #ssh's to mycluster master
-    sshnode mycluster 1 #ssh's to mycluster node001
+        $ starcluster sshnode mycluster 0
+        $ starcluster sshnode mycluster 1
+        ...
     """
     names = ['sshnode']
 
@@ -332,8 +334,8 @@ class CmdSshNode(CmdBase):
                                 help="login as USER (defaults to root)")
 
     def execute(self, args):
-        if not args or len(args) < 1:
-            self.parser.error("please specify a cluster and node to connect to")
+        if len(args) != 2:
+            self.parser.error("please specify a <cluster> and <node> to connect to")
         scluster = args[0]
         ids = args[1:]
         for id in ids:
@@ -346,11 +348,11 @@ class CmdSshInstance(CmdBase):
 
     SSH to an EC2 instance
 
-    e.g.
+    Examples:
 
-    sshinstance ec2-123-123-123-12.compute-1.amazonaws.com 
+        $ starcluster sshinstance i-14e9157c
+        $ starcluster sshinstance ec2-123-123-123-12.compute-1.amazonaws.com 
     
-    sshinstance i-14e9157c
     """
     names = ['sshinstance']
 
@@ -692,8 +694,7 @@ class CmdShowConsole(CmdBase):
 
         $ starcluster showconsole i-999999
 
-    This will print out the startup logs for instance 
-    i-999999
+    This will print out the startup logs for instance i-999999
     """
     names = ['showconsole']
 
@@ -772,7 +773,7 @@ class CmdSpotHistory(CmdBase):
 
     Show spot instance pricing history stats (last 30 days by default)
 
-    Example:
+    Examples:
 
     To show the current, max, and average spot price for m1.small instance type:
 
@@ -827,7 +828,7 @@ class CmdShell(CmdBase):
     """
     shell
 
-    Load interactive ipython shell for starcluster development
+    Load interactive IPython shell for starcluster development
     
     The following objects are automatically available at the prompt:
 
@@ -835,7 +836,7 @@ class CmdShell(CmdBase):
         ec2 - starcluster.awsutils.EasyEC2 instance
         s3 - starcluster.awsutils.EasyS3 instance
 
-    All starcluster modules are automatically imported in the ipython session
+    All starcluster modules are automatically imported in the IPython session
     """
     names = ['shell']
     def execute(self,args):
@@ -914,7 +915,7 @@ def parse_subcommands(gparser, subcmds):
 
     # set debug level if specified
     if gopts.DEBUG:
-        log.setLevel(DEBUG)
+        console.setLevel(DEBUG)
     # load StarClusterConfig into global options
     try:
         cfg = config.StarClusterConfig(gopts.CONFIG)
@@ -1015,10 +1016,14 @@ def main():
         sys.exit(1)
     except Exception,e:
         import traceback
-        traceback.print_exc()
+        if not gopts.DEBUG:
+            traceback.print_exc()
+        log.debug(traceback.format_exc())
         print
         log.error("Oops! Looks like you've found a bug in StarCluster")
-        log.error("Please submit this bug to starcluster@mit.edu")
+        log.error("Debug file written to: %s" % static.DEBUG_FILE)
+        log.error("Please submit this file, minus any private information,")
+        log.error("to starcluster@mit.edu")
         sys.exit(1)
 
 def test():

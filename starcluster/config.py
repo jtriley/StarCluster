@@ -78,6 +78,7 @@ class StarClusterConfig(object):
         self.cache = cache
 
     def _get_urlfp(self, url):
+        log.debug("Loading url: %s" % url)
         import socket
         try:
             fp = urllib.urlopen(url)
@@ -93,6 +94,7 @@ class StarClusterConfig(object):
         if not os.path.isdir(static.STARCLUSTER_CFG_DIR):
             os.makedirs(static.STARCLUSTER_CFG_DIR)
         cfg_file = config_file or static.STARCLUSTER_CFG_FILE
+        log.debug("Loading file: %s" % cfg_file)
         if os.path.exists(cfg_file):
             if not os.path.isfile(cfg_file):
                 raise exception.ConfigError('config %s exists but is not a regular file' %
@@ -143,10 +145,8 @@ class StarClusterConfig(object):
         """
         cfg = self.cfg_file
         if utils.is_url(cfg):
-            log.debug("Loading url")
             cfg = self._get_urlfp(cfg)
         else:
-            log.debug("Loading file")
             cfg = self._get_fp(cfg)
         try:
             cp = ConfigParser.ConfigParser()

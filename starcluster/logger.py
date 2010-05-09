@@ -1,13 +1,17 @@
-# Setup logging globally (ie root logger)
+#!/usr/bin/env python
+"""
+StarCluster logging module
+"""
 import types
 import logging
 import logging.handlers
-import platform
 from logging import INFO, DEBUG, WARN, ERROR, FATAL
+
+from starcluster import static
 
 INFO_NO_NEWLINE = logging.INFO + 1
 
-class MultipleFormatHandler(logging.StreamHandler):
+class ConsoleLogger(logging.StreamHandler):
 
     formatters = {  logging.INFO: logging.Formatter(">>> %(message)s\n"),
                     INFO_NO_NEWLINE: logging.Formatter(">>> %(message)s"),
@@ -37,29 +41,28 @@ class MultipleFormatHandler(logging.StreamHandler):
             self.handleError(record)
 
 log = logging.getLogger('starcluster')
-log.setLevel(logging.INFO)
+log.setLevel(logging.DEBUG)
 
-mfh = MultipleFormatHandler()
-log.addHandler(mfh)
+formatter = logging.Formatter("%(filename)s:%(lineno)d - %(levelname)s - %(message)s")
 
-#import os, tempfile
-#tmp_dir = tempfile.gettempdir()
-#debug_file = os.path.join(tmp_dir, 'starcluster-debug.log')
-#log.debug("Logging to %s" % debug_file)
-#rotating_file_handler = logging.handlers.RotatingFileHandler(debug_file, 
-                                                             #maxBytes=16384,
-                                                             #backupCount=5)
-#formatter = logging.Formatter("%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n")
-#rotating_file_handler.setFormatter(formatter)
-#rotating_file_handler.setLevel(DEBUG)
-#log.addHandler(rotating_file_handler)
+rfh = logging.handlers.RotatingFileHandler(static.DEBUG_FILE,
+                                           maxBytes=1048576,
+                                           backupCount=2)
+rfh.setLevel(logging.DEBUG)
+rfh.setFormatter(formatter)
+log.addHandler(rfh)
 
-if platform.system() == "Linux":
-    import os
-    log_device = '/dev/log'
-    if os.path.exists(log_device):
-        log.debug("Logging to %s" % log_device)
-        syslog_handler = logging.handlers.SysLogHandler(address=log_device)
-        formatter = logging.Formatter("%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n")
-        syslog_handler.setFormatter(formatter)
-        log.addHandler(syslog_handler)
+console = ConsoleLogger()
+console.setLevel(logging.INFO)
+log.addHandler(console)
+
+#import platform
+#if platform.system() == "Linux":
+    #import os
+    #log_device = '/dev/log'
+    #if os.path.exists(log_device):
+        #log.debug("Logging to %s" % log_device)
+        #syslog_handler = logging.handlers.SysLogHandler(address=log_device)
+        #syslog_handler.setFormatter(formatter)
+        #syslog_handler.setLevel(logging.DEBUG)
+        #log.addHandler(syslog_handler)
