@@ -156,6 +156,8 @@ class StarClusterConfig(object):
             return cp
         except ConfigParser.MissingSectionHeaderError,e:
             raise exception.ConfigHasNoSections(cfg.name)
+        except ConfigParser.ParsingError,e:
+            raise exception.ConfigError(e)
 
     def reload(self):
         """
