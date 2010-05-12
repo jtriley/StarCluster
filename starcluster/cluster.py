@@ -140,6 +140,7 @@ def list_clusters(cfg):
             print
             tag = get_tag_from_sg(scg.name)
             header = '%s (security group: %s)' % (tag, scg.name)
+            print '-'*len(header)
             print header
             print '-'*len(header)
             cl = get_cluster(tag, cfg)
