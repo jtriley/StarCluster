@@ -96,6 +96,10 @@ class Node(object):
         return self.instance.state
 
     @property
+    def launch_time(self):
+        return self.instance.launch_time
+
+    @property
     def key_name(self):
         return self.instance.key_name
 

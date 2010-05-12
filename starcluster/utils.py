@@ -46,7 +46,7 @@ def is_valid_partition(part):
 
 def is_valid_bucket_name(bucket_name):
     """
-    Check if bucket_name is a valid S3 bucket name(as defined by the AWS docs)
+    Check if bucket_name is a valid S3 bucket name (as defined by the AWS docs)
     """
     length = len(bucket_name)
     valid_length = length >= 3 and length <= 255

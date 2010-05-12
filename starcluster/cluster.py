@@ -118,19 +118,51 @@ def get_cluster_security_groups(cfg):
             starcluster_groups.append(sg)
     return starcluster_groups
 
+def get_tag_from_sg(sg):
+    """
+    Returns the cluster tag name from a security group name that starts with
+    static.SECURITY_GROUP_PREFIX
+
+    Example:
+        sg = '@sc-mycluster'
+        print get_tag_from_sg(sg)
+        mycluster
+    """
+    regex = re.compile(static.SECURITY_GROUP_PREFIX + '-(.*)')
+    match = regex.match(sg)
+    if match:
+        return match.groups()[0]
+
 def list_clusters(cfg):
     starcluster_groups = get_cluster_security_groups(cfg)
     if starcluster_groups:
         for scg in starcluster_groups:
             print
-            print scg.name
-            for node in scg.instances():
-                spot = node.spot_instance_request_id
+            tag = get_tag_from_sg(scg.name)
+            header = '%s (security group: %s)' % (tag, scg.name)
+            print header
+            print '-'*len(header)
+            cl = get_cluster(tag, cfg)
+            master = cl.master_node
+            print 'Launch time: %s' % master.launch_time
+            print 'Zone: %s' % master.placement
+            print 'Keypair: %s' % master.key_name
+            if master.block_device_mapping:
+                print 'EBS volumes:'
+                devices = master.block_device_mapping
+                for dev in devices:
+                    d = devices.get(dev)
+                    vol_id = d.volume_id
+                    status = d.status
+                    print '    %s on master:%s (status: %s)' % (vol_id, dev, status)
+            if cl.nodes:
+                print 'Cluster nodes:'
+            for node in cl.nodes:
+                spot = node.spot_id or ''
                 if spot:
-                    print "  %s %s %s (spot: %s)" % (node.id, node.state,
-                                                     node.dns_name, spot)
-                else:
-                    print "  %s %s %s" % (node.id, node.state, node.dns_name)
+                    spot = '(spot %s)' % spot
+                print "    %7s %s %s %s %s" % (node.alias, node.state, node.id,
+                                               node.dns_name, spot)
     else:
         log.info("No clusters found...")
 
@@ -740,7 +772,7 @@ to shutdown the cluster and stop paying for service
                     'spot_bid must be integer or float')
             if self.spot_bid <= 0:
                 raise exception.ClusterValidationError(
-                    'spot_bid must be > 0')
+                    'spot_bid must be an integer or float > 0')
         return True
 
     def _validate_cluster_size(self):
