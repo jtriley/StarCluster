@@ -125,6 +125,10 @@ class Node(object):
         names['INTERNAL_ALIAS'] = self.alias
         return names
 
+    @property
+    def spot_id(self):
+        return self.instance.spot_instance_request_id
+
     def is_master(self):
         return self.alias == "master"
 

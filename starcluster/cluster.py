@@ -125,7 +125,12 @@ def list_clusters(cfg):
             print
             print scg.name
             for node in scg.instances():
-                print "  %s %s %s" % (node.id, node.state, node.dns_name)
+                spot = node.spot_instance_request_id
+                if spot:
+                    print "  %s %s %s (spot: %s)" % (node.id, node.state,
+                                                     node.dns_name, spot)
+                else:
+                    print "  %s %s %s" % (node.id, node.state, node.dns_name)
     else:
         log.info("No clusters found...")
 
@@ -254,6 +259,7 @@ class Cluster(object):
             if dev in devices:
                 # rm user-defined devices from the list of auto-assigned devices
                 devices.remove(dev)
+        volumes = {}
         for volname in vols:
             vol = vols.get(volname)
             device = vol.get('device')
@@ -261,13 +267,15 @@ class Cluster(object):
                 device = devices.pop()
             if not utils.is_valid_device(device):
                 raise exception.InvalidDevice(device)
-            vol['device'] = device
+            v = volumes[volname] = utils.AttributeDict()
+            v.update(vol)
+            v['device'] = device
             part = vol.get('partition',1)
             partition = device + str(part)
             if not utils.is_valid_partition(partition):
                 raise exception.InvalidPartition(part)
-            vol['partition'] = partition
-        return vols
+            v['partition'] = partition
+        return volumes
 
     def load_plugins(self, plugins):
         plugs = []
@@ -329,7 +337,7 @@ class Cluster(object):
         Validate existing instances against this template's settings 
         """
         self._validate_instance_types()
-        num_running = len(self.running_nodes)
+        num_running = len(self.nodes)
         if num_running != self.cluster_size:
             raise exception.ClusterValidationError(
                 "Number of pending/running instances (%s) != %s" % \
@@ -673,15 +681,15 @@ The cluster has been started and configured.
 
 Login to the master node as root by running: 
 
-$ starcluster sshmaster %(tag)s
+    $ starcluster sshmaster %(tag)s
 
 or manually as %(user)s:
 
-$ ssh -i %(key)s %(user)s@%(master)s
+    $ ssh -i %(key)s %(user)s@%(master)s
 
 When you are finished using the cluster, run:
 
-$ starcluster stop %(tag)s
+    $ starcluster stop %(tag)s
 
 to shutdown the cluster and stop paying for service
 

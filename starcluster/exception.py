@@ -3,6 +3,7 @@
 StarCluster Exception Classes
 """
 import os
+from starcluster import static
 from starcluster.logger import log
 from starcluster.templates.config import config_template, copy_paste_template
 
@@ -123,9 +124,12 @@ class MultipleDefaultTemplates(ConfigError):
         self.msg = msg % tmpl_list
 
 class NoDefaultTemplateFound(ConfigError):
-    def __init__(self):
-        msg = "No default cluster template found. Set DEFAULT=True in one of"
-        msg += " the cluster templates in the config to make it the default template."
+    def __init__(self, options=None):
+        msg = "No default cluster template specified. To set the default cluster "
+        msg += "template, set DEFAULT_TEMPLATE in the [global] section "
+        msg += "of the config to the name of one of your cluster templates "
+        if options:
+            msg +='(' + ', '.join(options) + ')'
         self.msg = msg
 
 class ConfigNotFound(ConfigError):
@@ -213,3 +217,62 @@ class ClusterDoesNotExist(BaseException):
     """
     def __init__(self, cluster_name):
         self.msg = "cluster %s does not exist" % cluster_name
+
+class ClusterExists(BaseException):
+    def __init__(self, cluster_name):
+        self.msg = "Cluster with tag name %s already exists. " % cluster_name
+        self.msg += "\n\nEither choose a different tag name, or stop the "
+        self.msg += "existing cluster using:"
+        self.msg += "\n\n   $ starcluster stop %s" % cluster_name
+        self.msg += "\n\nIf you wish to use these existing instances anyway, " + \
+                    "pass --no-create to the start command"
+
+class CancelledStartRequest(BaseException):
+    def __init__(self, tag):
+        self.msg = "Request to start cluster '%s' was cancelled" % tag
+        self.msg += "\n\nPlease be aware that instances may still be running. "
+        self.msg += "\nYou can check this from the output of:"
+        self.msg += "\n\n   $ starcluster listclusters"
+        self.msg += "\n\nIf you wish to destroy these instances please run:"
+        self.msg += "\n\n   $ starcluster stop %s"  % tag
+        self.msg += "\n\nYou can then use:\n\n   $ starcluster listinstances"
+        self.msg += "\n\nto verify that the instances have been terminated."
+        self.msg += "\n\nAnother option is to use the AWS management console to"
+        self.msg += "\nterminate the instances manually."
+        self.msg += "\n\nIf you would like to re-use these instances, rerun the"
+        self.msg += "\nsame start command with the --no-create option"
+
+class CancelledCreateVolume(BaseException):
+    def __init__(self):
+        self.msg = "Request to create volume was cancelled"
+        self.msg += "\n\nPlease be aware that the volume host instance may still"
+        self.msg += " be running. "
+        self.msg += "\n\nTo destroy this instance please run:"
+        self.msg += "\n\n   $ starcluster stop %s" % static.VOLUME_GROUP_NAME
+        self.msg += "\n\nand then use\n\n   $ starcluster listinstances"
+        self.msg += "\n\nto verify that this instance has been terminated."
+        self.msg += "\n\nAnother option is to use the AWS management console to"
+        self.msg += "\nterminate this instance manually."
+
+class CancelledCreateImage(BaseException):
+    def __init__(self, bucket, image_name):
+        self.msg = "Request to createimage was cancelled"
+        self.msg += "\n\nDepending on how far along the process was before it "
+        self.msg += "was cancelled, \nsome intermediate files might still be "
+        self.msg += "around in /mnt on the instance. "
+        self.msg += "\n\nAlso, some of these intermediate files "
+        self.msg += "might have been uploaded to S3 in the '%s' bucket" % bucket
+        self.msg += "\nyou specified. You can check this by running: "
+        self.msg += "\n\n   $ starcluster showbucket %s\n\n" % bucket
+        self.msg += "and looking for files like '%s.manifest.xml' " % image_name
+        self.msg += "or '%s.part.*'" % image_name 
+        self.msg += "\nRe-executing the same creatimage command should take care "
+        self.msg += "of these \nintermediate files and will also automatically "
+        self.msg += "override any partially uploaded files in S3." 
+
+class ExperimentalFeature(BaseException):
+    def __init__(self, feature_name):
+        self.msg = "%s is an experimental feature for this " % feature_name
+        self.msg += "release. \nIf you wish to test this feature, set "
+        self.msg += "ENABLE_EXPERIMENTAL=True in the [global] section of the "
+        self.msg += "config. \nYou have officially been warned :D"

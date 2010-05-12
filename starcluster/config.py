@@ -53,6 +53,7 @@ class StarClusterConfig(object):
     print cluster_cfg
     """
 
+    global_settings = static.GLOBAL_SETTINGS
     aws_settings = static.AWS_SETTINGS
     key_settings = static.KEY_SETTINGS
     volume_settings = static.EBS_VOLUME_SETTINGS
@@ -70,6 +71,7 @@ class StarClusterConfig(object):
             bool: self._get_bool,
         }
         self._config = None
+        self.globals = AttributeDict()
         self.aws = AttributeDict()
         self.clusters = AttributeDict()
         self.keys = AttributeDict()
@@ -116,7 +118,7 @@ class StarClusterConfig(object):
             pass
         except ValueError,e:
             raise exception.ConfigError(
-                "Expected True/False value for setting %s in %s" % (option,section))
+                "Expected True/False value for setting %s in section [%s]" % (option,section))
 
     def _get_int(self, config, section, option):
         try:
@@ -128,7 +130,7 @@ class StarClusterConfig(object):
             pass
         except ValueError,e:
             raise exception.ConfigError(
-                "Expected integer value for setting %s in %s" % (option,section))
+                "Expected integer value for setting %s in section [%s]" % (option,section))
 
     def _get_string(self, config, section, option):
         try:
@@ -169,12 +171,11 @@ class StarClusterConfig(object):
             self._config = self.__load_config()
         return self._config
 
-    def load_settings(self, section_prefix, section_name, settings, store):
-        section_key = ' '.join([section_prefix, section_name])
-        section = self.config._sections.get(section_key)
+    def load_settings(self, section_name, settings, store):
+        section = self.config._sections.get(section_name)
         if not section:
             raise exception.ConfigSectionMissing('Missing section %s in config'\
-                                                 % section_key)
+                                                 % section_name)
         store.update(section)
         section_conf = store
         for setting in settings:
@@ -183,12 +184,11 @@ class StarClusterConfig(object):
             func = self.type_validators.get(requirements[0])
             required = requirements[1];
             default = requirements[2]
-            value = func(self.config, section_key, name)
+            value = func(self.config, section_name, name)
             if value is not None:
                 section_conf[name.lower()] = value
 
-    def check_required(self, section_prefix, section_name, settings, store):
-        section_key = ' '.join([section_prefix, section_name])
+    def check_required(self, section_name, settings, store):
         section_conf = store
         for setting in settings:
             name = setting
@@ -197,7 +197,7 @@ class StarClusterConfig(object):
             value = section_conf.get(name.lower())
             if value is None and required:
                 raise exception.ConfigError('missing required option %s in section "%s"' %
-                                  (name.lower(), section_key))
+                                  (name.lower(), section_name))
 
     def load_defaults(self, settings, store):
         section_conf = store
@@ -278,8 +278,12 @@ class StarClusterConfig(object):
     def load(self):
         log.debug('Loading config')
         try:
-            self.load_settings('aws', 'info', self.aws_settings, self.aws)
-            self.check_required('aws', 'info', self.aws_settings, self.aws)
+            self.load_settings('global', self.global_settings, self.globals)
+        except exception.ConfigSectionMissing,e:
+            pass
+        try:
+            self.load_settings('aws info', self.aws_settings, self.aws)
+            self.check_required('aws info', self.aws_settings, self.aws)
         except exception.ConfigSectionMissing,e:
             log.warn("no [aws info] section found in config")
             log.warn("attempting to load credentials from environment...")
@@ -288,38 +292,43 @@ class StarClusterConfig(object):
                 section.startswith('key')]
         for key in keys:
             self.keys[key] = AttributeDict()
-            self.load_settings('key', key, self.key_settings, self.keys[key]) 
-            self.check_required('key', key, self.key_settings, self.keys[key]) 
+            section_name = 'key ' + key
+            self.load_settings(section_name, self.key_settings, self.keys[key]) 
+            self.check_required(section_name, self.key_settings, self.keys[key]) 
         vols = [section.split()[1] for section in self.config.sections() if 
                 section.startswith('volume')]
         for vol in vols:
             self.vols[vol] = AttributeDict()
-            self.load_settings('volume', vol, self.volume_settings, 
+            section_name = 'volume ' + vol
+            self.load_settings(section_name, self.volume_settings, 
                                self.vols[vol])
             self.load_defaults(self.volume_settings, self.vols[vol])
-            self.check_required('volume', vol, self.volume_settings, 
+            self.check_required(section_name, self.volume_settings, 
                                 self.vols[vol])
         plugins = [section.split()[1] for section in self.config.sections() if
                    section.startswith('plugin')]
         for plugin in plugins:
             self.plugins[plugin] = AttributeDict()
-            self.load_settings('plugin', plugin, self.plugin_settings,
+            section_name = 'plugin ' + plugin
+            self.load_settings(section_name, self.plugin_settings,
                                self.plugins[plugin])
-            self.check_required('plugin', plugin, self.plugin_settings,
+            self.check_required(section_name, self.plugin_settings,
                                 self.plugins[plugin])
         clusters = [section.split()[1] for section in self.config.sections() if 
                     section.startswith('cluster')]
         for cluster in clusters:
             self.clusters[cluster] = AttributeDict()
-            self.load_settings('cluster', cluster, self.cluster_settings,
+            section_name = 'cluster ' + cluster
+            self.load_settings(section_name, self.cluster_settings,
                                self.clusters[cluster])
         for cluster in clusters:
+            section_name = 'cluster ' + cluster
             self.load_extends_variables(cluster, self.clusters)
             self.load_defaults(self.cluster_settings, self.clusters[cluster])
             self.load_keypairs(cluster, self.clusters[cluster])
             self.load_volumes(cluster, self.clusters[cluster])
             self.load_plugins(cluster, self.clusters[cluster])
-            self.check_required('cluster', cluster, self.cluster_settings,
+            self.check_required(section_name, self.cluster_settings,
                                self.clusters[cluster])
 
     def get_aws_from_environ(self):
@@ -370,17 +379,12 @@ class StarClusterConfig(object):
         If no cluster template has "DEFAULT=True", raises NoDefaultTemplateFound
         exception.
         """
-        defaults = []
-        for template_name in self.clusters:
-            cl = self.clusters[template_name]
-            if cl.default:
-                defaults.append(template_name)
-        num_defaults = len(defaults)
-        if num_defaults > 1:
-            raise exception.MultipleDefaultTemplates(defaults)
-        elif num_defaults == 0:
-            raise exception.NoDefaultTemplateFound()
-        return defaults[0]
+        default = self.globals.get('default_template')
+        if not default:
+            raise exception.NoDefaultTemplateFound(options=self.clusters.keys())
+        if not self.clusters.has_key(default):
+            raise exception.ClusterTemplateDoesNotExist(default)
+        return default
 
     def get_clusters(self):
         clusters = []

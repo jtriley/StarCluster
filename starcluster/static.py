@@ -20,11 +20,13 @@ BASE_AMI_32="ami-8f9e71e6"
 BASE_AMI_64="ami-a19e71c8"
 
 SECURITY_GROUP_PREFIX="@sc"
-MASTER_GROUP="%s-masters" % SECURITY_GROUP_PREFIX
+SECURITY_GROUP_TEMPLATE= '-'.join([SECURITY_GROUP_PREFIX, "%s"])
+MASTER_GROUP_NAME="masters"
+MASTER_GROUP= SECURITY_GROUP_TEMPLATE % MASTER_GROUP_NAME
 MASTER_GROUP_DESCRIPTION="StarCluster Master Nodes"
-VOLUME_GROUP="%s-volumecreator" % SECURITY_GROUP_PREFIX
-VOLUME_GROUP_DESCRIPTION="StarCluster createvolume instances"
-SECURITY_GROUP_TEMPLATE=SECURITY_GROUP_PREFIX+"-%s"
+VOLUME_GROUP_NAME = "volumecreator"
+VOLUME_GROUP= SECURITY_GROUP_TEMPLATE % VOLUME_GROUP_NAME
+VOLUME_GROUP_DESCRIPTION= "StarCluster createvolume instances"
 
 INSTANCE_TYPES = {
     'm1.small':  'i386',
@@ -42,6 +44,11 @@ AVAILABLE_SHELLS = {
     "csh": True, 
     "ksh": True, 
     "tcsh": True,
+}
+
+GLOBAL_SETTINGS = {
+    'DEFAULT_TEMPLATE': (str, False, None),
+    'ENABLE_EXPERIMENTAL': (bool, False, False),
 }
 
 AWS_SETTINGS = {
@@ -76,7 +83,6 @@ PLUGIN_SETTINGS = {
 
 CLUSTER_SETTINGS = {
     # setting, type, required?, default
-    'DEFAULT': (bool, False, False),
     'CLUSTER_SIZE': (int, True, None),
     'CLUSTER_USER': (str, False, 'sgeadmin'),
     'CLUSTER_SHELL': (str, False, 'bash'),

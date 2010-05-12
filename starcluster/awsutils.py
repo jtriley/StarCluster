@@ -4,8 +4,9 @@ EC2/S3 Utility Classes
 """
 
 import os
-import time
 import sys
+import time
+import string
 import platform
 from pprint import pprint
 
@@ -118,7 +119,6 @@ class EasyEC2(EasyAWS):
             return sg
         except boto.exception.EC2ResponseError, e:
             self.__check_for_auth_failure(e)
-            pass
         except IndexError, e:
             pass
 
@@ -221,6 +221,32 @@ class EasyEC2(EasyAWS):
             instances.extend(insts)
         return instances
 
+    def list_all_spot_instances(self, show_closed=False):
+        spots = self.conn.get_all_spot_instance_requests()
+        for spot in spots:
+            state = spot.state or 'N/A'
+            if not show_closed and state == 'closed':
+                continue
+            spot_id = spot.id or 'N/A'
+            type = spot.type
+            instance_id = spot.instanceId or 'N/A'
+            create_time = spot.create_time or 'N/A'
+            launch_group = spot.launch_group or 'N/A'
+            zone_group = spot.availability_zone_group or 'N/A'
+            price = spot.price or 'N/A'
+            lspec = spot.launch_specification
+            groups = ', '.join([ g.id for g in lspec.groups])
+            print "id: %s" % spot_id
+            print "price: $%0.2f" % price
+            print "spot_request_type: %s" % type
+            print "state: %s" % state
+            print "instance_id: %s" % instance_id
+            print "create_time: %s" % create_time
+            print "launch_group: %s" % launch_group
+            print "zone_group: %s" % zone_group
+            print "security_groups: %s" % groups
+            print
+
     def list_all_instances(self, show_terminated=False):
         reservations = self.conn.get_all_instances()
         if not reservations:
@@ -243,7 +269,7 @@ class EasyEC2(EasyAWS):
                 print "dns_name: %s" % dns_name
                 print "private_dns_name: %s" % private_dns_name
                 print "state: %s" % state
-                print "public ip: %s" % public_ip 
+                print "public_ip: %s" % public_ip 
                 print "private_ip: %s" % private_ip
                 print "zone: %s" % zone
                 print "ami: %s" % ami
@@ -327,13 +353,9 @@ class EasyEC2(EasyAWS):
 
     def list_starcluster_public_images(self):
         images = self.conn.get_all_images(owners=[static.STARCLUSTER_OWNER_ID])
-        id = 0
-        images = sorted(images, key=lambda image: image.location)
-        log.info("Listing all public StarCluster images...\n")
-        for image in images:
-            if image.is_public:
-                print "[%d] %s %s" % (id, image.id,image.location)
-                id +=1
+        log.info("Listing all public StarCluster images...")
+        imgs = [ image for image in images if image.is_public ]
+        self.list_images(imgs)
 
     def remove_volume(self, volume_id):
         vol = self.get_volume(volume_id)
@@ -412,12 +434,6 @@ class EasyEC2(EasyAWS):
             self._keypair_response = self.conn.get_all_key_pairs()
         return self._keypair_response
 
-    def get_running_instances(self):
-        """ 
-        TODO: write me 
-        """
-        pass
-
     def terminate_instances(self, instances=None):
         if instances:
             self.conn.terminate_instances(instances)
@@ -427,7 +443,6 @@ class EasyEC2(EasyAWS):
             return self.conn.get_all_volumes()
         except boto.exception.EC2ResponseError,e:
             self.__check_for_auth_failure(e)
-            pass
 
     def get_volume(self, volume_id):
         try:
@@ -498,11 +513,18 @@ class EasyEC2(EasyAWS):
                 pylab.title('%s Price vs Date (%s - %s)' % (instance_type, start, end))
                 pylab.grid(True)
                 pylab.show()
-            except ImportError:
-                log.error("cannot import pylab, please check that matplotlib is")
-                log.error("installed and that python -c 'import pylab'")
+            except ImportError,e:
+                log.error("Error importing pylab:")
+                log.error(str(e)) 
+                log.error("please check that matplotlib is installed and that:")
+                log.error("   $ python -c 'import pylab'")
                 log.error("completes without error")
         return zip(dates,prices)
+
+    def show_console_output(self, instance_id):
+        instance = self.get_instance(instance_id)
+        print ''.join([c for c in instance.get_console_output().output
+                       if c in string.printable])
 
 class EasyS3(EasyAWS):
     DefaultHost = 's3.amazonaws.com'
@@ -578,4 +600,4 @@ if __name__ == "__main__":
     from starcluster.config import get_easy_ec2
     ec2 = get_easy_ec2()
     ec2.list_all_instances()
-    #ec2.list_registered_images()
+    ec2.list_registered_images()

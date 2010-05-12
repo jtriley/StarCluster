@@ -5,8 +5,13 @@ config_template = """
 ####################################
 ## StarCluster Configuration File ##
 ####################################
+[global]
+# configure the default cluster template to use when starting a cluster
+DEFAULT_TEMPLATE=smallcluster
+# enable experimental features for this release
+ENABLE_EXPERIMENTAL=False
 
-# This is the global AWS section.
+# This is the AWS credentials section.
 # These settings apply to all clusters
 [aws info]
 #replace these with your AWS keys
@@ -17,35 +22,31 @@ AWS_USER_ID= #your userid
 
 # Sections starting with "key" define your keypairs
 # Section name should match your key name e.g.:
+# (see the EC2 getting started guide tutorial on using ec2-add-keypair to learn
+# how to create new keypairs)
 [key gsg-keypair]
 KEY_LOCATION=/home/myuser/.ssh/id_rsa-gsg-keypair
 
 # You can of course have multiple keypair sections
-[key my-other-gsg-keypair]
-KEY_LOCATION=/home/myuser/.ssh/id_rsa-my-other-gsg-keypair
+# [key my-other-gsg-keypair]
+# KEY_LOCATION=/home/myuser/.ssh/id_rsa-my-other-gsg-keypair
 
 # Sections starting with "volume" define your EBS volumes
 # Section name tags your volume e.g.:
 [volume biodata]
-# attach volume vol-c9999999 to /home
+# attach volume vol-c9999999 to /home on master node
 VOLUME_ID = vol-c999999
-DEVICE = /dev/sdj
-PARTITION = /dev/sdj1
 MOUNT_PATH = /home
 
 # Same volume as above, but mounts to different location
 [volume biodata2]
-# attach volume vol-c9999999 to /opt/
+# attach volume vol-c9999999 to /opt/ on master node
 VOLUME_ID = vol-c999999
-DEVICE = /dev/sdj
-PARTITION = /dev/sdj1
 MOUNT_PATH = /opt/
 
 [volume oceandata]
 # attach volume vol-d7777777 to /mydata on master node 
 VOLUME_ID = vol-d7777777
-DEVICE = /dev/sdk
-PARTITION = /dev/sdk1
 MOUNT_PATH = /mydata
 
 # Sections starting with "plugin" define a custom python class
@@ -63,13 +64,7 @@ SOME_OTHER_PARAM = 2
 # Sections starting with "cluster" define your cluster configurations
 # Section name is the name you give to your cluster e.g.:
 [cluster smallcluster]
-# Set this template to be the "default" cluster when running the start command
-# Only one template is allowed to be the "default".
-DEFAULT=True
-
 # change this to the name of one of the keypair sections defined above 
-# (see the EC2 getting started guide tutorial on using ec2-add-keypair to learn
-# how to create new keypairs)
 KEYNAME = gsg-keypair
 
 # number of ec2 instances to launch

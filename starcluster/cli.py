@@ -25,6 +25,7 @@ import os
 import sys
 import time
 import socket
+import signal
 from datetime import datetime, timedelta
 from pprint import pprint, pformat
 
@@ -43,6 +44,7 @@ from starcluster import optcomplete
 from starcluster import image
 from starcluster import volume
 from starcluster import utils
+from starcluster.templates import experimental
 from starcluster.logger import log, console, DEBUG
 
 #try:
@@ -78,6 +80,30 @@ class CmdBase(optcomplete.CmdComplete):
     def cfg(self):
         return self.goptions_dict.get('CONFIG')
 
+    def cancel_command(self, signum, frame):
+        print
+        log.info("Exiting...")
+        sys.exit(1)
+
+    def catch_ctrl_c(self, handler=None):
+        handler = handler or self.cancel_command
+        signal.signal(signal.SIGINT, handler)
+
+    def warn_experimental(self, msg):
+        for l in msg.splitlines():
+            log.warn(l)
+        num_secs = 10
+        r = range(1,num_secs+1)
+        r.reverse()
+        print
+        log.warn("Waiting %d seconds before continuing..." % num_secs)
+        log.warn("Press CTRL-C to cancel...")
+        for i in r:
+            sys.stdout.write('%d...' % i)
+            sys.stdout.flush()
+            time.sleep(1)
+        print
+
 class CmdStart(CmdBase):
     """
     start [options] <cluster_tag>
@@ -101,6 +127,8 @@ class CmdStart(CmdBase):
     """
     names = ['start']
 
+    tag = None
+
     @property
     def completer(self):
         if optcomplete:
@@ -122,33 +150,34 @@ class CmdStart(CmdBase):
             action="store_true", default=False, 
             help="ssh to ec2 cluster master node after launch")
         opt = parser.add_option("-b","--bid", dest="spot_bid",
-            action="store", type="float", default=None, help="Requests spot instances instead " + \
-"of the usual flat rate instances. Uses SPOT_BID as max bid for the request." + \
-"Attempts to use ")
+            action="store", type="float", default=None, 
+            help="Requests spot instances instead of the usual flat rate " + \
+                 "instances. Uses SPOT_BID as max bid for the request. " + \
+                 "(EXPERIMENTAL)")
         parser.add_option("-c","--cluster-template", dest="cluster_template",
             action="store", type="string", default=None, 
-            help="cluster template to use from config")
+            help="cluster template to use from the config file")
         parser.add_option("-d","--description", dest="cluster_description",
             action="store", type="string", 
             default="Cluster requested at %s" % time.strftime("%Y%m%d%H%M"), 
             help="brief description of cluster")
         parser.add_option("-s","--cluster-size", dest="cluster_size",
             action="store", type="int", default=None, 
-            help="number of ec2 nodes to launch")
+            help="number of ec2 instances to launch")
         parser.add_option("-u","--cluster-user", dest="cluster_user",
             action="store", type="string", default=None, 
             help="name of user to create on cluster (defaults to sgeadmin)")
         opt = parser.add_option("-S","--cluster-shell", dest="cluster_shell",
             action="store", choices=static.AVAILABLE_SHELLS.keys(),
-            default=None, help="shell for cluster user ")
+            default=None, help="shell for cluster user (defaults to bash)")
         if optcomplete:
             opt.completer = optcomplete.ListCompleter(opt.choices)
         parser.add_option("-m","--master-image-id", dest="master_image_id",
             action="store", type="string", default=None, 
-            help="image to use for master")
+            help="AMI to use when launching master")
         parser.add_option("-n","--node-image-id", dest="node_image_id",
             action="store", type="string", default=None, 
-            help="image to use for node")
+            help="AMI to use when launching nodes")
         opt = parser.add_option("-I","--master-instance-type", dest="master_instance_type",
             action="store", choices=static.INSTANCE_TYPES.keys(),
             default=None, help="specify machine type for the master instance")
@@ -162,30 +191,36 @@ class CmdStart(CmdBase):
             help="availability zone to launch ec2 instances in")
         parser.add_option("-k","--keyname", dest="keyname",
             action="store", type="string", default=None, 
-            help="name of AWS ssh key to use for cluster")
+            help="name of the AWS keypair to use when launching the cluster")
         parser.add_option("-K","--key-location", dest="key_location",
             action="store", type="string", default=None, metavar="FILE",
-            help="path to ssh key used for this cluster")
+            help="path to ssh private key used for this cluster")
+
+    def cancel_command(self, signum, frame):
+        raise exception.CancelledStartRequest(self.tag)
 
     def execute(self, args):
         if len(args) != 1:
             self.parser.error("please specify a <tag_name> for this cluster")
         cfg = self.cfg
-        tag = args[0]
+        tag = self.tag = args[0]
         template = self.opts.cluster_template
+        use_experimental = cfg.globals.get('enable_experimental')
+        if self.opts.spot_bid is not None and not use_experimental:
+            raise exception.ExperimentalFeature('Using spot instances')
+        elif self.opts.spot_bid is not None: #and not self.opts.validate_only:
+            cmd = ' '.join(sys.argv[1:]) + ' --no-create'
+            launch_group = static.SECURITY_GROUP_TEMPLATE % tag
+            msg = experimental.spotmsg % {'cmd':cmd, 
+                                          'launch_group': launch_group}
+            self.warn_experimental(msg)
         if not template:
             template = cfg.get_default_cluster_template(tag)
             log.info("Using default cluster template: %s" % template)
         scluster = cfg.get_cluster_template(template, tag)
         scluster.update(self.specified_options_dict)
         if cluster.cluster_exists(tag,cfg) and not self.opts.no_create:
-            log.error("Cluster with tagname %s already exists." % tag)
-            log.error("Either choose a different tag name, or stop the " + \
-                      "existing cluster using:")
-            log.error("starcluster stop %s" % tag)
-            log.error("If you wish to use these existing instances anyway, " + \
-                      "pass --no-create to the start action")
-            sys.exit(1)
+            raise exception.ClusterExists(tag)
         #from starcluster.utils import ipy_shell; ipy_shell();
         check_running = self.opts.no_create
         if check_running:
@@ -200,6 +235,7 @@ class CmdStart(CmdBase):
         if scluster.is_valid():
             log.info('Cluster template settings are valid')
             if not self.opts.validate_only:
+                self.catch_ctrl_c()
                 scluster.start(create=not self.opts.no_create)
                 if self.opts.login_master:
                     cluster.ssh_to_master(tag, self.cfg)
@@ -413,6 +449,9 @@ class CmdCreateImage(CmdBase):
     """
     names = ['createimage']
 
+    bucket = None
+    image_name = None
+
     @property
     def completer(self):
         if optcomplete:
@@ -437,10 +476,15 @@ class CmdCreateImage(CmdBase):
             action="store_true", default=False, 
             help="Remove generated image files on the instance after registering")
 
+    def cancel_command(self, signum, frame):
+        raise exception.CancelledCreateImage(self.bucket, self.image_name)
+
     def execute(self, args):
         if len(args) != 3:
             self.parser.error('you must specify an instance-id, image name, and bucket')
         instanceid, image_name, bucket = args
+        self.bucket = bucket
+        self.image_name = image_name
         cfg = self.cfg
         ec2 = cfg.get_easy_ec2()
         i = ec2.get_instance(instanceid)
@@ -465,7 +509,7 @@ class CmdCreateImage(CmdBase):
                         log.info("Aborting...")
                         sys.exit(1)
                     break
-
+        self.catch_ctrl_c()
         ami_id = image.create_image(instanceid, image_name, bucket, cfg,
                            **self.specified_options_dict)
         log.info("Your new AMI id is: %s" % ami_id)
@@ -483,20 +527,25 @@ class CmdCreateVolume(CmdBase):
         opt = parser.add_option(
             "-i","--image-id", dest="image_id",
             action="store", type="string", default=None,
-            help="Use image_id AMI when launching volume host instance")
+            help="Specifies the AMI to use when launching volume host instance")
         opt = parser.add_option(
             "-n","--no-shutdown", dest="shutdown_instance",
             action="store_false", default=True,
-            help="Detach volume and shutdown instance after creating volume")
+            help="Do not shutdown volume host instance after creating volume")
         #opt = parser.add_option(
             #"-a","--add-to-config", dest="add_to_cfg",
             #action="store_true", default=False,
             #help="Add a new volume section to the config after creating volume")
+    
+    def cancel_command(self, signum, frame):
+        raise exception.CancelledCreateVolume()
+    
     def execute(self, args):
         if len(args) != 2:
             self.parser.error("you must specify a size (in GB) and an availability zone")
         size, zone = args
         vc = volume.VolumeCreator(self.cfg, **self.specified_options_dict)
+        self.catch_ctrl_c()
         volid = vc.create(size, zone)
         if volid:
             log.info("Your new %sGB volume %s has been created successfully" % \
@@ -684,6 +733,21 @@ class CmdListInstances(CmdBase):
         ec2 = self.cfg.get_easy_ec2()
         ec2.list_all_instances(self.opts.show_terminated)
 
+class CmdListSpots(CmdBase):
+    """
+    listspots
+
+    List all EC2 spot instance requests
+    """
+    names = ['listspots']
+    def addopts(self, parser):
+        parser.add_option("-c", "--show-closed", dest="show_closed",
+                          action="store_true", default=False, 
+                          help="show closed spot instance requests")
+    def execute(self, args):
+        ec2 = self.cfg.get_easy_ec2()
+        ec2.list_all_spot_instances(self.opts.show_closed)
+
 class CmdShowConsole(CmdBase):
     """
     showconsole <instance-id>
@@ -694,7 +758,7 @@ class CmdShowConsole(CmdBase):
 
         $ starcluster showconsole i-999999
 
-    This will print out the startup logs for instance i-999999
+    This will display the startup logs for instance i-999999
     """
     names = ['showconsole']
 
@@ -712,18 +776,10 @@ class CmdShowConsole(CmdBase):
                 log.error('something went wrong fix me: %s' % e)
 
     def execute(self, args):
+        if not len(args) == 1:
+            self.parser.error('please provide an instance id')
         ec2 = self.cfg.get_easy_ec2()
-        if args:
-            instance = ec2.get_instance(args[0])
-            import string
-            if instance:
-                print ''.join([c for c in instance.get_console_output().output
-                               if c in string.printable])
-            else:
-                log.error("instance does not exist")
-                sys.exit(1)
-        else:
-            self.parser.parse_args(['--help'])
+        ec2.show_console_output(args[0])
 
 class CmdListVolumes(CmdBase):
     """
@@ -808,12 +864,14 @@ class CmdSpotHistory(CmdBase):
             help="plot spot history using matplotlib")
 
     def execute(self,args):
+        instance_types = ', '.join(static.INSTANCE_TYPES.keys())
         if len(args) != 1:
-            self.parser.error('expecting instance type as argument')
+            self.parser.error('please provide an instance type (options: %s)' % \
+                             instance_types)
         instance_type = args[0]
         if not static.INSTANCE_TYPES.has_key(instance_type):
             self.parser.error('invalid instance type. possible options: %s' % \
-                              ' '.join(static.INSTANCE_TYPES.keys()))
+                              instance_types)
         start = self.opts.start_time
         end = self.opts.end_time
         if self.opts.days_ago:
@@ -953,7 +1011,8 @@ def main():
         help="print debug messages (useful for diagnosing problems)")
     gparser.add_option("-c","--config", dest="CONFIG", action="store",
         metavar="FILE",
-        help="use alternate config file (default: ~/.starcluster/config)")
+        help="use alternate config file (default: %s)" % \
+                       static.STARCLUSTER_CFG_FILE)
 
     # Declare subcommands.
     subcmds = [
@@ -965,18 +1024,19 @@ def main():
         CmdSshInstance(),
         CmdListInstances(),
         CmdListImages(),
-        CmdShowImage(),
+        CmdListPublic(),
         CmdCreateImage(),
         CmdRemoveImage(),
-        CmdListBuckets(),
-        CmdShowBucket(),
-        CmdCreateVolume(),
         CmdListVolumes(),
+        CmdCreateVolume(),
         CmdRemoveVolume(),
+        CmdListSpots(),
+        CmdSpotHistory(),
         CmdShowConsole(),
         CmdListZones(),
-        CmdListPublic(),
-        CmdSpotHistory(),
+        CmdListBuckets(),
+        CmdShowBucket(),
+        CmdShowImage(),
         CmdShell(),
         CmdHelp(),
     ]
@@ -1002,7 +1062,10 @@ def main():
     try:
         sc.execute(args)
     except exception.BaseException,e:
-        log.error(e.msg)
+        lines = e.msg.splitlines()
+        for l in lines:
+            log.error(l)
+        #log.error(e.msg)
         sys.exit(1)
     except EC2ResponseError,e:
         log.error("%s: %s" % (e.error_code, e.error_message))

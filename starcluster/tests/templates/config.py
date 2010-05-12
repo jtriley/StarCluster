@@ -53,6 +53,10 @@ default_config = {
 }
 
 config_test_template = """
+[global]
+DEFAULT=smallcluster
+ENABLE_EXPERIMENTAL=False
+
 [aws info]
 AWS_ACCESS_KEY_ID = %(aws_access_key_id)s
 AWS_SECRET_ACCESS_KEY = %(aws_secret_access_key)s
