@@ -896,6 +896,14 @@ to shutdown the cluster and stop paying for service
         this cluster's zone setting. Requires AWS credentials.
         """
         zone = self.zone
+        for vol in self.volumes:
+            v = self.volumes.get(vol)
+            vol_id = v.get('volume_id')
+            vol = self.ec2.get_volume(vol_id)
+            if vol.status != 'available':
+                msg = "volume %s is not available (status: %s)" % (vol_id,
+                                                                   vol.status)
+                raise exception.ClusterValidationError(msg)
 
     def _validate_ebs_settings(self):
         """
