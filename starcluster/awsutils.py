@@ -229,7 +229,7 @@ class EasyEC2(EasyAWS):
                 continue
             spot_id = spot.id or 'N/A'
             type = spot.type
-            instance_id = spot.instanceId or 'N/A'
+            instance_id = getattr(spot, 'instanceId', 'N/A')
             create_time = spot.create_time or 'N/A'
             launch_group = spot.launch_group or 'N/A'
             zone_group = spot.availability_zone_group or 'N/A'
