@@ -203,17 +203,11 @@ class CmdStart(CmdBase):
         if len(args) != 1:
             self.parser.error("please specify a <tag_name> for this cluster")
         cfg = self.cfg
-        tag = self.tag = args[0]
-        template = self.opts.cluster_template
         use_experimental = cfg.globals.get('enable_experimental')
         if self.opts.spot_bid is not None and not use_experimental:
             raise exception.ExperimentalFeature('Using spot instances')
-        elif self.opts.spot_bid is not None: #and not self.opts.validate_only:
-            cmd = ' '.join(sys.argv[1:]) + ' --no-create'
-            launch_group = static.SECURITY_GROUP_TEMPLATE % tag
-            msg = experimental.spotmsg % {'cmd':cmd, 
-                                          'launch_group': launch_group}
-            self.warn_experimental(msg)
+        tag = self.tag = args[0]
+        template = self.opts.cluster_template
         if not template:
             template = cfg.get_default_cluster_template(tag)
             log.info("Using default cluster template: %s" % template)
@@ -235,6 +229,12 @@ class CmdStart(CmdBase):
         if scluster.is_valid():
             log.info('Cluster template settings are valid')
             if not self.opts.validate_only:
+                if self.opts.spot_bid is not None:
+                    cmd = ' '.join(sys.argv[1:]) + ' --no-create'
+                    launch_group = static.SECURITY_GROUP_TEMPLATE % tag
+                    msg = experimental.spotmsg % {'cmd':cmd, 
+                                                  'launch_group': launch_group}
+                    self.warn_experimental(msg)
                 self.catch_ctrl_c()
                 scluster.start(create=not self.opts.no_create)
                 if self.opts.login_master:
