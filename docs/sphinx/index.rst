@@ -17,6 +17,7 @@ Contents:
    launch.rst
    getting_started.rst
    create_new_ami.rst
+   list_public_amis.rst
    shell_completion.rst
    plugins.rst
 
