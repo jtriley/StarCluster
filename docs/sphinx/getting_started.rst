@@ -15,22 +15,20 @@ To login to the master node as root:
 
 .. code-block:: none 
 
-        $ starcluster sshmaster
-
+        $ starcluster sshmaster mycluster
         StarCluster - (http://web.mit.edu/starcluster)
-        Author: justin.t.riley 'at' gmail 'dot' com
-        Please submit bug reports to starcluster 'at' mit 'dot' edu
+        Software Tools for Academics and Researchers (STAR)
+        Please submit bug reports to starcluster@mit.edu
 
-        >>> MASTER NODE: ec2-174-129-113-176.compute-1.amazonaws.com
-        The authenticity of host 'ec2-174-129-113-176.compute-1.amazonaws.com (174.129.113.176)' can't be established.
-        RSA key fingerprint is 27:32:cf:df:f0:c8:01:dd:ef:za:02:c3:c4:5s:5f:4b.
+        The authenticity of host 'ec2-123-123-123-231.compute-1.amazonaws.com (123.123.123.231)' can't be established.
+        RSA key fingerprint is 85:23:b0:7e:23:c8:d1:02:4f:ba:22:53:42:d5:e5:23.
         Are you sure you want to continue connecting (yes/no)? yes
-        Warning: Permanently added 'ec2-174-129-113-176.compute-1.amazonaws.com,174.129.113.176' (RSA) to the list of known hosts.
-        Linux domU-12-31-38-00-A0-61 2.6.21.7-2.fc8xen #1 SMP Fri Feb 15 12:39:36 EST 2008 i686
+        Warning: Permanently added 'ec2-123-123-123-231.compute-1.amazonaws.com,123.123.123.231' (RSA) to the list of known hosts.
+        Last login: Wed May 12 00:13:51 2010 from 192.168.1.1
 
         The programs included with the Ubuntu system are free software;
         the exact distribution terms for each program are described in the
-        individual files in /usr/share/doc/*/copyright.
+        individual files in /usr/share/doc/\*/copyright.
 
         Ubuntu comes with ABSOLUTELY NO WARRANTY, to the extent permitted by
         applicable law.
@@ -39,7 +37,7 @@ To login to the master node as root:
         http://help.ubuntu.com/
 
         Created From:
-        Amazon EC2 Ubuntu 9.04 jaunty AMI built by Eric Hammond
+        Amazon EC2 Ubuntu 9.10 jaunty AMI built by Eric Hammond
         http://alestic.com http://ec2ubuntu-group.notlong.com
 
         StarCluster EC2 AMI created by Justin Riley (MIT)
@@ -53,39 +51,41 @@ the master node of a StarCluster on Amazon's EC2 as root.
 Logging into a worker node
 --------------------------
 You also have the option of logging into any particular worker node as root by using the 
--n option to StarCluster. First, run starcluster listclusters to list the nodes:
+**sshnode** command. First, run "starcluster listclusters" to list the nodes:
 
 .. code-block:: none
 
         $ starcluster listclusters 
         StarCluster - (http://web.mit.edu/starcluster)
-        Author: justin.t.riley 'at' gmail 'dot' com
-        Please submit bug reports to starcluster 'at' mit 'dot' edu
+        Software Tools for Academics and Researchers (STAR)
+        Please submit bug reports to starcluster@mit.edu
 
-        >>> EC2 Instances:
-        [0] ec2-174-129-113-176.compute-1.amazonaws.com running (ami-8f9e71e6)
-        [1] ec2-75-101-202-225.compute-1.amazonaws.com running (ami-8f9e71e6)
+        @sc-mycluster
+        master i-33333333 running ec2-123-23-23-22.compute-1.amazonaws.com
+        node001 i-99999999 running ec2-123-23-23-23.compute-1.amazonaws.com 
+        node002 i-88888888 running ec2-123-23-23-24.compute-1.amazonaws.com
+        node003 i-77777777 running ec2-123-23-23-25.compute-1.amazonaws.com
+        ...
 
-Then use the -n option to login to a particular node
+
+Then use "starcluster sshnode mycluster" to login to a node:
 
 .. code-block:: none
 
-        $ starcluster -n 1
-
+        $ starcluster sshnode mycluster node001
         StarCluster - (http://web.mit.edu/starcluster)
-        Author: justin.t.riley 'at' gmail 'dot' com
-        Please submit bug reports to starcluster 'at' mit 'dot' edu
+        Software Tools for Academics and Researchers (STAR)
+        Please submit bug reports to starcluster@mit.edu
 
-        >>> Logging into node: ec2-75-101-202-225.compute-1.amazonaws.com
-        The authenticity of host 'ec2-75-101-202-225.compute-1.amazonaws.com (75.101.202.225)' can't be established.
-        RSA key fingerprint is 27:32:cf:df:f0:c8:01:dd:ef:za:02:c3:c4:5s:5f:4b.
+        The authenticity of host 'ec2-123-123-123-232.compute-1.amazonaws.com (123.123.123.232)' can't be established.
+        RSA key fingerprint is 86:23:b0:7e:23:c8:d1:02:4f:ba:22:53:42:d5:e5:23.
         Are you sure you want to continue connecting (yes/no)? yes
-        Warning: Permanently added 'ec2-75-101-202-225.compute-1.amazonaws.com,75.101.202.225' (RSA) to the list of known hosts.
-        Linux domU-12-31-38-00-A2-43 2.6.21.7-2.fc8xen #1 SMP Fri Feb 15 12:39:36 EST 2008 i686
+        Warning: Permanently added 'ec2-123-123-123-232.compute-1.amazonaws.com,123.123.123.232' (RSA) to the list of known hosts.
+        Last login: Wed May 12 00:13:51 2010 from 192.168.1.1
 
         The programs included with the Ubuntu system are free software;
         the exact distribution terms for each program are described in the
-        individual files in /usr/share/doc/*/copyright.
+        individual files in /usr/share/doc/\*/copyright.
 
         Ubuntu comes with ABSOLUTELY NO WARRANTY, to the extent permitted by
         applicable law.
@@ -104,7 +104,7 @@ Then use the -n option to login to a particular node
         0 packages can be updated.
         0 updates are security updates.
 
-        root@domU-12-31-38-00-A2-43:~#
+        root@domU-12-31-38-00-A2-44:~#
 
 Verify /etc/hosts
 -----------------
@@ -112,7 +112,7 @@ Once StarCluster is up, the /etc/hosts file should look like:
 
 .. code-block:: none
 
-        $ starcluster -m
+        $ starcluster sshmaster mycluster
         root@domU-12-31-38-00-A2-43:~# cat /etc/hosts
         # Do not remove the following line or programs that require network functionality will fail
         127.0.0.1 localhost.localdomain localhost
@@ -131,7 +131,7 @@ To test this out, let's login to the master node and attempt to run the hostname
 
 .. code-block:: none
 
-        $ starcluster -m
+        $ starcluster sshmaster mycluster
         root@domU-12-31-38-00-A0-61:~# ssh node001 hostname
         domU-12-31-38-00-A2-43
         root@domU-12-31-38-00-A0-61:~# su - sgeadmin
@@ -140,92 +140,97 @@ To test this out, let's login to the master node and attempt to run the hostname
         sgeadmin@domU-12-31-38-00-A0-61:~# exit
         root@domU-12-31-38-00-A0-61:~#
 
-Ensure EBS is mounted to /home (OPTIONAL)
------------------------------------------
-If you chose to use EBS for persistent storage (recommended) you should check that it is 
-mounted on /home and shared across the cluster via NFS. To do this we login to the master 
-and run a few commands to ensure everything is working properly.
-
-The first thing we want to do is to make sure the device was actually attached to the master 
-node on the device specified by VOLUME_DEVICE/VOLUME_PARTITION in your configuration file. 
-For this example VOLUME_DEVICE=?/dev/sdj? and VOLUME_PARTITION=?/dev/sdj1?.
+Verify /home is NFS Shared
+--------------------------
+The /home folder on all clusters launched by StarCluster should be NFS shared to each node. To check this, login to the master as root
+and run the mount command on each node to verify that /home is mounted from the master:
 
 .. code-block:: none
 
-        $ starcluster -m
+        $ starcluster sshmaster mycluster
+        root@domU-12-31-38-00-A0-61:~# ssh node001 mount
+        /dev/sda1 on / type ext3 (rw)
+        none on /proc type proc (rw)
+        none on /sys type sysfs (rw)
+        /dev/sda2 on /mnt type ext3 (rw)
+        none on /proc/sys/fs/binfmt_misc type binfmt_misc (rw)
+        domU-12-31-38-00-A0-61.compute-1.internal:/home on /home type nfs (rw,user=root,nosuid,nodev,user,addr=10.215.42.81)
+
+The last line in the output above indicates that /home is mounted from the master node over NFS. Running this for the rest of the nodes (e.g. node002, node003, etc)
+should produce the same output.
+
+Ensure EBS Volumes are Mounted and NFS shared (OPTIONAL)
+--------------------------------------------------------
+If you chose to use EBS for persistent storage (recommended) you should check that it is 
+mounted and shared across the cluster via NFS at the location you specified in the config. 
+To do this we login to the master and run a few commands to ensure everything is working properly.
+For this example we assume that a single 20GB volume has been attached to the cluster and that the volume
+has *MOUNT_PATH=/home* in the config. If you've attached multiple EBS volumes to the cluster, you 
+should repeat these checks for each volume you specified in the config.
+
+The first thing we want to do is to make sure the device was actually attached to the master 
+node as a device. To check that the device is attached on the master node, we login to the 
+master and use "fdisk -l" to look for our volume:
+
+.. code-block:: none
+
+        $ starcluster sshmaster mycluster
 
         root@domU-12-31-38-00-A0-61:~# fdisk -l
 
         ...
 
-        Disk /dev/sdj: 21.4 GB, 21474836480 bytes
+        Disk /dev/sdz: 21.4 GB, 21474836480 bytes
         255 heads, 63 sectors/track, 2610 cylinders
             Units = cylinders of 16065 * 512 = 8225280 bytes
             Disk identifier: 0x2a2a3cscg
 
             Device Boot Start End Blocks Id System
-            /dev/sdj1 1 2610 20964793+ 83 Linux
+            /dev/sdz1 1 2610 20964793+ 83 Linux
 
 
-From the output of fdisk above we see that there is indeed a device /dev/sdj with 
-partition /dev/sdj1 attached on the master node.
+From the output of fdisk above we see that there is indeed a 20GB device /dev/sdz with 
+partition /dev/sdz1 attached on the master node.
 
-Next check the output of mount on the master node to ensure the VOLUME_PARTITION 
-has been mounted to /home:
+Next check the output of mount on the master node to ensure that the volume's *PARTITION* 
+setting (which defaults to 1 if not specified) has been mounted to the volume's *MOUNT_PATH* 
+setting specified in the config (/home for this example):
 
 .. code-block:: none
 
         root@domU-12-31-38-00-A0-61:~# mount
         ...
-        /dev/sdj1 on /home type ext3 (rw)
+        /dev/sdz1 on /home type ext3 (rw)
         ...
 
-From the output of mount we see that the partition /dev/sdj1 has been mounted to /home 
-on the master node.
+From the output of mount we see that the partition /dev/sdz1 has been mounted to /home 
+on the master node as we specified in the config.
 
-Next we check that our home folders that are stored in the EBS volume show up in /home 
-on the master node:
-
-.. code-block:: none
-
-        root@domU-12-31-38-00-A0-61:~# cd /home
-        root@domU-12-31-38-00-A0-61:/home# ls
-        lost+found sgeadmin
-
-Here we see that sgeadmin's home folder is indeed on the cluster. This means that the next 
-time we launch a new StarCluster using this EBS volume all of the data/configuration in 
-/home/sgeadmin will be automatically restored.
-
-Verify /home is NFS Shared
---------------------------
-The last thing to check is that /home has been nfs shared across the cluster.
-
-To verify we create a test file called 'testfile' on the master node in /home/sgeadmin 
-and verify that it also shows up in each node's /home/sgeadmin folder.
+Finally we check that the *MOUNT_PATH* specified in the config for this volume has been NFS 
+shared to each cluster node by running mount on each node and examining the output:
 
 .. code-block:: none
 
-        $ starcluster -m
-        root@domU-12-31-38-00-A0-61:~# su - sgeadmin
-        sgeadmin@domU-12-31-38-00-A0-61:~# touch testfile
-        sgeadmin@domU-12-31-38-00-A0-61:~# ssh node001 ls -l ~/testfile
-        -rw-r--r-- 1 sgeadmin sgeadmin 0 2009-09-09 15:48 /home/jtriley/testfile
+        $ starcluster sshmaster mycluster
+        root@domU-12-31-38-00-A0-61:~# ssh node001 mount
+        /dev/sda1 on / type ext3 (rw)
+        none on /proc type proc (rw)
+        none on /sys type sysfs (rw)
+        /dev/sda2 on /mnt type ext3 (rw)
+        none on /proc/sys/fs/binfmt_misc type binfmt_misc (rw)
+        domU-12-31-38-00-A0-61.compute-1.internal:/home on /home type nfs (rw,user=root,nosuid,nodev,user,addr=10.215.42.81)
+        root@domU-12-31-38-00-A0-61:~# ssh node002 mount
+        ...
+        domU-12-31-38-00-A0-61.compute-1.internal:/home on /home type nfs (rw,user=root,nosuid,nodev,user,addr=10.215.42.81)
+        ...
 
-Similarly, removing the testfile and running ls -l ~/testfile on each node should 
-give a 'No such file or directory' error.
-
-.. code-block:: none
-
-        sgeadmin@domU-12-31-38-00-A0-61:~# rm testfile
-        sgeadmin@domU-12-31-38-00-A0-61:~# ssh node001 ls -l ~/testfile
-        ls: cannot access /home/jtriley/testfile: No such file or directory
-
-Assuming you get similar results to the above for all nodes, /home is properly NFS 
-mounted across the cluster.
+The last line in the output above indicates that *MOUNT_PATH* (/home for this example) is mounted 
+on each worker node from the master node via NFS.  Running this for the rest of the nodes 
+(e.g. node002, node003, etc) should produce the same output.
 
 Verify scratch space
 --------------------
-Each node should be set up with approximately 140GB of local scratch space for writing 
+Each node should be set up with approximately 140GB or more of local scratch space for writing 
 temporary files instead of storing temporary files on NFS. The location of the scratch 
 space is /scratch/CLUSTER_USER. So, for this example the local scratch for 
 CLUSTER_USER=sgeadmin is /scratch/sgeadmin.
@@ -234,7 +239,7 @@ To verify this, login to the master and run ls -l /scratch.
 
 .. code-block:: none
 
-        $ starcluster -m
+        $ starcluster sshmaster mycluster
         root@domU-12-31-38-00-A0-61:/# ls -l /scratch/
         total 0
         lrwxrwxrwx 1 root root 13 2009-09-09 14:34 sgeadmin -> /mnt/sgeadmin
@@ -242,7 +247,7 @@ To verify this, login to the master and run ls -l /scratch.
 From the output above we see that /scratch/sgeadmin has been symbolically linked 
 to /mnt/sgeadmin
 
-Next we run the df command to verify ~140GB is available on /mnt (and thus 
+Next we run the df command to verify that at least ~140GB is available on /mnt (and thus 
 /mnt/sgeadmin)
 
 .. code-block:: none
@@ -288,7 +293,7 @@ compile and run the code across the cluster like so:
 
 .. code-block:: none
 
-        $ starcluster -m
+        $ starcluster sshmaster mycluster
         root@domU-12-31-38-00-A0-61:~# su - sgeadmin
         sgeadmin@domU-12-31-38-00-A0-61:~$ mpicc helloworldmpi.c -o helloworldmpi
         sgeadmin@domU-12-31-38-00-A0-61:~$ mpirun -n 2 -host master,node001 ./helloworldmpi

@@ -4,7 +4,7 @@ StarCluster Configuration File
 The StarCluster configuration file uses ini formatting (see http://en.wikipedia.org/wiki/INI_file). 
 It is made up of various sections which are described in detail here. This document explains how 
 to configure the three required sections **[aws info]**, **[keypair]**, and **[cluster]** as well as
-optional **[plugin]** and **[volume]** sections.
+optional **[global]**, **[volume]**, and **[plugin]** sections.
 
 Creating the config file
 ------------------------
@@ -34,6 +34,11 @@ at the command-line. Provided that the configuration file does not exist, you wi
 Selecting 1 will print the example configuration file template to standard output.
 
 Selecting 2 will write the configuration file template to ~/.starcluster/config
+
+The configuration template provided by StarCluster should be ready to go out-of-the-box after filling in your Amazon Web
+Services credentials and setting up a keypair. This example config provides a simple *cluster template* called 'smallcluster'.
+This 'smallcluster' template is also set as the default *cluster template*. The following sections explain each section of the 
+config and their options.
 
 Amazon Web Services Credentials
 -------------------------------
@@ -71,15 +76,15 @@ in the configuration file:
     # this is the path to your openssh private key for mykeypair2
     key_location=/path/to/your/mykeypair2.rsa
 
-These keypair sections can now be referenced in **[cluster]** sections as we'll show below.
+These keypair sections can now be referenced in a *cluster templates*' **keyname** setting as we'll show below in an
+example *cluster template*.
 
-
-Defining Cluster Sections
--------------------------
-In order to launch StarCluster(s) on Amazon EC2, you must first provide a configuration *template* for 
-each cluster you want to launch. Once a cluster *template* has been defined, you can launch multiple StarClusters 
-from that template. Below is an example *template* called 'smallcluster' which defines a 2-node cluster using *m1.small*
-EC2 instances and the mykeypair1 keypair we defined above.
+Defining Cluster Templates
+--------------------------
+In order to launch StarCluster(s) on Amazon EC2, you must first provide a *cluster template* that contains all of the 
+configuration for the cluster. A *cluster template* is simply a **[cluster]** section in the config. Once a *cluster 
+template* has been defined, you can launch multiple StarClusters from it. Below is an example *cluster template* called
+'smallcluster' which defines a 2-node cluster using *m1.small* EC2 instances and the mykeypair1 keypair we defined above.
 
 .. code-block:: ini
 
@@ -118,13 +123,14 @@ EC2 instances and the mykeypair1 keypair we defined above.
     # availability zone
     availability_zone = us-east-1c
 
-Defining Multiple Cluster Sections
-----------------------------------
-You are not limited to defining just one cluster template. StarCluster allows you to define multiple independent cluster
-templates by simply creating a new **[cluster]** section as in the above example with all of the same settings. 
+Defining Multiple Cluster Templates
+-----------------------------------
+You are not limited to defining just one *cluster template*. StarCluster allows you to define multiple independent cluster
+templates by simply creating a new **[cluster]** section with all of the same settings (different values of course).
 
-However, you may find that defining new sections is some what repetitive with respect to redefining the same settings over 
-and over. To remedy this situation, StarCluster allows **[cluster]** sections to *extend* other cluster sections:
+However, you may find that defining new *cluster templates* is some what repetitive with respect to redefining the same 
+settings over and over. To remedy this situation, StarCluster allows *cluster templates* to extend other *cluster 
+templates*:
 
 .. code-block:: ini
 
@@ -137,50 +143,80 @@ and over. To remedy this situation, StarCluster allows **[cluster]** sections to
     cluster_size = 8
     volumes = biodata2
 
+In the example above, *mediumcluster* will use all of *smallcluster*'s settings as defaults. All other settings in the *mediumcluster*
+template override these defaults. For the *mediumcluster* template above, we can see that *mediumcluster* is the same as *smallcluster*
+except for its keyname, node_instance_type, cluster_size, and volumes settings.
+
+Setting the Default Cluster Template
+------------------------------------
+StarCluster allows you to specify a default *cluster template* to be used when using the "start" command. This is useful for
+users that mostly use a single *cluster template*. To define a default *cluster template*, define a **[global]** section and 
+configure the **default_template** setting:
+
+.. code-block:: ini
+
+    [global]
+    default_template = smallcluster
+
+The above example sets the 'smallcluster' *cluster template* as the default.
+
 Amazon EBS Volumes
 ------------------
-If you wish to use Amazon EBS volumes for persistent storage on your cluster(s) you will need to define a **[volume]** section
-in the configuration file for each volume you wish to use. Please note that using Amazon EBS volumes with StarCluster
-is optional. If you do not wish to use Amazon EBS volumes with StarCluster, simply do not define any **[volume]** sections.
+StarCluster has the ability to use Amazon EBS volumes to provide persistent data storage on a given cluster. If you wish to use 
+EBS volumes with StarCluster you will need to define a **[volume]** section in the configuration file for each volume you wish to 
+use with StarCluster and then add this **[volume]** section name to a *cluster template*'s **volumes** setting. Please note that 
+using EBS volumes with StarCluster is completely optional. If you do not wish to use EBS volumes with StarCluster, simply do not 
+define any **[volume]** sections and remove or comment-out the **volumes** setting from your *cluster template(s)*.
 
-StarCluster users Amazon EBS volumes as a way to have persistent data storage on the cluster. This means that when you 
-shutdown a particular cluster, any data saved on the EBS volume attached to that cluster will be available the next time the 
-volume is attached to another cluster (or EC2 instance). When 
+However, if you do not use an EBS volume with StarCluster, any data that you wish to keep around after shutdown 
+must be manually copied somewhere outside of the cluster (e.g. download the data locally or move it to S3 manually). This is because
+local instance storage on EC2 is ephemeral and does not persist after an instance has been shutdown. The advantage of using EBS 
+volumes with StarCluster is that when you shutdown a particular cluster, any data saved on an EBS volume attached to that cluster 
+will be available the next time the volume is attached to another cluster (or EC2 instance). 
 
-To configure Amazon EBS volume with Starcluster, define a new **[volume]** section for each EBS volume. For example, suppose
-we have two volumes we'd like to use: vol-c999999 and vol-c888888. Below is an example configuration for these volumes:
+To configure an EBS volume for use with Starcluster, define a new **[volume]** section for each EBS volume. For example, suppose
+we have two volumes we'd like to use: vol-c9999999 and vol-c8888888. Below is an example configuration for these volumes:
 
 .. code-block:: ini
 
     [volume myvoldata1]
     # this is the Amazon EBS volume id
-    volume_id=vol-c999999
-    # the device to attach the EBS volume to
-    device=/dev/sdj
-    # the partition on the EBS volume to use
-    partition=/dev/sdj1
-    # the path to mount this EBS volume to
+    volume_id=vol-c9999999
+    # the path to mount this EBS volume on
+    # (this path will also be nfs shared to all nodes in the cluster)
     mount_path=/home
 
     [volume myvoldata2]
-    volume_id=vol-c888888
-    device=/dev/sdk
-    partition=/dev/sdk1
+    volume_id=vol-c8888888
     mount_path=/scratch
 
     [volume myvoldata2-alternate]
-    # same volume as myvoldata2 but alternate device/partition/mount_path settings
-    volume_id=vol-c888888
-    device=/dev/sdh
-    partition=/dev/sdh1
+    # same volume as myvoldata2 but uses 2nd partition instead of 1st
+    volume_id=vol-c8888888
     mount_path=/scratch2
+    partition=2
+
+StarCluster by default attempts to mount the first partition in the volume onto the master node. It is possible to use a different 
+partition by configuring a **partition** setting in your **[volume]** section as in the *myvoldata2-alternate* example above.
+
+After defininig one or more **[volume]** sections, you then need to add them to a *cluster template* in order to use them. To do this,
+specify the **[volume]** section name(s) in the **volumes** setting in one or more of your *cluster templates*. For example, to use both 
+myvoldata1 and myvoldata2 from the above example in a *cluster template* called *smallcluster*:
+
+.. code-block:: ini
+
+    [cluster smallcluster]
+    ...
+    volumes = myvoldata1, myvoldata2
+    ...
+
+Now any time a cluster is started using the *smallcluster* template, myvoldata1 will be mounted to /home on the master, myvoldata2 will
+be mounted to /scratch on the master, and both /home and /scratch will be NFS shared to the rest of the cluster nodes. 
 
 StarCluster Plugins
 -------------------
-StarCluster also has support for user contributed plugins (see here for details). 
-To configure a *cluster template* to use a particular plugin, we must first 
-create a plugin section for each plugin we wish to use. For example, suppose
-we have two plugins myplug1 and myplug2:
+StarCluster also has support for user contributed plugins (see :doc:`plugins`).  To configure a *cluster template* to use a particular 
+plugin, we must first create a plugin section for each plugin we wish to use. For example, suppose we have two plugins myplug1 and myplug2:
 
 .. code-block:: ini
 
@@ -192,13 +228,10 @@ we have two plugins myplug1 and myplug2:
     setup_class = myplug2.SetupClass
     myplug2_arg_one = 3
 
-In this example, myplug{1,2}_arg_one are arguments to the plugin's *setup_class*.
-The 'myplug{1,2}_arg_one' variable names were made up for this example.
-The names of these arguments depend on the plugin being used. Some plugins may 
-not even have arguments. 
+In this example, myplug{1,2}_arg_one are arguments to the plugin's *setup_class*. The 'myplug{1,2}_arg_one' variable names were made up 
+for this example.  The names of these arguments depend on the plugin being used. Some plugins may not even have arguments. 
 
-After you've defined some **[plugin]** sections, you can reference them in 
-a cluster template like so:
+After you've defined some **[plugin]** sections, you can reference them in a *cluster template* like so:
 
 .. code-block:: ini
 
@@ -212,7 +245,6 @@ a cluster template like so:
     volumes = biodata2
     plugins = myplug1, myplug2
 
-Notice the added *plugins* setting for the 'mediumcluster' template. This setting
-instructs StarCluster to first run the 'myplug1' plugin and then the 'myplug2'
-plugin afterwards. Reversing myplug1/myplug2 in the plugins setting in the above 
-example would reverse the order of execution.
+Notice the added *plugins* setting for the 'mediumcluster' template. This setting instructs StarCluster to first run the 'myplug1' plugin 
+and then the 'myplug2' plugin afterwards. Reversing myplug1/myplug2 in the plugins setting in the above example would reverse the order 
+of execution.

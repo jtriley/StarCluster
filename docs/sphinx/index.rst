@@ -16,6 +16,7 @@ Contents:
    volumes.rst
    launch.rst
    getting_started.rst
+   create_new_ami.rst
    shell_completion.rst
    plugins.rst
 
