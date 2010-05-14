@@ -29,26 +29,26 @@ setup(
     details and a few cluster preferences (e.g. number of machines, machine type, ssh 
     keypairs, etc). After creating the configuration file and running StarCluster's 
     "start" command, a cluster of Linux machines configured with the Sun Grid Engine 
-    queuing system, password-less ssh, an NFS-shared /home directory, and OpenMPI with 
-    password-less ssh is created and ready to go out-of-the-box. Running StarCluster's 
-    "stop" command will shutdown the cluster and stop the billing from Amazon. This 
-    allows the user to only pay for what they use.
+    queuing system, an NFS-shared /home directory, and OpenMPI with password-less ssh is 
+    created and ready to go out-of-the-box. Running StarCluster's "stop" command will 
+    shutdown the cluster and stop paying for service. This allows the user to only pay 
+    for what they use.
 
-    StarCluster can also utilize EBS volumes as persistent data storage on a cluster. 
-    Provided EBS volumes are specified in the config, StarCluster will mount and 
-    NFS-share these volumes on the cluster. EBS volumes allow you to store large amounts 
-    of data on the Amazon cloud and are also easy to back-up and replicate. StarCluster 
-    provides the ability to automatically create, format, and partition new EBS volumes 
-    for use with StarCluster.
+    StarCluster can also utilize Amazon's Elastic Block Storage (EBS) volumes to provide 
+    persistent data storage for a cluster. EBS volumes allow you to store large amounts 
+    of data in the Amazon cloud and are also easy to back-up and replicate in the cloud. 
+    StarCluster will mount and NFS-share any volumes specified in the config. StarCluster's 
+    "createvolume" command provides the ability to automatically create, format, and 
+    partition new EBS volumes for use with StarCluster.
 
-    In addition to the software, StarCluster consists of two public Ubuntu-based Amazon 
-    Machine Images (AMIs) in 32bit and 64bit flavors. These AMIs contain an optimized 
-    NumPy/SciPy/Atlas/Blas/Lapack installation compiled for the larger Amazon EC2 
-    instances. These AMIs also come with Sun Grid Engine (SGE) and OpenMPI compiled with 
-    SGE support. These public AMIs can easily be customized by simply launching an 
-    instance of one of the AMIs, installing additional software on the instance, and then 
-    using StarCluster to automate the process of creating a new customized AMI from the 
-    instance.
+    StarCluster provides a Ubuntu-based Amazon Machine Image (AMI) in 32bit and 64bit 
+    architectures. The AMI contains an optimized NumPy/SciPy/Atlas/Blas/Lapack 
+    installation compiled for the larger Amazon EC2 instance types. The AMI also comes
+    with Sun Grid Engine (SGE) and OpenMPI compiled with SGE support. The public AMI 
+    can easily be customized by launching a single instance of the public AMI,
+    installing additional software on the instance, and then using StarCluster's 
+    "createimage" command to completely automate the process of creating a new AMI from 
+    an EC2 instance.
     """,
 
     download_url='http://web.mit.edu/starcluster',
