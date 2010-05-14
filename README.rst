@@ -6,9 +6,9 @@ StarCluster
 
 Description:
 ------------
-StarCluster is a utility for creating and managing distributed computing clusters 
-hosted on Amazon's Elastic Compute Cloud (EC2). StarCluster utilizes Amazon's EC2
-web service to create and destroy clusters of Linux virtual machines on demand.
+StarCluster is a utility for creating and managing computing clusters hosted on 
+Amazon's Elastic Compute Cloud (EC2). StarCluster utilizes Amazon's EC2 web service 
+to create and destroy clusters of Linux virtual machines on demand.
 
 To get started, the user creates a simple configuration file with their AWS account 
 details and a few cluster preferences (e.g. number of machines, machine type, ssh 
