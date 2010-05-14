@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name = 'StarCluster',
-    version = '0.9999',
+    version = '0.91',
     packages = ['starcluster', 'starcluster.templates', 'starcluster.tests', 'starcluster.tests.templates'],
     package_dir = {'starcluster':'starcluster'},
     scripts=['bin/starcluster',],
@@ -19,47 +19,36 @@ setup(
     author='Justin Riley',
     author_email='justin.t.riley@gmail.com',
     url="http://web.mit.edu/starcluster",
-    description="StarCluster is a utility for creating and managing general purpose computing clusters hosted on Amazon's Elastic Compute Cloud (EC2).",
+    description="StarCluster is a utility for creating and managing distributed computing clusters hosted on Amazon's Elastic Compute Cloud (EC2).",
     long_description = """
-    StarCluster minimizes the administrative overhead associated with obtaining, 
-    configuring, and managing a traditional computing cluster used in research labs 
-    or for general distributed computing applications. 
-    
-    StarCluster is built on top of EC2 which enables dynamically creating and 
-    destroying clusters of virtual machines and only paying for the time used. 
-    The amount per hour varies depending on the instance type and the number of 
-    virtual machines. 
+    StarCluster is a utility for creating and managing distributed computing clusters 
+    hosted on Amazon's Elastic Compute Cloud (EC2). StarCluster utilizes Amazon's EC2
+    web service to create and destroy clusters of Linux virtual machines on demand.
 
-    StarCluster consists of a library and set of scripts that use the library. For end-users, 
-    the scripts are the main user interface and provide simple intuitive options for getting 
-    started with distributed computing on EC2 (i.e. starting/stopping clusters, managing 
-    software configurations, etc). For developers, the library wraps the EC2 API to provide 
-    a simplified interface for launching/terminating nodes, executing commands on the nodes,  
-    copying files to/from the nodes, etc.
+    To get started, the user creates a simple configuration file with their AWS account 
+    details and a few cluster preferences (e.g. number of machines, machine type, ssh 
+    keypairs, etc). After creating the configuration file and running StarCluster's 
+    "start" command, a cluster of Linux machines configured with the Sun Grid Engine 
+    queuing system, password-less ssh, an NFS-shared /home directory, and OpenMPI with 
+    password-less ssh is created and ready to go out-of-the-box. Running StarCluster's 
+    "stop" command will shutdown the cluster and stop the billing from Amazon. This 
+    allows the user to only pay for what they use.
 
-    To get started, the user creates a simple configuration file with their account 
-    details and a few preferences (i.e. number of machines, instance type, EBS 
-    volumes to be mounted, etc). After creating the configuration file and starting 
-    the software, a cluster of Linux machines configured with a queuing 
-    system, a nfs shared /home directory, and OpenMPI is created and ready to 
-    go out of the box.
+    StarCluster can also utilize EBS volumes as persistent data storage on a cluster. 
+    Provided EBS volumes are specified in the config, StarCluster will mount and 
+    NFS-share these volumes on the cluster. EBS volumes allow you to store large amounts 
+    of data on the Amazon cloud and are also easy to back-up and replicate. StarCluster 
+    provides the ability to automatically create, format, and partition new EBS volumes 
+    for use with StarCluster.
 
-    StarCluster has been targeted for computational research labs and to support 
-    classrooms with computational requirements. 
-
-    For research labs, StarCluster is a way for graduate students and faculty to have
-    an on-demand cluster.  This means students can access their research with the same hardware
-    and software configurations wherever they go; even if they move to another institution. 
-    StarCluster also provides a way for students to experiment with a computational model 
-    on a cheap budget before running on local dedicated resources.
-
-    In the classroom, StarCluster provides a cost effective, reliable way of managing the 
-    software configurations for a particular course. It also removes the majority of system 
-    administration concerns since the initial setup procedures have been captured in StarCluster 
-    and in the user's software configurations (i.e. AMI images, EBS volumes, etc). This means 
-    that each semester the exact computing cluster configuration can be recalled with more or 
-    less nodes. With this model there is also the benefit that if hardware problems occur 
-    it's easy to request a new set of machines in the cloud.
+    In addition to the software, StarCluster consists of two public Ubuntu-based Amazon 
+    Machine Images (AMIs) in 32bit and 64bit flavors. These AMIs contain an optimized 
+    NumPy/SciPy/Atlas/Blas/Lapack installation compiled for the larger Amazon EC2 
+    instances. These AMIs also come with Sun Grid Engine (SGE) and OpenMPI compiled with 
+    SGE support. These public AMIs can easily be customized by simply launching an 
+    instance of one of the AMIs, installing additional software on the instance, and then 
+    using StarCluster to automate the process of creating a new customized AMI from the 
+    instance.
     """,
 
     download_url='http://web.mit.edu/starcluster',

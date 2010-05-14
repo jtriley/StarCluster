@@ -18,7 +18,7 @@ Each command consists of a class, which has the following properties:
   given parser. This defines command options.
 """
 
-__version__ = "$Revision: 0.9999 $"
+from starcluster import __version__
 __author__ = "Justin Riley <justin.t.riley@gmail.com>"
 
 import os

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+import sys
 
 from starcluster.config import StarClusterConfig
 
@@ -13,11 +14,24 @@ for bucket in buckets:
     print "[%d] %s" % (counter,bucket.name)
     counter += 1
 
-inp = int(raw_input('>>> Enter the bucket to mnt: '))
-selection = buckets[inp].name
-print 'you selected: %s' % selection
-mountpt = raw_input('>>> please enter the mnt point: ')
-print 'mounting %s at: %s' % (selection,mountpt)
-os.system('s3fs %s -o accessKeyId=%s -o secretAccessKey=%s %s' % (selection,
-                                                                  cfg.aws.get('AWS_ACCESS_KEY_ID'),
-                                                                  cfg.aws.get('AWS_SECRET_ACCESS_KEY'),mountpt))
+try:
+    inp = int(raw_input('>>> Enter the bucket to mnt: '))
+    selection = buckets[inp].name
+    print 'you selected: %s' % selection
+    mountpt = raw_input('>>> please enter the mnt point: ')
+    print 'mounting %s at: %s' % (selection,mountpt)
+except KeyboardInterrupt,e:
+    print
+    print 'Exiting...'
+    sys.exit(1)
+
+try:
+    os.system('s3fs %s -o accessKeyId=%s -o secretAccessKey=%s %s' % (selection,
+                                                                      cfg.aws.get('aws_access_key_id'),
+                                                                      cfg.aws.get('aws_secret_access_key'),mountpt))
+except KeyboardInterrupt,e:
+    print
+    print 'Attempting to umount %s' % mountpt
+    os.system('sudo umount %s' % mountpt)
+    print 'Exiting...'
+    sys.exit(1)
