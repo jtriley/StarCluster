@@ -265,7 +265,7 @@ Below is a simple Hello World program in MPI (retrieved from here)
 
 .. code-block:: c
 
-        #include not found stdio.h /* printf and BUFSIZ defined there */
+        #include <stdio.h> /* printf and BUFSIZ defined there */
         #include <stdlib.h> /* exit defined there */
         #include <mpi.h> /* all MPI-2 functions defined there */
 
