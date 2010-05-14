@@ -29,18 +29,22 @@ class EC2ImageCreator(object):
     instance must be a starcluster.node.Node instance
     """
     def __init__(self, instance=None, aws_access_key_id=None,
-                 aws_secret_access_key=None,
-                 aws_user_id=None, bucket=None, ec2_cert=None, 
-                 ec2_private_key=None, prefix='image', 
+                 aws_secret_access_key=None, aws_user_id=None, 
+                 ec2_cert=None, ec2_private_key=None, prefix='image', 
+                 bucket=None, description=None,
+                 kernel_id=None, ramdisk_id=None, 
                  remove_image_files=False, **kwargs):
         self.host = instance # starcluster.node.Node instance
         self.access_key = aws_access_key_id
         self.secret_key = aws_secret_access_key
         self.userid = aws_user_id
+        self.private_key = ec2_private_key
         self.bucket = bucket
         self.prefix = prefix
+        self.description = description
+        self.kernel_id = kernel_id
+        self.ramdisk_id = ramdisk_id
         self.cert = ec2_cert
-        self.private_key = ec2_private_key
         self.remove_image_files = remove_image_files
         if not utils.is_valid_bucket_name(self.bucket):
             raise exception.InvalidBucketName(self.bucket)
@@ -89,7 +93,7 @@ class EC2ImageCreator(object):
 
     def _remove_image_files(self):
         conn = self.host.ssh
-        conn.execute('umount /mnt/img-mnt')
+        conn.execute('umount /mnt/img-mnt', ignore_exit_status=True)
         conn.execute('rm -rf /mnt/img-mnt')
         conn.execute('rm -rf /mnt/%(prefix)s*' % self.config_dict)
 
@@ -139,7 +143,10 @@ class EC2ImageCreator(object):
         config_dict = self.config_dict
         return conn.register_image(
             self.prefix,
+            description=self.description,
             image_location= "%(bucket)s/%(prefix)s.manifest.xml" % config_dict,
+            kernel_id=self.kernel_id,
+            ramdisk_id=self.ramdisk_id,
             architecture=config_dict.get('arch'),
         )
 

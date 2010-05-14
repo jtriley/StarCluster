@@ -475,6 +475,18 @@ class CmdCreateImage(CmdBase):
             "-r","--remove-image-files", dest="remove_image_files",
             action="store_true", default=False, 
             help="Remove generated image files on the instance after registering")
+        opt = parser.add_option(
+            "-d","--description", dest="description", action="store", 
+            type="string", default=time.strftime("%Y%m%d%H%M"), 
+            help="short description of this AMI")
+        opt = parser.add_option(
+            "-k","--kernel-id", dest="kernel_id", action="store", 
+            type="string", default=None,
+            help="kernel id for the new AMI")
+        opt = parser.add_option(
+            "-R","--ramdisk-id", dest="ramdisk_id", action="store", 
+            type="string", default=None,
+            help="ramdisk id for the new AMI")
 
     def cancel_command(self, signum, frame):
         raise exception.CancelledCreateImage(self.bucket, self.image_name)
