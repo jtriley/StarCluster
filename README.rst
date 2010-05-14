@@ -1,8 +1,8 @@
 StarCluster
 ===========
-Homepage: http://web.mit.edu/starcluster
-Author: Justin Riley (justin.t.riley@gmail.com)
-Team: Software Tools for Academics and Researchers (http://web.mit.edu/star)
+| Homepage: http://web.mit.edu/starcluster
+| Author: Justin Riley (justin.t.riley@gmail.com)
+| Team: Software Tools for Academics and Researchers (http://web.mit.edu/star)
 
 Description:
 ------------
@@ -45,55 +45,41 @@ Dependencies:
 Getting Started:
 ----------------
 
-To install StarCluster using easy_install:
-
-.. code-block:: none
+To install StarCluster using easy_install::
 
     $ sudo easy_install StarCluster
 
-To install StarCluster manually:
-
-.. code-block:: none
+To install StarCluster manually::
 
     $ (Download StarCluster from http://web.mit.edu/starcluster)
     $ tar xvzf starcluster-X.X.X.tar.gz  (where x.x.x is a version number)
     $ cd starcluster-X.X.X
     $ sudo python setup.py install
 
-To run StarCluster:
-
-.. code-block:: none
+To run StarCluster::
 
     $ starcluster help
     
 This will give you a template to create a configuration file with your EC2 info, preferences, etc.  
-The next step is to customize this file using your favorite text-editor.
-
-.. code-block:: none
+The next step is to customize this file using your favorite text-editor:::
 
     $ vi ~/.starclustercfg  
 
 Next we start a cluster tagged "mycluster" using the default cluster template in the config.
-The default_template setting in the [global] section of the config specifies the default cluster template.
-
-.. code-block:: none
+The default_template setting in the [global] section of the config specifies the default cluster template.::
 
     $ starcluster start mycluster 
 
-After the above command completes you should now have a working cluster. Once you're finished using the 
-cluster and wish to stop paying for it:
-
-.. code-block:: none
+After the above command completes you should now have a working cluster. Once you've finished using the 
+cluster and wish to stop paying for it:::
 
     $ starcluster stop mycluster 
 
-Have a look at the rest of StarCluster's commands:
-
-.. code-block:: none
+Have a look at the rest of StarCluster's commands::
 
     $ starcluster help
 
 Licensing:
 ----------
-StarCluster is licensed under the LGPL
-see COPYING.LESSER (LGPL) and COPYING (GPL) for LICENSE details
+| StarCluster is licensed under the LGPL
+| see COPYING.LESSER (LGPL) and COPYING (GPL) for LICENSE details
