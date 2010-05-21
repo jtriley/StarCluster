@@ -331,19 +331,20 @@ class Cluster(object):
             klass = getattr(mod, class_name, None)
             if klass:
                 if issubclass(klass, clustersetup.ClusterSetup):
-                    argspec = inspect.getargspec(klass.__init__)
-                    args = argspec.args[1:]
+                    (argspec_args, argspec_varargs, argspec_keywords, argspec_defaults) = \
+                        inspect.getargspec(klass.__init__)
+                    args = argspec_args[1:]
                     nargs = len(args)
                     ndefaults = 0
-                    if argspec.defaults:
-                        ndefaults = len(argspec.defaults)
+                    if argspec_defaults:
+                        ndefaults = len(argspec_defaults)
                     nrequired = nargs - ndefaults
                     config_args = []
-                    for arg in argspec.args:
+                    for arg in argspec_args:
                         if arg in plugin:
                             config_args.append(plugin.get(arg))
                     log.debug("config_args = %s" % config_args)
-                    log.debug("args = %s" % argspec.args)
+                    log.debug("args = %s" % argspec_args)
                     if nrequired != len(config_args):
                         raise exception.PluginError(
                         "Not enough settings provided for plugin %s" % \
