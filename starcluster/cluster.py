@@ -345,7 +345,7 @@ class Cluster(object):
                             config_args.append(plugin.get(arg))
                     log.debug("config_args = %s" % config_args)
                     log.debug("args = %s" % argspec_args)
-                    if nrequired != len(config_args):
+                    if nrequired > len(config_args):
                         raise exception.PluginError(
                         "Not enough settings provided for plugin %s" % \
                             plugin_name
