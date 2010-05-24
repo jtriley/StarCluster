@@ -119,7 +119,7 @@ class CmdStart(CmdBase):
     in the configuration file. The default cluster template
     is the template that has DEFAULT=True in the configuration file.
 
-        $ starcluster start --cluster largecluster mynewcluster
+        $ starcluster start --cluster-template largecluster mynewcluster
 
     This will do the same thing only using the "largecluster" 
     cluster template rather than the "default" template assuming 
