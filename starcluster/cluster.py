@@ -145,25 +145,27 @@ def list_clusters(cfg):
             print '-'*len(header)
             cl = get_cluster(tag, cfg)
             master = cl.master_node
-            print 'Launch time: %s' % master.launch_time
-            print 'Zone: %s' % master.placement
-            print 'Keypair: %s' % master.key_name
-            if master.block_device_mapping:
-                print 'EBS volumes:'
-                devices = master.block_device_mapping
-                for dev in devices:
-                    d = devices.get(dev)
-                    vol_id = d.volume_id
-                    status = d.status
-                    print '    %s on master:%s (status: %s)' % (vol_id, dev, status)
-            if cl.nodes:
+            nodes = cl.nodes
+            if master:
+                print 'Launch time: %s' % master.launch_time
+                print 'Zone: %s' % master.placement
+                print 'Keypair: %s' % master.key_name
+                if master.block_device_mapping:
+                    print 'EBS volumes:'
+                    devices = master.block_device_mapping
+                    for dev in devices:
+                        d = devices.get(dev)
+                        vol_id = d.volume_id
+                        status = d.status
+                        print '    %s on master:%s (status: %s)' % (vol_id, dev, status)
+            if nodes:
                 print 'Cluster nodes:'
-            for node in cl.nodes:
-                spot = node.spot_id or ''
-                if spot:
-                    spot = '(spot %s)' % spot
-                print "    %7s %s %s %s %s" % (node.alias, node.state, node.id,
-                                               node.dns_name, spot)
+                for node in nodes:
+                    spot = node.spot_id or ''
+                    if spot:
+                        spot = '(spot %s)' % spot
+                    print "    %7s %s %s %s %s" % (node.alias, node.state, node.id,
+                                                   node.dns_name, spot)
     else:
         log.info("No clusters found...")
 
