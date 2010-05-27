@@ -85,8 +85,10 @@ def ssh_to_cluster_node(cluster_name, node_id, cfg, user='root'):
             node = cluster.get_node_by_dns_name(node_id)
     if node:
         key = cfg.get_key(node.key_name)
-        os.system('ssh -i %s %s@%s' % (key.key_location, user,
-                                       node.dns_name))
+        cmd = 'ssh -i %s %s@%s' % (key.key_location, user,
+                                              node.dns_name)
+        log.debug('Executing command: ' + cmd)
+        os.system(cmd)
     else:
         log.error("node '%s' does not exist" % node_id)
 
