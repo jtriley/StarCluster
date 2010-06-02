@@ -114,7 +114,7 @@ def get_cluster_security_groups(cfg):
     starcluster_groups = []
     for sg in sgs:
         is_starcluster = sg.name.startswith(static.SECURITY_GROUP_PREFIX)
-        if is_starcluster and sg.name != static.MASTER_GROUP:
+        if is_starcluster and sg.name not in static.IGNORE_GROUPS:
             starcluster_groups.append(sg)
     return starcluster_groups
 
