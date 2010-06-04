@@ -148,26 +148,27 @@ def list_clusters(cfg):
             cl = get_cluster(tag, cfg)
             master = cl.master_node
             nodes = cl.nodes
-            if master:
-                print 'Launch time: %s' % master.launch_time
-                print 'Zone: %s' % master.placement
-                print 'Keypair: %s' % master.key_name
-                if master.block_device_mapping:
-                    print 'EBS volumes:'
-                    devices = master.block_device_mapping
-                    for dev in devices:
-                        d = devices.get(dev)
-                        vol_id = d.volume_id
-                        status = d.status
-                        print '    %s on master:%s (status: %s)' % (vol_id, dev, status)
-            if nodes:
+            print 'Launch time: %s' % getattr(master,'launch_time','N/A')
+            print 'Zone: %s' % getattr(master, 'placement','N/A')
+            print 'Keypair: %s' % getattr(master, 'key_name', 'N/A')
+            if getattr(master,'block_device_mapping', None):
+                print 'EBS volumes:'
+                devices = master.block_device_mapping
+                for dev in devices:
+                    d = devices.get(dev)
+                    vol_id = d.volume_id
+                    status = d.status
+                    print '    %s on master:%s (status: %s)' % (vol_id, dev, status)
+            if nodes: 
                 print 'Cluster nodes:'
-                for node in nodes:
-                    spot = node.spot_id or ''
-                    if spot:
-                        spot = '(spot %s)' % spot
-                    print "    %7s %s %s %s %s" % (node.alias, node.state, node.id,
-                                                   node.dns_name, spot)
+            else:
+                print 'Cluster nodes: N/A'
+            for node in nodes:
+                spot = node.spot_id or ''
+                if spot:
+                    spot = '(spot %s)' % spot
+                print "    %7s %s %s %s %s" % (node.alias, node.state, node.id,
+                                               node.dns_name, spot)
     else:
         log.info("No clusters found...")
 
