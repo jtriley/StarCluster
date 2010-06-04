@@ -139,7 +139,6 @@ def list_clusters(cfg):
     starcluster_groups = get_cluster_security_groups(cfg)
     if starcluster_groups:
         for scg in starcluster_groups:
-            print
             tag = get_tag_from_sg(scg.name)
             header = '%s (security group: %s)' % (tag, scg.name)
             print '-'*len(header)
@@ -159,16 +158,17 @@ def list_clusters(cfg):
                     vol_id = d.volume_id
                     status = d.status
                     print '    %s on master:%s (status: %s)' % (vol_id, dev, status)
+            print 'Cluster nodes:'
             if nodes: 
-                print 'Cluster nodes:'
+                for node in nodes:
+                    spot = node.spot_id or ''
+                    if spot:
+                        spot = '(spot %s)' % spot
+                    print "    %7s %s %s %s %s" % (node.alias, node.state, node.id,
+                                                   node.dns_name, spot)
             else:
-                print 'Cluster nodes: N/A'
-            for node in nodes:
-                spot = node.spot_id or ''
-                if spot:
-                    spot = '(spot %s)' % spot
-                print "    %7s %s %s %s %s" % (node.alias, node.state, node.id,
-                                               node.dns_name, spot)
+                print '    No pending/running nodes found...'
+            print
     else:
         log.info("No clusters found...")
 
