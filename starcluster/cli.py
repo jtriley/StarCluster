@@ -34,7 +34,7 @@ from pprint import pprint, pformat
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-from boto.exception import EC2ResponseError, S3ResponseError
+from boto.exception import BotoServerError, EC2ResponseError, S3ResponseError
 from starcluster import cluster
 from starcluster import node
 from starcluster import config
@@ -1079,10 +1079,7 @@ def main():
             log.error(l)
         #log.error(e.msg)
         sys.exit(1)
-    except EC2ResponseError,e:
-        log.error("%s: %s" % (e.error_code, e.error_message))
-        sys.exit(1)
-    except S3ResponseError,e:
+    except (EC2ResponseError, S3ResponseError, BotoServerError), e:
         log.error("%s: %s" % (e.error_code, e.error_message))
         sys.exit(1)
     except socket.gaierror,e:
