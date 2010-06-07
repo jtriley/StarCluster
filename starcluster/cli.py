@@ -298,7 +298,7 @@ class CmdSshMaster(CmdBase):
 
         $ sshmaster mycluster
     """
-    names = ['sshmaster']
+    names = ['sshmaster', 'sm']
 
     @property
     def completer(self):
@@ -341,7 +341,7 @@ class CmdSshNode(CmdBase):
         $ starcluster sshnode mycluster 1
         ...
     """
-    names = ['sshnode']
+    names = ['sshnode', 'sn']
 
     @property
     def completer(self):
@@ -390,7 +390,7 @@ class CmdSshInstance(CmdBase):
         $ starcluster sshinstance ec2-123-123-123-12.compute-1.amazonaws.com 
     
     """
-    names = ['sshinstance']
+    names = ['sshinstance', 'si']
 
     @property
     def completer(self):
@@ -426,7 +426,7 @@ class CmdListClusters(CmdBase):
 
     List all active clusters
     """
-    names = ['listclusters']
+    names = ['listclusters', 'lc']
     def execute(self, args):
         cfg = self.cfg
         cluster.list_clusters(cfg)
@@ -447,7 +447,7 @@ class CmdCreateImage(CmdBase):
     it to your liking, and then use this command to create a new AMI from 
     the running instance.
     """
-    names = ['createimage']
+    names = ['createimage', 'ci']
 
     bucket = None
     image_name = None
@@ -533,7 +533,7 @@ class CmdCreateVolume(CmdBase):
     Create a new EBS volume for use with StarCluster
     """
 
-    names = ['createvolume']
+    names = ['createvolume', 'cv']
 
     def addopts(self, parser):
         opt = parser.add_option(
@@ -571,7 +571,7 @@ class CmdListZones(CmdBase):
 
     List all EC2 availability zones
     """
-    names = ['listzones']
+    names = ['listzones', 'lz']
     def execute(self, args):
         ec2 = self.cfg.get_easy_ec2()
         ec2.list_zones()
@@ -582,7 +582,7 @@ class CmdListImages(CmdBase):
 
     List all registered EC2 images (AMIs)
     """
-    names = ['listimages']
+    names = ['listimages', 'li']
 
     def addopts(self, parser):
         opt = parser.add_option(
@@ -603,7 +603,7 @@ class CmdListBuckets(CmdBase):
 
     List all S3 buckets
     """
-    names = ['listbuckets']
+    names = ['listbuckets', 'lb']
     def execute(self, args):
         s3 = self.cfg.get_easy_s3()
         buckets = s3.list_buckets()
@@ -618,7 +618,7 @@ class CmdShowImage(CmdBase):
 
         $ starcluster showimage ami-999999
     """
-    names = ['showimage']
+    names = ['showimage', 'simg']
     def execute(self, args):
         if not args:
             self.parser.error('please specify an AMI id')
@@ -636,7 +636,7 @@ class CmdShowBucket(CmdBase):
 
         $ starcluster showbucket mybucket
     """
-    names = ['showbucket']
+    names = ['showbucket', 'sb']
     def execute(self, args):
         if not args:
             self.parser.error('please specify an S3 bucket')
@@ -657,7 +657,7 @@ class CmdRemoveVolume(CmdBase):
 
         $ starcluster removevolume vol-999999
     """
-    names = ['removevolume']
+    names = ['removevolume', 'rv']
 
     def addopts(self, parser):
         parser.add_option("-c","--confirm", dest="confirm", action="store_true",
@@ -701,7 +701,7 @@ class CmdRemoveImage(CmdBase):
 
         $ starcluster removeami ami-999999
     """
-    names = ['removeimage']
+    names = ['removeimage', 'ri']
 
     def addopts(self, parser):
         parser.add_option("-p","--pretend", dest="pretend", action="store_true",
@@ -734,7 +734,7 @@ class CmdListInstances(CmdBase):
 
     List all running EC2 instances
     """
-    names = ['listinstances']
+    names = ['listinstances', 'lsi']
 
     def addopts(self, parser):
         parser.add_option("-t","--show-terminated", dest="show_terminated", action="store_true",
@@ -751,7 +751,7 @@ class CmdListSpots(CmdBase):
 
     List all EC2 spot instance requests
     """
-    names = ['listspots']
+    names = ['listspots', 'ls']
     def addopts(self, parser):
         parser.add_option("-c", "--show-closed", dest="show_closed",
                           action="store_true", default=False, 
@@ -772,7 +772,7 @@ class CmdShowConsole(CmdBase):
 
     This will display the startup logs for instance i-999999
     """
-    names = ['showconsole']
+    names = ['showconsole', 'sc']
 
     @property
     def completer(self):
@@ -799,7 +799,7 @@ class CmdListVolumes(CmdBase):
 
     List all EBS volumes
     """
-    names = ['listvolumes']
+    names = ['listvolumes', 'lv']
     def execute(self, args):
         ec2 = self.cfg.get_easy_ec2()
         ec2.list_volumes()
@@ -810,7 +810,7 @@ class CmdListPublic(CmdBase):
 
     List all public StarCluster images on EC2
     """
-    names = ['listpublic']
+    names = ['listpublic', 'lp']
     def execute(self, args):
         ec2 = self.cfg.get_easy_ec2()
         ec2.list_starcluster_public_images()
@@ -828,7 +828,7 @@ class CmdRunPlugin(CmdBase):
 
        $ starcluster runplugin myplugin mycluster
     """
-    names = ['runplugin']
+    names = ['runplugin', 'rp']
     def execute(self,args):
         if len(args) != 2:
             self.parser.error("Please provide a plugin_name and <cluster_tag>")
@@ -851,7 +851,7 @@ class CmdSpotHistory(CmdBase):
 
         $ starcluster spothistory -p m1.small
     """
-    names = ['spothistory']
+    names = ['spothistory','shi']
 
     def addopts(self, parser):
         now_tup = datetime.now()
@@ -908,7 +908,7 @@ class CmdShell(CmdBase):
 
     All starcluster modules are automatically imported in the IPython session
     """
-    names = ['shell']
+    names = ['shell', 'sh']
     def execute(self,args):
         cfg = self.cfg
         ec2 = cfg.get_easy_ec2()

@@ -134,7 +134,7 @@ class NoDefaultTemplateFound(ConfigError):
 
 class ConfigNotFound(ConfigError):
     def __init__(self, *args, **kwargs):
-        super(ConfigNotFound, self).__init__(*args, **kwargs)
+        self.msg = args[0]
         self.cfg = args[1]
         self.template = copy_paste_template
 
