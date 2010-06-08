@@ -17,13 +17,17 @@ class StarClusterTest(unittest.TestCase):
             self.__cfg = StarClusterConfig(tmp_file.name, cache=True); self.__cfg.load()
         return self.__cfg
 
+    def get_config(self, contents, cache=False):
+        tmp_file = tempfile.NamedTemporaryFile()
+        tmp_file.write(contents)
+        tmp_file.flush()
+        cfg = StarClusterConfig(tmp_file.name, cache=True); cfg.load()
+        return cfg
+
     def get_custom_config(self, **kwargs):
         """ Returns default test config modified by kwargs """
-        tmp_file = tempfile.NamedTemporaryFile()
         kwords = {}; 
         kwords.update(default_config)
         kwords.update(kwargs)
-        tmp_file.write(config_test_template % kwords);
-        tmp_file.flush()
-        cfg = StarClusterConfig(tmp_file.name, cache=True); cfg.load()
+        cfg = self.get_config(config_test_template % kwords)
         return cfg

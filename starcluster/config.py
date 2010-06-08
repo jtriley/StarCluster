@@ -31,7 +31,6 @@ def get_easy_ec2():
     cfg = StarClusterConfig(); cfg.load()
     return cfg.get_easy_ec2()
 
-
 def get_config(config_file=None, cache=False):
     """Factory for StarClusterConfig object"""
     return StarClusterConfig(config_file, cache)
@@ -59,6 +58,7 @@ class StarClusterConfig(object):
     volume_settings = static.EBS_VOLUME_SETTINGS
     plugin_settings = static.PLUGIN_SETTINGS
     cluster_settings = static.CLUSTER_SETTINGS
+    permission_settings = static.PERMISSION_SETTINGS
 
     # until i can find a way to query AWS for instance types...
     instance_types = static.INSTANCE_TYPES
@@ -69,6 +69,7 @@ class StarClusterConfig(object):
             int: self._get_int,
             str: self._get_string,
             bool: self._get_bool,
+            list: self._get_list,
         }
         self._config = None
         self.globals = AttributeDict()
@@ -77,6 +78,7 @@ class StarClusterConfig(object):
         self.keys = AttributeDict()
         self.vols = AttributeDict()
         self.plugins = AttributeDict()
+        self.permissions = AttributeDict()
         self.cache = cache
 
     def _get_urlfp(self, url):
@@ -89,8 +91,8 @@ class StarClusterConfig(object):
             fp.name = url
             return fp
         except IOError,e:
-            raise exception.ConfigError("error loading config from url %s\n%s"
-                                        % (url,e))
+            raise exception.ConfigError(
+                "error loading config from url %s\n%s" % (url,e))
 
     def _get_fp(self, config_file):
         if not os.path.isdir(static.STARCLUSTER_CFG_DIR):
@@ -99,8 +101,8 @@ class StarClusterConfig(object):
         log.debug("Loading file: %s" % cfg_file)
         if os.path.exists(cfg_file):
             if not os.path.isfile(cfg_file):
-                raise exception.ConfigError('config %s exists but is not a regular file' %
-                                 cfg_file)
+                raise exception.ConfigError(
+                    'config %s exists but is not a regular file' % cfg_file)
         else:
             raise exception.ConfigNotFound(
                 ("config file %s does not exist\n") %
@@ -118,7 +120,8 @@ class StarClusterConfig(object):
             pass
         except ValueError,e:
             raise exception.ConfigError(
-                "Expected True/False value for setting %s in section [%s]" % (option,section))
+                "Expected True/False value for setting %s in section [%s]" % 
+                (option,section))
 
     def _get_int(self, config, section, option):
         try:
@@ -130,7 +133,8 @@ class StarClusterConfig(object):
             pass
         except ValueError,e:
             raise exception.ConfigError(
-                "Expected integer value for setting %s in section [%s]" % (option,section))
+                "Expected integer value for setting %s in section [%s]" % 
+                (option,section))
 
     def _get_string(self, config, section, option):
         try:
@@ -140,6 +144,12 @@ class StarClusterConfig(object):
             pass
         except ConfigParser.NoOptionError,e:
             pass
+
+    def _get_list(self, config, section, option):
+        val = self._get_string(config, section, option)
+        if val:
+            val = [v.strip() for v in val.split(',')]
+        return val
 
     def __load_config(self):
         """
@@ -173,70 +183,99 @@ class StarClusterConfig(object):
             self._config = self.__load_config()
         return self._config
 
-    def load_settings(self, section_name, settings, store):
+    def _load_settings(self, section_name, settings, store):
+        """
+        Load section settings into a dictionary
+        """
         section = self.config._sections.get(section_name)
         if not section:
-            raise exception.ConfigSectionMissing('Missing section %s in config'\
-                                                 % section_name)
+            raise exception.ConfigSectionMissing('Missing section %s in config' %
+                                                 section_name)
         store.update(section)
         section_conf = store
         for setting in settings:
             requirements = settings[setting]
-            name = setting
-            func = self.type_validators.get(requirements[0])
-            required = requirements[1];
-            default = requirements[2]
-            value = func(self.config, section_name, name)
+            func, required, default = requirements
+            func = self.type_validators.get(func)
+            value = func(self.config, section_name, setting)
             if value is not None:
-                section_conf[name.lower()] = value
+                section_conf[setting] = value
 
-    def check_required(self, section_name, settings, store):
+    def _check_required(self, section_name, settings, store):
+        """
+        Check that all required settings were specified in the config.
+        Raises ConfigError otherwise.
+
+        Note that if a setting specified has required=True and 
+        default is not None then this method will not raise an error
+        because a default was given. In short, if a setting is required
+        you must provide None as the 'default' value.
+        """
         section_conf = store
         for setting in settings:
-            name = setting
             requirements = settings[setting]
-            required = requirements[1];
-            value = section_conf.get(name.lower())
+            required = requirements[1]
+            value = section_conf.get(setting)
             if value is None and required:
-                raise exception.ConfigError('missing required option %s in section "%s"' %
-                                  (name.lower(), section_name))
+                raise exception.ConfigError(
+                    'missing required option %s in section "%s"' % 
+                    (setting, section_name))
 
-    def load_defaults(self, settings, store):
+    def _load_defaults(self, settings, store):
+        """
+        Sets the default for each setting in settings regardless of whether 
+        the setting was specified in the config or not.
+        """
         section_conf = store
         for setting in settings:
-            name = setting.lower(); default = settings[setting][2]
-            if section_conf.get(name, None) is None:
-                if default:
-                    log.debug('%s setting not specified. Defaulting to %s' % (name, default))
-                section_conf[name] = default
+            default = settings[setting][2]
+            if section_conf.get(setting, None) is None:
+                log.debug('%s setting not specified. Defaulting to %s' %
+                          (setting, default))
+                section_conf[setting] = default
 
-    def load_extends_variables(self, section_name, store):
+    def _load_extends_settings(self, section_name, store):
+        """
+        Loads all settings from other template(s) specified by a section's 
+        'extends' setting.
+
+        This method walks a dependency tree of sections from bottom up. Each 
+        step is a group of settings for a section in the form of a dictionary. 
+        A 'master' dictionary is updated with the settings at each step. This
+        causes the next group of settings to override the previous, and so on.
+        The 'section_name' settings are at the top of the dep tree.
+        """
         section = store[section_name]
-        extends = section['extends'] = section.get('extends')
-        default = section.get('default')
+        extends = section.get('extends')
         if extends is None:
             return
         log.debug('%s extends %s' % (section_name, extends))
         extensions = [section]
         while True:
-            extends = section.get('extends',None)
-            if extends:
-                try:
-                    section = store[extends]
-                    extensions.insert(0, section)
-                except KeyError,e:
-                    log.warn("can't extend non-existent section %s" % extends)
-                    break
-            else:
+            extends = section.get('extends', None)
+            if not extends:
                 break
+            try:
+                section = store[extends]
+                if section in extensions:
+                    exts = ', '.join([self._get_section_name(x['__name__']) 
+                                      for x in extensions])
+                    raise exception.ConfigError(
+                        ("Cyclical dependency between sections %s. " %
+                         exts) + "Check your extends settings."
+                    )
+                extensions.insert(0, section)
+            except KeyError,e:
+                raise exception.ConfigError(
+                    "%s can't extend non-existent section %s" %
+                    (section_name,extends)
+                )
         transform = AttributeDict()
         for extension in extensions:
             transform.update(extension)
-        # do not inherit default setting from other cluster sections
-        transform.update(dict(default=default))
         store[section_name] = transform
 
-    def load_keypairs(self, section_name, store):
+    def _load_keypairs(self, section_name, store):
         cluster_section = store
         keyname = cluster_section.get('keyname')
         if not keyname:
@@ -247,28 +286,26 @@ class StarClusterConfig(object):
         cluster_section['keyname'] = keyname
         cluster_section['key_location'] = keypair.get('key_location')
 
-    def load_volumes(self, section_name, store):
+    def _load_volumes(self, section_name, store):
         cluster_section = store
         volumes = cluster_section.get('volumes')
         if not volumes or isinstance(volumes, AttributeDict):
             return
         vols = AttributeDict()
         cluster_section['volumes'] = vols
-        volumes = [vol.strip() for vol in volumes.split(',')]
         for volume in volumes:
             if not self.vols.has_key(volume):
                 raise exception.ConfigError("volume %s not defined in config" % volume)
             vol = self.vols.get(volume)
             vols[volume] = vol
 
-    def load_plugins(self, section_name, store):
+    def _load_plugins(self, section_name, store):
         cluster_section = store
         plugins = cluster_section.get('plugins')
-        if not plugins or isinstance(plugins, list):
+        if not plugins:
             return
         plugs = []
         cluster_section['plugins'] = plugs
-        plugins = [plugin.strip() for plugin in plugins.split(',')]
         for plugin in plugins:
             if self.plugins.has_key(plugin):
                 p = self.plugins.get(plugin)
@@ -277,69 +314,142 @@ class StarClusterConfig(object):
             else:
                 raise exception.ConfigError("plugin %s not defined in config" % plugin)
 
+
+    def _load_permissions(self, section_name, store):
+        cluster_section = store
+        permissions = cluster_section.get('permissions')
+        if not permissions or isinstance(permissions, AttributeDict):
+            return
+        perms = AttributeDict()
+        cluster_section['permissions'] = perms
+        for perm in permissions:
+            if self.permissions.has_key(perm):
+                p = self.permissions.get(perm)
+                #if p.has_key('protocol') and 
+                p['__name__'] = p['__name__'].split()[-1]
+                perms[perm] = p
+            else:
+                raise exception.ConfigError(
+                    "permission %s not defined in config" % perm)
+
+    def _load_section(self, section_name, section_settings):
+        """
+        Returns a dictionary containing all section_settings for a given 
+        section_name by first loading the settings in the config, loading
+        the defaults for all settings not specified, and then checking 
+        that all required options have been specified
+        """
+        store = AttributeDict()
+        self._load_settings(section_name, section_settings, store)
+        self._load_defaults(section_settings, store)
+        self._check_required(section_name, section_settings, store)
+        return store
+
+    def _get_section_name(self, section):
+        """
+        Returns section name minus prefix
+        e.g. 
+        $ print self._get_section('cluster smallcluster')
+        $ smallcluster
+        """
+        return section.split()[1]
+
+    def _get_sections(self, section_prefix):
+        """
+        Returns all sections starting with section_prefix
+        e.g. 
+        $ print self._get_sections('cluster')
+        $ ['cluster smallcluster', 'cluster mediumcluster', ..]
+        """
+        return [s for s in self.config.sections() if
+                s.startswith(section_prefix)]
+
+    def _load_sections(self, section_prefix, section_settings, load_extends=False):
+        """
+        Loads all sections starting with section_prefix and returns a 
+        dictionary containing the name and dictionary of settings for each
+        section.
+        keys --> section name (as returned by self._get_section_name)
+        values --> dictionary of settings for a given section
+
+        e.g.
+        $ print self._load_sections('volumes', self.plugin_settings)
+
+        {'myvol': {'__name__': 'volume myvol',
+                    'device': None,
+                    'mount_path': '/home',
+                    'partition': 1,
+                    'volume_id': 'vol-999999'},
+         'myvol2': {'__name__': 'volume myvol2',
+                       'device': None,
+                       'mount_path': '/myvol2',
+                       'partition': 1,
+                       'volume_id': 'vol-999999'},
+        """
+        sections = self._get_sections(section_prefix) 
+        sections_store = AttributeDict()
+        for sec in sections:
+            name = self._get_section_name(sec)
+            sections_store[name] = self._load_section(sec, section_settings)
+        return sections_store
+
+    def _load_cluster_sections(self):
+        """
+        Loads all cluster sections. Similar to _load_sections but also handles 
+        populating specified keypair,volume,plugins,permissions,etc settings
+        """
+        clusters = self._get_sections('cluster')
+        cluster_store = AttributeDict()
+        for cluster in clusters:
+            name = self._get_section_name(cluster)
+            cluster_store[name] = AttributeDict()
+            self._load_settings(cluster, self.cluster_settings,
+                               cluster_store[name])
+        for cluster in clusters:
+            name = self._get_section_name(cluster)
+            self._load_extends_settings(name, cluster_store)
+            self._load_defaults(self.cluster_settings, cluster_store[name])
+            self._load_keypairs(name, cluster_store[name])
+            self._load_volumes(name, cluster_store[name])
+            self._load_plugins(name, cluster_store[name])
+            self._load_permissions(name, cluster_store[name])
+            self._check_required(cluster, self.cluster_settings,
+                               cluster_store[name])
+        return cluster_store
+
     def load(self):
+        """
+        Populate this config object from the StarCluster config
+        """
         log.debug('Loading config')
         try:
-            self.load_settings('global', self.global_settings, self.globals)
+            self.globals = self._load_section('global', self.global_settings)
         except exception.ConfigSectionMissing,e:
             pass
         try:
-            self.load_settings('aws info', self.aws_settings, self.aws)
-            self.check_required('aws info', self.aws_settings, self.aws)
+            self.aws = self._load_section('aws info', self.aws_settings)
         except exception.ConfigSectionMissing,e:
             log.warn("no [aws info] section found in config")
             log.warn("attempting to load credentials from environment...")
             self.aws.update(self.get_aws_from_environ())
-        keys = [section.split()[1] for section in self.config.sections() if 
-                section.startswith('key')]
-        for key in keys:
-            self.keys[key] = AttributeDict()
-            section_name = 'key ' + key
-            self.load_settings(section_name, self.key_settings, self.keys[key]) 
-            self.check_required(section_name, self.key_settings, self.keys[key]) 
-        vols = [section.split()[1] for section in self.config.sections() if 
-                section.startswith('volume')]
-        for vol in vols:
-            self.vols[vol] = AttributeDict()
-            section_name = 'volume ' + vol
-            self.load_settings(section_name, self.volume_settings, 
-                               self.vols[vol])
-            self.load_defaults(self.volume_settings, self.vols[vol])
-            self.check_required(section_name, self.volume_settings, 
-                                self.vols[vol])
-        plugins = [section.split()[1] for section in self.config.sections() if
-                   section.startswith('plugin')]
-        for plugin in plugins:
-            self.plugins[plugin] = AttributeDict()
-            section_name = 'plugin ' + plugin
-            self.load_settings(section_name, self.plugin_settings,
-                               self.plugins[plugin])
-            self.check_required(section_name, self.plugin_settings,
-                                self.plugins[plugin])
-        clusters = [section.split()[1] for section in self.config.sections() if 
-                    section.startswith('cluster')]
-        for cluster in clusters:
-            self.clusters[cluster] = AttributeDict()
-            section_name = 'cluster ' + cluster
-            self.load_settings(section_name, self.cluster_settings,
-                               self.clusters[cluster])
-        for cluster in clusters:
-            section_name = 'cluster ' + cluster
-            self.load_extends_variables(cluster, self.clusters)
-            self.load_defaults(self.cluster_settings, self.clusters[cluster])
-            self.load_keypairs(cluster, self.clusters[cluster])
-            self.load_volumes(cluster, self.clusters[cluster])
-            self.load_plugins(cluster, self.clusters[cluster])
-            self.check_required(section_name, self.cluster_settings,
-                               self.clusters[cluster])
+        self.keys = self._load_sections('key', self.key_settings)
+        self.vols = self._load_sections('volume', self.volume_settings)
+        self.plugins = self._load_sections('plugin', self.plugin_settings)
+        self.permissions = self._load_sections('permission',
+                                               self.permission_settings)
+        self.clusters = self._load_cluster_sections()
 
     def get_aws_from_environ(self):
-        """Returns AWS credentials defined in the user's shell
-        environment."""
+        """
+        Returns AWS credentials defined in the user's shell
+        environment.
+        """
         awscreds = {}
         for key in static.AWS_SETTINGS:
-            if os.environ.has_key(key):
-                awscreds[key.lower()] = os.environ.get(key)
+            if os.environ.has_key(key.upper()):
+                awscreds[key] = os.environ.get(key.upper())
+            elif os.environ.has_key(key):
+                awscreds[key] = os.environ.get(key)
         return awscreds
 
     def get_aws_credentials(self):

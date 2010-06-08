@@ -40,6 +40,10 @@ INSTANCE_TYPES = {
     'm2.4xlarge': 'x86_64',
 }
 
+PROTOCOLS = [
+    'tcp','udp','icmp'
+]
+
 AVAILABLE_SHELLS = {
     "bash": True, 
     "zsh": True, 
@@ -49,53 +53,65 @@ AVAILABLE_SHELLS = {
 }
 
 GLOBAL_SETTINGS = {
-    'DEFAULT_TEMPLATE': (str, False, None),
-    'ENABLE_EXPERIMENTAL': (bool, False, False),
+    'default_template': (str, False, None),
+    'enable_experimental': (bool, False, False),
 }
 
 AWS_SETTINGS = {
     # setting, type, required?, default
-    'AWS_ACCESS_KEY_ID': (str, True, None),
-    'AWS_SECRET_ACCESS_KEY': (str, True, None),
-    'AWS_USER_ID': (str, False, None),
-    'EC2_CERT': (str, False, None),
-    'EC2_PRIVATE_KEY': (str, False, None),
-    'AWS_PORT': (int, False, None),
-    'AWS_EC2_PATH': (str, False, None),
-    'AWS_S3_PATH': (str, False, None),
-    'AWS_IS_SECURE': (bool, False, None),
-    'AWS_REGION_NAME': (str, False, None),
-    'AWS_REGION_HOST': (str, False, None),
+    'aws_access_key_id': (str, True, None),
+    'aws_secret_access_key': (str, True, None),
+    'aws_user_id': (str, False, None),
+    'ec2_cert': (str, False, None),
+    'ec2_private_key': (str, False, None),
+    'aws_port': (int, False, None),
+    'aws_ec2_path': (str, False, '/'),
+    'aws_s3_path': (str, False, '/'),
+    'aws_is_secure': (bool, False, True),
+    'aws_region_name': (str, False, None),
+    'aws_region_host': (str, False, None),
 }
 
 KEY_SETTINGS = {
-    'KEY_LOCATION': (str, True, None)
+    'key_location': (str, True, None)
 }
 
 EBS_VOLUME_SETTINGS = {
-    'VOLUME_ID': (str, True, None),
-    'DEVICE': (str, False, None),
-    'PARTITION': (int, False, 1),
-    'MOUNT_PATH': (str, True, None),
+    'volume_id': (str, True, None),
+    'device': (str, False, None),
+    'partition': (int, False, 1),
+    'mount_path': (str, True, None),
 }
 
 PLUGIN_SETTINGS = {
-    'SETUP_CLASS': (str, True, None),
+    'setup_class': (str, True, None),
+}
+
+PERMISSION_SETTINGS = {
+    # either you're specifying ip-based rule
+    'protocol': (str, False, 'tcp'),
+    'from_port': (int, False, None),
+    'to_port': (int, False, None),
+    'cidr_ip': (str, False, '0.0.0.0/0'),
+    # or you're allowing full access to another security group
+    'source_group': (str, False, None),
+    'source_group_owner': (int, False, None),
 }
 
 CLUSTER_SETTINGS = {
     # setting, type, required?, default
-    'CLUSTER_SIZE': (int, True, None),
-    'CLUSTER_USER': (str, False, 'sgeadmin'),
-    'CLUSTER_SHELL': (str, False, 'bash'),
-    'MASTER_IMAGE_ID': (str, False, None),
-    'MASTER_INSTANCE_TYPE': (str, False, None),
-    'NODE_IMAGE_ID': (str, True, None),
-    'NODE_INSTANCE_TYPE': (str, True, None),
-    'AVAILABILITY_ZONE': (str, False, None),
+    'cluster_size': (int, True, None),
+    'cluster_user': (str, False, 'sgeadmin'),
+    'cluster_shell': (str, False, 'bash'),
+    'master_image_id': (str, False, None),
+    'master_instance_type': (str, False, None),
+    'node_image_id': (str, True, None),
+    'node_instance_type': (str, True, None),
+    'availability_zone': (str, False, None),
     # SSH KEYPAIR OPTIONS
-    'KEYNAME': (str, True, None),
-    'VOLUMES': (str, False, []),
-    'EXTENDS': (str, False, None),
-    'PLUGINS': (str, False, []),
+    'keyname': (str, True, None),
+    'extends': (str, False, None),
+    'volumes': (list, False, []),
+    'plugins': (list, False, []),
+    'permissions': (list, False, []),
 }

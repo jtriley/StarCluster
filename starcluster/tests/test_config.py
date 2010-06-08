@@ -9,7 +9,7 @@ from starcluster import exception
 from starcluster.tests import StarClusterTest
 from starcluster.static import STARCLUSTER_CFG_FILE
 from starcluster.config import StarClusterConfig
-from starcluster.tests.templates.config import default_config, config_test_template
+from starcluster.tests.templates.config import default_config, config_test_template, missing_required_template
 
 class TestStarClusterConfig(StarClusterTest):
 
@@ -48,8 +48,23 @@ class TestStarClusterConfig(StarClusterTest):
             else:
                 raise Exception('config is not enforcing ints correctly')
 
+    def test_bool_required(self):
+        cases = [{'enable_experimental': 2}]
+        for case in cases:
+            try:
+                cfg = self.get_custom_config(**case)
+            except exception.ConfigError,e:
+                pass
+            else:
+                raise Exception("config is not enforcing strs correctly")
+
     def test_missing_required(self):
-        pass
+        try:
+            cfg = self.get_config(missing_required_template % default_config)
+        except exception.ConfigError,e:
+            pass
+        else:
+            raise Exception('config is not enforcing required settings correctly')
 
     def test_volumes(self):
         c1 = self.config.get_cluster_template('c1')
