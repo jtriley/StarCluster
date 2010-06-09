@@ -302,7 +302,7 @@ class StarClusterConfig(object):
     def _load_plugins(self, section_name, store):
         cluster_section = store
         plugins = cluster_section.get('plugins')
-        if not plugins:
+        if not plugins or isinstance(plugins[0], AttributeDict):
             return
         plugs = []
         cluster_section['plugins'] = plugs
@@ -313,7 +313,6 @@ class StarClusterConfig(object):
                 plugs.append(p)
             else:
                 raise exception.ConfigError("plugin %s not defined in config" % plugin)
-
 
     def _load_permissions(self, section_name, store):
         cluster_section = store

@@ -52,6 +52,7 @@ default_config = {
     'c3_keyname': 'k3',
     'c3_size': 8,
     'c3_vols': 'v3',
+    'c4_extends': 'c3',
 }
 
 config_test_template = """
@@ -133,6 +134,9 @@ EXTENDS=%(c3_extends)s
 KEYNAME = %(c3_keyname)s
 CLUSTER_SIZE= %(c3_size)s
 VOLUMES = %(c3_vols)s
+
+[cluster c4]
+EXTENDS=%(c4_extends)s
 """
 
 missing_required_template= """

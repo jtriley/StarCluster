@@ -197,3 +197,19 @@ class TestStarClusterConfig(StarClusterTest):
         cfg = StarClusterConfig(tmp_file.name, cache=True); cfg.load()
         assert cfg.aws['aws_access_key_id'] == aws_key
         assert cfg.aws['aws_secret_access_key'] == aws_secret_key
+
+    def test_cyclical_extends(self):
+        """
+        Test that cyclical extends in the config raises an exception
+        """
+        try:
+            cfg = self.get_custom_config(**{'c2_extends':'c3',
+                                            'c3_extends':'c2'})
+            cfg = self.get_custom_config(**{'c2_extends':'c3',
+                                            'c3_extends':'c4',
+                                            'c4_extends':'c2',
+                                           })
+        except exception.ConfigError,e:
+            pass
+        else:
+            raise Exception('config allows cyclical extends graph')
