@@ -106,7 +106,7 @@ CLUSTER_SETTINGS = {
     'master_image_id': (str, False, None),
     'master_instance_type': (str, False, None),
     'node_image_id': (str, True, None),
-    'node_instance_type': (str, True, None),
+    'node_instance_type': (list, True, None),
     'availability_zone': (str, False, None),
     # SSH KEYPAIR OPTIONS
     'keyname': (str, True, None),

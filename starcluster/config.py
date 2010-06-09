@@ -3,6 +3,7 @@ import os
 import sys
 import urllib
 import ConfigParser
+import re
 
 from starcluster.cluster import Cluster
 from starcluster import static 
@@ -299,6 +300,34 @@ class StarClusterConfig(object):
             vol = self.vols.get(volume)
             vols[volume] = vol
 
+    def _load_instance_types(self, section_name, store):
+        type_pattern = re.compile('[\S]* [\d]*$')
+        cluster_section = store
+        cluster_size = cluster_section.get('cluster_size')
+        instance_types = cluster_section.get('node_instance_type')
+        type_list = []
+        cluster_section['node_instance_type'] = type_list
+        if len(instance_types) == 1:
+            type_list.append((instance_types[0], cluster_size - 1))
+        else:
+            if all([type_pattern.match(x) for x in instance_types[:-1]]):
+                total = 0
+                for x in instance_types[:-1]:
+                    (itype,num) = x.split(' ')
+                    num = int(num)
+                    type_list.append((itype,num))
+                    total += num
+                if type_pattern.match(instance_types[-1]):
+                    last_itype, remaining_nodes = instance_types[-1].split(' ')
+                    remaining_nodes = int(remaining_nodes)
+                else:
+                    last_itype = instance_types[-1]
+                    remaining_nodes = cluster_size - total - 1
+                type_list.append((last_itype,remaining_nodes)) 
+            else:
+                raise exception.ConfigError("error in node instance type configuration")
+            
+
     def _load_plugins(self, section_name, store):
         cluster_section = store
         plugins = cluster_section.get('plugins')
@@ -413,6 +442,7 @@ class StarClusterConfig(object):
             self._load_volumes(name, cluster_store[name])
             self._load_plugins(name, cluster_store[name])
             self._load_permissions(name, cluster_store[name])
+            self._load_instance_types(name,cluster_store[name])
             self._check_required(cluster, self.cluster_settings,
                                cluster_store[name])
         return cluster_store

@@ -204,7 +204,7 @@ class Cluster(object):
             master_image_id=None,
             master_instance_type=None,
             node_image_id=None,
-            node_instance_type=None,
+            node_instance_type=[],
             availability_zone=None,
             keyname=None,
             key_location=None,
@@ -382,7 +382,7 @@ class Cluster(object):
                 "Number of pending/running instances (%s) != %s" % \
                 (num_running, self.cluster_size))
         mtype = self.master_node.instance_type
-        mastertype = self.master_instance_type or self.node_instance_type
+        mastertype = self.master_instance_type or self.node_instance_type[0][0]
         if mtype != mastertype:
             raise exception.ClusterValidationError(
                 "The running master node's instance type (%s) != %s" % \
@@ -403,12 +403,15 @@ class Cluster(object):
         except IndexError,e:
             raise exception.ClusterValidationError("Cluster has no running instances")
         mazone = self.master_node.placement
-        for n in nodes:
-            ntype = n.instance_type
-            if ntype != self.node_instance_type:
+        
+        ntypes = [n.instance_type for n in nodes]
+        for (itype,num) in self.node_instance_type:
+            if ntypes.count(itype) != num:
                 raise exception.ClusterValidationError(
-                    "Running node's instance type (%s) != %s" % \
-                    (ntype, self.node_instance_type))
+                    "Number of nodes with instance type (%s) != %d" % \
+                    (itype, num))
+                    
+        for n in nodes:
             nimage = n.image_id
             if nimage != self.node_image_id:
                 raise exception.ClusterValidationError(
@@ -585,7 +588,7 @@ class Cluster(object):
         if self.master_image_id is None:
             self.master_image_id = self.node_image_id
         if self.master_instance_type is None:
-            self.master_instance_type = self.node_instance_type
+            self.master_instance_type = self.node_instance_type[0][0]
         log.info("Launching master node...")
         log.info("Master AMI: %s" % self.master_image_id)
         master_sg = self.master_group.name
@@ -610,18 +613,20 @@ class Cluster(object):
         if self.cluster_size > 1:
             log.info("Launching worker nodes...")
             log.info("Node AMI: %s" % self.node_image_id)
-            instances_response = self.run_instances(self.spot_bid,
-                image_id=self.node_image_id,
-                instance_type=self.node_instance_type,
-                min_count=max((self.cluster_size-1)/2, 1),
-                max_count=max(self.cluster_size-1,1),
-                count=max(self.cluster_size-1,1),
-                key_name=self.keyname,
-                security_groups=[cluster_sg],
-                availability_zone_group=cluster_sg,
-                launch_group=cluster_sg,
-                placement=zone)
-            print instances_response
+                 
+            for (itype,num) in self.node_instance_type:
+                instances_response = self.run_instances(self.spot_bid,
+                    image_id=self.node_image_id,
+                    instance_type=itype,
+                    min_count=max(num/2, 1),
+                    max_count=num,
+                    count=num,
+                    key_name=self.keyname,
+                    security_groups=[cluster_sg],
+                    availability_zone_group=cluster_sg,
+                    launch_group=cluster_sg,
+                    placement=zone)
+                print instances_response, '--', num, itype, 'machine(s).'
 
     def is_cluster_up(self):
         """
@@ -856,27 +861,50 @@ to shutdown the cluster and stop paying for service
         instance_types = self.__instance_types
         instance_type_list = ' '.join(instance_types.keys())
         conn = self.ec2
-        if not instance_types.has_key(node_instance_type):
+        
+        (itypes,nums) = zip(*node_instance_type)
+        
+        for itype in itypes:
+            if not instance_types.has_key(itype):
+                raise exception.ClusterValidationError(
+                    ("You specified an invalid node_instance_type %s \n" + 
+                    "Possible options are:\n%s") % \
+                    (itype, instance_type_list))
+
+            try:
+                self.__check_platform(node_image_id, itype)
+            except exception.ClusterValidationError,e:
+                raise exception.ClusterValidationError( 
+                    'Incompatible node_image_id and node_instance_type\n' + e.msg
+                )
+
+        for (i,num) in enumerate(nums):
+            if not (num >= 0 and sum(nums[:i+1]) <= self.cluster_size - 1):
+                raise exception.ClusterValidationError(
+                                    ("The number of nodes specified by the " + 
+                                    "node instance type configuration (plus " +
+                                    "1 for the master) is at least %d, which is " +
+                                    "larger than the specified cluster size, %d.") % \
+                                    (sum(nums[:-1]) + 1 + (nums[-1] > 0), self.cluster_size))            
+                                    
+        if sum(nums) < self.cluster_size - 1:
             raise exception.ClusterValidationError(
-                ("You specified an invalid node_instance_type %s \n" + 
-                "Possible options are:\n%s") % \
-                (node_instance_type, instance_type_list))
-        elif master_instance_type:
+                                ("The number of nodes specified by the node " +
+                                "instance type configuration (plus 1 for the master) " + 
+                                "is %d, which is smaller than the specified cluster " + 
+                                "size, %d.") % \
+                                (sum(nums) + 1, self.cluster_size))                
+
+        if master_instance_type:
             if not instance_types.has_key(master_instance_type):
                 raise exception.ClusterValidationError(
                     ("You specified an invalid master_instance_type %s\n" + \
                     "Possible options are:\n%s") % \
                     (master_instance_type, instance_type_list))
 
-        try:
-            self.__check_platform(node_image_id, node_instance_type)
-        except exception.ClusterValidationError,e:
-            raise exception.ClusterValidationError( 
-                'Incompatible node_image_id and node_instance_type\n' + e.msg
-            )
         if master_image_id and not master_instance_type:
             try:
-                self.__check_platform(master_image_id, node_instance_type)
+                self.__check_platform(master_image_id, node_instance_type[0][0])
             except exception.ClusterValidationError,e:
                 raise exception.ClusterValidationError( 
                     'Incompatible master_image_id and node_instance_type\n' + e.msg
