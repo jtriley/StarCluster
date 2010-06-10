@@ -236,6 +236,7 @@ class EasyEC2(EasyAWS):
             price = spot.price or 'N/A'
             lspec = spot.launch_specification
             instance_type = lspec.instance_type
+            image_id = lspec.image_id
             groups = ', '.join([ g.id for g in lspec.groups])
             print "id: %s" % spot_id
             print "price: $%0.2f" % price
@@ -243,6 +244,7 @@ class EasyEC2(EasyAWS):
             print "state: %s" % state
             print "instance_id: %s" % instance_id
             print "instance_type: %s" % instance_type
+            print "image_id: %s" % image_id
             print "create_time: %s" % create_time
             print "launch_group: %s" % launch_group
             print "zone_group: %s" % zone_group
