@@ -17,6 +17,14 @@ __all__ = [
     "templates",
     "optcomplete",
 ]
+
 import sys
 from starcluster import static 
 sys.path.insert(0,static.STARCLUSTER_PLUGIN_DIR)
+
+def test():
+    try:
+        from nose.core import TestProgram
+        p = TestProgram(argv=[__file__, "starcluster.tests", '-s'], exit=False)
+    except ImportError:
+        print 'error importing nose'
