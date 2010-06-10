@@ -142,3 +142,40 @@ except ImportError,e:
         log.error("Unable to load IPython.")
         log.error("Please check that IPython is installed and working.")
         log.error("If not, you can install it via: easy_install ipython")
+
+def permute(a):
+    """
+    Returns generator of all permutations of a
+
+    The following code is an in-place permutation of a given list, implemented
+    as a generator. Since it only returns references to the list, the list
+    should not be modified outside the generator. The solution is non-recursive,
+    so uses low memory. Work well also with multiple copies of elements in the
+    input list.
+
+    Retrieved from:
+        http://stackoverflow.com/questions/104420/how-to-generate-all-permutations-of-a-list-in-python
+    """
+    a.sort()
+    yield list(a)
+    if len(a) <= 1:
+        return
+    first = 0
+    last = len(a)
+    while 1:
+        i = last - 1
+        while 1:
+            i = i - 1
+            if a[i] < a[i+1]:
+                j = last - 1
+                while not (a[i] < a[j]):
+                    j = j - 1
+                a[i], a[j] = a[j], a[i] # swap the values
+                r = a[i+1:last]
+                r.reverse()
+                a[i+1:last] = r
+                yield list(a)
+                break
+            if i == first:
+                a.reverse()
+                return

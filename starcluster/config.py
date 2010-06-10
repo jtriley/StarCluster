@@ -392,12 +392,12 @@ class StarClusterConfig(object):
             sections_store[name] = self._load_section(sec, section_settings)
         return sections_store
 
-    def _load_cluster_sections(self):
+    def _load_cluster_sections(self, cluster_sections):
         """
         Loads all cluster sections. Similar to _load_sections but also handles 
         populating specified keypair,volume,plugins,permissions,etc settings
         """
-        clusters = self._get_sections('cluster')
+        clusters = cluster_sections
         cluster_store = AttributeDict()
         for cluster in clusters:
             name = self._get_section_name(cluster)
@@ -436,7 +436,8 @@ class StarClusterConfig(object):
         self.plugins = self._load_sections('plugin', self.plugin_settings)
         self.permissions = self._load_sections('permission',
                                                self.permission_settings)
-        self.clusters = self._load_cluster_sections()
+        sections = self._get_sections('cluster')
+        self.clusters = self._load_cluster_sections(sections)
 
     def get_aws_from_environ(self):
         """

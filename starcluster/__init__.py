@@ -1,4 +1,4 @@
-__version__ = "0.91"
+__version__ = "0.9999"
 __author__ = "Justin Riley (justin.t.riley@gmail.com)"
 __all__ = [
     "config", 

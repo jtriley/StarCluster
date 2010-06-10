@@ -9,6 +9,7 @@ from starcluster import exception
 from starcluster.tests import StarClusterTest
 from starcluster.static import STARCLUSTER_CFG_FILE
 from starcluster.config import StarClusterConfig
+from starcluster.utils import permute
 from starcluster.tests.templates.config import default_config, config_test_template, missing_required_template
 
 class TestStarClusterConfig(StarClusterTest):
@@ -121,6 +122,19 @@ class TestStarClusterConfig(StarClusterTest):
             else:
                 # below only true for default test config, not required in general
                 assert c3[key] != c2[key]
+
+    def test_order_invariance(self):
+        """
+        Loads all cluster sections in the test config in all possible orders
+        (ie c1,c2,c3, c3,c1,c2, etc) and test that the results are the same
+        """
+        cfg = self.config
+        orig = cfg.clusters
+        cfg.clusters = None
+        sections = cfg._get_sections('cluster')
+        for perm in permute(sections):
+            new = cfg._load_cluster_sections(perm)
+            assert new == orig
 
     def test_plugins(self):
         c1 = self.config.get_cluster_template('c1')
