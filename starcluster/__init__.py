@@ -28,3 +28,4 @@ def test():
         p = TestProgram(argv=[__file__, "starcluster.tests", '-s'], exit=False)
     except ImportError:
         print 'error importing nose'
+test.__test__ = False
