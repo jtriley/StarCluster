@@ -55,6 +55,7 @@ class Connection(object):
         try:
             sock = self._get_socket(host, port)
             self._transport = paramiko.Transport(sock)
+            self._transport.banner_timeout = self._timeout
         except socket.error:
             raise exception.SSHConnectionError(host, port)
         self._transport_live = True
@@ -82,6 +83,9 @@ class Connection(object):
                 self._transport.connect(username = username, pkey = pkey)
             except paramiko.AuthenticationException:
                 raise exception.SSHAuthException(username, host)
+            except paramiko.SSHException,e:
+                msg = e.args[0]
+                raise exception.SSHError(msg)
         else:
             raise exception.SSHNoCredentialsError()
 
