@@ -55,18 +55,25 @@ You also have the option of logging into any particular worker node as root by u
 
 .. code-block:: none
 
-        $ starcluster listclusters 
+        $ starcluster listclusters
         StarCluster - (http://web.mit.edu/starcluster)
         Software Tools for Academics and Researchers (STAR)
         Please submit bug reports to starcluster@mit.edu
 
-        @sc-mycluster
-        master i-33333333 running ec2-123-23-23-22.compute-1.amazonaws.com
-        node001 i-99999999 running ec2-123-23-23-23.compute-1.amazonaws.com 
-        node002 i-88888888 running ec2-123-23-23-24.compute-1.amazonaws.com
-        node003 i-77777777 running ec2-123-23-23-25.compute-1.amazonaws.com
-        ...
-
+        ---------------------------------------------------
+        mycluster (security group: @sc-mycluster)
+        ---------------------------------------------------
+        Launch time: 2010-02-19T20:55:20.000Z
+        Zone: us-east-1c
+        Keypair: gsg-keypair
+        EBS volumes:
+            vol-c8888888 on master:/dev/sdj (status: attached)
+        Cluster nodes:
+             master running i-99999999 ec2-123-123-123-121.compute-1.amazonaws.com
+            node001 running i-88888888 ec2-123-123-123-122.compute-1.amazonaws.com
+            node002 i-88888888 running ec2-123-23-23-24.compute-1.amazonaws.com
+            node003 i-77777777 running ec2-123-23-23-25.compute-1.amazonaws.com
+            ....
 
 Then use "starcluster sshnode mycluster" to login to a node:
 

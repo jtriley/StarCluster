@@ -77,7 +77,7 @@ cluster and wish to stop paying for it:::
 
 Have a look at the rest of StarCluster's commands::
 
-    $ starcluster help
+    $ starcluster --help
 
 Licensing:
 ----------
