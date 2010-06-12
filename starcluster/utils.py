@@ -9,6 +9,7 @@ import urlparse
 import time
 from datetime import datetime
 from starcluster.logger import log
+from starcluster.iptools import validate_ip, validate_cidr
 
 class AttributeDict(dict):
     """ Subclass of dict that allows read-only attribute-like access to
@@ -62,15 +63,6 @@ def is_valid_bucket_name(bucket_name):
     if validate_ip(bucket_name):
         return False
     return True
-
-def validate_ip(ip_address):
-    pattern = r"\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|"
-    pattern += r"[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25"
-    pattern += r"[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"
-    if re.match(pattern, ip_address):
-        return True
-    else:
-        return False
 
 def is_valid_image_name(image_name):
     """
