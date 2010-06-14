@@ -53,65 +53,66 @@ AVAILABLE_SHELLS = {
 }
 
 GLOBAL_SETTINGS = {
-    'default_template': (str, False, None),
-    'enable_experimental': (bool, False, False),
+    # setting, type, required?, default, options
+    'default_template': (str, False, None, None),
+    'enable_experimental': (bool, False, False, None),
 }
 
 AWS_SETTINGS = {
-    # setting, type, required?, default
-    'aws_access_key_id': (str, True, None),
-    'aws_secret_access_key': (str, True, None),
-    'aws_user_id': (str, False, None),
-    'ec2_cert': (str, False, None),
-    'ec2_private_key': (str, False, None),
-    'aws_port': (int, False, None),
-    'aws_ec2_path': (str, False, '/'),
-    'aws_s3_path': (str, False, '/'),
-    'aws_is_secure': (bool, False, True),
-    'aws_region_name': (str, False, None),
-    'aws_region_host': (str, False, None),
+    'aws_access_key_id': (str, True, None, None),
+    'aws_secret_access_key': (str, True, None, None),
+    'aws_user_id': (str, False, None, None),
+    'ec2_cert': (str, False, None, None),
+    'ec2_private_key': (str, False, None, None),
+    'aws_port': (int, False, None, None),
+    'aws_ec2_path': (str, False, '/', None),
+    'aws_s3_path': (str, False, '/', None),
+    'aws_is_secure': (bool, False, True, None),
+    'aws_region_name': (str, False, None, None),
+    'aws_region_host': (str, False, None, None),
 }
 
 KEY_SETTINGS = {
-    'key_location': (str, True, None)
+    'key_location': (str, True, None, None)
 }
 
 EBS_VOLUME_SETTINGS = {
-    'volume_id': (str, True, None),
-    'device': (str, False, None),
-    'partition': (int, False, 1),
-    'mount_path': (str, True, None),
+    'volume_id': (str, True, None, None),
+    'device': (str, False, None, None),
+    'partition': (int, False, 1, None),
+    'mount_path': (str, True, None, None),
 }
 
 PLUGIN_SETTINGS = {
-    'setup_class': (str, True, None),
+    'setup_class': (str, True, None, None),
 }
 
 PERMISSION_SETTINGS = {
-    # either you're specifying ip-based rule
-    'protocol': (str, False, 'tcp'),
-    'from_port': (int, False, None),
-    'to_port': (int, False, None),
-    'cidr_ip': (str, False, '0.0.0.0/0'),
+    # either you're specifying an ip-based rule
+    'ip_protocol': (str, False, 'tcp', PROTOCOLS),
+    'from_port': (int, True, None, None),
+    'to_port': (int, True, None, None),
+    'cidr_ip': (str, False, '0.0.0.0/0', None),
     # or you're allowing full access to another security group
-    'source_group': (str, False, None),
-    'source_group_owner': (int, False, None),
+    # skip this for now...these two options are mutually exclusive to 
+    # the four settings above and source_group is  less commonly
+    # used. address this when someone requests it.
+    #'source_group': (str, False, None),
+    #'source_group_owner': (int, False, None),
 }
 
 CLUSTER_SETTINGS = {
-    # setting, type, required?, default
-    'cluster_size': (int, True, None),
-    'cluster_user': (str, False, 'sgeadmin'),
-    'cluster_shell': (str, False, 'bash'),
-    'master_image_id': (str, False, None),
-    'master_instance_type': (str, False, None),
-    'node_image_id': (str, True, None),
-    'node_instance_type': (str, True, None),
-    'availability_zone': (str, False, None),
-    # SSH KEYPAIR OPTIONS
-    'keyname': (str, True, None),
-    'extends': (str, False, None),
-    'volumes': (list, False, []),
-    'plugins': (list, False, []),
-    'permissions': (list, False, []),
+    'cluster_size': (int, True, None, None),
+    'cluster_user': (str, False, 'sgeadmin', None),
+    'cluster_shell': (str, False, 'bash', AVAILABLE_SHELLS.keys()),
+    'master_image_id': (str, False, None, None),
+    'master_instance_type': (str, False, None, INSTANCE_TYPES.keys()),
+    'node_image_id': (str, True, None, None),
+    'node_instance_type': (str, True, None, INSTANCE_TYPES.keys()),
+    'availability_zone': (str, False, None, None),
+    'keyname': (str, True, None, None),
+    'extends': (str, False, None, None),
+    'volumes': (list, False, [], None),
+    'plugins': (list, False, [], None),
+    'permissions': (list, False, [], None),
 }

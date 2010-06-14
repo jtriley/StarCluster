@@ -194,6 +194,25 @@ class ClusterValidationError(ValidationError):
 class IncompatibleSettings(ClusterValidationError):
     """Raised when two or more settings conflict with each other"""
 
+class InvalidProtocol(ClusterValidationError):
+    """Raised when user specifies an invalid IP protocol for permission"""
+    def __init__(self, protocol):
+        self.msg = "protocol %s is not a valid ip protocol. options: %s" % \
+        (protocol, ', '.join(static.PROTOCOLS))
+
+class InvalidPortRange(ClusterValidationError):
+    """Raised when user specifies an invalid port range for permission"""
+    def __init__(self, from_port, to_port, reason=None):
+        self.msg = ''
+        if reason:
+            self.msg += "%s\n" % reason
+        self.msg += "port range is invalid: from %s to %s" % (from_port, to_port)
+
+class InvalidCIDRSpecified(ClusterValidationError):
+    """Raised when user specifies an invalid CIDR ip for permission"""
+    def __init__(self, cidr):
+        self.msg = "cidr_ip is invalid: %s" % cidr
+
 class InvalidZone(ClusterValidationError):
     """Raised when user specified a zone that is not the same as the zone of the
     volumes being attached"""

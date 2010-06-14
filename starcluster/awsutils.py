@@ -101,8 +101,14 @@ class EasyEC2(EasyAWS):
             if image.id == image_id:
                 return image
 
-    def create_group(self, name, description, auth_ssh=True,
+    def create_group(self, name, description, auth_ssh=False,
                      auth_group_traffic=False):
+        """
+        Create security group with name/description. auth_ssh=True 
+        will open port 22 to world (0.0.0.0/0). auth_group_traffic
+        will allow all traffic between instances in the same security
+        group
+        """
         if not name:
             return None
         log.info("Creating security group %s..." % name)
@@ -114,6 +120,9 @@ class EasyEC2(EasyAWS):
         return sg
 
     def get_group_or_none(self, name):
+        """
+        Returns group with name if it exists otherwise returns None
+        """
         try:
             sg = self.conn.get_all_security_groups(groupnames=[name])[0]
             return sg
@@ -136,6 +145,24 @@ class EasyEC2(EasyAWS):
             sg = self.create_group(name, description, auth_ssh,
                                      auth_group_traffic)
         return sg
+
+    def has_permission(self, group, ip_protocol, from_port, to_port, cidr_ip):
+        """
+        Checks whether group has the specified port range permission
+        (ip_protocol, from_port, to_port, cidr_ip) defined
+        """
+        for rule in group.rules:
+            if rule.ip_protocol != ip_protocol:
+                continue
+            if int(rule.from_port) != from_port:
+                continue
+            if int(rule.to_port) != to_port:
+                continue
+            cidr_grants = [ g for g in rule.grants if g.cidr_ip == cidr_ip]
+            if not cidr_grants:
+                continue
+            return True
+        return False
 
     def request_spot_instances(self, price, image_id, instance_type='m1.small',
                                count=1, launch_group=None, key_name=None,
@@ -210,6 +237,10 @@ class EasyEC2(EasyAWS):
         except boto.exception.EC2ResponseError,e:
             return False
 
+    def get_all_spot_requests(self, spot_ids=[]):
+        spots = self.conn.get_all_spot_instance_requests(spot_ids)
+        return spots
+
     def get_all_instances(self, instance_ids=[]):
         reservations = self.conn.get_all_instances(instance_ids)
         instances = []
@@ -222,11 +253,14 @@ class EasyEC2(EasyAWS):
         return instances
 
     def list_all_spot_instances(self, show_closed=False):
-        spots = self.conn.get_all_spot_instance_requests()
+        s = self.conn.get_all_spot_instance_requests()
+        spots = [i for i in s if i.state not in ['closed', 'cancelled']]
+        if show_closed:
+            spots.extend([i for i in s if i.state in ['closed', 'cancelled']])
+        if not spots:
+            log.info("No spot instance requests found...")
         for spot in spots:
             state = spot.state or 'N/A'
-            if not show_closed and state == 'closed':
-                continue
             spot_id = spot.id or 'N/A'
             type = spot.type
             instance_id = getattr(spot, 'instanceId', 'N/A')
@@ -237,7 +271,8 @@ class EasyEC2(EasyAWS):
             lspec = spot.launch_specification
             instance_type = lspec.instance_type
             image_id = lspec.image_id
-            groups = ', '.join([ g.id for g in lspec.groups])
+            zone = lspec.placement
+            groups = ', '.join([g.id for g in lspec.groups])
             print "id: %s" % spot_id
             print "price: $%0.2f" % price
             print "spot_request_type: %s" % type
@@ -245,6 +280,7 @@ class EasyEC2(EasyAWS):
             print "instance_id: %s" % instance_id
             print "instance_type: %s" % instance_type
             print "image_id: %s" % image_id
+            print "zone: %s" % zone
             print "create_time: %s" % create_time
             print "launch_group: %s" % launch_group
             print "zone_group: %s" % zone_group
@@ -336,7 +372,7 @@ class EasyEC2(EasyAWS):
                 log.info('Not all files deleted, recursing...')
                 self.remove_image_files(image_name, pretend)
 
-    @print_timing
+    @print_timing("Removing image")
     def remove_image(self, image_name, pretend=True):
         image = self.get_image(image_name)
         if pretend:

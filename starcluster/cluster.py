@@ -20,7 +20,15 @@ from starcluster.logger import log, INFO_NO_NEWLINE
 from starcluster.node import Node
 
 def get_cluster(cluster_name, cfg):
-    """Factory for Cluster class"""
+    """
+    Returns cluster template configured with only the data from aws queries.
+    To load the full template used to start the cluster, run load_receipt() on
+    the cluster object:
+
+        $ cl = get_cluster('mynewcluster',cfg)
+        $ cl.load_receipt()
+
+    """
     try:
         ec2 = cfg.get_easy_ec2()
         cluster = ec2.get_security_group(_get_cluster_name(cluster_name))
@@ -44,10 +52,13 @@ def get_cluster_or_none(cluster_name,cfg):
     """
     try:
         return get_cluster(cluster_name, cfg)
-    except Exception,e:
+    except exception.ClusterDoesNotExist,e:
         pass
 
 def cluster_exists(tag_name, cfg):
+    """
+    Returns whether a cluster exists by checking if security group exists
+    """
     return get_cluster_or_none(tag_name, cfg) is not None
 
 def ssh_to_master(cluster_name, cfg, user='root'):
@@ -99,16 +110,8 @@ def _get_cluster_name(cluster_name):
 
 def stop_cluster(cluster_name, cfg):
     ec2 = cfg.get_easy_ec2()
-    cname = _get_cluster_name(cluster_name)
-    try:
-        cluster = ec2.get_security_group(cname)
-        for node in cluster.instances():
-            log.info('Shutting down %s' % node.id)
-            node.stop()
-        log.info('Removing cluster security group %s' % cluster.name)
-        cluster.delete()
-    except exception.SecurityGroupDoesNotExist,e:
-        raise exception.ClusterDoesNotExist(cluster_name)
+    cl = get_cluster(cluster_name, cfg)
+    cl.stop_cluster()
 
 def get_cluster_security_groups(cfg):
     ec2 = cfg.get_easy_ec2()
@@ -137,40 +140,39 @@ def get_tag_from_sg(sg):
 
 def list_clusters(cfg):
     starcluster_groups = get_cluster_security_groups(cfg)
-    if starcluster_groups:
-        for scg in starcluster_groups:
-            tag = get_tag_from_sg(scg.name)
-            header = '%s (security group: %s)' % (tag, scg.name)
-            print '-'*len(header)
-            print header
-            print '-'*len(header)
-            cl = get_cluster(tag, cfg)
-            master = cl.master_node
-            nodes = cl.nodes
-            print 'Launch time: %s' % getattr(master,'launch_time','N/A')
-            print 'Zone: %s' % getattr(master, 'placement','N/A')
-            print 'Keypair: %s' % getattr(master, 'key_name', 'N/A')
-            if getattr(master,'block_device_mapping', None):
-                print 'EBS volumes:'
-                devices = master.block_device_mapping
-                for dev in devices:
-                    d = devices.get(dev)
-                    vol_id = d.volume_id
-                    status = d.status
-                    print '    %s on master:%s (status: %s)' % (vol_id, dev, status)
-            print 'Cluster nodes:'
-            if nodes: 
-                for node in nodes:
-                    spot = node.spot_id or ''
-                    if spot:
-                        spot = '(spot %s)' % spot
-                    print "    %7s %s %s %s %s" % (node.alias, node.state, node.id,
-                                                   node.dns_name, spot)
-            else:
-                print '    No pending/running nodes found...'
-            print
-    else:
+    if not starcluster_groups:
         log.info("No clusters found...")
+    for scg in starcluster_groups:
+        tag = get_tag_from_sg(scg.name)
+        header = '%s (security group: %s)' % (tag, scg.name)
+        print '-'*len(header)
+        print header
+        print '-'*len(header)
+        cl = get_cluster(tag, cfg)
+        master = cl.master_node
+        nodes = cl.nodes
+        print 'Launch time: %s' % getattr(master,'launch_time','N/A')
+        print 'Zone: %s' % getattr(master, 'placement','N/A')
+        print 'Keypair: %s' % getattr(master, 'key_name', 'N/A')
+        if getattr(master,'block_device_mapping', None):
+            print 'EBS volumes:'
+            devices = master.block_device_mapping
+            for dev in devices:
+                d = devices.get(dev)
+                vol_id = d.volume_id
+                status = d.status
+                print '    %s on master:%s (status: %s)' % (vol_id, dev, status)
+        print 'Cluster nodes:'
+        if nodes: 
+            for node in nodes:
+                spot = node.spot_id or ''
+                if spot:
+                    spot = '(spot %s)' % spot
+                print "    %7s %s %s %s %s" % (node.alias, node.state, node.id,
+                                               node.dns_name, spot)
+        else:
+            print '    No pending/running nodes found...'
+        print
 
 def run_plugin(plugin_name, cluster_tag, cfg):
     ec2 = cfg.get_easy_ec2()
@@ -182,8 +184,8 @@ def run_plugin(plugin_name, cluster_tag, cfg):
     plugins = cl.load_plugins(plugins)
     master = cl.master_node
     for p in plugins:
-        p.run(cl.nodes, cl.master_node, cl.cluster_user, cl.cluster_shell, 
-              volumes)
+        p.run(cl.nodes, cl.master_node, cl.cluster_user, 
+              cl.cluster_shell, volumes)
 
 class Cluster(object):
     def __init__(self,
@@ -210,6 +212,7 @@ class Cluster(object):
             key_location=None,
             volumes=[],
             plugins=[],
+            permissions=[],
             **kwargs):
 
         now = time.strftime("%Y%m%d%H%M")
@@ -225,7 +228,7 @@ class Cluster(object):
         self.cluster_tag = cluster_tag
         self.cluster_description = cluster_description
         if self.cluster_tag is None:
-            self.cluster_tag = now
+            self.cluster_tag = "cluster%s" % now
         if cluster_description is None:
             self.cluster_description = "Cluster created at %s" % now 
         self.cluster_size = cluster_size
@@ -239,17 +242,21 @@ class Cluster(object):
         self.keyname = keyname
         self.key_location = key_location
         self.volumes = self.load_volumes(volumes)
-        self.plugins = plugins
+        self.plugins = self.load_plugins(plugins)
+        self.permissions = permissions
 
         self.__instance_types = static.INSTANCE_TYPES
         self.__cluster_settings = static.CLUSTER_SETTINGS
         self.__available_shells = static.AVAILABLE_SHELLS
+        self.__protocols = static.PROTOCOLS
         self._master_reservation = None
         self._node_reservation = None
         self._nodes = None
         self._master = None
-        self._plugins = self.load_plugins(plugins)
         self._zone = None
+        self._plugins = plugins
+        self._master_group = None
+        self._cluster_group = None
 
     @property
     def zone(self):
@@ -316,6 +323,8 @@ class Cluster(object):
         return volumes
 
     def load_plugins(self, plugins):
+        #for plugin in plugins:
+            #self._has_all_required_settings(self.__plugin_settings, plugin):
         plugs = []
         for plugin in plugins:
             setup_class = plugin.get('setup_class')
@@ -452,7 +461,7 @@ class Cluster(object):
             f.close()
             for key in cfg:
                 setattr(self, key, cfg.get(key))
-            #self._plugins = self.load_plugins(self.plugins)
+            #self.plugins = self.load_plugins(self.plugins)
             return True
         except IOError,e:
             raise exception.ClusterReceiptError(
@@ -494,16 +503,33 @@ class Cluster(object):
 
     @property
     def master_group(self):
-        sg = self.ec2.get_or_create_group(static.MASTER_GROUP,
-                                          static.MASTER_GROUP_DESCRIPTION)
-        return sg
+        if self._master_group is None:
+            sg = self.ec2.get_or_create_group(static.MASTER_GROUP, 
+                                              static.MASTER_GROUP_DESCRIPTION,
+                                              auth_ssh=True)
+            self._master_group = sg
+        return self._master_group
 
     @property
     def cluster_group(self):
-        sg = self.ec2.get_or_create_group(self._security_group,
-                                          self.cluster_description,
-                                          auth_group_traffic=True)
-        return sg
+        if self._cluster_group is None:
+            sg = self.ec2.get_or_create_group(self._security_group,
+                                              self.cluster_description,
+                                              auth_ssh=True,
+                                              auth_group_traffic=True)
+            for p in self.permissions:
+                perm = self.permissions.get(p)
+                ip_protocol = perm.get('ip_protocol', 'tcp')
+                from_port = perm.get('from_port')
+                to_port = perm.get('to_port')
+                cidr_ip = perm.get('cidr_ip','0.0.0.0/0')
+                if not self.ec2.has_permission(sg, ip_protocol, from_port,
+                                               to_port, cidr_ip):
+                    log.info("Opening %s port range %s-%s for CIDR %s" % 
+                             (ip_protocol, from_port, to_port, cidr_ip))
+                    sg.authorize(ip_protocol, from_port, to_port, cidr_ip)
+            self._cluster_group = sg
+        return self._cluster_group
             
     @property
     def master_node(self):
@@ -558,6 +584,18 @@ class Cluster(object):
             if node.state == 'running':
                 nodes.append(node)
         return nodes
+
+    @property
+    def spot_requests(self):
+        spots = self.ec2.get_all_spot_requests()
+        s = []
+        for spot in spots:
+            groups = spot.launch_specification.groups
+            for group in groups:
+                if group.id == self._security_group:
+                    s.append(spot)
+                    break
+        return s
 
     def run_instances(self, price=None, image_id=None, instance_type='m1.small', 
                       min_count=1, max_count=1, count=1, key_name=None,
@@ -666,20 +704,25 @@ class Cluster(object):
             vol.detach()
 
     def stop_cluster(self):
-        resp = raw_input(">>> Shutdown cluster ? (yes/no) ")
-        if resp == 'yes':
-            if self.volumes:
-                self.detach_volumes()
-            for node in self.running_nodes:
-                log.info("Shutting down instance: %s " % node.id)
-                node.stop()
-            log.info("Removing %s security group" % self._security_group)
-            self.cluster_group.delete()
-        else:
-            log.info("Exiting without shutting down instances....")
+        if self.volumes:
+            self.detach_volumes()
+        for node in self.running_nodes:
+            log.info("Shutting down instance: %s" % node.id)
+            node.stop()
+        for spot in self.spot_requests:
+            if spot.state not in ['cancelled','closed']:
+                log.info("Cancelling spot instance request: %s" % spot.id)
+                spot.cancel()
+        log.info("Removing %s security group" % self._security_group)
+        self.cluster_group.delete()
 
-    @print_timing
-    def start(self, create=True):
+    @print_timing("Starting cluster")
+    def _start(self, create=True):
+        """
+        Start cluster from this cluster template's settings
+        Handles creating and configuring a cluster
+        Does not attempt to validate before running
+        """
         log.info("Starting cluster...")
         if create:
             self.create_cluster()
@@ -702,7 +745,7 @@ class Cluster(object):
             self.volumes
         )
         self.create_receipt()
-        for plugin in self._plugins:
+        for plugin in self.plugins:
             try:
                 plugin_name = plugin[0]
                 plug = plugin[1]
@@ -739,6 +782,20 @@ to shutdown the cluster and stop paying for service
             'tag': self.cluster_tag,
         })
 
+    def start(self, create=True, validate=True, validate_only=False,
+              validate_running=False):
+        """
+        Handles creating and configuring a cluster. 
+        Validates, creates, and configures a cluster.
+        Passing validate=False will ignore validate_only and validate_running
+        keywords and is effectively the same as running _start
+        """
+        if validate:
+            retval = self._validate(validate_running = validate_running)
+            if validate_only:
+                return retval
+        return self._start(create)
+
     def is_running_valid(self):
         """
         Checks whether the current running instances are compatible
@@ -751,22 +808,44 @@ to shutdown the cluster and stop paying for service
             log.error(e.msg)
             return False
 
+    def _validate(self, validate_running=False):
+        """
+        Checks that all cluster template settings are valid. Raises
+        a ClusterValidationError exception if not. Passing
+        validate_running=True will also check that the existing instances 
+        properties match the configuration of this cluster template.
+        """
+        log.info("Validating cluster template settings...")
+        self._has_all_required_settings()
+        self._validate_spot_bid()
+        self._validate_cluster_size()
+        self._validate_shell_setting()
+        self._validate_permission_settings()
+        self._validate_credentials()
+        self._validate_keypair()
+        self._validate_zone()
+        self._validate_ebs_settings()
+        self._validate_ebs_aws_settings()
+        self._validate_image_settings()
+        self._validate_instance_types()
+        if validate_running:
+            log.info("Validating existing instances...")
+            try:
+                self._validate_running_instances()
+            except exception.ClusterValidationError,e:
+                log.error('existing instances are not compatible with cluster' + \
+                          ' template settings:')
+                raise
+        log.info('Cluster template settings are valid')
+        return True
+
     def is_valid(self):
         """
-        Checks that all cluster template settings are valid
+        Returns True if all cluster template settings are valid
         """
+        log.info("Validating cluster template settings...")
         try:
-            self._has_all_required_settings()
-            self._validate_spot_bid()
-            self._validate_cluster_size()
-            self._validate_shell_setting()
-            self._validate_credentials()
-            self._validate_keypair()
-            self._validate_zone()
-            self._validate_ebs_settings()
-            self._validate_ebs_aws_settings()
-            self._validate_image_settings()
-            self._validate_instance_types()
+            self._validate()
             return True
         except exception.ClusterValidationError,e:
             log.error(e.msg)
@@ -912,6 +991,33 @@ to shutdown the cluster and stop paying for service
                                                                    vol.status)
                 raise exception.ClusterValidationError(msg)
 
+    def _validate_permission_settings(self):
+        permissions = self.permissions
+        for perm in permissions:
+            permission = permissions.get(perm)
+            protocol = permission.get('ip_protocol')
+            if protocol not in self.__protocols:
+                raise exception.InvalidProtocol(protocol)
+            from_port = permission.get('from_port')
+            to_port = permission.get('to_port')
+            try:
+                from_port = int(from_port)
+                to_port = int(to_port)
+            except ValueError,e:
+                raise exception.InvalidPortRange(from_port, to_port,
+                                                 reason="integer range required")
+            if from_port < 0 or to_port < 0:
+                raise exception.InvalidPortRange(
+                    from_port, to_port, 
+                    reason="from/to must be positive integers")
+            if from_port > to_port:
+                raise exception.InvalidPortRange(
+                    from_port, to_port, 
+                    reason="'from_port' must be <= 'to_port'")
+            cidr_ip = permission.get('cidr_ip')
+            if not utils.validate_cidr(cidr_ip):
+                raise exception.InvalidCIDRSpecified(cidr_ip)
+
     def _validate_ebs_settings(self):
         """
         Check EBS vols for missing/duplicate DEVICE/PARTITION/MOUNT_PATHs 
@@ -965,6 +1071,16 @@ to shutdown the cluster and stop paying for service
                 raise exception.ClusterValidationError(
                     "Can't mount more than one volume on %s" % path)
         return True
+
+    #def _has_all_required_settings(self, settings, object):
+        #has_all_required = True
+        #for opt in settings:
+            #requirements = settings[opt]
+            #name = opt; required = requirements[1];
+            #if required and object.get(name.lower()) is None:
+                #log.warn('Missing required setting %s' % name)
+                #has_all_required = False
+        #return has_all_required
 
     def _has_all_required_settings(self):
         has_all_required = True

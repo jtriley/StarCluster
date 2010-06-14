@@ -3,11 +3,14 @@
 starcluster [global-opts] action [action-opts] [<action-args> ...]
 """
 
+from starcluster import __version__
+from starcluster import __author__
+
 __description__ = """
-StarCluster - (http://web.mit.edu/starcluster)
+StarCluster - (http://web.mit.edu/starcluster) (v. %s)
 Software Tools for Academics and Researchers (STAR)
 Please submit bug reports to starcluster@mit.edu
-"""
+"""  % __version__
 
 __moredoc__ = """
 Each command consists of a class, which has the following properties:
@@ -17,9 +20,6 @@ Each command consists of a class, which has the following properties:
 - Can optionally have a addopts(self, parser) method which adds options to the
   given parser. This defines command options.
 """
-
-from starcluster import __version__
-__author__ = "Justin Riley <justin.t.riley@gmail.com>"
 
 import os
 import sys
@@ -35,6 +35,7 @@ import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 from boto.exception import BotoServerError, EC2ResponseError, S3ResponseError
+
 from starcluster import cluster
 from starcluster import node
 from starcluster import config
@@ -211,37 +212,31 @@ class CmdStart(CmdBase):
         if not template:
             template = cfg.get_default_cluster_template(tag)
             log.info("Using default cluster template: %s" % template)
+        cluster_exists = cluster.cluster_exists(tag, cfg)
+        create = not self.opts.no_create
+        if not cluster_exists and not create:
+            raise exception.ClusterDoesNotExist(tag)
         scluster = cfg.get_cluster_template(template, tag)
         scluster.update(self.specified_options_dict)
-        if cluster.cluster_exists(tag,cfg) and not self.opts.no_create:
-            raise exception.ClusterExists(tag)
-        #from starcluster.utils import ipy_shell; ipy_shell();
-        check_running = self.opts.no_create
-        if check_running:
-            log.info("Validating existing instances...")
-            if scluster.is_running_valid():
-                log.info('Existing instances are valid')
-            else:
-                log.error('existing instances are not compatible with cluster' + \
-                          ' template settings')
-                sys.exit(1)
-        log.info("Validating cluster template settings...")
-        if scluster.is_valid():
-            log.info('Cluster template settings are valid')
-            if not self.opts.validate_only:
-                if self.opts.spot_bid is not None:
-                    cmd = ' '.join(sys.argv[1:]) + ' --no-create'
-                    launch_group = static.SECURITY_GROUP_TEMPLATE % tag
-                    msg = experimental.spotmsg % {'cmd':cmd, 
-                                                  'launch_group': launch_group}
-                    self.warn_experimental(msg)
-                self.catch_ctrl_c()
-                scluster.start(create=not self.opts.no_create)
-                if self.opts.login_master:
-                    cluster.ssh_to_master(tag, self.cfg)
-        else:
-            log.error('settings for cluster template "%s" are not valid' % template)
-            sys.exit(1)
+        validate_running = self.opts.no_create
+        validate_only = self.opts.validate_only
+        try:
+            scluster._validate(validate_running=validate_running)
+            if validate_only:
+                return
+        except exception.ClusterValidationError,e:
+            log.error('settings for cluster template "%s" are not valid:' % template)
+            raise
+        if self.opts.spot_bid is not None:
+            cmd = ' '.join(sys.argv[1:]) + ' --no-create'
+            launch_group = static.SECURITY_GROUP_TEMPLATE % tag
+            msg = experimental.spotmsg % {'cmd':cmd, 
+                                          'launch_group': launch_group}
+            self.warn_experimental(msg)
+        self.catch_ctrl_c()
+        scluster.start(create=create, validate=False)
+        if self.opts.login_master:
+            cluster.ssh_to_master(tag, self.cfg)
 
 class CmdStop(CmdBase):
     """
@@ -755,7 +750,7 @@ class CmdListSpots(CmdBase):
     def addopts(self, parser):
         parser.add_option("-c", "--show-closed", dest="show_closed",
                           action="store_true", default=False, 
-                          help="show closed spot instance requests")
+                          help="show closed/cancelled spot instance requests")
     def execute(self, args):
         ec2 = self.cfg.get_easy_ec2()
         ec2.list_all_spot_instances(self.opts.show_closed)
@@ -907,6 +902,7 @@ class CmdShell(CmdBase):
         s3 - starcluster.awsutils.EasyS3 instance
 
     All starcluster modules are automatically imported in the IPython session
+    along with the boto and paramiko modules
     """
     names = ['shell', 'sh']
     def execute(self,args):
@@ -914,9 +910,10 @@ class CmdShell(CmdBase):
         ec2 = cfg.get_easy_ec2()
         s3 = ec2.s3
         import starcluster
-        for modname in starcluster.__all__:
+        modules = [ (starcluster.__name__ + '.' + i, i) for i in starcluster.__all__ ] + \
+                     [('boto','boto'),('paramiko','paramiko')]
+        for fullname, modname in modules:
             log.info('Importing module %s' % modname)
-            fullname = starcluster.__name__ + '.' + modname
             try:
                 __import__(fullname)
                 locals()[modname] = sys.modules[fullname]
@@ -1077,7 +1074,6 @@ def main():
         lines = e.msg.splitlines()
         for l in lines:
             log.error(l)
-        #log.error(e.msg)
         sys.exit(1)
     except (EC2ResponseError, S3ResponseError, BotoServerError), e:
         log.error("%s: %s" % (e.error_code, e.error_message))

@@ -3,6 +3,8 @@ import sys
 import unittest
 import tempfile
 from starcluster import exception
+from starcluster import static
+from starcluster.cluster import Cluster
 from starcluster.logger import log
 from starcluster.tests import StarClusterTest
 from starcluster.tests.templates.config import config_test_template, default_config
@@ -56,20 +58,14 @@ class TestClusterValidation(StarClusterTest):
 
     def test_shell_validation(self):
         cases = [
-            {'c1_shell': ''}, 
-            {'c1_shell': 'nosh'}, 
-            {'c1_shell': 2}
+            {'cluster_shell': ''}, 
+            {'cluster_shell': 'nosh'}, 
+            {'cluster_shell': 2}
         ]
-        for case in cases:
-            cfg = self.get_custom_config(**case)
-            try:
-                cluster = cfg.get_cluster_template('c1')
-                cluster._validate_shell_setting()
-            except exception.ClusterValidationError,e:
-                pass
-            else:
-                raise Exception('cluster allows invalid cluster shell (case: %s)'
-                               % case)
+        failed = self.__test_cases_from_cluster(cases,'_validate_shell_setting')
+        if failed:
+            raise Exception('cluster allows invalid cluster shell (cases: %s)'
+                           % failed)
 
     def test_keypair_validation(self):
         tmpfile = tempfile.NamedTemporaryFile()
@@ -88,7 +84,12 @@ class TestClusterValidation(StarClusterTest):
                 raise Exception('cluster allows invalid key_location')
         os.rmdir(tmpdir)
 
-    def __test_for_validation_error(self, cases, test, cluster_name='c1'):
+    def __test_cases_from_cfg(self, cases, test, cluster_name='c1'):
+        """
+        Tests all cases by loading a cluster template from the test config.
+        This method will write a custom test config for each case using its
+        settings.
+        """
         failed = []
         for case in cases:
             cfg = self.get_custom_config(**case)
@@ -101,15 +102,30 @@ class TestClusterValidation(StarClusterTest):
                 failed.append(case)
         return failed
 
+    def __test_cases_from_cluster(self, cases, test):
+        """
+        Tests all cases by manually loading a cluster template using the Cluster
+        class. All settings for a case are passed in as constructor keywords.
+        Avoids the config module by using the Cluster object directly
+        to create a test case.
+        """
+        failed = []
+        for case in cases:
+            cluster = Cluster(**case) 
+            try:
+                getattr(cluster,test)()
+            except exception.ClusterValidationError,e:
+                continue
+            else:
+                failed.append(case)
+        return failed
+
     def test_instance_type_validation(self):
         cases = [
-            {'c1_node_type': None}, 
-            {'c1_master_type': None},
-            {'c1_node_type': 'asdfa'},
-            {'c1_master_type': 'asdfa'},
-            {'c1_zone': None},
+            {'node_instance_type': 'asdf'},
+            {'master_instance_type': 'fdsa', 'node_instance_type': 'm1.small'},
         ]
-        failed = self.__test_for_validation_error(cases, '_validate_instance_types')
+        failed = self.__test_cases_from_cluster(cases, "_validate_instance_types")
         if failed:
             raise Exception(
                 'cluster allows invalid instance type settings (cases: %s)' % \
@@ -119,30 +135,44 @@ class TestClusterValidation(StarClusterTest):
         cases = [
             {'v1_mount_path': 'home'},
         ]
-        failed = self.__test_for_validation_error(cases, '_validate_ebs_settings')
+        failed = self.__test_cases_from_cfg(cases, '_validate_ebs_settings')
         if failed:
             raise Exception('cluster allows invalid ebs settings (cases: %s)' % failed)
         try:
-            failed = self.__test_for_validation_error( \
+            failed = self.__test_cases_from_cfg( \
                 [{'v1_device': '/dev/asd'}],'_validate_ebs_settings')
             raise Exception('cluster allows invalid ebs settings (cases: %s)' % \
                             failed)
         except exception.InvalidDevice,e:
             pass
         try:
-            failed = self.__test_for_validation_error( \
+            failed = self.__test_cases_from_cfg( \
                 [{'v1_partition': -1}],'_validate_ebs_settings')
             raise Exception('cluster allows invalid ebs settings (cases: %s)' % \
                             failed)
         except exception.InvalidPartition,e:
             pass
 
-    def test_image_validation(self):
-        pass
+    def test_permission_validation(self):
+        assert self.config.permissions.s3.ip_protocol == 'tcp'
+        assert self.config.permissions.s3.cidr_ip == '0.0.0.0/0'
+        cases = [
+            {'s1_from_port':90, 's1_to_port': 10},
+            {'s1_from_port':-1},
+            {'s1_cidr_ip':'asdfasdf'},
+        ]
+        failed = self.__test_cases_from_cfg(cases, 
+                                            '_validate_permission_settings',
+                                            cluster_name='c4')
+        if failed:
+            raise Exception(
+                "cluster allows invalid permission settings (cases %s)" % failed)
 
-    def test_zone_validation(self):
-        pass
+    #def test_image_validation(self):
+        #pass
 
-    def test_platform_validation(self):
-        pass
+    #def test_zone_validation(self):
+        #pass
 
+    #def test_platform_validation(self):
+        #pass

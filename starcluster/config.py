@@ -195,10 +195,15 @@ class StarClusterConfig(object):
         section_conf = store
         for setting in settings:
             requirements = settings[setting]
-            func, required, default = requirements
+            func, required, default, options = requirements
             func = self.type_validators.get(func)
             value = func(self.config, section_name, setting)
             if value is not None:
+                if options and not value in options:
+                    raise exception.ConfigError(
+                        '"%s" setting in section "%s" must be one of: %s' % 
+                        (setting, section_name,
+                         ', '.join([str(o) for o in options])))
                 section_conf[setting] = value
 
     def _check_required(self, section_name, settings, store):

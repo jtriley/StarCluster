@@ -5,6 +5,7 @@ from starcluster.node import Node
 from starcluster.spinner import Spinner
 from starcluster import static
 from starcluster import utils
+from starcluster.utils import print_timing
 from starcluster import exception
 
 class VolumeCreator(object):
@@ -26,7 +27,8 @@ class VolumeCreator(object):
     @property
     def security_group(self):
         sg = self._ec2.get_or_create_group(static.VOLUME_GROUP, 
-                                           static.VOLUME_GROUP_DESCRIPTION)
+                                           static.VOLUME_GROUP_DESCRIPTION,
+                                           auth_ssh=True)
         return sg
 
     def _request_instance(self, zone):
@@ -152,6 +154,7 @@ class VolumeCreator(object):
                 self._key_location = cfg.keys.get(kp.name).get('key_location')
                 return
 
+    @print_timing("Creating volume")
     def create(self, volume_size, volume_zone):
         self.validate(volume_size, volume_zone, self._device, self._image_id)
         try:

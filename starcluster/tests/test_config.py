@@ -140,6 +140,7 @@ class TestStarClusterConfig(StarClusterTest):
         c1 = self.config.get_cluster_template('c1')
         plugs = c1.plugins
         assert len(plugs) == 3
+        plugs = self.config.clusters.c1.plugins
         # test that order is preserved 
         p1 = plugs[0]
         p2 = plugs[1]
@@ -227,3 +228,15 @@ class TestStarClusterConfig(StarClusterTest):
             pass
         else:
             raise Exception('config allows cyclical extends graph')
+
+    def test_choices(self):
+        """
+        Test that config enforces a value to be one of a list of choices if
+        specified
+        """
+        try:
+            cfg = self.get_custom_config(**{'c1_shell': 'blahblah'})
+        except exception.ConfigError,e:
+            pass
+        else:
+            raise Exception('config not enforcing choices for setting')

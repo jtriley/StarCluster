@@ -31,6 +31,16 @@ default_config = {
     'p3_param1': 'bon',
     'p3_param2': 'jour',
     'p3_param3': 'monsignour',
+    's1_protocol': 'udp',
+    's1_from_port': 20,
+    's1_to_port': 20,
+    's1_cidr_ip': '192.168.1.0/24',
+    's2_protocol': 'tcp',
+    's2_from_port': 80,
+    's2_to_port': 20,
+    's2_cidr_ip': '192.168.233.0/24',
+    's3_from_port': 20,
+    's3_to_port': 30,
     'c1_keyname': 'k1',
     'c1_size': 4,
     'c1_user': 'testuser',
@@ -53,6 +63,7 @@ default_config = {
     'c3_size': 8,
     'c3_vols': 'v3',
     'c4_extends': 'c3',
+    'c4_permissions': 's1',
 }
 
 config_test_template = """
@@ -108,6 +119,22 @@ MY_ARG = %(p3_param1)s
 MY_OTHER_ARG = %(p3_param2)s
 MY_OTHER_OTHER_ARG = %(p3_param3)s
 
+[permission s1]
+protocol = %(s1_protocol)s
+from_port = %(s1_from_port)s
+to_port = %(s1_to_port)s
+cidr_ip = %(s1_cidr_ip)s
+
+[permission s2]
+protocol = %(s2_protocol)s
+from_port = %(s2_from_port)s
+to_port = %(s2_to_port)s
+cidr_ip = %(s2_cidr_ip)s
+
+[permission s3]
+from_port = %(s3_from_port)s
+to_port = %(s3_to_port)s
+
 [cluster c1]
 KEYNAME = %(c1_keyname)s
 CLUSTER_SIZE = %(c1_size)s
@@ -137,6 +164,7 @@ VOLUMES = %(c3_vols)s
 
 [cluster c4]
 EXTENDS=%(c4_extends)s
+PERMISSIONS=%(c4_permissions)s
 """
 
 missing_required_template= """
