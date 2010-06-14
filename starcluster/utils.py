@@ -4,6 +4,7 @@ Utils module for StarCluster
 """
 
 import re
+import types
 import string
 import urlparse
 import time
@@ -20,16 +21,49 @@ class AttributeDict(dict):
         except KeyError:
             return super(AttributeDict, self).__getattribute__(name)
 
-def print_timing(func):
-    """Decorator for printing execution time (in mins) of a function"""
-    def wrapper(*arg, **kargs):
-        """Raw timing function """
-        time1 = time.time()
-        res = func(*arg, **kargs)
-        time2 = time.time()
-        log.info('%s took %0.3f mins' % (func.func_name, (time2-time1)/60.0))
-        return res
-    return wrapper
+def print_timing(msg=None):
+    """
+    Decorator for printing execution time (in mins) of a function
+    Optionally takes a user-friendly msg as argument. This msg will
+    appear in the sentence "[msg] took XXX mins". If no msg is specified,
+    msg will default to the decorated function's name. e.g:
+
+    @print_timing
+    def myfunc():
+        print 'hi'
+    >>> myfunc()
+    hi
+    myfunc took 0.000 mins
+
+    @print_timing('My function')
+    def myfunc():
+        print 'hi'
+    >>> myfunc()
+    hi
+    My function took 0.000 mins
+    """
+    if type(msg) == types.FunctionType:
+        func = msg
+        def wrap_f(*arg, **kargs):
+            """Raw timing function """
+            time1 = time.time()
+            res = func(*arg, **kargs)
+            time2 = time.time()
+            prefix = func.func_name
+            log.info('%s took %0.3f mins' % (prefix, (time2-time1)/60.0))
+            return res
+        return wrap_f
+    def wrap(func):
+        def wrap_f(*arg, **kargs):
+            """Raw timing function """
+            time1 = time.time()
+            res = func(*arg, **kargs)
+            time2 = time.time()
+            prefix = msg
+            log.info('%s took %0.3f mins' % (prefix, (time2-time1)/60.0))
+            return res
+        return wrap_f
+    return wrap
 
 def is_valid_device(dev):
     regex = re.compile('/dev/sd[a-z]')
