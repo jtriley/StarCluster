@@ -215,7 +215,9 @@ class EasyEC2(EasyAWS):
         print "-" * len(msg)
 
     def get_image_name(self, img):
-        return img.location.split('/')[1].split('.manifest.xml')[0]
+        image_name = img.name or \
+                img.location.split('/')[1].split('.manifest.xml')[0]
+        return image_name
 
     def get_instance(self, instance_id):
         try:
