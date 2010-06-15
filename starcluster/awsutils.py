@@ -255,14 +255,16 @@ class EasyEC2(EasyAWS):
 
     def list_all_spot_instances(self, show_closed=False):
         s = self.conn.get_all_spot_instance_requests()
-        spots = [i for i in s if i.state not in ['closed', 'cancelled']]
-        if show_closed:
-            spots.extend([i for i in s if i.state in ['closed', 'cancelled']])
-        if not spots:
+        if not s:
             log.info("No spot instance requests found...")
-        for spot in spots:
+            return
+        spots = []
+        for spot in s:
+            if spot.state in ['closed', 'cancelled'] and not show_closed:
+                continue
             state = spot.state or 'N/A'
             spot_id = spot.id or 'N/A'
+            spots.append(spot_id)
             type = spot.type
             instance_id = getattr(spot, 'instanceId', 'N/A')
             create_time = spot.create_time or 'N/A'
@@ -287,17 +289,23 @@ class EasyEC2(EasyAWS):
             print "zone_group: %s" % zone_group
             print "security_groups: %s" % groups
             print
+        if not spots:
+            log.info("No spot instance requests found...")
 
     def list_all_instances(self, show_terminated=False):
         reservations = self.conn.get_all_instances()
         if not reservations:
             log.info("No instances found")
+            return
+        instances = []
         for res in reservations:
             groups = ', '.join([ g.id for g in res.groups]) or 'N/A'
             for instance in res.instances:
-                if instance.state == 'terminated' and not show_terminated:
+                if instance.state in ['shutting-down','terminated'] \
+                   and not show_terminated:
                     continue
                 id = instance.id or 'N/A'
+                instances.append(id)
                 dns_name = instance.dns_name or 'N/A'
                 private_dns_name = instance.private_dns_name or 'N/A'
                 state = instance.state or 'N/A'
@@ -317,6 +325,8 @@ class EasyEC2(EasyAWS):
                 print "groups: %s" % groups
                 print "keypair: %s" % keypair
                 print
+        if not instances:
+            log.info("No instances found")
 
     def list_images(self, images):
         def get_key(obj):
