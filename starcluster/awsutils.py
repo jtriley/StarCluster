@@ -572,7 +572,8 @@ class EasyS3(EasyAWS):
     def __init__(self, aws_access_key_id, aws_secret_access_key,  
                  aws_s3_path='/', aws_port=None, aws_is_secure=True, 
                  aws_region_host=DefaultHost, cache=False, **kwargs):
-        kwargs = dict(is_secure=aws_is_secure, host=aws_region_host, 
+        kwargs = dict(is_secure=aws_is_secure, host=aws_region_host or
+                      self.DefaultHost, 
                       calling_format=self._calling_format, port=aws_port, 
                       path=aws_s3_path)
         super(EasyS3, self).__init__(aws_access_key_id, aws_secret_access_key,
