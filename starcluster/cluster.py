@@ -149,29 +149,36 @@ def list_clusters(cfg):
         print header
         print '-'*len(header)
         cl = get_cluster(tag, cfg)
-        master = cl.master_node
         nodes = cl.nodes
-        print 'Launch time: %s' % getattr(master,'launch_time','N/A')
-        print 'Zone: %s' % getattr(master, 'placement','N/A')
-        print 'Keypair: %s' % getattr(master, 'key_name', 'N/A')
-        if getattr(master,'block_device_mapping', None):
-            print 'EBS volumes:'
-            devices = master.block_device_mapping
-            for dev in devices:
-                d = devices.get(dev)
-                vol_id = d.volume_id
-                status = d.status
-                print '    %s on master:%s (status: %s)' % (vol_id, dev, status)
+        try:
+            n = nodes[0]
+        except IndexError,e:
+            n = None
+        print 'Launch time: %s' % getattr(n,'launch_time','N/A')
+        print 'Zone: %s' % getattr(n, 'placement','N/A')
+        print 'Keypair: %s' % getattr(n, 'key_name', 'N/A')
+        print 'EBS volumes:'
+        if not nodes: 
+            print '    No EBS volumes attached...'
+        for node in nodes:
+            if getattr(node,'block_device_mapping', None):
+                devices = node.block_device_mapping
+                node_id = node.alias or node.id
+                for dev in devices:
+                    d = devices.get(dev)
+                    vol_id = d.volume_id
+                    status = d.status
+                    print '    %s on %s:%s (status: %s)' % \
+                            (vol_id, node_id, dev, status)
         print 'Cluster nodes:'
-        if nodes: 
-            for node in nodes:
-                spot = node.spot_id or ''
-                if spot:
-                    spot = '(spot %s)' % spot
-                print "    %7s %s %s %s %s" % (node.alias, node.state, node.id,
-                                               node.dns_name, spot)
-        else:
+        if not nodes: 
             print '    No pending/running nodes found...'
+        for node in nodes:
+            spot = node.spot_id or ''
+            if spot:
+                spot = '(spot %s)' % spot
+            print "    %7s %s %s %s %s" % (node.alias, node.state, 
+                                           node.id, node.dns_name, spot)
         print
 
 def run_plugin(plugin_name, cluster_tag, cfg):
@@ -551,9 +558,10 @@ class Cluster(object):
             master = self.master_node
             nodeid = 1
             for node in nodes:
+                print node.state
                 if node.state not in ['pending','running']:
                     continue
-                if node.id == master.id:
+                if node.id == getattr(master,'id',None):
                     self._nodes.insert(0,master)
                     continue
                 self._nodes.append(Node(node, self.key_location, 

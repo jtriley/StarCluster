@@ -23,13 +23,15 @@ class VolumeCreator(object):
         self._node = None
         self._image_id = image_id or BASE_AMI_32
         self._shutdown = shutdown_instance
+        self._security_group = None
 
     @property
     def security_group(self):
-        sg = self._ec2.get_or_create_group(static.VOLUME_GROUP, 
-                                           static.VOLUME_GROUP_DESCRIPTION,
-                                           auth_ssh=True)
-        return sg
+        if not self._security_group:
+            self._security_group = self._ec2.get_or_create_group(static.VOLUME_GROUP, 
+                                               static.VOLUME_GROUP_DESCRIPTION,
+                                               auth_ssh=True)
+        return self._security_group
 
     def _request_instance(self, zone):
         for i in self.security_group.instances():

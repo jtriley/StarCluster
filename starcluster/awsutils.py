@@ -4,6 +4,7 @@ EC2/S3 Utility Classes
 """
 
 import os
+import re
 import sys
 import time
 import string
@@ -414,6 +415,10 @@ class EasyEC2(EasyAWS):
             print
 
     def get_zone(self, zone):
+        """
+        Return zone object respresenting an EC2 availability zone
+        Raises exception.ZoneDoesNotExist if not successful
+        """
         try:
             return self.conn.get_all_zones(zones=[zone])[0]
         except boto.exception.EC2ResponseError,e:
@@ -423,12 +428,20 @@ class EasyEC2(EasyAWS):
             raise exception.ZoneDoesNotExist(zone)
 
     def get_zone_or_none(self, zone):
+        """
+        Return zone object respresenting an EC2 availability zone
+        Returns None if unsuccessful
+        """
         try:
             return self.get_zone(zone)
         except:
             pass
 
     def get_image(self, image_id):
+        """
+        Return image object representing an AMI.
+        Raises exception.AMIDoesNotExist if unsuccessful
+        """
         try:
             return self.conn.get_all_images(image_ids=[image_id])[0]
         except boto.exception.EC2ResponseError,e:
@@ -438,22 +451,37 @@ class EasyEC2(EasyAWS):
             raise exception.AMIDoesNotExist(image_id)
 
     def get_image_or_none(self, image_id):
+        """
+        Return image object representing an AMI.
+        Returns None if unsuccessful
+        """
         try:
             return self.get_image(image_id)
         except:
             pass
 
     def get_image_files(self, image_id):
+        """
+        Return list of files on S3 for image_id
+        The list includes the image's manifest and part files
+        """
         image = self.get_image(image_id)
         bucketname = image.location.split('/')[0]
         bucket = self.s3.get_bucket(bucketname)
-        files = bucket.list(prefix=os.path.basename(image.location).split('.manifest.xml')[0])
+        files = bucket.list(prefix=image.name)
+        iname = re.escape(image.name)
+        manifest_regex = re.compile(r'%s\.manifest\.xml' % iname)
+        part_regex = re.compile(r'%s\.part\.(\d*)' % iname)
         # boto with eucalyptus returns boto.s3.prefix.Prefix class at the 
         # end of the list, we ignore these by checking for delete method
-        files = [ file for file in files if hasattr(file,'delete')]
+        files = [ f for f in files if hasattr(f,'delete') and
+                 part_regex.match(f.name) or manifest_regex.match(f.name) ]
         return files
 
     def list_image_files(self, image_id):
+        """
+        Print a list of files for image_id to the screen 
+        """
         files = self.get_image_files(image_id)
         for file in files:
             print file.name
@@ -479,12 +507,19 @@ class EasyEC2(EasyAWS):
             self.conn.terminate_instances(instances)
 
     def get_volumes(self):
+        """
+        Returns a list of all EBS volumes
+        """
         try:
             return self.conn.get_all_volumes()
         except boto.exception.EC2ResponseError,e:
             self.__check_for_auth_failure(e)
 
     def get_volume(self, volume_id):
+        """
+        Returns EBS volume object representing volume_id.
+        Raises exception.VolumeDoesNotExist if unsuccessful
+        """
         try:
             return self.conn.get_all_volumes(volume_ids=[volume_id])[0]
         except boto.exception.EC2ResponseError,e:
@@ -494,12 +529,19 @@ class EasyEC2(EasyAWS):
             raise exception.VolumeDoesNotExist(volume_id)
 
     def get_volume_or_none(self, volume_id):
+        """
+        Returns EBS volume object representing volume_id.
+        Returns none if unsuccessful
+        """
         try:
             return self.get_volume(volume_id)
         except:
             pass
 
     def list_volumes(self):
+        """
+        Print a list of volumes to the screen
+        """
         vols = self.get_volumes()
         if vols:
             for vol in vols:
@@ -585,6 +627,9 @@ class EasyS3(EasyAWS):
             raise e
 
     def bucket_exists(self, bucket_name):
+        """
+        Check if bucket_name exists on S3
+        """
         try:
             self.conn.get_bucket(bucket_name)
             return True
@@ -594,12 +639,19 @@ class EasyS3(EasyAWS):
             return False
 
     def get_bucket_or_none(self, bucket_name):
+        """
+        Returns bucket object representing S3 bucket
+        Returns None if unsuccessful
+        """
         try:
-            return self.conn.get_bucket(bucket_name)
+            return self.get_bucket(bucket_name)
         except boto.exception.S3ResponseError,e:
             self.__check_for_auth_failure(e)
 
     def get_bucket(self, bucketname):
+        """
+        Returns bucket object representing S3 bucket
+        """
         return self.conn.get_bucket(bucketname)
 
     def list_bucket(self, bucketname):
