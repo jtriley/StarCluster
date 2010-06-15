@@ -558,7 +558,6 @@ class Cluster(object):
             master = self.master_node
             nodeid = 1
             for node in nodes:
-                print node.state
                 if node.state not in ['pending','running']:
                     continue
                 if node.id == getattr(master,'id',None):
