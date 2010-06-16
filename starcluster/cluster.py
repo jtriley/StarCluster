@@ -158,18 +158,19 @@ def list_clusters(cfg):
         print 'Zone: %s' % getattr(n, 'placement','N/A')
         print 'Keypair: %s' % getattr(n, 'key_name', 'N/A')
         print 'EBS volumes:'
-        if not nodes: 
+        ebs_nodes = [ n for n in nodes if
+                         getattr(n,'block_device_mapping',None) ]
+        if not nodes or not ebs_nodes: 
             print '    No EBS volumes attached...'
-        for node in nodes:
-            if getattr(node,'block_device_mapping', None):
-                devices = node.block_device_mapping
-                node_id = node.alias or node.id
-                for dev in devices:
-                    d = devices.get(dev)
-                    vol_id = d.volume_id
-                    status = d.status
-                    print '    %s on %s:%s (status: %s)' % \
-                            (vol_id, node_id, dev, status)
+        for node in ebs_nodes:
+            devices = node.block_device_mapping
+            node_id = node.alias or node.id
+            for dev in devices:
+                d = devices.get(dev)
+                vol_id = d.volume_id
+                status = d.status
+                print '    %s on %s:%s (status: %s)' % \
+                        (vol_id, node_id, dev, status)
         print 'Cluster nodes:'
         if not nodes: 
             print '    No pending/running nodes found...'
