@@ -27,7 +27,6 @@ def get_cluster(cluster_name, cfg):
 
         $ cl = get_cluster('mynewcluster',cfg)
         $ cl.load_receipt()
-
     """
     try:
         ec2 = cfg.get_easy_ec2()
@@ -37,10 +36,10 @@ def get_cluster(cluster_name, cfg):
         try:
             cluster_key = cluster.instances()[0].key_name
             key = cfg.get_key(cluster_key)
-        except IndexError:
-            key = dict(keyname=None, key_location=None)
+        except (IndexError, exception.KeyNotFound),e:
+            key = dict(keyname=cluster_key, key_location=None)
         kwargs.update(key)
-        kwargs.update({'cluster_tag': cluster_name})
+        kwargs.update(dict(cluster_tag=cluster_name))
         return Cluster(**kwargs)
     except exception.SecurityGroupDoesNotExist,e:
         raise exception.ClusterDoesNotExist(cluster_name)
