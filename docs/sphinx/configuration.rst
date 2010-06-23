@@ -213,6 +213,37 @@ myvoldata1 and myvoldata2 from the above example in a *cluster template* called 
 Now any time a cluster is started using the *smallcluster* template, myvoldata1 will be mounted to /home on the master, myvoldata2 will
 be mounted to /scratch on the master, and both /home and /scratch will be NFS shared to the rest of the cluster nodes. 
 
+Amazon Security Group Permissions
+---------------------------------
+Each node in the cluster is assigned to a common security group when starting a cluster. This group is created by StarCluster and has  
+a name of the form "@sc-<cluster_tag>" where *<cluster_tag>* is the name you provided to the "start" command.
+
+By default, StarCluster adds a security group permission to this group to allow port 22 (openssh). If you want to specify additional security 
+group permissions you can do so in the config by creating a **[permission]** section. Here's an example that opens port 80 to the world for the 
+*smallcluster* template:
+
+.. code-block:: ini
+
+    [permission www]
+    # open port 80 to the world
+    from_port = 80
+    to_port = 80
+    
+    [permission ftp]
+    # open port 21 only to a single ip
+    from_port = 21
+    to_port = 21
+    cidr_ip = 66.249.90.104/32
+
+    [cluster smallcluster]
+    ...
+    permissions = www, ftp
+
+Permissions specify an IP range to open to a given network range (cidr_ip). In the above example, we created a permission section called *www* that 
+opens port 80 to the "world" by setting the from_port and to_port both to be 80. By default, the network range is set to 0.0.0.0/0 which represents any 
+ip address (ie the "world"). You can restrict the ip addresses that the rule applies to by specifying the proper cidr_ip setting. In the above example, 
+the *ftp* permission specifies that only 66.249.90.104 ip address can access port 21 on the cluster nodes. 
+
 StarCluster Plugins
 -------------------
 StarCluster also has support for user contributed plugins (see :doc:`plugins`).  To configure a *cluster template* to use a particular 
