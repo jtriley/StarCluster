@@ -36,6 +36,7 @@ INSTANCE_TYPES = {
     'm1.xlarge': 'x86_64',
     'c1.medium': 'i386',
     'c1.xlarge': 'x86_64',
+    'm2.xlarge': 'x86_64',
     'm2.2xlarge': 'x86_64',
     'm2.4xlarge': 'x86_64',
 }
