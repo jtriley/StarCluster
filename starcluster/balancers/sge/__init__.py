@@ -32,7 +32,8 @@ class SGEStats(object):
                     if hvalue.nodeType == Node.TEXT_NODE:
                         val = hvalue.data
                     hash[attr] = val
-            self.hosts.append(hash)
+            if hash['name'] != u'global':
+                self.hosts.append(hash)
         return self.hosts
 
     def parse_qstat(self,string, fields=None):
@@ -54,6 +55,66 @@ class SGEStats(object):
                             hash[tag] = node2.data 
             self.jobs.append(hash)
         return self.jobs
+
+    def get_running_jobs(self):
+        """
+        returns an array of the running jobs, values stored in dictionary
+        """
+        running = []
+        for j in self.jobs:
+            if j['job_state'] == u'running':
+                running.append(j)
+        return running
+
+    def get_queued_jobs(self):
+        """
+        returns an array of the queued jobs, values stored in dictionary
+        """
+        queued = []
+        for j in self.jobs:
+            if j['job_state'] == u'pending':
+                queued.append(j)
+        return queued
+    
+    def count_hosts(self):
+        """
+        returns a cound of the hosts in the cluster
+        """
+        #todo: throw an exception if hosts not initialized
+        return len(self.hosts)
+
+    def count_total_slots(self):
+        """
+        returns a count of total slots available in this cluser
+        """
+        slots = 0
+        for h in self.hosts:
+            slots = slots + int(h['num_proc'])
+        return slots
+
+    def slots_per_host(self):
+        """
+        returns the number of slots per host.
+        If for some reason the cluster is inconsistent, this will return -1
+        for example, if you have m1.large and m1.small in the same cluster
+        """
+        total = self.count_total_slots()
+        single = int(self.hosts[0][u'num_proc'])
+        if (total != (single * len(self.hosts))):
+            print "ERROR: Number of slots is not consistent across cluster"
+            return -1
+        return single 
+    def oldest_queued_job_age(self):
+        """
+        This returns the age of the oldest job in the queue
+        """
+        j = jobs[0] #guess that first job is the oldest
+        st = j['JB_submission_time']
+        dt = iso_to_datetime_tuple(st)
+        print "Unicode = %s, dt = %s" % (st, dt)
+        return dt
+
+
 
 class SGELoadBalancer(LoadBalancer):
     """

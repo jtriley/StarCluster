@@ -27,20 +27,20 @@ def get_cluster(cluster_name, cfg):
 
         $ cl = get_cluster('mynewcluster',cfg)
         $ cl.load_receipt()
-
     """
     try:
         ec2 = cfg.get_easy_ec2()
         cluster = ec2.get_security_group(_get_cluster_name(cluster_name))
         kwargs = {}
         kwargs.update(cfg.aws)
+        cluster_key = None
         try:
             cluster_key = cluster.instances()[0].key_name
             key = cfg.get_key(cluster_key)
-        except IndexError:
-            key = dict(keyname=None, key_location=None)
+        except (IndexError, exception.KeyNotFound),e:
+            key = dict(keyname=cluster_key, key_location=None)
         kwargs.update(key)
-        kwargs.update({'cluster_tag': cluster_name})
+        kwargs.update(dict(cluster_tag=cluster_name))
         return Cluster(**kwargs)
     except exception.SecurityGroupDoesNotExist,e:
         raise exception.ClusterDoesNotExist(cluster_name)
@@ -76,10 +76,9 @@ def _get_node_number(alias):
     """
     if alias == "master":
         return 0
-    else:
-        pattern = re.compile(r"node([0-9][0-9][0-9])")
-        if pattern.match(alias) and len(alias) == 7:
-            return int(pattern.match(alias).groups()[0])
+    pattern = re.compile(r"node([0-9][0-9][0-9])")
+    if pattern.match(alias) and len(alias) == 7:
+        return int(pattern.match(alias).groups()[0])
 
 def ssh_to_cluster_node(cluster_name, node_id, cfg, user='root'):
     cluster = get_cluster(cluster_name, cfg)
@@ -656,12 +655,13 @@ class Cluster(object):
         if self.cluster_size > 1:
             log.info("Launching worker nodes...")
             log.info("Node AMI: %s" % self.node_image_id)
+            count = self.cluster_size-1
             instances_response = self.run_instances(self.spot_bid,
                 image_id=self.node_image_id,
                 instance_type=self.node_instance_type,
-                min_count=max((self.cluster_size-1)/2, 1),
-                max_count=max(self.cluster_size-1,1),
-                count=max(self.cluster_size-1,1),
+                min_count=count,
+                max_count=count,
+                count=count,
                 key_name=self.keyname,
                 security_groups=[cluster_sg],
                 availability_zone_group=cluster_sg,
@@ -676,13 +676,12 @@ class Cluster(object):
         has an internal ip address associated with it
         """
         nodes = self.running_nodes
-        if len(nodes) == self.cluster_size:
-            for node in nodes:
-                if not node.is_up():
-                    return False
-            return True
-        else:
+        if len(nodes) != self.cluster_size:
             return False
+        for node in nodes:
+            if not node.is_up():
+                return False
+        return True
 
     def attach_volumes_to_master(self):
         for vol in self.volumes:

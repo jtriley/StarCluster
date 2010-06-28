@@ -1,7 +1,5 @@
 #!/usr/bin/env python
-qhost_xml = 
-"""
-<?xml version='1.0'?>
+qhost_xml = """<?xml version='1.0'?>
 <qhost xmlns:xsd="http://gridengine.sunsource.net/source/browse/*checkout*/gridengine/source/dist/util/resources/schemas/qhost/qhost.xsd?revision=1.2">
  <host name='global'>
    <hostvalue name='arch_string'>-</hostvalue>
@@ -39,12 +37,9 @@ qhost_xml =
    <hostvalue name='swap_total'>896.0M</hostvalue>
    <hostvalue name='swap_used'>0.0</hostvalue>
  </host>
-</qhost>
-"""
+</qhost>"""
 
-qstat_xml = 
-"""
-<?xml version='1.0'?>
+qstat_xml = """<?xml version='1.0'?>
 <job_info  xmlns:xsd="http://gridengine.sunsource.net/source/browse/*checkout*/gridengine/source/dist/util/resources/schemas/qstat/qstat.xsd?revision=1.11">
   <queue_info>
     <job_list state="running">
@@ -280,6 +275,5 @@ qstat_xml =
       <slots>1</slots>
     </job_list>
   </job_info>
-</job_info>
-"""
+</job_info>"""
 
