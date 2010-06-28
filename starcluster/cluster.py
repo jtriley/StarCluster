@@ -33,6 +33,7 @@ def get_cluster(cluster_name, cfg):
         cluster = ec2.get_security_group(_get_cluster_name(cluster_name))
         kwargs = {}
         kwargs.update(cfg.aws)
+        cluster_key = None
         try:
             cluster_key = cluster.instances()[0].key_name
             key = cfg.get_key(cluster_key)
