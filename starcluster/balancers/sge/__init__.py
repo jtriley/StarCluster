@@ -3,11 +3,13 @@
 StarCluster SunGrinEngine stats parsing module
 """
 import types
+import time
 import logging
 import xml.dom.minidom
 from xml.dom.minidom import Node
 from starcluster import balancers
 from starcluster.balancers import LoadBalancer 
+from starcluster import utils
 
 
 class SGEStats(object):
@@ -104,22 +106,29 @@ class SGEStats(object):
             print "ERROR: Number of slots is not consistent across cluster"
             return -1
         return single 
+    
     def oldest_queued_job_age(self):
         """
         This returns the age of the oldest job in the queue
         """
-        j = jobs[0] #guess that first job is the oldest
-        st = j['JB_submission_time']
-        dt = iso_to_datetime_tuple(st)
-        print "Unicode = %s, dt = %s" % (st, dt)
-        return dt
-
+        for j in self.jobs:
+            if 'JB_submission_time' in j:
+                st = j['JB_submission_time']
+                dt = utils.iso_to_datetime_tuple(st)
+                #print "Unicode = %s, dt = %s" % (st, dt)
+                return dt
+        #todo: throw a "no queued jobs" exception
 
 
 class SGELoadBalancer(LoadBalancer):
     """
     This class is able to query each SGE host and return with load & queue statistics
     """
+    stat = ""
+    polling_interval = 30
+    max_nodes = 20
+    min_nodes = 1
+
     def __init__(self):
         pass
 
@@ -135,15 +144,55 @@ class SGELoadBalancer(LoadBalancer):
         containing statistics about the job name, priority, etc
         """
         master = cl.master_node
-        stat = SGEStats()
+        self.stat = SGEStats()
         qhostXml = '\n'.join(master.ssh.execute('source /etc/profile && qhost -xml'))
         qstatXml = '\n'.join(master.ssh.execute('source /etc/profile && qstat -xml'))
 
-        hostHash = stat.parse_qhost(qhostXml)
-        statHash = stat.parse_qstat(qstatXml)
+        hostHash = self.stat.parse_qhost(qhostXml)
+        statHash = self.stat.parse_qstat(qstatXml)
 
-        print hostHash
-        print statHash
+        #print hostHash
+        #print statHash
+
+    def polling_loop(self,cl):
+        
+        while(1>0):
+            self.get_stats(cl)
+            print "Oldest job is from %s. # of queued jobs is %d. hosts=%d."  % \
+            (self.stat.oldest_queued_job_age(), 
+             len(self.stat.get_queued_jobs()), len(self.stat.hosts))
+
+            #evaluate if nodes need to be added
+            self._eval_add_node()
+
+            #evaluate if nodes need to be removed
+            self._eval_remove_node()
+
+            #sleep for the specified number of seconds
+            time.sleep(self.polling_interval)
+
+    def _eval_add_node(self):
+        if(len(self.stat.hosts) >= self.max_nodes):
+            print "Can't add another host, already at max (%d)." % \
+                   self.max_nodes
+            return 0
+        qlen = len(self.stat.get_queued_jobs())
+        sph = self.stat.slots_per_host()
+
+        if(qlen > sph):
+            print "ADDING A NODE!"
+            fakehost={"hostname":"fake"}
+            self.stat.hosts.append(fakehost)
+
+    def _eval_remove_node(self):
+        qlen = len(self.stat.get_queued_jobs())
+        if(qlen == 0):
+           #if at 0, remove all nodes but master
+           while(len(self.stat.hosts) > self.min_nodes):
+               print "REMOVING A NODE!"
+               self.stat.hosts.pop()
+           else:
+               print "Can't remove a node, already at min (%d)." % self.min_nodes
 
 
     if __name__ == "__main__":
