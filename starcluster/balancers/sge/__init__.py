@@ -4,13 +4,14 @@ StarCluster SunGrinEngine stats parsing module
 """
 import types
 import time
+import datetime
 import logging
 import xml.dom.minidom
 from xml.dom.minidom import Node
 from starcluster import balancers
 from starcluster.balancers import LoadBalancer 
 from starcluster import utils
-
+from starcluster import config
 
 class SGEStats(object):
     hosts = []
@@ -115,9 +116,23 @@ class SGEStats(object):
             if 'JB_submission_time' in j:
                 st = j['JB_submission_time']
                 dt = utils.iso_to_datetime_tuple(st)
-                #print "Unicode = %s, dt = %s" % (st, dt)
                 return dt
         #todo: throw a "no queued jobs" exception
+
+    def is_node_working(self, node):
+        """
+        This function returns true if the node is currently working on a task,
+        or false if the node is currently idle.
+        """
+        nodename = node.private_dns_name
+        for j in self.jobs:
+            if 'queue_name' in j:
+                qn = j['queue_name']
+                if qn.find(nodename) > 0:
+                    print "Node %s is working." % nodename
+                    return True
+        print "Node %s is IDLE." % nodename
+        return False
 
 
 class SGELoadBalancer(LoadBalancer):
@@ -127,7 +142,7 @@ class SGELoadBalancer(LoadBalancer):
     stat = ""
     polling_interval = 30
     max_nodes = 20
-    min_nodes = 1
+    min_nodes = 0
 
     def __init__(self):
         pass
@@ -176,6 +191,7 @@ class SGELoadBalancer(LoadBalancer):
             self._eval_remove_node()
 
             #sleep for the specified number of seconds
+            print "Sleeping, looping again in %d seconds." % self.polling_interval
             time.sleep(self.polling_interval)
 
     def _eval_add_node(self):
@@ -195,7 +211,7 @@ class SGELoadBalancer(LoadBalancer):
         sph = self.stat.slots_per_host()
 
         if(qlen > sph):
-            print "ADDING A NODE!"
+            print "\nADDING A NODE!"
 
     def _eval_remove_node(self):
         """
@@ -206,11 +222,41 @@ class SGELoadBalancer(LoadBalancer):
         qlen = len(self.stat.get_queued_jobs())
         if(qlen == 0):
            #if at 0, remove all nodes but master
-           while(len(self.stat.hosts) > self.min_nodes):
-               print "REMOVING A NODE!"
+           if(len(self.stat.hosts) > self.min_nodes):
+               print "\nREMOVING A NODE!"
+               self._find_node_for_removal()
            else:
                print "Can't remove a node, already at min (%d)." % self.min_nodes
 
+    def _find_node_for_removal(self):
+        """
+        This function will find asuitable node to remove from the cluster.
+        The criteria for removal are:
+        1. The node must not be running any SGE job
+        2. The node must have been up for 50-60 minutes past its start time
+        3.
+        """
+        cfg = config.StarClusterConfig()
+        cfg.load()
+        ec2 = cfg.get_easy_ec2()
+        instances = ec2.get_all_instances()
+        node = None
+        for instance in instances:
+            mins_up = self._minutes_uptime(instance)
+            print "Node %s has been up for %d minutes." % (instance.id,mins_up)
+            is_working = self.stat.is_node_working(instance)
+
+    def _minutes_uptime(self, node):
+        """
+        this function uses data available to boto to determine
+        how many total minutes this instance has been running. you can
+        mod (%) the return value with 60 to determine how many minutes
+        into a billable hour this node has been running.
+        """
+        dt = utils.iso_to_datetime_tuple(node.launch_time)
+        now = datetime.datetime.utcnow()
+        timedelta = now - dt
+        return timedelta.seconds / 60
 
     if __name__ == "__main__":
         print LoadBalancer()
