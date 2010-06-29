@@ -155,6 +155,13 @@ class SGELoadBalancer(LoadBalancer):
         #print statHash
 
     def polling_loop(self,cl):
+        """
+        this is a rough looping function. it has some problems and is a work in
+        progress. it will loop indefinitely, using SGELoadBalancer.get_stats()
+        to get the clusters status. It will look at the job queue and try to 
+        decide whether to add or remove a node. It should later look at job
+        durations. Doesn't yet.
+        """
         
         while(1>0):
             self.get_stats(cl)
@@ -172,6 +179,14 @@ class SGELoadBalancer(LoadBalancer):
             time.sleep(self.polling_interval)
 
     def _eval_add_node(self):
+        """
+        This function uses the metrics available to it to decide whether to
+        add a new node to the cluster or not. It isn't able to add a node yet.
+        TODO: See if the recent job has been there more than 1 loop before
+        adding a new host.
+        TODO: See if the recent jobs have taken more than 5 minutes (how
+        long it takes to start an instance)
+        """
         if(len(self.stat.hosts) >= self.max_nodes):
             print "Can't add another host, already at max (%d)." % \
                    self.max_nodes
@@ -181,16 +196,18 @@ class SGELoadBalancer(LoadBalancer):
 
         if(qlen > sph):
             print "ADDING A NODE!"
-            fakehost={"hostname":"fake"}
-            self.stat.hosts.append(fakehost)
 
     def _eval_remove_node(self):
+        """
+        This function uses the metrics available to it to decide whether to
+        remove a new new from the cluster. It isn't able to actually remove 
+        a node yet.
+        """
         qlen = len(self.stat.get_queued_jobs())
         if(qlen == 0):
            #if at 0, remove all nodes but master
            while(len(self.stat.hosts) > self.min_nodes):
                print "REMOVING A NODE!"
-               self.stat.hosts.pop()
            else:
                print "Can't remove a node, already at min (%d)." % self.min_nodes
 
