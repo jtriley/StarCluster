@@ -58,6 +58,14 @@ class Node(object):
         self.alias = alias
         self.user = user
         self._ssh = None
+        self._num_procs = None
+
+    @property
+    def num_processors(self):
+        if not self._num_procs:
+            self._num_procs = int(
+                self.ssh.execute('cat /proc/cpuinfo | grep processor | wc -l')[0])
+        return self._num_procs
 
     @property
     def ip_address(self):
