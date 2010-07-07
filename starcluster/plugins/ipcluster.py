@@ -1,4 +1,5 @@
 from starcluster.clustersetup import ClusterSetup
+from starcluster.logger import log
 
 class IPCluster(ClusterSetup):
     """
@@ -17,6 +18,7 @@ class IPCluster(ClusterSetup):
         f.writelines('send_furl = True\n')
         f.writelines('engines = %s\n' % engines)
         f.close()
+        log.info("Starting ipcluster...")
         master.ssh.execute_async(
             "nohup su - %s -c 'ipcluster ssh --clusterfile %s' > %s" % \
                                  (user, self.cluster_file, self.log_file))
