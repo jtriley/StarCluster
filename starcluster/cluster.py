@@ -444,7 +444,7 @@ class Cluster(object):
         if self.zone and self.zone != mazone:
             raise exception.ClusterValidationError(
                 "Running cluster's availability_zone (%s) != %s" % \
-                (azone, self.zone))
+                (mazone, self.zone))
 
     def get(self, name):
         return self.__dict__.get(name)

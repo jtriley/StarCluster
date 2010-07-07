@@ -310,9 +310,7 @@ class DefaultClusterSetup(ClusterSetup):
         # first iterate through each machine and count the number of processors
         num_processors = 0
         for node in self._nodes:
-            conn = node.ssh
-            num_procs = int(conn.execute('cat /proc/cpuinfo | grep processor | wc -l')[0])
-            num_processors += num_procs
+            num_processors += node.num_processors
 
         parallel_environment = mconn.remote_file("/tmp/pe.txt")
         print >> parallel_environment, sge_pe_template % num_processors
