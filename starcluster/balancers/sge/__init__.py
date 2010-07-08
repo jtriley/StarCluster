@@ -19,8 +19,8 @@ class SGEStats(object):
     hosts = []
     jobs = []
     _default_fields = ["JB_job_number","state","JB_submission_time","queue_name"]
-    _first_job_id = -1
-    _last_job_id = -1
+    first_job_id = 0
+    last_job_id = 0
 
     #takes in a string, so we can pipe in output from ssh.exec('qhost -xml')
     def parse_qhost(self,string):
@@ -60,10 +60,12 @@ class SGEStats(object):
                     for node2 in node.childNodes:
                         if node2.nodeType == Node.TEXT_NODE:
                             hash[tag] = node2.data 
+            #grab the submit time on all jobs, the last job's val stays
+            if 'JB_job_number' in hash:
+                self.last_job_id = int(hash['JB_job_number'])
             self.jobs.append(hash)
-        if len(self.jobs) > 0:
-                pass
-                #self._first_job_id = self.jobs[0][
+        if len(self.jobs) > 0 and 'JB_job_number' in self.jobs[0]:
+                self.first_job_id = int(self.jobs[0]['JB_job_number'])
         return self.jobs
 
     def get_running_jobs(self):
@@ -151,6 +153,7 @@ class SGELoadBalancer(LoadBalancer):
     min_nodes = 1
     keep_polling = True
     allow_master_kill = False
+    longest_allowed_queue_time = 300
 
     def __init__(self, cluster_tag, config):
         self._cluster_tag = cluster_tag
@@ -170,11 +173,12 @@ class SGELoadBalancer(LoadBalancer):
         """
         master = self._cluster.master_node
         self.stat = SGEStats()
+        #TODO: Add an exception handler here for when ssh fails
         qhostXml = '\n'.join(master.ssh.execute('source /etc/profile && qhost -xml'))
         qstatXml = '\n'.join(master.ssh.execute('source /etc/profile && qstat -xml'))
 
-        hostHash = self.stat.parse_qhost(qhostXml)
-        statHash = self.stat.parse_qstat(qstatXml)
+        self.stat.parse_qhost(qhostXml)
+        self.stat.parse_qstat(qstatXml)
 
     def polling_loop(self):
         """
@@ -185,16 +189,19 @@ class SGELoadBalancer(LoadBalancer):
         durations. Doesn't yet.
         """
         
+        #self._cluster.load_receipt() #with cluster.is_up
         while(self.keep_polling):
-            self._cluster.load_receipt()
-            if(self._cluster.is_cluster_up() == False):
+            if not self._cluster.is_cluster_up():
                 log.info("Entire cluster is not up,nodes added/removed. No Action.")
+                time.sleep(self.polling_interval)
                 continue
 
             self.get_stats()
             log.info("Oldest job is from %s. # of queued jobs is %d. # hosts = %d."  
                      % (self.stat.oldest_queued_job_age(), 
                      len(self.stat.get_queued_jobs()), len(self.stat.hosts)))
+            log.info("LJ id = %d, FJ id = %d."
+                     %(self.stat.last_job_id, self.stat.first_job_id))
 
             #evaluate if nodes need to be added
             self._eval_add_node()
@@ -216,16 +223,29 @@ class SGELoadBalancer(LoadBalancer):
         TODO: See if the recent jobs have taken more than 5 minutes (how
         long it takes to start an instance)
         """
-        if(len(self.stat.hosts) >= self.max_nodes):
+        need_to_add = 0
+        if len(self.stat.hosts) >= self.max_nodes:
             log.info( "Can't add another host, already at max (%d)." % \
                    self.max_nodes)
             return 0
         qlen = len(self.stat.get_queued_jobs())
         sph = self.stat.slots_per_host()
+        ts = sph * len(self.stat.hosts)
 
-        if(qlen > sph):
-            log.info("NEED TO ADD %d NODES!" % (qlen / sph))
-            return qlen / sph
+        if qlen > ts:
+            #there are more jobs queued than will be consumed with one
+            #cycle of job processing from all nodes
+            oldest_job_dt = self.stat.oldest_queued_job_age()
+            now = datetime.datetime.utcnow()
+            age_delta = now - oldest_job_dt
+            if age_delta.seconds > self.longest_allowed_queue_time:
+                log.debug("A job has been waiting for %d, longer than max %d." % 
+                          (age_delta.seconds, self.longest_allowed_queue_time))
+                need_to_add = qlen / sph
+        
+        if need_to_add > 0:
+            log.info("NEED TO ADD %d NODES!" % need_to_add)
+        return need_to_add
 
     def _eval_remove_node(self):
         """
@@ -234,19 +254,19 @@ class SGELoadBalancer(LoadBalancer):
         a node yet.
         """
         qlen = len(self.stat.get_queued_jobs())
-        if(qlen == 0):
+        if qlen == 0:
            #if at 0, remove all nodes but master
-           if(len(self.stat.hosts) > self.min_nodes):
+           if len(self.stat.hosts) > self.min_nodes:
                log.info("CHECKING TO REMOVE A NODE!")
                to_kill = self._find_node_for_removal()
 
                #kill the nodes returned
                for n in to_kill:
                    log.info("Killing node %s." % n.id)
-                   #from removenode import remove_node
-                   #remove_node(n,self._cluster)
+                   from removenode import remove_node
+                   remove_node(n,self._cluster)
            else:
-               log.error("Can't remove a node, already at min (%d)." 
+               log.info("Can't remove a node, already at min (%d)." 
                          % self.min_nodes)
 
     def _find_node_for_removal(self):
@@ -260,7 +280,7 @@ class SGELoadBalancer(LoadBalancer):
         nodes = self._cluster.nodes
         to_rem = []
         for node in nodes:
-            if self.allow_master_kill==False and \
+            if not self.allow_master_kill and \
                     node.id == self._cluster.master_node.id:
                 log.debug("not removing master node")
                 continue
@@ -273,7 +293,7 @@ class SGELoadBalancer(LoadBalancer):
             if self.polling_interval > 300:
                 kill_after = max(45,60 - (2*self.polling_interval/60))
 
-            if (is_working==False) and (mins_up > kill_after):
+            if not is_working and mins_up > kill_after:
                 to_rem.append(node)
         return to_rem
 
