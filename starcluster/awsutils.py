@@ -419,11 +419,32 @@ class EasyEC2(EasyAWS):
         for file in files:
             print file
 
-    def list_zones(self):
-        for zone in self.conn.get_all_zones():
+    def list_zones(self, region=None):
+        conn = self.conn
+        if region:
+            regs = self.conn.get_all_regions()
+            regions = [ r.name for r in regs ]
+            if not region in regions:
+                raise exception.RegionDoesNotExist(region)
+            for reg in regs:
+                if reg.name == region:
+                    region = reg
+                    break
+            kwargs = {}
+            kwargs.update(self._kwargs)
+            kwargs.update(dict(region=region))
+            conn = self.connection_authenticator(
+                self.aws_access_key, self.aws_secret_access_key, **kwargs)
+        for zone in conn.get_all_zones():
             print 'name: ', zone.name
             print 'region: ', zone.region.name
             print 'status: ', zone.state
+            print
+
+    def list_regions(self):
+        for region in self.conn.get_all_regions():
+            print 'name: ', region.name
+            print 'endpoint: ', region.endpoint
             print
 
     def get_zone(self, zone):
