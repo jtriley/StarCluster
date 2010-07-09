@@ -534,7 +534,11 @@ class CmdCreateVolume(CmdBase):
         opt = parser.add_option(
             "-i","--image-id", dest="image_id",
             action="store", type="string", default=None,
-            help="Specifies the AMI to use when launching volume host instance")
+            help="The AMI to use when launching volume host instance")
+        opt = parser.add_option(
+            "-I","--instance-type", dest="instance_type",
+            action="store", type="string", default=None,
+            help="The instance type to use when launching volume host instance")
         opt = parser.add_option(
             "-n","--no-shutdown", dest="shutdown_instance",
             action="store_false", default=True,

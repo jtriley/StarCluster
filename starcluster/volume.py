@@ -10,7 +10,8 @@ from starcluster import exception
 
 class VolumeCreator(object):
     def __init__(self, cfg, add_to_cfg=False, keypair=None, device='/dev/sdz',
-                 image_id=static.BASE_AMI_32, shutdown_instance=True):
+                 image_id=static.BASE_AMI_32, instance_type="m1.small",
+                 shutdown_instance=True):
         self._cfg = cfg
         self._ec2 = cfg.get_easy_ec2()
         self._keypair = keypair
@@ -22,13 +23,14 @@ class VolumeCreator(object):
         self._device = device or '/dev/sdz'
         self._node = None
         self._image_id = image_id or BASE_AMI_32
+        self._instance_type = instance_type or 'm1.small'
         self._shutdown = shutdown_instance
         self._security_group = None
 
     @property
     def security_group(self):
         if not self._security_group:
-            self._security_group = self._ec2.get_or_create_group(static.VOLUME_GROUP, 
+            self._security_group = self._ec2.get_or_create_group(static.VOLUME_GROUP,
                                                static.VOLUME_GROUP_DESCRIPTION,
                                                auth_ssh=True)
         return self._security_group
@@ -44,7 +46,7 @@ class VolumeCreator(object):
             log.info("No instance in group %s for zone %s, launching one now." % \
                      (self.security_group.name, zone))
             self._resv = self._ec2.run_instances(image_id=self._image_id,
-                instance_type='m1.small',
+                instance_type=self._instance_type,
                 min_count=1, max_count=1,
                 security_groups=[self.security_group.name],
                 key_name=self._keypair,
@@ -165,7 +167,7 @@ class VolumeCreator(object):
                      " to...") % volume_zone)
             instance = self._request_instance(volume_zone)
             self._determine_device()
-            log.info("Creating %sGB volume in zone %s" % (volume_size, 
+            log.info("Creating %sGB volume in zone %s" % (volume_size,
                                                           volume_zone))
             vol = self._create_volume(volume_size, volume_zone)
             log.info("New volume id: %s" % vol.id)
