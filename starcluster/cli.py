@@ -534,7 +534,11 @@ class CmdCreateVolume(CmdBase):
         opt = parser.add_option(
             "-i","--image-id", dest="image_id",
             action="store", type="string", default=None,
-            help="Specifies the AMI to use when launching volume host instance")
+            help="The AMI to use when launching volume host instance")
+        opt = parser.add_option(
+            "-I","--instance-type", dest="instance_type",
+            action="store", type="string", default=None,
+            help="The instance type to use when launching volume host instance")
         opt = parser.add_option(
             "-n","--no-shutdown", dest="shutdown_instance",
             action="store_false", default=True,
@@ -564,12 +568,28 @@ class CmdListZones(CmdBase):
     """
     listzones
 
-    List all EC2 availability zones
+    List all EC2 availability zones in the current region (us-east-1 by default)
     """
     names = ['listzones', 'lz']
+    def addopts(self, parser):
+        opt = parser.add_option(
+            "-r","--region", dest="region",
+            default=None,
+            help="Show all zones in a given region (see listregions)")
     def execute(self, args):
         ec2 = self.cfg.get_easy_ec2()
-        ec2.list_zones()
+        ec2.list_zones(region=self.opts.region)
+
+class CmdListRegions(CmdBase):
+    """
+    listregions
+
+    List all EC2 regions
+    """
+    names = ['listregions', 'lr']
+    def execute(self, args):
+        ec2 = self.cfg.get_easy_ec2()
+        ec2.list_regions()
 
 class CmdListImages(CmdBase):
     """
@@ -1042,6 +1062,7 @@ def main():
         CmdListSpots(),
         CmdSpotHistory(),
         CmdShowConsole(),
+        CmdListRegions(),
         CmdListZones(),
         CmdListBuckets(),
         CmdShowBucket(),

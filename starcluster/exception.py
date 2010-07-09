@@ -59,6 +59,10 @@ class VolumeDoesNotExist(AWSError):
     def __init__(self, vol_id):
         self.msg = "volume %s does not exist" % vol_id
 
+class RegionDoesNotExist(AWSError):
+    def __init__(self, region):
+        self.msg = "region %s does not exist" % region
+
 class InstanceNotRunning(AWSError):
     def __init__(self, instance_id):
         self.msg = "instance %s is not running" % instance_id

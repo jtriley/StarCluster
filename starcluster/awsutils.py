@@ -168,7 +168,7 @@ class EasyEC2(EasyAWS):
     def request_spot_instances(self, price, image_id, instance_type='m1.small',
                                count=1, launch_group=None, key_name=None,
                                availability_zone_group=None, security_groups=None,
-                               placement=None):
+                               placement=None, user_data=None):
         return self.conn.request_spot_instances(price, image_id,
                                                 instance_type=instance_type,
                                                 count=count,
@@ -177,16 +177,18 @@ class EasyEC2(EasyAWS):
                                                 security_groups=security_groups,
                                                 availability_zone_group = \
                                                 availability_zone_group,
-                                                placement=placement)
+                                                placement=placement,
+                                                user_data=user_data)
 
     def run_instances(self, image_id, instance_type='m1.small', min_count=1,
                       max_count=1, key_name=None, security_groups=None,
-                      placement=None):
+                      placement=None, user_data=None):
         return self.conn.run_instances(image_id, instance_type=instance_type,
                                        min_count=min_count, max_count=max_count,
                                        key_name=key_name,
                                        security_groups=security_groups,
-                                       placement=placement)
+                                       placement=placement,
+                                       user_data=user_data)
 
     def register_image(self, name, description=None, image_location=None,
                        architecture=None, kernel_id=None, ramdisk_id=None,
@@ -419,11 +421,32 @@ class EasyEC2(EasyAWS):
         for file in files:
             print file
 
-    def list_zones(self):
-        for zone in self.conn.get_all_zones():
+    def list_zones(self, region=None):
+        conn = self.conn
+        if region:
+            regs = self.conn.get_all_regions()
+            regions = [ r.name for r in regs ]
+            if not region in regions:
+                raise exception.RegionDoesNotExist(region)
+            for reg in regs:
+                if reg.name == region:
+                    region = reg
+                    break
+            kwargs = {}
+            kwargs.update(self._kwargs)
+            kwargs.update(dict(region=region))
+            conn = self.connection_authenticator(
+                self.aws_access_key, self.aws_secret_access_key, **kwargs)
+        for zone in conn.get_all_zones():
             print 'name: ', zone.name
             print 'region: ', zone.region.name
             print 'status: ', zone.state
+            print
+
+    def list_regions(self):
+        for region in self.conn.get_all_regions():
+            print 'name: ', region.name
+            print 'endpoint: ', region.endpoint
             print
 
     def get_zone(self, zone):
