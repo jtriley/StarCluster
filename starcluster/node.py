@@ -185,10 +185,6 @@ class Node(object):
 
     def update(self):
         retval = self.instance.update()
-        if hasattr(self.instance.updated, 'private_ip_address'):
-            updated_ip = self.instance.updated.private_ip_address
-            if updated_ip and not self.instance.private_ip_address:
-                self.instance.private_ip_address = updated_ip
         return retval
 
     @property
