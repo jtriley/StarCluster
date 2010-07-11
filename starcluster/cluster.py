@@ -537,35 +537,37 @@ class Cluster(object):
                     sg.authorize(ip_protocol, from_port, to_port, cidr_ip)
             self._cluster_group = sg
         return self._cluster_group
-            
+
     @property
     def master_node(self):
         if not self._master:
-            # TODO: do this with reservation group info instead
-            mgroup_instances = self.master_group.instances()
-            cgroup_instances = [node.id for node in self.cluster_group.instances()]
-            for node in mgroup_instances:
-                if node.id in cgroup_instances and node.state in ['pending','running']:
-                    self._master = Node(node, self.key_location, 'master')
-                    break
+            for node in self.nodes:
+                if node.is_master():
+                    self._master = node
         return self._master
+
+    def get_alias(self, instance_id):
+        """
+        Return the alias stored in the instance's user data.
+        """
+        user_data = self.ec2.get_instance_user_data(instance_id)
+        return user_data
 
     @property
     def nodes(self):
         if not self._nodes:
             nodes = self.cluster_group.instances()
             self._nodes = []
-            master = self.master_node
-            nodeid = 1
             for node in nodes:
                 if node.state not in ['pending','running']:
                     continue
-                if node.id == getattr(master,'id',None):
-                    self._nodes.insert(0,master)
-                    continue
-                self._nodes.append(Node(node, self.key_location, 
-                                        'node%.3d' % nodeid))
-                nodeid += 1
+                alias = self.get_alias(node.id)
+                n = Node(node, self.key_location, alias)
+                if n.is_master():
+                    self._master = n
+                    self._nodes.insert(0, n)
+                else:
+                    self._nodes.append(n)
         else:
             for node in self._nodes:
                 log.debug('refreshing instance %s' % node.id)
@@ -607,7 +609,8 @@ class Cluster(object):
     def run_instances(self, price=None, image_id=None, instance_type='m1.small', 
                       min_count=1, max_count=1, count=1, key_name=None,
                       security_groups=None, launch_group=None,
-                      availability_zone_group=None, placement=None):
+                      availability_zone_group=None, placement=None,
+                      user_data=None):
         conn = self.ec2
         if price:
             return conn.request_spot_instances(price, image_id, 
@@ -617,13 +620,15 @@ class Cluster(object):
                                                key_name=key_name, 
                                                security_groups=security_groups, 
                                                availability_zone_group=availability_zone_group,
-                                               placement=placement)
+                                               placement=placement,
+                                               user_data=user_data)
         else:
             return conn.run_instances(image_id, instance_type=instance_type, 
                                       min_count=min_count, max_count=max_count, 
                                       key_name=key_name, 
                                       security_groups=security_groups, 
-                                      placement=placement)
+                                      placement=placement,
+                                      user_data=user_data)
 
     def create_cluster(self):
         log.info("Launching a %d-node cluster..." % self.cluster_size)
@@ -631,8 +636,7 @@ class Cluster(object):
             self.master_image_id = self.node_image_id
         if self.master_instance_type is None:
             self.master_instance_type = self.node_instance_type
-        log.info("Launching master node...")
-        log.info("Master AMI: %s" % self.master_image_id)
+        log.info("Launching master node (AMI: %s)..." % self.master_image_id)
         master_sg = self.master_group.name
         cluster_sg = self.cluster_group.name
         zone = self.zone
@@ -644,7 +648,8 @@ class Cluster(object):
             security_groups=[master_sg, cluster_sg],
             availability_zone_group=cluster_sg,
             launch_group=cluster_sg,
-            placement=zone)
+            placement=zone,
+            user_data="master")
         print master_response
         # Make sure nodes are in same zone as master
         if self.spot_bid:
@@ -653,21 +658,21 @@ class Cluster(object):
         else:
             zone = master_response.instances[0].placement
         if self.cluster_size > 1:
-            log.info("Launching worker nodes...")
-            log.info("Node AMI: %s" % self.node_image_id)
-            count = self.cluster_size-1
-            instances_response = self.run_instances(self.spot_bid,
-                image_id=self.node_image_id,
-                instance_type=self.node_instance_type,
-                min_count=count,
-                max_count=count,
-                count=count,
-                key_name=self.keyname,
-                security_groups=[cluster_sg],
-                availability_zone_group=cluster_sg,
-                launch_group=cluster_sg,
-                placement=zone)
-            print instances_response
+            for id in range(1, self.cluster_size):
+                alias = 'node%.3d' % id
+                log.info("Launching worker node: %s (AMI: %s)..." % \
+                        (alias,self.node_image_id))
+                node_response = self.run_instances(self.spot_bid,
+                    image_id=self.node_image_id,
+                    instance_type=self.node_instance_type,
+                    min_count=1, max_count=1, count=1,
+                    key_name=self.keyname,
+                    security_groups=[cluster_sg],
+                    availability_zone_group=cluster_sg,
+                    launch_group=cluster_sg,
+                    placement=zone,
+                    user_data=alias)
+                print node_response
 
     def is_cluster_up(self):
         """
