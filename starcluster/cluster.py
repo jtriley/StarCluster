@@ -715,7 +715,7 @@ class Cluster(object):
             self.detach_volumes()
         for node in self.running_nodes:
             log.info("Shutting down instance: %s" % node.id)
-            node.stop()
+            node.shutdown()
         for spot in self.spot_requests:
             if spot.state not in ['cancelled','closed']:
                 log.info("Cancelling spot instance request: %s" % spot.id)
@@ -737,7 +737,7 @@ class Cluster(object):
         log.log(INFO_NO_NEWLINE, "Waiting for cluster to start...")
         s.start()
         while not self.is_cluster_up():
-            time.sleep(60)
+            time.sleep(30)
         s.stop()
 
         log.info("The master node is %s" % self.master_node.dns_name)

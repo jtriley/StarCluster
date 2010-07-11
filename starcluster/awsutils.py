@@ -50,7 +50,6 @@ class EasyAWS(object):
             )
         return self._conn
 
-
 class EasyEC2(EasyAWS):
     def __init__(self, aws_access_key_id, aws_secret_access_key, aws_ec2_path='/',
                  aws_s3_path='/', aws_port=None, aws_region_name=None, 

@@ -63,12 +63,10 @@ class VolumeCreator(object):
 
     def _create_volume(self, size, zone):
         vol = self._ec2.conn.create_volume(size, zone)
-        while True:
-            vol.update()
-            if vol.status == 'available':
-                self._volume = vol
-                break
+        while vol.status != 'available':
             time.sleep(5)
+            vol.update()
+        self._volume = vol
         return self._volume
 
     def _determine_device(self):
@@ -184,7 +182,7 @@ class VolumeCreator(object):
                 time.sleep(5)
                 for i in self.security_group.instances():
                     log.info("Shutting down instance %s" % i.id)
-                    i.stop()
+                    i.terminate()
                 log.info("Removing security group %s" % \
                          self.security_group.name)
                 self.security_group.delete()
@@ -195,4 +193,4 @@ class VolumeCreator(object):
                 self._volume.detach()
                 time.sleep(5)
             if self._instance:
-                self._instance.stop()
+                self._instance.terminate()

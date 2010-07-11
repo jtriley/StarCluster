@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import os
 import socket
 from starcluster import exception
@@ -128,6 +129,10 @@ class Node(object):
         return self.instance.placement
 
     @property
+    def root_device_type(self):
+        return self.instance.root_device_type
+
+    @property
     def network_names(self):
         """ Returns all network names for this node in a dictionary"""
         names = {}
@@ -144,8 +149,44 @@ class Node(object):
     def is_master(self):
         return self.alias == "master"
 
+    def is_instance_store(self):
+        return self.instance.root_device_type == "instance-store"
+
+    def is_ebs_backed(self):
+        return self.instance.root_device_type == "ebs" 
+
     def stop(self):
+        """
+        Shutdown EBS-backed instance and put it in the 'stopped' state. 
+        Only works if this node is EBS-backed, raises exception.InvalidOperation
+        otherwise.
+
+        NOTE: The EBS root device will *not* be deleted and the instance can
+        be 'started' later on.
+        """
+        if not self.is_ebs_backed():
+            raise exception.InvalidOperation(
+                "Only EBS-backed instances can be stopped")
         return self.instance.stop()
+
+    def terminate(self):
+        """
+        Shutdown and destroy this instance. For EBS-backed instances, this will
+        also destroy the EBS root device for the instance. Puts this instance 
+        into a 'terminated' state
+        """
+        return self.instance.terminate()
+
+    def shutdown(self):
+        """
+        Shutdown this instance. This method will terminate traditional 
+        instance-store instances and stop EBS-backed instances 
+        (ie not destroy EBS root dev)
+        """
+        if self.is_ebs_backed():
+            self.stop()
+        else:
+            self.terminate()
 
     def is_ssh_up(self):
         timeout = 10.0
