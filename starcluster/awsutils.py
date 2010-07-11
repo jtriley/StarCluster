@@ -7,6 +7,7 @@ import os
 import re
 import sys
 import time
+import base64
 import string
 import platform
 from pprint import pprint
@@ -218,6 +219,11 @@ class EasyEC2(EasyAWS):
         image_name = img.name or \
                 img.location.split('/')[1].split('.manifest.xml')[0]
         return image_name
+
+    def get_instance_user_data(self, instance_id):
+        i = self.get_instance(instance_id)
+        user_data = self.conn.get_instance_attribute(i.id, 'userData')
+        return base64.b64decode(user_data['userData'])
 
     def get_instance(self, instance_id):
         try:
