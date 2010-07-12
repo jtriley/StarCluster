@@ -67,6 +67,9 @@ class InstanceNotRunning(AWSError):
     def __init__(self, instance_id):
         self.msg = "instance %s is not running" % instance_id
 
+class InvalidOperation(AWSError):
+    pass
+
 class InvalidBucketName(AWSError):
     def __init__(self, bucket_name):
         self.msg = "bucket name %s is not valid" % bucket_name 

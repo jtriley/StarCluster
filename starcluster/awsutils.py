@@ -7,6 +7,7 @@ import os
 import re
 import sys
 import time
+import base64
 import string
 import platform
 from pprint import pprint
@@ -49,7 +50,6 @@ class EasyAWS(object):
                 self.aws_access_key, self.aws_secret_access_key, **self._kwargs
             )
         return self._conn
-
 
 class EasyEC2(EasyAWS):
     def __init__(self, aws_access_key_id, aws_secret_access_key, aws_ec2_path='/',
@@ -220,6 +220,11 @@ class EasyEC2(EasyAWS):
                 img.location.split('/')[1].split('.manifest.xml')[0]
         return image_name
 
+    def get_instance_user_data(self, instance_id):
+        i = self.get_instance(instance_id)
+        user_data = self.conn.get_instance_attribute(i.id, 'userData')
+        return base64.b64decode(user_data['userData'])
+
     def get_instance(self, instance_id):
         try:
             res = self.conn.get_all_instances(instance_ids=[instance_id])
@@ -269,7 +274,7 @@ class EasyEC2(EasyAWS):
             spot_id = spot.id or 'N/A'
             spots.append(spot_id)
             type = spot.type
-            instance_id = getattr(spot, 'instanceId', 'N/A')
+            instance_id = spot.instance_id or 'N/A'
             create_time = spot.create_time or 'N/A'
             launch_group = spot.launch_group or 'N/A'
             zone_group = spot.availability_zone_group or 'N/A'
