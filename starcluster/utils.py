@@ -160,6 +160,14 @@ def datetime_tuple_to_iso(tup):
     iso = datetime.strftime(tup, "%Y-%m-%dT%H:%M:%S")
     return iso
 
+def qacct_to_datetime_tuple(qacct):
+    """
+    Takes the SGE qacct formatted time and makes a datetime tuple
+    format is:
+    Tue Jul 13 16:24:03 2010
+    """
+    return datetime.strptime(qacct, "%a %b %d %H:%M:%S %Y")
+
 try:
     import IPython.Shell
     ipy_shell = IPython.Shell.IPShellEmbed(argv=[])

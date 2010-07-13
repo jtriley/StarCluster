@@ -67,6 +67,42 @@ class SGEStats(object):
         if len(self.jobs) > 0 and 'JB_job_number' in self.jobs[0]:
                 self.first_job_id = int(self.jobs[0]['JB_job_number'])
         return self.jobs
+    def parse_qacct(self,string):
+        """
+        This method parses qacct -j output and makes a neat array and
+        calculates some statistics.
+        """
+        self.jobstats = []
+        qd = None
+        start = None
+        end = None
+
+        lines = string.split('\n')
+        for l in lines:
+            l = l.strip()
+            if l.find('qsub_time') != -1:
+                    qd = utils.qacct_to_datetime_tuple(l[13:len(l)])
+            
+            if l.find('start_time') != -1:
+                    if l.find('-/-') >0:
+                        start = datetime.datetime.utcnow()
+                    else:
+                        start = utils.qacct_to_datetime_tuple(l[13:len(l)])
+
+            if l.find('end_time') != -1:
+                    if l.find('-/-') > 0:
+                        end = datetime.datetime.utcnow()
+                    else:
+                        end = utils.qacct_to_datetime_tuple(l[13:len(l)])
+
+            if l.find('==========') != -1:
+                if qd != None:
+                    hash = {'queued' : qd, 'start' : start, 'end' : end}
+                    self.jobstats.append(hash)
+                qd = None
+                start = None
+                end = None
+
 
     def get_running_jobs(self):
         """
@@ -149,6 +185,30 @@ class SGEStats(object):
         """
         pass
 
+    def avg_job_duration(self):
+        count = 0
+        total_seconds = 0
+        for job in self.jobstats:
+            delta = job['end'] - job['start']
+            total_seconds = total_seconds + delta.seconds
+            count = count + 1
+        if count == 0:
+            return 0
+        else:
+            return total_seconds / count
+
+    def avg_wait_time(self):
+        count = 0
+        total_seconds = 0
+        for job in self.jobstats:
+            delta = job['start'] - job['queued']
+            total_seconds = total_seconds + delta.seconds
+            count = count + 1
+        if count == 0:
+            return 0
+        else:
+            return total_seconds / count
+
 
 class SGELoadBalancer(LoadBalancer):
     """
@@ -187,9 +247,11 @@ class SGELoadBalancer(LoadBalancer):
 
         qhostXml = ""
         qstatXml = ""
+        qacct = ""
         try:
             qhostXml = '\n'.join(master.ssh.execute('source /etc/profile && qhost -xml'))
             qstatXml = '\n'.join(master.ssh.execute('source /etc/profile && qstat -xml'))
+            qacct = '\n'.join(master.ssh.execute('source /etc/profile && qacct -d 1 -j'))
         except Exception, e:
             log.error("Error occured getting SGE stats via ssh. Cluster terminated?")
             log.error(e)
@@ -197,6 +259,7 @@ class SGELoadBalancer(LoadBalancer):
 
         self.stat.parse_qhost(qhostXml)
         self.stat.parse_qstat(qstatXml)
+        self.stat.parse_qacct(qacct)
 
     def polling_loop(self):
         """
@@ -221,6 +284,9 @@ class SGELoadBalancer(LoadBalancer):
                      len(self.stat.get_queued_jobs()), len(self.stat.hosts)))
             #log.info("LJ id = %d, FJ id = %d."
             #         %(self.stat.last_job_id, self.stat.first_job_id))
+
+            log.info("Average job duration = %d sec, Average wait time = %d sec." %
+                     (self.stat.avg_job_duration(), self.stat.avg_wait_time()))
 
             #evaluate if nodes need to be added
             self._eval_add_node()
@@ -295,7 +361,7 @@ class SGELoadBalancer(LoadBalancer):
                    if self._node_alive(n.id):
                        log.info("***KILLING NODE: %s (%s)." % (n.id,n.dns_name))
                        from removenode import remove_node
-                       remove_node(n,self._cluster)
+                       remove_node(n,self._cluster) 
                        return #temporary measure, kill only one node at a time
                        #until we have add-node
                    else:
