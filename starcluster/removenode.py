@@ -80,5 +80,5 @@ def remove_node(node, cluster):
     log.debug("removed from etc hosts")
     remove_nfs_exports(m, node)
     log.debug("removed from nfs")
-    node.stop()
-    log.info("node %s stopped." % node.id)
+    node.terminate()
+    log.info("node %s terminated." % node.id)

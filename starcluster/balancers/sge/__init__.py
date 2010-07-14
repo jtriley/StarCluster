@@ -14,6 +14,7 @@ from starcluster import utils
 from starcluster import config
 from starcluster import cluster
 from starcluster.logger import log, INFO_NO_NEWLINE
+from starcluster.utils import print_timing
 
 class SGEStats(object):
     hosts = []
@@ -67,10 +68,13 @@ class SGEStats(object):
         if len(self.jobs) > 0 and 'JB_job_number' in self.jobs[0]:
                 self.first_job_id = int(self.jobs[0]['JB_job_number'])
         return self.jobs
-    def parse_qacct(self,string):
+
+    def parse_qacct(self,string,dtnow):
         """
         This method parses qacct -j output and makes a neat array and
         calculates some statistics.
+        Takes the string to parse, and a datetime object of the remote
+        host's current time.
         """
         self.jobstats = []
         qd = None
@@ -85,13 +89,13 @@ class SGEStats(object):
             
             if l.find('start_time') != -1:
                     if l.find('-/-') >0:
-                        start = datetime.datetime.utcnow()
+                        stat = dtnow
                     else:
                         start = utils.qacct_to_datetime_tuple(l[13:len(l)])
 
             if l.find('end_time') != -1:
                     if l.find('-/-') > 0:
-                        end = datetime.datetime.utcnow()
+                        end = dtnow
                     else:
                         end = utils.qacct_to_datetime_tuple(l[13:len(l)])
 
@@ -126,7 +130,7 @@ class SGEStats(object):
     
     def count_hosts(self):
         """
-        returns a cound of the hosts in the cluster
+        returns a count of the hosts in the cluster
         """
         #todo: throw an exception if hosts not initialized
         return len(self.hosts)
@@ -233,7 +237,8 @@ class SGELoadBalancer(LoadBalancer):
 
     def run(self):
         pass
-
+    
+    @print_timing
     def get_stats(self):
         """
         this function will ssh to the SGE master and get load & queue stats.
@@ -252,6 +257,7 @@ class SGELoadBalancer(LoadBalancer):
             qhostXml = '\n'.join(master.ssh.execute('source /etc/profile && qhost -xml'))
             qstatXml = '\n'.join(master.ssh.execute('source /etc/profile && qstat -xml'))
             qacct = '\n'.join(master.ssh.execute('source /etc/profile && qacct -d 1 -j'))
+            now = utils.get_remote_time(self._cluster)
         except Exception, e:
             log.error("Error occured getting SGE stats via ssh. Cluster terminated?")
             log.error(e)
@@ -259,7 +265,8 @@ class SGELoadBalancer(LoadBalancer):
 
         self.stat.parse_qhost(qhostXml)
         self.stat.parse_qstat(qstatXml)
-        self.stat.parse_qacct(qacct)
+        self.stat.parse_qacct(qacct,now)
+
 
     def polling_loop(self):
         """
@@ -319,11 +326,11 @@ class SGELoadBalancer(LoadBalancer):
             #there are more jobs queued than will be consumed with one
             #cycle of job processing from all nodes
             oldest_job_dt = self.stat.oldest_queued_job_age()
-            now = datetime.datetime.utcnow()
+            now = utils.get_remote_time(self._cluster)
             age_delta = now - oldest_job_dt
             if age_delta.seconds > self.longest_allowed_queue_time:
-                log.info("A job has been waiting for %d, longer than max %d." % 
-                          (age_delta.seconds, self.longest_allowed_queue_time))
+                log.info("A job has been waiting for %d sec, longer than max %d." 
+                         % (age_delta.seconds, self.longest_allowed_queue_time))
                 need_to_add = qlen / sph
         
         if need_to_add > 0:
@@ -408,7 +415,7 @@ class SGELoadBalancer(LoadBalancer):
         into a billable hour this node has been running.
         """
         dt = utils.iso_to_datetime_tuple(node.launch_time)
-        now = datetime.datetime.utcnow()
+        now = utils.get_remote_time(self._cluster)
         timedelta = now - dt
         return timedelta.seconds / 60
 
