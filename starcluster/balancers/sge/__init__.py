@@ -89,7 +89,7 @@ class SGEStats(object):
             
             if l.find('start_time') != -1:
                     if l.find('-/-') >0:
-                        stat = dtnow
+                        start = dtnow
                     else:
                         start = utils.qacct_to_datetime_tuple(l[13:len(l)])
 
