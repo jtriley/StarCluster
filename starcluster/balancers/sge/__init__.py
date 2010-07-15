@@ -19,7 +19,8 @@ from starcluster.utils import print_timing
 class SGEStats(object):
     hosts = []
     jobs = []
-    _default_fields = ["JB_job_number","state","JB_submission_time","queue_name"]
+    _default_fields = \
+        ["JB_job_number","state","JB_submission_time","queue_name","slots"]
     first_job_id = 0
     last_job_id = 0
 
@@ -106,6 +107,7 @@ class SGEStats(object):
                 qd = None
                 start = None
                 end = None
+        return self.jobstats
 
 
     def get_running_jobs(self):
@@ -185,9 +187,14 @@ class SGEStats(object):
 
     def num_slots_for_job(self,job_id):
         """
-        TODO
+        returns the number of slots requested for the given job id
+        returns -1 if job_id is invalid
         """
-        pass
+        ujid = unicode(job_id)
+        for j in self.jobs:
+            if j['JB_job_number'] == ujid:
+                return int(j['slots'])
+        return -1
 
     def avg_job_duration(self):
         count = 0
@@ -322,6 +329,11 @@ class SGELoadBalancer(LoadBalancer):
         sph = self.stat.slots_per_host()
         ts = self.stat.count_total_slots()
 
+        #calculate job duration
+        avg_duration = self.stat.avg_job_duration()
+        #calculate estimated time to completion
+        ettc = avg_duration * qlen
+
         if qlen > ts:
             #there are more jobs queued than will be consumed with one
             #cycle of job processing from all nodes
@@ -332,6 +344,10 @@ class SGELoadBalancer(LoadBalancer):
                 log.info("A job has been waiting for %d sec, longer than max %d." 
                          % (age_delta.seconds, self.longest_allowed_queue_time))
                 need_to_add = qlen / sph
+                
+                if ettc < 300:
+                    log.warn("There is a possibility that the job queue is" + \
+                             " shorter than 5 minutes in duration.")
         
         if need_to_add > 0:
             need_to_add = min(self.add_nodes_per_iteration, need_to_add)

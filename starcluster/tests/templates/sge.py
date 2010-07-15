@@ -380,6 +380,786 @@ loaded_qhost_xml = """<?xml version='2.0'?>
  </host>
 </qhost>"""
 
+qacct_txt = """==============================================================
+qname        all.q               
+hostname     domU-12-31-38-00-A6-41.compute-1.internal
+group        root                
+owner        root                
+project      NONE                
+department   defaultdepartment   
+jobname      sleep               
+jobnumber    2                   
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Thu Jul 15 18:18:33 2010
+start_time   Thu Jul 15 18:18:41 2010
+end_time     Thu Jul 15 18:19:41 2010
+granted_pe   NONE                
+slots        1                   
+failed       0    
+exit_status  0                   
+ru_wallclock 60           
+ru_utime     0.000        
+ru_stime     0.000        
+ru_maxrss    0                   
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    771                 
+ru_majflt    0                   
+ru_nswap     0                   
+ru_inblock   16                  
+ru_oublock   8                   
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     4                   
+ru_nivcsw    0                   
+cpu          0.000        
+mem          0.000             
+io           0.000             
+iow          0.000             
+maxvmem      2.902M
+arid         undefined
+==============================================================
+qname        all.q               
+hostname     domU-12-31-38-00-A5-A1.compute-1.internal
+group        root                
+owner        root                
+project      NONE                
+department   defaultdepartment   
+jobname      sleep               
+jobnumber    1                   
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Thu Jul 15 18:18:31 2010
+start_time   Thu Jul 15 18:18:41 2010
+end_time     Thu Jul 15 18:19:41 2010
+granted_pe   NONE                
+slots        1                   
+failed       0    
+exit_status  0                   
+ru_wallclock 60           
+ru_utime     0.000        
+ru_stime     0.000        
+ru_maxrss    0                   
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    792                 
+ru_majflt    0                   
+ru_nswap     0                   
+ru_inblock   16                  
+ru_oublock   160                 
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     86                  
+ru_nivcsw    0                   
+cpu          0.000        
+mem          0.000             
+io           0.000             
+iow          0.000             
+maxvmem      2.902M
+arid         undefined
+==============================================================
+qname        all.q               
+hostname     domU-12-31-38-00-A6-41.compute-1.internal
+group        root                
+owner        root                
+project      NONE                
+department   defaultdepartment   
+jobname      sleep               
+jobnumber    4                   
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Thu Jul 15 18:18:35 2010
+start_time   Thu Jul 15 18:19:56 2010
+end_time     Thu Jul 15 18:20:56 2010
+granted_pe   NONE                
+slots        1                   
+failed       0    
+exit_status  0                   
+ru_wallclock 60           
+ru_utime     0.010        
+ru_stime     0.000        
+ru_maxrss    0                   
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    773                 
+ru_majflt    0                   
+ru_nswap     0                   
+ru_inblock   0                   
+ru_oublock   8                   
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     2                   
+ru_nivcsw    1                   
+cpu          0.010        
+mem          0.000             
+io           0.000             
+iow          0.000             
+maxvmem      0.000
+arid         undefined
+==============================================================
+qname        all.q               
+hostname     domU-12-31-38-00-A5-A1.compute-1.internal
+group        root                
+owner        root                
+project      NONE                
+department   defaultdepartment   
+jobname      sleep               
+jobnumber    3                   
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Thu Jul 15 18:18:34 2010
+start_time   Thu Jul 15 18:19:56 2010
+end_time     Thu Jul 15 18:20:56 2010
+granted_pe   NONE                
+slots        1                   
+failed       0    
+exit_status  0                   
+ru_wallclock 60           
+ru_utime     0.000        
+ru_stime     0.010        
+ru_maxrss    0                   
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    790                 
+ru_majflt    0                   
+ru_nswap     0                   
+ru_inblock   0                   
+ru_oublock   160                 
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     84                  
+ru_nivcsw    0                   
+cpu          0.010        
+mem          0.000             
+io           0.000             
+iow          0.000             
+maxvmem      2.902M
+arid         undefined
+==============================================================
+qname        all.q               
+hostname     domU-12-31-38-00-A6-41.compute-1.internal
+group        root                
+owner        root                
+project      NONE                
+department   defaultdepartment   
+jobname      sleep               
+jobnumber    6                   
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Thu Jul 15 18:18:38 2010
+start_time   Thu Jul 15 18:21:11 2010
+end_time     Thu Jul 15 18:22:11 2010
+granted_pe   NONE                
+slots        1                   
+failed       0    
+exit_status  0                   
+ru_wallclock 60           
+ru_utime     0.010        
+ru_stime     0.000        
+ru_maxrss    0                   
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    773                 
+ru_majflt    0                   
+ru_nswap     0                   
+ru_inblock   0                   
+ru_oublock   8                   
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     2                   
+ru_nivcsw    1                   
+cpu          0.010        
+mem          0.000             
+io           0.000             
+iow          0.000             
+maxvmem      2.902M
+arid         undefined
+==============================================================
+qname        all.q               
+hostname     domU-12-31-38-00-A5-A1.compute-1.internal
+group        root                
+owner        root                
+project      NONE                
+department   defaultdepartment   
+jobname      sleep               
+jobnumber    5                   
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Thu Jul 15 18:18:36 2010
+start_time   Thu Jul 15 18:21:11 2010
+end_time     Thu Jul 15 18:22:11 2010
+granted_pe   NONE                
+slots        1                   
+failed       0    
+exit_status  0                   
+ru_wallclock 60           
+ru_utime     0.000        
+ru_stime     0.000        
+ru_maxrss    0                   
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    792                 
+ru_majflt    0                   
+ru_nswap     0                   
+ru_inblock   0                   
+ru_oublock   160                 
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     84                  
+ru_nivcsw    0                   
+cpu          0.000        
+mem          0.000             
+io           0.000             
+iow          0.000             
+maxvmem      2.902M
+arid         undefined
+==============================================================
+qname        all.q               
+hostname     domU-12-31-38-00-A6-41.compute-1.internal
+group        root                
+owner        root                
+project      NONE                
+department   defaultdepartment   
+jobname      sleep               
+jobnumber    7                   
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Thu Jul 15 18:34:13 2010
+start_time   Thu Jul 15 18:34:26 2010
+end_time     Thu Jul 15 18:35:26 2010
+granted_pe   NONE                
+slots        1                   
+failed       0    
+exit_status  0                   
+ru_wallclock 60           
+ru_utime     0.010        
+ru_stime     0.000        
+ru_maxrss    0                   
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    773                 
+ru_majflt    0                   
+ru_nswap     0                   
+ru_inblock   0                   
+ru_oublock   8                   
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     2                   
+ru_nivcsw    1                   
+cpu          0.010        
+mem          0.000             
+io           0.000             
+iow          0.000             
+maxvmem      2.902M
+arid         undefined
+==============================================================
+qname        all.q               
+hostname     domU-12-31-38-00-A6-41.compute-1.internal
+group        root                
+owner        root                
+project      NONE                
+department   defaultdepartment   
+jobname      sleep               
+jobnumber    8                   
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Thu Jul 15 18:34:14 2010
+start_time   Thu Jul 15 18:35:41 2010
+end_time     Thu Jul 15 18:36:41 2010
+granted_pe   NONE                
+slots        1                   
+failed       0    
+exit_status  0                   
+ru_wallclock 60           
+ru_utime     0.000        
+ru_stime     0.010        
+ru_maxrss    0                   
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    773                 
+ru_majflt    0                   
+ru_nswap     0                   
+ru_inblock   0                   
+ru_oublock   8                   
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     2                   
+ru_nivcsw    0                   
+cpu          0.010        
+mem          0.000             
+io           0.000             
+iow          0.000             
+maxvmem      2.902M
+arid         undefined
+==============================================================
+qname        all.q               
+hostname     domU-12-31-38-00-A6-41.compute-1.internal
+group        root                
+owner        root                
+project      NONE                
+department   defaultdepartment   
+jobname      sleep               
+jobnumber    9                   
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Thu Jul 15 18:34:14 2010
+start_time   Thu Jul 15 18:36:56 2010
+end_time     Thu Jul 15 18:37:56 2010
+granted_pe   NONE                
+slots        1                   
+failed       0    
+exit_status  0                   
+ru_wallclock 60           
+ru_utime     0.010        
+ru_stime     0.000        
+ru_maxrss    0                   
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    775                 
+ru_majflt    0                   
+ru_nswap     0                   
+ru_inblock   0                   
+ru_oublock   8                   
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     2                   
+ru_nivcsw    0                   
+cpu          0.010        
+mem          0.000             
+io           0.000             
+iow          0.000             
+maxvmem      2.902M
+arid         undefined
+==============================================================
+qname        all.q               
+hostname     domU-12-31-38-00-A6-41.compute-1.internal
+group        root                
+owner        root                
+project      NONE                
+department   defaultdepartment   
+jobname      sleep               
+jobnumber    10                  
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Thu Jul 15 18:34:15 2010
+start_time   Thu Jul 15 18:38:11 2010
+end_time     Thu Jul 15 18:39:11 2010
+granted_pe   NONE                
+slots        1                   
+failed       0    
+exit_status  0                   
+ru_wallclock 60           
+ru_utime     0.000        
+ru_stime     0.000        
+ru_maxrss    0                   
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    774                 
+ru_majflt    0                   
+ru_nswap     0                   
+ru_inblock   0                   
+ru_oublock   8                   
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     2                   
+ru_nivcsw    0                   
+cpu          0.000        
+mem          0.000             
+io           0.000             
+iow          0.000             
+maxvmem      2.902M
+arid         undefined
+==============================================================
+qname        all.q               
+hostname     domU-12-31-38-00-A6-41.compute-1.internal
+group        root                
+owner        root                
+project      NONE                
+department   defaultdepartment   
+jobname      sleep               
+jobnumber    11                  
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Thu Jul 15 18:34:15 2010
+start_time   Thu Jul 15 18:39:26 2010
+end_time     Thu Jul 15 18:40:26 2010
+granted_pe   NONE                
+slots        1                   
+failed       0    
+exit_status  0                   
+ru_wallclock 60           
+ru_utime     0.010        
+ru_stime     0.000        
+ru_maxrss    0                   
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    775                 
+ru_majflt    0                   
+ru_nswap     0                   
+ru_inblock   0                   
+ru_oublock   8                   
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     2                   
+ru_nivcsw    0                   
+cpu          0.010        
+mem          0.000             
+io           0.000             
+iow          0.000             
+maxvmem      2.902M
+arid         undefined
+==============================================================
+qname        all.q               
+hostname     domU-12-31-38-00-A6-41.compute-1.internal
+group        root                
+owner        root                
+project      NONE                
+department   defaultdepartment   
+jobname      sleep               
+jobnumber    12                  
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Thu Jul 15 18:34:16 2010
+start_time   Thu Jul 15 18:40:41 2010
+end_time     Thu Jul 15 18:41:41 2010
+granted_pe   NONE                
+slots        1                   
+failed       0    
+exit_status  0                   
+ru_wallclock 60           
+ru_utime     0.000        
+ru_stime     0.000        
+ru_maxrss    0                   
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    775                 
+ru_majflt    0                   
+ru_nswap     0                   
+ru_inblock   0                   
+ru_oublock   8                   
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     2                   
+ru_nivcsw    0                   
+cpu          0.000        
+mem          0.000             
+io           0.000             
+iow          0.000             
+maxvmem      2.902M
+arid         undefined
+==============================================================
+qname        all.q               
+hostname     domU-12-31-38-00-A6-41.compute-1.internal
+group        root                
+owner        root                
+project      NONE                
+department   defaultdepartment   
+jobname      sleep               
+jobnumber    13                  
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Thu Jul 15 18:34:16 2010
+start_time   Thu Jul 15 18:41:56 2010
+end_time     Thu Jul 15 18:42:56 2010
+granted_pe   NONE                
+slots        1                   
+failed       0    
+exit_status  0                   
+ru_wallclock 60           
+ru_utime     0.000        
+ru_stime     0.000        
+ru_maxrss    0                   
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    774                 
+ru_majflt    0                   
+ru_nswap     0                   
+ru_inblock   0                   
+ru_oublock   8                   
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     2                   
+ru_nivcsw    0                   
+cpu          0.000        
+mem          0.000             
+io           0.000             
+iow          0.000             
+maxvmem      2.902M
+arid         undefined
+==============================================================
+qname        all.q               
+hostname     domU-12-31-38-00-A6-41.compute-1.internal
+group        root                
+owner        root                
+project      NONE                
+department   defaultdepartment   
+jobname      sleep               
+jobnumber    14                  
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Thu Jul 15 18:34:17 2010
+start_time   Thu Jul 15 18:43:11 2010
+end_time     Thu Jul 15 18:44:11 2010
+granted_pe   NONE                
+slots        1                   
+failed       0    
+exit_status  0                   
+ru_wallclock 60           
+ru_utime     0.000        
+ru_stime     0.000        
+ru_maxrss    0                   
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    774                 
+ru_majflt    0                   
+ru_nswap     0                   
+ru_inblock   0                   
+ru_oublock   8                   
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     2                   
+ru_nivcsw    0                   
+cpu          0.000        
+mem          0.000             
+io           0.000             
+iow          0.000             
+maxvmem      2.902M
+arid         undefined
+==============================================================
+qname        all.q               
+hostname     domU-12-31-38-00-A6-41.compute-1.internal
+group        root                
+owner        root                
+project      NONE                
+department   defaultdepartment   
+jobname      sleep               
+jobnumber    15                  
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Thu Jul 15 18:34:17 2010
+start_time   Thu Jul 15 18:44:26 2010
+end_time     Thu Jul 15 18:45:26 2010
+granted_pe   NONE                
+slots        1                   
+failed       0    
+exit_status  0                   
+ru_wallclock 60           
+ru_utime     0.000        
+ru_stime     0.010        
+ru_maxrss    0                   
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    773                 
+ru_majflt    0                   
+ru_nswap     0                   
+ru_inblock   0                   
+ru_oublock   8                   
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     2                   
+ru_nivcsw    1                   
+cpu          0.010        
+mem          0.000             
+io           0.000             
+iow          0.000             
+maxvmem      2.902M
+arid         undefined
+==============================================================
+qname        all.q               
+hostname     domU-12-31-38-00-A6-41.compute-1.internal
+group        root                
+owner        root                
+project      NONE                
+department   defaultdepartment   
+jobname      sleep               
+jobnumber    16                  
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Thu Jul 15 18:34:18 2010
+start_time   Thu Jul 15 18:45:41 2010
+end_time     Thu Jul 15 18:46:41 2010
+granted_pe   NONE                
+slots        1                   
+failed       0    
+exit_status  0                   
+ru_wallclock 60           
+ru_utime     0.000        
+ru_stime     0.010        
+ru_maxrss    0                   
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    772                 
+ru_majflt    0                   
+ru_nswap     0                   
+ru_inblock   0                   
+ru_oublock   8                   
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     2                   
+ru_nivcsw    1                   
+cpu          0.010        
+mem          0.000             
+io           0.000             
+iow          0.000             
+maxvmem      2.902M
+arid         undefined
+==============================================================
+qname        all.q               
+hostname     domU-12-31-38-00-A6-41.compute-1.internal
+group        root                
+owner        root                
+project      NONE                
+department   defaultdepartment   
+jobname      sleep               
+jobnumber    17                  
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Thu Jul 15 18:34:20 2010
+start_time   Thu Jul 15 18:46:56 2010
+end_time     Thu Jul 15 18:47:56 2010
+granted_pe   NONE                
+slots        1                   
+failed       0    
+exit_status  0                   
+ru_wallclock 60           
+ru_utime     0.000        
+ru_stime     0.010        
+ru_maxrss    0                   
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    774                 
+ru_majflt    0                   
+ru_nswap     0                   
+ru_inblock   0                   
+ru_oublock   8                   
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     2                   
+ru_nivcsw    0                   
+cpu          0.010        
+mem          0.000             
+io           0.000             
+iow          0.000             
+maxvmem      2.902M
+arid         undefined
+==============================================================
+qname        all.q               
+hostname     domU-12-31-38-00-A6-41.compute-1.internal
+group        root                
+owner        root                
+project      NONE                
+department   defaultdepartment   
+jobname      sleep               
+jobnumber    18                  
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Thu Jul 15 18:50:58 2010
+start_time   Thu Jul 15 18:51:11 2010
+end_time     Thu Jul 15 19:01:11 2010
+granted_pe   NONE                
+slots        1                   
+failed       0    
+exit_status  0                   
+ru_wallclock 600          
+ru_utime     0.010        
+ru_stime     0.000        
+ru_maxrss    0                   
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    773                 
+ru_majflt    0                   
+ru_nswap     0                   
+ru_inblock   0                   
+ru_oublock   8                   
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     2                   
+ru_nivcsw    1                   
+cpu          0.010        
+mem          0.000             
+io           0.000             
+iow          0.000             
+maxvmem      2.902M
+arid         undefined
+Total System Usage
+    WALLCLOCK         UTIME         STIME           CPU             MEMORY                 IO                IOW
+================================================================================================================
+         1620         0.060         0.050         0.110              0.000              0.000              0.000
+"""
+
 loaded_qstat_xml = """<?xml version='1.0'?>
 <job_info  xmlns:xsd="http://gridengine.sunsource.net/source/browse/*checkout*/gridengine/source/dist/util/resources/schemas/qstat/qstat.xsd?revision=1.11">
   <queue_info>
