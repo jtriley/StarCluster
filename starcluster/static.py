@@ -39,6 +39,7 @@ INSTANCE_TYPES = {
     'm2.xlarge': 'x86_64',
     'm2.2xlarge': 'x86_64',
     'm2.4xlarge': 'x86_64',
+    #'cc1.4xlarge': 'x86_64',
 }
 
 PROTOCOLS = [
@@ -46,10 +47,10 @@ PROTOCOLS = [
 ]
 
 AVAILABLE_SHELLS = {
-    "bash": True, 
-    "zsh": True, 
-    "csh": True, 
-    "ksh": True, 
+    "bash": True,
+    "zsh": True,
+    "csh": True,
+    "ksh": True,
     "tcsh": True,
 }
 
@@ -110,6 +111,7 @@ CLUSTER_SETTINGS = {
     'master_instance_type': (str, False, None, INSTANCE_TYPES.keys()),
     'node_image_id': (str, True, None, None),
     'node_instance_type': (str, True, None, INSTANCE_TYPES.keys()),
+    'node_instance_types': (list, False, [], None),
     'availability_zone': (str, False, None, None),
     'keyname': (str, True, None, None),
     'extends': (str, False, None, None),

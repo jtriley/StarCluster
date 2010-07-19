@@ -66,34 +66,32 @@ def print_timing(msg=None):
     return wrap
 
 def is_valid_device(dev):
-    regex = re.compile('/dev/sd[a-z]')
+    regex = re.compile('/dev/sd[a-z]$')
     try:
-        return len(dev) == 8 and regex.match(dev)
+        return regex.match(dev) is not None
     except TypeError,e:
         return False
 
 def is_valid_partition(part):
-    regex = re.compile('/dev/sd[a-z][1-9][0-9]?')
+    regex = re.compile('/dev/sd[a-z][1-9][0-9]?$')
     try:
-        return len(part) in [9,10] and regex.match(part)
+        return regex.match(part) is not None
     except TypeError,e:
         return False
 
 def is_valid_bucket_name(bucket_name):
     """
-    Check if bucket_name is a valid S3 bucket name (as defined by the AWS docs)
+    Check if bucket_name is a valid S3 bucket name (as defined by the AWS
+    docs):
+
+    1. 3 <= len(bucket_name) <= 255
+    2. all chars one of: a-z 0-9 .  _ -
+    3. first char one of: a-z 0-9
+    4. name must not be a valid ip
     """
-    length = len(bucket_name)
-    valid_length = length >= 3 and length <= 255
-    if not valid_length:
+    regex = re.compile('[a-z0-9][a-z0-9\._-]{2,254}$')
+    if not regex.match(bucket_name):
         return False
-    numbers_or_letters = string.ascii_lowercase + string.digits 
-    valid_chars = numbers_or_letters + '._-'
-    if not bucket_name[0] in numbers_or_letters:
-        return False
-    for c in bucket_name:
-        if c not in valid_chars:
-            return False
     if validate_ip(bucket_name):
         return False
     return True
@@ -101,23 +99,22 @@ def is_valid_bucket_name(bucket_name):
 def is_valid_image_name(image_name):
     """
     Check if image_name is a valid AWS image name (as defined by the AWS docs)
+
+    1. 3<= len(image_name) <=128
+    2. all chars one of: a-z A-Z 0-9 ( ) . - / _
     """
-    length = len(image_name)
-    valid_length = length>=3 and length <=128
-    valid_chars = string.letters + string.digits + "().-/_"
-    if not valid_length:
+    regex = re.compile('[\w\(\)\.-\/_]{3,128}$')
+    try:
+        return regex.match(image_name) is not None
+    except TypeError,e:
         return False
-    for c in image_name:
-        if c not in valid_chars:
-            return False
-    return True
 
 def make_one_liner(script):
     """
     Returns command to execute python script as a one-line python program
 
-    e.g. 
-    
+    e.g.
+
         import os
         script = '''
         import os

@@ -4,7 +4,7 @@ import re
 import time
 import string
 import platform
-import pprint 
+import pprint
 import inspect
 import cPickle
 
@@ -214,6 +214,7 @@ class Cluster(object):
             master_instance_type=None,
             node_image_id=None,
             node_instance_type=None,
+            node_instance_types=[],
             availability_zone=None,
             keyname=None,
             key_location=None,
@@ -237,7 +238,7 @@ class Cluster(object):
         if self.cluster_tag is None:
             self.cluster_tag = "cluster%s" % now
         if cluster_description is None:
-            self.cluster_description = "Cluster created at %s" % now 
+            self.cluster_description = "Cluster created at %s" % now
         self.cluster_size = cluster_size
         self.cluster_user = cluster_user
         self.cluster_shell = cluster_shell
@@ -245,6 +246,7 @@ class Cluster(object):
         self.master_instance_type = master_instance_type
         self.node_image_id = node_image_id
         self.node_instance_type = node_instance_type
+        self.node_instance_types = node_instance_types
         self.availability_zone = availability_zone
         self.keyname = keyname
         self.key_location = key_location
@@ -262,7 +264,6 @@ class Cluster(object):
         self._master = None
         self._zone = None
         self._plugins = plugins
-        self._master_group = None
         self._cluster_group = None
 
     @property
@@ -389,7 +390,7 @@ class Cluster(object):
 
     def _validate_running_instances(self):
         """
-        Validate existing instances against this template's settings 
+        Validate existing instances against this template's settings
         """
         self._validate_instance_types()
         num_running = len(self.nodes)
@@ -415,21 +416,40 @@ class Cluster(object):
                 "The running master's keypair (%s) != %s" % \
                 (mkey, self.keyname))
         try:
-            nodes = self.nodes[1:self.cluster_size]
+            nodes = self.nodes[1:]
         except IndexError,e:
             raise exception.ClusterValidationError("Cluster has no running instances")
         mazone = self.master_node.placement
-        for n in nodes:
+        id_start = 0
+        for itype in self.node_instance_types:
+            size = itype['size']
+            image = itype['image'] or self.node_image_id
+            type = itype['type'] or self.node_instance_type
+            for i in range(id_start, id_start + size):
+                n = nodes[i]
+                ntype = n.instance_type
+                if ntype != type:
+                    raise exception.ClusterValidationError(
+                        "Running node's instance type (%s) != %s" % \
+                        (ntype, type))
+                nimage = n.image_id
+                if nimage != image:
+                    raise exception.ClusterValidationError(
+                        "Running node's image id (%s) != %s" % \
+                        (nimage, image))
+                id_start +=1
+        for n in nodes[id_start:]:
             ntype = n.instance_type
-            if ntype != self.node_instance_type:
+            if n.instance_type != self.node_instance_type:
                 raise exception.ClusterValidationError(
                     "Running node's instance type (%s) != %s" % \
                     (ntype, self.node_instance_type))
             nimage = n.image_id
-            if nimage != self.node_image_id:
+            if nimage != image:
                 raise exception.ClusterValidationError(
                     "Running node's image id (%s) != %s" % \
-                    (nimage, self.node_image_id))
+                    (nimage, image))
+        for n in nodes:
             if n.key_name != self.keyname:
                 raise exception.ClusterValidationError(
                     "Running node's key_name (%s) != %s" % \
@@ -437,7 +457,7 @@ class Cluster(object):
             nazone = n.placement
             if mazone != nazone:
                 raise exception.ClusterValidationError(
-                    "Running master zone (%s) does not match node zone (%s)" % \
+                    "Running master's zone (%s) does not match node zone (%s)" % \
                     (mazone, nazone))
         # reset zone 
         self._zone = None
@@ -509,15 +529,6 @@ class Cluster(object):
         return static.SECURITY_GROUP_TEMPLATE % self.cluster_tag
 
     @property
-    def master_group(self):
-        if self._master_group is None:
-            sg = self.ec2.get_or_create_group(static.MASTER_GROUP, 
-                                              static.MASTER_GROUP_DESCRIPTION,
-                                              auth_ssh=True)
-            self._master_group = sg
-        return self._master_group
-
-    @property
     def cluster_group(self):
         if self._cluster_group is None:
             sg = self.ec2.get_or_create_group(self._security_group,
@@ -532,7 +543,7 @@ class Cluster(object):
                 cidr_ip = perm.get('cidr_ip','0.0.0.0/0')
                 if not self.ec2.has_permission(sg, ip_protocol, from_port,
                                                to_port, cidr_ip):
-                    log.info("Opening %s port range %s-%s for CIDR %s" % 
+                    log.info("Opening %s port range %s-%s for CIDR %s" %
                              (ip_protocol, from_port, to_port, cidr_ip))
                     sg.authorize(ip_protocol, from_port, to_port, cidr_ip)
             self._cluster_group = sg
@@ -568,6 +579,8 @@ class Cluster(object):
                     self._nodes.insert(0, n)
                 else:
                     self._nodes.append(n)
+            #sort the instances by alias?
+            #self._nodes.sort(key=lambda n: n.alias)
         else:
             for node in self._nodes:
                 log.debug('refreshing instance %s' % node.id)
@@ -606,73 +619,90 @@ class Cluster(object):
                     break
         return s
 
-    def run_instances(self, price=None, image_id=None, instance_type='m1.small', 
+    def _run_instances(self, price=None, image_id=None, instance_type='m1.small',
                       min_count=1, max_count=1, count=1, key_name=None,
                       security_groups=None, launch_group=None,
                       availability_zone_group=None, placement=None,
                       user_data=None):
+        """
+        Convenience method for running spot or flat-rate instances
+        """
         conn = self.ec2
         if price:
-            return conn.request_spot_instances(price, image_id, 
-                                               instance_type=instance_type, 
-                                               count=count, 
-                                               launch_group=launch_group, 
-                                               key_name=key_name, 
-                                               security_groups=security_groups, 
-                                               availability_zone_group=availability_zone_group,
-                                               placement=placement,
-                                               user_data=user_data)
+            return conn.request_spot_instances(
+                price, image_id, instance_type=instance_type,
+                count=count, launch_group=launch_group, key_name=key_name,
+                security_groups=security_groups,
+                availability_zone_group=availability_zone_group,
+                placement=placement, user_data=user_data)
         else:
-            return conn.run_instances(image_id, instance_type=instance_type, 
-                                      min_count=min_count, max_count=max_count, 
-                                      key_name=key_name, 
-                                      security_groups=security_groups, 
+            return conn.run_instances(image_id, instance_type=instance_type,
+                                      min_count=min_count, max_count=max_count,
+                                      key_name=key_name,
+                                      security_groups=security_groups,
                                       placement=placement,
                                       user_data=user_data)
 
-    def create_cluster(self):
-        log.info("Launching a %d-node cluster..." % self.cluster_size)
-        if self.master_image_id is None:
-            self.master_image_id = self.node_image_id
-        if self.master_instance_type is None:
-            self.master_instance_type = self.node_instance_type
-        log.info("Launching master node (AMI: %s)..." % self.master_image_id)
-        master_sg = self.master_group.name
+    def create_node(self, alias, image_id=None, instance_type=None, count=1,
+                    zone=None):
+        """
+        Convenience method for requesting an instance with this cluster's settings
+        """
         cluster_sg = self.cluster_group.name
-        zone = self.zone
-        master_response = self.run_instances(self.spot_bid,
-            image_id=self.master_image_id,
-            instance_type=self.master_instance_type,
-            min_count=1, max_count=1, count=1,
+        return self._run_instances(self.spot_bid,
+            image_id=image_id or self.node_image_id,
+            instance_type=instance_type or self.node_instance_type,
+            min_count=count, max_count=count, count=count,
             key_name=self.keyname,
-            security_groups=[master_sg, cluster_sg],
+            security_groups=[cluster_sg],
             availability_zone_group=cluster_sg,
             launch_group=cluster_sg,
-            placement=zone,
-            user_data="master")
+            placement=zone or self.zone,
+            user_data=alias)
+
+    def create_cluster(self):
+        """
+        Launches all EC2 instances based on this cluster's settings.
+        """
+        log.info("Launching a %d-node cluster..." % self.cluster_size)
+        self.master_image_id = self.master_image_id or self.node_image_id
+        self.master_instance_type = self.master_instance_type or \
+                self.node_instance_type
+        log.info("Launching master node (AMI: %s, TYPE: %s)..." %
+                 (self.master_image_id, self.master_instance_type))
+        master_response = self.create_node('master',
+                                           image_id=self.master_image_id,
+                                           instance_type=self.master_instance_type)
         print master_response
+        if self.cluster_size <= 1:
+            return
         # Make sure nodes are in same zone as master
+        zone = None
         if self.spot_bid:
             launch_spec = master_response[0].launch_specification
             zone = launch_spec.placement
         else:
             zone = master_response.instances[0].placement
-        if self.cluster_size > 1:
-            for id in range(1, self.cluster_size):
+        id_start = 1
+        for itype in self.node_instance_types:
+            count = itype['size']
+            image_id = itype['image'] or self.node_image_id
+            type = itype['type'] or self.node_instance_type
+            for id in range(id_start, id_start+count):
                 alias = 'node%.3d' % id
-                log.info("Launching worker node: %s (AMI: %s)..." % \
-                        (alias,self.node_image_id))
-                node_response = self.run_instances(self.spot_bid,
-                    image_id=self.node_image_id,
-                    instance_type=self.node_instance_type,
-                    min_count=1, max_count=1, count=1,
-                    key_name=self.keyname,
-                    security_groups=[cluster_sg],
-                    availability_zone_group=cluster_sg,
-                    launch_group=cluster_sg,
-                    placement=zone,
-                    user_data=alias)
+                log.info("Launching node: %s (AMI: %s, TYPE: %s)..." % \
+                        (alias, image_id, type))
+                node_response = self.create_node(alias, image_id=image_id,
+                                                 instance_type=type,
+                                                 count=count, zone=zone)
                 print node_response
+                id_start += 1
+        for id in range(id_start, self.cluster_size):
+            alias = 'node%.3d' % id
+            log.info("Launching node: %s (AMI: %s, TYPE: %s)..." % \
+                    (alias,self.node_image_id, self.node_instance_type))
+            node_response = self.create_node(alias)
+            print node_response
 
     def is_cluster_up(self):
         """
@@ -689,6 +719,9 @@ class Cluster(object):
         return True
 
     def attach_volumes_to_master(self):
+        """
+        Attach each volume to the master node
+        """
         for vol in self.volumes:
             volume = self.volumes.get(vol)
             device = volume.get('device')
@@ -709,6 +742,9 @@ class Cluster(object):
                 time.sleep(5)
 
     def detach_volumes(self):
+        """
+        Detach all volumes from the master node
+        """
         for vol in self.volumes:
             vol_id = self.volumes.get(vol).get('volume_id')
             vol = self.ec2.get_volume(vol_id)
@@ -716,6 +752,11 @@ class Cluster(object):
             vol.detach()
 
     def stop_cluster(self):
+        """
+        Stop this cluster by first detaching all volumes, shutting down all
+        instances, cancelling all spot requests (if any), and remove this
+        cluster's security group.
+        """
         if self.volumes:
             self.detach_volumes()
         for node in self.running_nodes:
@@ -855,7 +896,6 @@ to shutdown the cluster and stop paying for service
         """
         Returns True if all cluster template settings are valid
         """
-        log.info("Validating cluster template settings...")
         try:
             self._validate()
             return True
@@ -874,9 +914,19 @@ to shutdown the cluster and stop paying for service
         return True
 
     def _validate_cluster_size(self):
-        if self.cluster_size <= 0 or not isinstance(self.cluster_size, int):
+        try:
+            cluster_size = int(self.cluster_size)
+            if self.cluster_size < 1:
+                raise ValueError
+        except (ValueError,TypeError),e:
             raise exception.ClusterValidationError(
-                'cluster_size must be a positive integer.')
+                'cluster_size must be >= 1')
+        num_itypes = sum([i.get('size') for i in self.node_instance_types])
+        num_nodes = self.cluster_size-1
+        if num_itypes > num_nodes:
+            raise exception.ClusterValidationError(
+                ("total number of nodes specified in node_instance_types (%s) " +
+                "must be <= cluster_size-1 (%s)") % (num_itypes,num_nodes))
         return True
 
     def _validate_shell_setting(self):
@@ -946,7 +996,6 @@ to shutdown the cluster and stop paying for service
         node_instance_type = self.node_instance_type
         instance_types = self.__instance_types
         instance_type_list = ' '.join(instance_types.keys())
-        conn = self.ec2
         if not instance_types.has_key(node_instance_type):
             raise exception.ClusterValidationError(
                 ("You specified an invalid node_instance_type %s \n" + 
@@ -958,7 +1007,6 @@ to shutdown the cluster and stop paying for service
                     ("You specified an invalid master_instance_type %s\n" + \
                     "Possible options are:\n%s") % \
                     (master_instance_type, instance_type_list))
-
         try:
             self.__check_platform(node_image_id, node_instance_type)
         except exception.ClusterValidationError,e:
@@ -986,6 +1034,19 @@ to shutdown the cluster and stop paying for service
                 raise exception.ClusterValidationError( 
                     'Incompatible node_image_id and master_instance_type\n' + e.msg
                 )
+        for itype in self.node_instance_types:
+            type = itype.get('type')
+            img = itype.get('image')
+            if not instance_types.has_key(type):
+                raise exception.ClusterValidationError(
+                    ("You specified an invalid instance type %s \n" + 
+                    "Possible options are:\n%s") % \
+                    (type, instance_type_list))
+            try:
+                self.__check_platform(img or node_image_id, type)
+            except exception.ClusterValidationError,e:
+                raise exception.ClusterValidationError(
+                    "Invalid node_instance_types: " + e.msg)
         return True
 
     def _validate_ebs_aws_settings(self):
