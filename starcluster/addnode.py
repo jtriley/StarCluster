@@ -1,5 +1,7 @@
 #!/usr/bin/env python
-from starcluster.logger import log
+from starcluster.logger import log, INFO_NO_NEWLINE
+from starcluster.spinner import Spinner
+import time
 
 def add_to_sge(master, node):
     pass
@@ -22,14 +24,15 @@ def setup_etc_hosts(cluster):
 def add_node(cluster, num_nodes):
     cluster.load_receipt()
     cluster_sg = cluster.cluster_group.name
-    current_num_nodes = len([i for i in cluster.cluster_group.instances() if i.state in ['pending','running'])
+    current_num_nodes = len([i for i in cluster.cluster_group.instances() if
+                             i.state in ['pending','running']])
     for id in range(current_num_nodes, current_num_nodes + num_nodes):
         alias = 'node%.3d' % id
         cluster.create_node(alias)
     cluster.cluster_size = current_num_nodes + num_nodes
     cluster._nodes = None
     s = Spinner()
-    log.log(INFO_NO_NEWLINE, "Waiting for nodes to come up...")
+    log.info(INFO_NO_NEWLINE, "Waiting for nodes to come up...")
     while not cluster.is_cluster_up():
         time.sleep(30)
     s.stop()
