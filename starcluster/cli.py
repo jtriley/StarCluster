@@ -212,8 +212,10 @@ class CmdStart(CmdBase):
         if not template:
             template = cfg.get_default_cluster_template(tag)
             log.info("Using default cluster template: %s" % template)
-        cluster_exists = cluster.cluster_exists(tag, cfg)
         create = not self.opts.no_create
+        cluster_exists = cluster.cluster_exists(tag, cfg)
+        if cluster_exists and create:
+            raise exception.ClusterExists(tag)
         if not cluster_exists and not create:
             raise exception.ClusterDoesNotExist(tag)
         scluster = cfg.get_cluster_template(template, tag)

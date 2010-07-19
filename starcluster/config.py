@@ -336,6 +336,48 @@ class StarClusterConfig(object):
                 raise exception.ConfigError(
                     "permission %s not defined in config" % perm)
 
+    def _load_instance_types(self, section_name, store):
+        cluster_section = store
+        instance_types = cluster_section.get('node_instance_types')
+        if not instance_types or isinstance(instance_types[0], AttributeDict):
+            return
+        itypes = []
+        cluster_section['node_instance_types'] = itypes
+        total_num_nodes = 0
+        for type_spec in instance_types:
+            type_spec = type_spec.split(':')
+            if len(type_spec) > 3:
+                raise exception.ConfigError(
+                    "invalid node_instance_types item specified: %s" % \
+                    type_spec)
+            itype = type_spec[0]
+            itype_image = None
+            itype_num = 1
+            if not static.INSTANCE_TYPES.has_key(itype):
+                raise exception.ConfigError(
+                    ("invalid type specified (%s) in node_instance_types. " + \
+                    "must be one of: %s") % \
+                    (itype,', '.join(static.INSTANCE_TYPES.keys())))
+            if len(type_spec) == 2:
+                itype, next_var = type_spec
+                try:
+                    itype_num = int(next_var)
+                except (TypeError,ValueError),e:
+                    itype_image = next_var
+            elif len(type_spec) == 3:
+                itype, itype_image, itype_num = type_spec
+            try:
+                itype_num = int(itype_num)
+                if itype_num < 1:
+                    raise TypeError
+                total_num_nodes += itype_num
+            except (ValueError,TypeError), e:
+                raise exception.ConfigError(
+                    "number of instances (%s) of type %s must be an integer > 1" % \
+                    (itype_num, itype))
+            itype_dic = AttributeDict(size=itype_num, image=itype_image, type=itype)
+            itypes.append(itype_dic)
+
     def _load_section(self, section_name, section_settings):
         """
         Returns a dictionary containing all section_settings for a given 
@@ -417,6 +459,7 @@ class StarClusterConfig(object):
             self._load_volumes(name, cluster_store[name])
             self._load_plugins(name, cluster_store[name])
             self._load_permissions(name, cluster_store[name])
+            self._load_instance_types(name, cluster_store[name])
             self._check_required(cluster, self.cluster_settings,
                                cluster_store[name])
         return cluster_store
