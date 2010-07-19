@@ -15,19 +15,22 @@ from starcluster import config
 from starcluster import cluster
 from starcluster.logger import log, INFO_NO_NEWLINE
 from starcluster.utils import print_timing
+from removenode import remove_node
+from addnode import add_node
 
 class SGEStats(object):
     hosts = []
     jobs = []
+    jobstats = []
     _default_fields = \
         ["JB_job_number","state","JB_submission_time","queue_name","slots"]
     first_job_id = 0
     last_job_id = 0
 
-    #takes in a string, so we can pipe in output from ssh.exec('qhost -xml')
     def parse_qhost(self,string):
         """
         this function parses qhost -xml output and makes a neat array
+        takes in a string, so we can pipe in output from ssh.exec('qhost -xml')
         """
         self.hosts = [] #clear the old hosts
         doc = xml.dom.minidom.parseString(string)
@@ -220,6 +223,14 @@ class SGEStats(object):
         else:
             return total_seconds / count
 
+    def on_first_job(self):
+        """
+        returns true if the cluster is processing the first job, False otherwise
+        """
+        if len(self.jobs) > 0 and self.jobs[0]['JB_job_number'] != u'1':
+            return True
+        return False
+
 
 class SGELoadBalancer(LoadBalancer):
     """
@@ -233,6 +244,8 @@ class SGELoadBalancer(LoadBalancer):
     longest_allowed_queue_time = 300
     add_nodes_per_iteration = 1
     kill_after = 8 #default = 50
+    __last_cluster_mod_time = datetime.datetime.utcnow()
+    stabilization_time = 420
 
     def __init__(self, cluster_tag, config):
         self._cluster_tag = cluster_tag
@@ -335,6 +348,14 @@ class SGELoadBalancer(LoadBalancer):
         ettc = avg_duration * qlen
 
         if qlen > ts:
+            now = datetime.datetime.utcnow()
+            if (now - self.__last_cluster_mod_time).seconds < self.stabilization_time:
+               log.info("Cluster change was made less than %d seconds ago (%s)."
+                        % (self.stabilization_time, self.__last_cluster_mod_time))
+               log.info("Not changing cluster size until cluster stabilizes." )
+
+               return 0
+
             #there are more jobs queued than will be consumed with one
             #cycle of job processing from all nodes
             oldest_job_dt = self.stat.oldest_queued_job_age()
@@ -352,6 +373,9 @@ class SGELoadBalancer(LoadBalancer):
         if need_to_add > 0:
             need_to_add = min(self.add_nodes_per_iteration, need_to_add)
             log.info("NEED TO ADD %d NODES!" % need_to_add)
+            self.__last_cluster_mod_time = datetime.datetime.utcnow()
+            #add_node(self._cluster, need_to_add)
+            log.info("Done adding nodes.")
         return need_to_add
 
     def _node_alive(self, node_id):
@@ -372,6 +396,13 @@ class SGELoadBalancer(LoadBalancer):
         """
         qlen = len(self.stat.get_queued_jobs())
         if qlen == 0:
+           now = datetime.datetime.utcnow()
+           if (now - self.__last_cluster_mod_time).seconds < self.stabilization_time:
+               log.info("Cluster change was made less than %d seconds ago (%s)."
+                        % (self.stabilization_time, self.__last_cluster_mod_time))
+               log.info("Not changing cluster size until cluster stabilizes." )
+               return 0
+
            #if at 0, remove all nodes but master
            if len(self.stat.hosts) > self.min_nodes:
                log.info("Checking to remove a node...")
@@ -383,8 +414,8 @@ class SGELoadBalancer(LoadBalancer):
                for n in to_kill:
                    if self._node_alive(n.id):
                        log.info("***KILLING NODE: %s (%s)." % (n.id,n.dns_name))
-                       from removenode import remove_node
                        remove_node(n,self._cluster) 
+                       self.__last_cluster_mod_time = datetime.datetime.utcnow()
                        return #temporary measure, kill only one node at a time
                        #until we have add-node
                    else:
@@ -415,7 +446,6 @@ class SGELoadBalancer(LoadBalancer):
                 log.info("Idle Node %s has been up for %d minutes past the hour."
                       % (node.id,mins_up))
 
-            #self.kill_after = 50 # set at the top of class
             if self.polling_interval > 300:
                 self.kill_after = max(45,60 - (2*self.polling_interval/60))
 
