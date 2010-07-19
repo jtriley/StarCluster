@@ -32,7 +32,7 @@ def add_node(cluster, num_nodes):
     cluster.cluster_size = current_num_nodes + num_nodes
     cluster._nodes = None
     s = Spinner()
-    log.info(INFO_NO_NEWLINE, "Waiting for nodes to come up...")
+    log.log(INFO_NO_NEWLINE, "Waiting for nodes to come up...")
     while not cluster.is_cluster_up():
         time.sleep(30)
     s.stop()
