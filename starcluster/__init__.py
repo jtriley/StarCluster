@@ -5,6 +5,7 @@ __all__ = [
     "plugins",
     "cli",
     "awsutils", 
+    "balancers",
     "ssh", 
     "utils", 
     "static",
