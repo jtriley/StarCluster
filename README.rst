@@ -39,7 +39,7 @@ Dependencies:
 -------------
 * Amazon AWS Account
 * Python 2.4+
-* Boto 1.9b+
+* Boto 2.0a2+
 * Paramiko 1.7.6+
 
 Getting Started:

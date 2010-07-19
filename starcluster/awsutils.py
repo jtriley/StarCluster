@@ -78,7 +78,7 @@ class EasyEC2(EasyAWS):
         self._security_group_response = None
 
     def __check_for_auth_failure(self, e):
-        if e.error_code == "AuthFailure":
+        if e.error_code in ["AuthFailure", "SignatureDoesNotMatch"]:
             raise e
 
     @property
@@ -222,8 +222,9 @@ class EasyEC2(EasyAWS):
 
     def get_instance_user_data(self, instance_id):
         i = self.get_instance(instance_id)
-        user_data = self.conn.get_instance_attribute(i.id, 'userData')
-        return base64.b64decode(user_data['userData'])
+        attributes = self.conn.get_instance_attribute(i.id, 'userData')
+        user_data = attributes['userData'] or ''
+        return base64.b64decode(user_data)
 
     def get_instance(self, instance_id):
         try:
@@ -321,6 +322,7 @@ class EasyEC2(EasyAWS):
                 public_ip = instance.ip_address or 'N/A'
                 zone = instance.placement or 'N/A'
                 ami = instance.image_id or 'N/A'
+                instance_type = instance.instance_type or 'N/A'
                 keypair = instance.key_name or 'N/A'
                 print "id: %s" % id
                 print "dns_name: %s" % dns_name
@@ -330,6 +332,7 @@ class EasyEC2(EasyAWS):
                 print "private_ip: %s" % private_ip
                 print "zone: %s" % zone
                 print "ami: %s" % ami
+                print "type: %s" % instance_type
                 print "groups: %s" % groups
                 print "keypair: %s" % keypair
                 print
