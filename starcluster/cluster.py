@@ -694,7 +694,7 @@ class Cluster(object):
                         (alias, image_id, type))
                 node_response = self.create_node(alias, image_id=image_id,
                                                  instance_type=type,
-                                                 count=count, zone=zone)
+                                                 zone=zone)
                 print node_response
                 id_start += 1
         for id in range(id_start, self.cluster_size):
