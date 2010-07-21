@@ -103,7 +103,7 @@ def is_valid_image_name(image_name):
     1. 3<= len(image_name) <=128
     2. all chars one of: a-z A-Z 0-9 ( ) . - / _
     """
-    regex = re.compile('[\w\(\)\.-\/_]{3,128}$')
+    regex = re.compile('[\w\(\)\.\-\/_]{3,128}$')
     try:
         return regex.match(image_name) is not None
     except TypeError,e:

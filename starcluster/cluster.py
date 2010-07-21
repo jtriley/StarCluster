@@ -588,15 +588,18 @@ class Cluster(object):
         return self._nodes
 
     def get_node_by_dns_name(self, dns_name):
-        nodes = self.nodes
-        for node in nodes:
+        for node in self.nodes:
             if node.dns_name == dns_name:
                 return node
 
     def get_node_by_id(self, instance_id):
-        nodes = self.nodes
-        for node in nodes:
+        for node in self.nodes:
             if node.id == instance_id:
+                return node
+
+    def get_node_by_alias(self, alias):
+        for node in self.nodes:
+            if node.alias == alias:
                 return node
 
     @property
