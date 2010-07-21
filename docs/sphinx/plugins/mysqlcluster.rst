@@ -48,7 +48,9 @@ directory. Defaults to DATA_DIR.
 DEDICATED_QUERY: True indicates that the data nodes do not also
 function as query nodes, and there are instead dedicated nodes to
 accept queries. False indicates that all data nodes will also accept
-queries. *** Not yet working ***
+queries.
+
+NUM_DATA_NODES: Number of data nodes if DEDICATED_QUERY is set to True. The remaining nodes in the cluster will be MySQL query nodes.
 
 
 What This Plugin Does
