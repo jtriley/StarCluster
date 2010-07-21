@@ -28,8 +28,8 @@ ndb_mgmd_template = \
 '''
 [NDBD DEFAULT]
 NoOfReplicas=%(num_replicas)s
-DataMemory=%(data_memory)sM    # How much memory to allocate for data storage
-IndexMemory=%(index_memory)sM   # How much memory to allocate for index storage
+DataMemory=%(data_memory)s    # How much memory to allocate for data storage
+IndexMemory=%(index_memory)s   # How much memory to allocate for index storage
 [MYSQLD DEFAULT]
 [NDB_MGMD DEFAULT]
 [TCP DEFAULT]
@@ -43,10 +43,10 @@ HostName=%(mgm_ip)s
 ndb_mgmd_storage = \
 '''
 [NDBD]
-HostName=%s
-DataDir=/var/lib/mysql-cluster
-BackupDataDir=/var/lib/mysql-cluster/backup
-DataMemory=512M
+HostName=%(storage_ip)s
+DataDir=%(data_dir)s
+BackupDataDir=%(backup_data_dir)s
+DataMemory=%(storage_data_memory)s
 '''
 
 my_cnf = \
@@ -174,7 +174,7 @@ quote-names
 max_allowed_packet      = 16M
 
 [mysql]
-#no-auto-rehash # faster start of mysql but no tab completition
+#no-auto-rehash # faster start of mysql but no tab completion
 
 [isamchk]
 key_buffer              = 16M
@@ -190,29 +190,37 @@ ndb-connectstring=%(mgm_ip)s
 '''
 
 class MysqlCluster(ClusterSetup):
-	def __init__(self,num_replicas,data_memory,index_memory):
+	def __init__(self,num_replicas,data_memory,index_memory,data_dir,backup_data_dir,storage_data_memory,dedicated_query):
 		self._num_replicas=num_replicas
 		self._data_memory=data_memory
 		self._index_memory=index_memory
+		self._data_dir=data_dir
+		self._backup_data_dir=backup_data_dir
+		self._storage_data_memory=storage_data_memory
+		self._dedicated_query=dedicated_query
 
 	def run(self, master, nodes, user, user_shell, volumes):
 		mconn = master.ssh
 		# Get IPs for all nodes
 		self.mgm_ip = master.private_ip_address
-		self.storage_ips = [x.private_ip_address for x in nodes[1:]]
-		self.num_storage = len(nodes[1:])
+		if not self._dedicated_query: 
+			self.storage_ips = [x.private_ip_address for x in nodes[1:]]
+			self.query_ips = self.storage_ips
+		#else:
+		#	self.storage_ips = [x.private_ip.address for x in nodes[1:self._num_replicas]]
+		#	self.query_ips = [x.private_ip.address for x in nodes[self._num_replicas+1:]]
 		
 		# Create backup directory and change ownership of mysql-cluster directory
 		for node in nodes:
 			nconn = node.ssh
 			node_num = nodes.index(node)
 			if node_num == 0: node_num = 'master'
-			log.info('Killing all mysql processes on node %s...') % node_num
+			log.info('Killing all mysql processes on node %s...' % node_num)
 			nconn.execute('pkill -9 mysql', ignore_exit_status = True)
-			log.info('Creating backup directory and changing ownership of' +\
-				'/var/lib/mysql-cluster/ on node %s') % node_num
-			nconn.execute('mkdir -p /var/lib/mysql-cluster/backup')
-			nconn.execute('chown -R mysql:mysql /var/lib/mysql-cluster')
+			log.info('Creating backup directory and changing ownership of ' +\
+				'data directory on node %s' % node_num)
+			nconn.execute('mkdir -p %s/BACKUP' % self._backup_data_dir)
+			nconn.execute('chown -R %s' % self._data_dir)
 		
 		# Generate and place ndb_mgmd configuration file
 		log.info('Generating ndb_mgmd.cnf...')
@@ -222,7 +230,7 @@ class MysqlCluster(ClusterSetup):
 		
 		# Generate and place my.cnf configuration file on each data node
 		for node in nodes[1:]:
-			log.info('Generating my.cnf on node %d') % nodes.index(node)
+			log.info('Generating my.cnf on node %d' % nodes.index(node))
 			nconn = node.ssh
 			my_cnf = nconn.remote_file('/etc/mysql/my.cnf')
 			my_cnf.write(self.generate_my_cnf())
@@ -233,12 +241,12 @@ class MysqlCluster(ClusterSetup):
 		mconn.execute('/etc/init.d/mysql-ndb-mgm restart')
 		
 		
-		# Kill mysql and restart mysql/mysqld-ndb on data nodes
-		for node in nodes:
+		# Start mysql/mysqld-ndb on nodes
+		for node in nodes[1:]:
 			nconn = node.ssh
-			log.info('Starting mysql on node %d, ignoring missing file error...') % nodes.index(node)
+			log.info('Starting mysql on node %d, ignoring missing file error...' % nodes.index(node))
 			nconn.execute('/etc/init.d/mysql start', ignore_exit_status = True)
-			log.info('Restarting mysql-ndb on node %d...') % nodes.index(node)
+			log.info('Restarting mysql-ndb on node %d...' % nodes.index(node))
 			nconn.execute('/etc/init.d/mysql-ndb restart')
 			
 		log.info('MySQL Cluster installation complete. Run ndb_mgm to load Management Client.')
@@ -249,12 +257,17 @@ class MysqlCluster(ClusterSetup):
 			'index_memory':self._index_memory,'mgm_ip':self.mgm_ip}
 		
 		for x in self.storage_ips:
-			ndb_mgmd += ndb_mgmd_storage % x
+			ndb_mgmd += ndb_mgmd_storage % {'storage_ip':x,'data_dir':self._data_dir,\
+				'backup_data_dir':self._backup_data_dir,'storage_data_memory':self._storage_data_memory}
 		
 		ndb_mgmd += '\n'
 		
-		for x in range(self.num_storage):
-			ndb_mgmd += '[MYSQLD]\n'
+		if self._dedicated_query: 
+			for x in self.query_ips:
+				ndb_mgmd += '[MYSQLD]\nHostName=%s' % x
+		else:
+			for x in self.query_ips:
+				ndb_mgmd += '[MYSQLD]\n'
 			
 		return ndb_mgmd
 		
