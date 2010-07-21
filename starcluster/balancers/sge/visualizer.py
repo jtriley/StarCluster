@@ -4,7 +4,6 @@ StarCluster SunGrinEngine stats parsing module
 """
 import types
 import time
-import datetime
 from datetime import datetime
 import logging
 import pickle
@@ -32,7 +31,7 @@ class SGEVisualizer(object):
         stat = s
         bits = []
         #first field is the time
-        now = datetime.datetime.utcnow()
+        now = datetime.utcnow()
         bits.append(now)
         #second field is the number of hosts
         bits.append(s.count_hosts())

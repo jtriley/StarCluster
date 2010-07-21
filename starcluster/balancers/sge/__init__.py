@@ -16,7 +16,9 @@ from starcluster import cluster
 from starcluster.logger import log, INFO_NO_NEWLINE
 from starcluster.utils import print_timing
 from removenode import remove_node
-from addnode import add_node
+from addnode import add_nodes
+#from starcluster.balancers import sge
+from starcluster.balancers.sge import visualizer
 
 class SGEStats(object):
     hosts = []
@@ -245,7 +247,8 @@ class SGELoadBalancer(LoadBalancer):
     add_nodes_per_iteration = 1
     kill_after = 8 #default = 50
     __last_cluster_mod_time = datetime.datetime.utcnow()
-    stabilization_time = 420
+    stabilization_time = 180
+    _visualizer_on = True
 
     def __init__(self, cluster_tag, config):
         self._cluster_tag = cluster_tag
@@ -287,6 +290,15 @@ class SGELoadBalancer(LoadBalancer):
         self.stat.parse_qstat(qstatXml)
         self.stat.parse_qacct(qacct,now)
 
+    def _call_visualizer(self):
+        if not self._visualizer_on:
+            return
+
+        v = visualizer.SGEVisualizer()
+        v.record(self.stat)
+        v.read()
+        v.graph()
+
 
     def polling_loop(self):
         """
@@ -312,7 +324,7 @@ class SGELoadBalancer(LoadBalancer):
             #log.info("LJ id = %d, FJ id = %d."
             #         %(self.stat.last_job_id, self.stat.first_job_id))
 
-            log.info("Average job duration = %d sec, Average wait time = %d sec." %
+            log.info("Avg job duration = %d sec, Avg wait time = %d sec." %
                      (self.stat.avg_job_duration(), self.stat.avg_wait_time()))
 
             #evaluate if nodes need to be added
@@ -320,6 +332,9 @@ class SGELoadBalancer(LoadBalancer):
 
             #evaluate if nodes need to be removed
             self._eval_remove_node()
+
+            #call the visualizer
+            self._call_visualizer()
 
             #sleep for the specified number of seconds
             log.info("Sleeping, looping again in %d seconds.\n" 
@@ -373,8 +388,8 @@ class SGELoadBalancer(LoadBalancer):
         if need_to_add > 0:
             need_to_add = min(self.add_nodes_per_iteration, need_to_add)
             log.info("NEED TO ADD %d NODES!" % need_to_add)
+            add_nodes(self._cluster, need_to_add)
             self.__last_cluster_mod_time = datetime.datetime.utcnow()
-            #add_node(self._cluster, need_to_add)
             log.info("Done adding nodes.")
         return need_to_add
 
