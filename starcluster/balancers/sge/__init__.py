@@ -258,6 +258,7 @@ class SGELoadBalancer(LoadBalancer):
     stabilization_time = 180
     _visualizer_on = True
     visualizer = visualizer.SGEVisualizer()
+    iteration_count = 0
 
     def __init__(self, cluster_tag, config):
         self._cluster_tag = cluster_tag
@@ -279,6 +280,8 @@ class SGELoadBalancer(LoadBalancer):
         host information inside. The job array contains a hash for every job,
         containing statistics about the job name, priority, etc
         """
+        log.info("starting get_stats, iteration = %d", self.iteration_count)
+        self.iteration_count = self.iteration_count + 1
         master = self._cluster.master_node
         self.stat = SGEStats()
 

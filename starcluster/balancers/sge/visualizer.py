@@ -51,8 +51,9 @@ class SGEVisualizer(object):
         bits.append(s.avg_wait_time())
         #last field is array of loads for hosts
         arr = s.get_loads()
+        load_sum = 0
         load_sum = reduce(self.add, arr)
-        avg_load = load_sum / len(arr)
+        avg_load = float(load_sum) / int(len(arr))
         bits.append(avg_load)
         print "load sum = ", load_sum
 
