@@ -5,17 +5,14 @@ StarCluster SunGrinEngine stats parsing module
 import types
 import time
 from datetime import datetime
-import logging
-import pickle
 import numpy as np
-#from pylab import figure, show
 import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab
 import matplotlib.cbook as cbook
 import matplotlib.ticker as ticker
-from starcluster import balancers
-from starcluster.balancers import LoadBalancer 
-from starcluster import utils
+#from starcluster import balancers
+#from starcluster.balancers import LoadBalancer 
+#from starcluster import utils
 from starcluster.logger import log, INFO_NO_NEWLINE
 from starcluster.utils import print_timing
 
@@ -52,15 +49,15 @@ class SGEVisualizer(object):
         #last field is array of loads for hosts
         arr = s.get_loads()
         load_sum = 0
-        load_sum = reduce(self.add, arr)
-        avg_load = float(load_sum) / int(len(arr))
+        load_sum = float(reduce(self.add, arr))
+        avg_load = load_sum / len(arr)
         bits.append(avg_load)
-        print "load sum = ", load_sum
+        log.debug("load sum = %d" % load_sum)
 
         #write to file
         f = open(self.filepath, 'a')
         flat = ','.join(str(n) for n in bits)
-        #print bits
+        #print array to file
         f.write(flat)
         f.write('\n')
         f.close()
@@ -80,7 +77,7 @@ class SGEVisualizer(object):
 
     def graph(self, yaxis, title):
         if self.records == None:
-            print "ERROR: File hasn't been read() yet."
+            log.error("ERROR: File hasn't been read() yet.")
             return -1
         
         fig = plt.figure()
@@ -92,7 +89,8 @@ class SGEVisualizer(object):
         
         filename = self.pngpath + title + '.png'
         plt.savefig(filename, dpi=100)
-        print "saved graph " + title
+        log.debug("saved graph %s." % title)
+        plt.close(fig) #close it when its done
 
     def graph_all(self):
         vals = [ ['queued',self.records.queued_jobs], \
@@ -106,5 +104,5 @@ class SGEVisualizer(object):
         for sub in vals:
             self.graph(sub[1],sub[0])
 
-        print "done.\n"
+        log.info("done making graphs.")
 

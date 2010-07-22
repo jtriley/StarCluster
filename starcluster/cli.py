@@ -432,7 +432,7 @@ class CmdLoadBalance(CmdBase):
     """
     loadbalance <cluster_tag> 
 
-    Load balance StarCluster
+    Start the SGE Load Balancer.
     """
     names = ['loadbalance', 'bal']
 
@@ -448,10 +448,10 @@ class CmdLoadBalance(CmdBase):
         if len(args) != 1:
             self.parser.error("please specify a <cluster_tag>")
         cluster_tag = args[0]
-        plot = self.opts.plot
         interval = self.opts.interval
-        lb = sge.SGELoadBalancer(cluster_tag, self.cfg)
-        lb.polling_loop()
+        plot = self.opts.plot
+        lb = sge.SGELoadBalancer(cluster_tag, self.cfg, interval, plot)
+        lb.run()
 
 class CmdCreateImage(CmdBase):
     """

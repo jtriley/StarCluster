@@ -17,8 +17,6 @@ from starcluster.logger import log, INFO_NO_NEWLINE
 from starcluster.utils import print_timing
 from starcluster.removenode import remove_node
 from starcluster.addnode import add_nodes
-#from starcluster.balancers import sge
-from starcluster.balancers.sge import visualizer
 
 class SGEStats(object):
     hosts = []
@@ -26,8 +24,6 @@ class SGEStats(object):
     jobstats = []
     _default_fields = \
         ["JB_job_number","state","JB_submission_time","queue_name","slots"]
-    first_job_id = 0
-    last_job_id = 0
 
     def parse_qhost(self,string):
         """
@@ -68,11 +64,7 @@ class SGEStats(object):
                         if node2.nodeType == Node.TEXT_NODE:
                             hash[tag] = node2.data 
             #grab the submit time on all jobs, the last job's val stays
-            if 'JB_job_number' in hash:
-                self.last_job_id = int(hash['JB_job_number'])
             self.jobs.append(hash)
-        if len(self.jobs) > 0 and 'JB_job_number' in self.jobs[0]:
-                self.first_job_id = int(self.jobs[0]['JB_job_number'])
         return self.jobs
 
     def parse_qacct(self,string,dtnow):
@@ -230,6 +222,7 @@ class SGEStats(object):
         returns true if the cluster is processing the first job, False otherwise
         """
         if len(self.jobs) > 0 and self.jobs[0]['JB_job_number'] != u'1':
+            print "ON THE FIRST JOB"
             return True
         return False
 
@@ -246,7 +239,7 @@ class SGELoadBalancer(LoadBalancer):
     """
     This class is able to query each SGE host and return with load & queue statistics
     """
-    polling_interval = 30
+    polling_interval = 60
     max_nodes = 5
     min_nodes = 1
     keep_polling = True
@@ -256,22 +249,27 @@ class SGELoadBalancer(LoadBalancer):
     kill_after = 45
     __last_cluster_mod_time = datetime.datetime.utcnow()
     stabilization_time = 180
-    _visualizer_on = True
-    visualizer = visualizer.SGEVisualizer()
-    iteration_count = 0
+    _visualizer_on = False
 
-    def __init__(self, cluster_tag, config):
+    def __init__(self, cluster_tag, config,interval,plot):
+        """
+        this is the constructor for SGELoadBalancer.
+        """
         self._cluster_tag = cluster_tag
         self._cfg = config
         self._cluster = cluster.get_cluster(cluster_tag, self._cfg)
         if self.longest_allowed_queue_time < 300:
             log.warn("Longest Allowed Queue Time should be > 300 seconds.")
             log.warn("It takes ~5 minutes to launch a new EC2 node.")
+        if interval != None:
+            self.polling_interval = interval
+            log.debug("SGELoadBalancer: polling interval set to %d seconds." 
+                      % polling_interval)
+        if plot == True:
+            self._visualizer_on = True
+            log.debug("SGELoadBalancer: visualizer enabled.")
 
-    def run(self):
-        pass
-    
-    @print_timing
+    #@print_timing
     def get_stats(self):
         """
         this function will ssh to the SGE master and get load & queue stats.
@@ -280,8 +278,7 @@ class SGELoadBalancer(LoadBalancer):
         host information inside. The job array contains a hash for every job,
         containing statistics about the job name, priority, etc
         """
-        log.info("starting get_stats, iteration = %d", self.iteration_count)
-        self.iteration_count = self.iteration_count + 1
+        log.info("starting get_stats")
         master = self._cluster.master_node
         self.stat = SGEStats()
 
@@ -306,16 +303,30 @@ class SGELoadBalancer(LoadBalancer):
     def _call_visualizer(self):
         if not self._visualizer_on:
             return
+        try:
+            from starcluster.balancers.sge import visualizer
+        except ImportError,e:
+                log.error("Error importing matplotlib and numpy:")
+                log.error(str(e)) 
+                log.error("check that matplotlib and numpy are installed and:")
+                log.error("   $ python -c 'import matplotlib'")
+                log.error("   $ python -c 'import numpy'")
+                log.error("completes without error")
+                log.error("Visualizer has been disabled.")
+                #turn the visualizer off, but keep going.
+                self._visualizer_on = False
+                return
 
-        self.visualizer.record(self.stat)
-        self.visualizer.read()
-        self.visualizer.graph_all()
+        visualizer = visualizer.SGEVisualizer()
+        visualizer.record(self.stat)
+        visualizer.read()
+        visualizer.graph_all()
 
 
-    def polling_loop(self):
+    def run(self):
         """
-        this is a rough looping function. it has some problems and is a work in
-        progress. it will loop indefinitely, using SGELoadBalancer.get_stats()
+        this is a rough looping function. it will loop indefinitely, using 
+        SGELoadBalancer.get_stats()
         to get the clusters status. It will look at the job queue and try to 
         decide whether to add or remove a node. It should later look at job
         durations. Doesn't yet.
@@ -333,8 +344,6 @@ class SGELoadBalancer(LoadBalancer):
             log.info("Oldest job is from %s. # queued jobs = %d. # hosts = %d."  
                      % (self.stat.oldest_queued_job_age(), 
                      len(self.stat.get_queued_jobs()), len(self.stat.hosts)))
-            #log.info("LJ id = %d, FJ id = %d."
-            #         %(self.stat.last_job_id, self.stat.first_job_id))
 
             log.info("Avg job duration = %d sec, Avg wait time = %d sec." %
                      (self.stat.avg_job_duration(), self.stat.avg_wait_time()))
@@ -393,13 +402,13 @@ class SGELoadBalancer(LoadBalancer):
                          % (age_delta.seconds, self.longest_allowed_queue_time))
                 need_to_add = qlen / sph
                 
-                if ettc < 300:
+                if ettc < 300 and not self.stat.on_first_job():
                     log.warn("There is a possibility that the job queue is" + \
                              " shorter than 5 minutes in duration.")
         
         if need_to_add > 0:
             need_to_add = min(self.add_nodes_per_iteration, need_to_add)
-            log.info("NEED TO ADD %d NODES!" % need_to_add)
+            log.info("*** ADDING %d NODES." % need_to_add)
             add_nodes(self._cluster, need_to_add)
             self.__last_cluster_mod_time = datetime.datetime.utcnow()
             log.info("Done adding nodes.")
@@ -436,15 +445,12 @@ class SGELoadBalancer(LoadBalancer):
                to_kill = self._find_node_for_removal()
                if len(to_kill) == 0:
                    log.info("No nodes can be killed at this time.")
-               #TODO: Kill X nodes at a time, not just one
                #kill the nodes returned
                for n in to_kill:
                    if self._node_alive(n.id):
                        log.info("***KILLING NODE: %s (%s)." % (n.id,n.dns_name))
                        remove_node(n,self._cluster) 
                        self.__last_cluster_mod_time = datetime.datetime.utcnow()
-                       return #temporary measure, kill only one node at a time
-                       #until we have add-node
                    else:
                         log.error("Trying to kill a dead node! id = %s." % n.id)
            else:
@@ -505,6 +511,7 @@ class SGELoadBalancer(LoadBalancer):
         return True
 
     if __name__ == "__main__":
+        #TODO: replace this with something else or delete
         cfg = config.StarClusterConfig()
         cl = cluster.get_cluster('mycluster',cfg)
         balancer = LoadBalancer(cl)
