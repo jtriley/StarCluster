@@ -8,7 +8,7 @@ from datetime import datetime
 import logging
 import pickle
 import numpy as np
-from pylab import figure, show
+#from pylab import figure, show
 import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab
 import matplotlib.cbook as cbook
@@ -83,8 +83,8 @@ class SGEVisualizer(object):
     
         fig.autofmt_xdate()
 
-        plt.show()
-        show()
+        #plt.show()
+        #show()
         print "showed graph"
 
     def run(self):

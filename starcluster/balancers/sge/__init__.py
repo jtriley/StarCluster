@@ -15,8 +15,8 @@ from starcluster import config
 from starcluster import cluster
 from starcluster.logger import log, INFO_NO_NEWLINE
 from starcluster.utils import print_timing
-from removenode import remove_node
-from addnode import add_nodes
+from starcluster.removenode import remove_node
+from starcluster.addnode import add_nodes
 #from starcluster.balancers import sge
 from starcluster.balancers.sge import visualizer
 
@@ -233,6 +233,14 @@ class SGEStats(object):
             return True
         return False
 
+    def get_loads(self):
+        """
+        returns an array containing the loads on each host in cluster
+        """
+        loads = []
+        for h in self.hosts:
+            loads.append(h['load_avg'])
+        return loads
 
 class SGELoadBalancer(LoadBalancer):
     """
@@ -249,6 +257,7 @@ class SGELoadBalancer(LoadBalancer):
     __last_cluster_mod_time = datetime.datetime.utcnow()
     stabilization_time = 180
     _visualizer_on = True
+    visualizer = visualizer.SGEVisualizer()
 
     def __init__(self, cluster_tag, config):
         self._cluster_tag = cluster_tag
@@ -294,10 +303,9 @@ class SGELoadBalancer(LoadBalancer):
         if not self._visualizer_on:
             return
 
-        v = visualizer.SGEVisualizer()
-        v.record(self.stat)
-        v.read()
-        v.graph()
+        self.visualizer.record(self.stat)
+        self.visualizer.read()
+        #self.visualizer.graph()
 
 
     def polling_loop(self):
