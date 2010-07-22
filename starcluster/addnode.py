@@ -108,6 +108,7 @@ def add_nodes(cluster, num_nodes):
     s = Spinner()
     log.log(INFO_NO_NEWLINE, "Waiting for nodes to come up...")
     while not cluster.is_cluster_up():
+        cluster._nodes = None
         time.sleep(30)
     s.stop()
     for alias in new_nodes:

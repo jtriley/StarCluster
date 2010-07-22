@@ -247,13 +247,13 @@ class SGELoadBalancer(LoadBalancer):
     This class is able to query each SGE host and return with load & queue statistics
     """
     polling_interval = 30
-    max_nodes = 20
+    max_nodes = 5
     min_nodes = 1
     keep_polling = True
     allow_master_kill = False
-    longest_allowed_queue_time = 300
+    longest_allowed_queue_time = 600
     add_nodes_per_iteration = 1
-    kill_after = 8 #default = 50
+    kill_after = 45
     __last_cluster_mod_time = datetime.datetime.utcnow()
     stabilization_time = 180
     _visualizer_on = True
@@ -298,14 +298,15 @@ class SGELoadBalancer(LoadBalancer):
         self.stat.parse_qhost(qhostXml)
         self.stat.parse_qstat(qstatXml)
         self.stat.parse_qacct(qacct,now)
-
+    
+    @print_timing
     def _call_visualizer(self):
         if not self._visualizer_on:
             return
 
         self.visualizer.record(self.stat)
         self.visualizer.read()
-        #self.visualizer.graph()
+        self.visualizer.graph_all()
 
 
     def polling_loop(self):
