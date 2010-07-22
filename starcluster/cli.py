@@ -45,6 +45,7 @@ from starcluster import optcomplete
 from starcluster import image
 from starcluster import volume
 from starcluster import utils
+from starcluster.balancers import sge
 from starcluster.templates import experimental
 from starcluster.logger import log, console, DEBUG
 
@@ -426,6 +427,31 @@ class CmdListClusters(CmdBase):
     def execute(self, args):
         cfg = self.cfg
         cluster.list_clusters(cfg)
+
+class CmdLoadBalance(CmdBase):
+    """
+    loadbalance <cluster_tag> 
+
+    Load balance StarCluster
+    """
+    names = ['loadbalance', 'bal']
+
+    def addopts(self, parser):
+        opt = parser.add_option("-p","--plot", dest="plot",
+            action="store_true", default=False,
+            help="Plot usage data at each iteration")
+        opt = parser.add_option("-i","--interval", dest="interval",
+            action="store", type="int", default=None,
+            help="Polling interval for load balancer")
+
+    def execute(self, args):
+        if len(args) != 1:
+            self.parser.error("please specify a <cluster_tag>")
+        cluster_tag = args[0]
+        plot = self.opts.plot
+        interval = self.opts.interval
+        lb = sge.SGELoadBalancer(cluster_tag, self.cfg)
+        lb.polling_loop()
 
 class CmdCreateImage(CmdBase):
     """
@@ -1052,6 +1078,7 @@ def main():
         CmdSshMaster(),
         CmdSshNode(),
         CmdSshInstance(),
+        CmdLoadBalance(),
         CmdListInstances(),
         CmdListImages(),
         CmdListPublic(),
