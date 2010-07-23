@@ -20,7 +20,8 @@ Here is an example of the mysqlcluster plugin section of the StarCluster config 
 	INDEX_MEMORY = 18M
 	DATA_DIR = /var/lib/mysqlcluster
 	BACKUP_DATA_DIR = /var/lib/mysqlcluster/
-	DEDICATED_QUERY = False
+	DEDICATED_QUERY = True
+	NUM_DATA_NODES = 2
 
 NUM_REPLICAS: Specifies number of replicas for each table in the
 cluster, as well as the number of node groups. The maximum value is 4,
@@ -57,11 +58,11 @@ What This Plugin Does
 ---------------------
 # Creates data and backup directories, changes ownership to mysql user
 # Generates /etc/mysql/ndb_mgmd.cnf configuration file on master.
-# Generates /etc/mysql/my.cnf configuration file on data nodes.
+# Generates /etc/mysql/my.cnf configuration file on all nodes.
 # Kills mysql processes on all nodes.
 # Starts Management Client on master.
-# Starts mysql on data/query nodes
-# Starts mysql-ndb on data/query nodes.
+# Starts mysql on query nodes
+# Starts mysql-ndb on data nodes.
 
 
 Creating a Replicated Table
