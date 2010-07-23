@@ -189,15 +189,15 @@ ndb-connectstring=%(mgm_ip)s
 '''
 
 class MysqlCluster(ClusterSetup):
-	def __init__(self,num_replicas,data_memory,index_memory,data_dir,backup_data_dir,storage_data_memory,dedicated_query):
+	def __init__(self,num_replicas,data_memory,index_memory,data_dir,backup_data_dir,\
+					dedicated_query,num_data_nodes):
 		self._num_replicas=num_replicas
 		self._data_memory=data_memory
 		self._index_memory=index_memory
 		self._data_dir=data_dir
 		self._backup_data_dir=backup_data_dir
-		self._storage_data_memory=storage_data_memory
 		self._dedicated_query=dedicated_query
-                self._num_data_nodes=num_data_nodes
+		self._num_data_nodes=num_data_nodes
 
 	def run(self, master, nodes, user, user_shell, volumes):
 		mconn = master.ssh
@@ -206,12 +206,13 @@ class MysqlCluster(ClusterSetup):
 		if not self._dedicated_query: 
 			self.storage_ips = [x.private_ip_address for x in nodes[1:]]
 			self.query_ips = self.storage_ips
-                        data_nodes = nodes
+			data_nodes = nodes
+			query_nodes = nodes
 		else:
-                        data_nodes = nodes[1:self._num_data_nodes]
-                        query_nodes = nodes[self._num_data_nodes+1:]
-			self.storage_ips = [x.private_ip.address for x in data_nodes]
-			self.query_ips = [x.private_ip.address for x in query_nodes]
+			data_nodes = nodes[1:self._num_data_nodes+1]
+			query_nodes = nodes[self._num_data_nodes+1:]
+			self.storage_ips = [x.private_ip_address for x in data_nodes]
+			self.query_ips = [x.private_ip_address for x in query_nodes]
 
 		# Create backup directory and change ownership of mysql-cluster directory
 		for node in nodes:
@@ -223,7 +224,7 @@ class MysqlCluster(ClusterSetup):
 			log.info('Creating backup directory and changing ownership of ' +\
 				'data directory on node %s' % node_num)
 			nconn.execute('mkdir -p %s/BACKUP' % self._backup_data_dir)
-			nconn.execute('chown -R %s' % self._data_dir)
+			nconn.execute('chown -R mysql:mysql %s' % self._data_dir)
 		
 		# Generate and place ndb_mgmd configuration file
 		log.info('Generating ndb_mgmd.cnf...')
@@ -232,7 +233,7 @@ class MysqlCluster(ClusterSetup):
 		ndb_mgmd.close()
 		
 		# Generate and place my.cnf configuration file on each data node
-		for node in data_nodes:
+		for node in nodes:
 			log.info('Generating my.cnf on node %d' % nodes.index(node))
 			nconn = node.ssh
 			my_cnf = nconn.remote_file('/etc/mysql/my.cnf')
@@ -243,36 +244,31 @@ class MysqlCluster(ClusterSetup):
 		log.info('Restarting mysql-ndb-mgm on master node...')
 		mconn.execute('/etc/init.d/mysql-ndb-mgm restart')
 		
-		
 		# Start mysqld-ndb on data nodes
 		for node in data_nodes:
 			nconn = node.ssh
 			log.info('Restarting mysql-ndb on node %d...' % nodes.index(node))
 			nconn.execute('/etc/init.d/mysql-ndb restart')
                 
-                # Start mysql on query nodes
-                for node in query_nodes:
-                        nconn = node.ssh
-                        log.info('Starting mysql on node %d, ignoring missing file error...' \
-                                 % nodes.index(node))
-                        nconn.execute('/etc/init.d/mysql start', ignore_exit_status = True)
-
-		log.info('MySQL Cluster installation complete. Run ndb_mgm to load Management Client.')
-		log.info('Use command \'show;\' to check configuration.')
-
+        # Start mysql on query nodes
+		for node in query_nodes:
+			nconn = node.ssh
+			log.info('Starting mysql on node %d, ignoring missing file error...' % nodes.index(node))
+			nconn.execute('/etc/init.d/mysql start', ignore_exit_status = True)
+		
 	def generate_ndb_mgmd(self):
 		ndb_mgmd = ndb_mgmd_template % {'num_replicas':self._num_replicas,'data_memory':self._data_memory, \
 			'index_memory':self._index_memory,'mgm_ip':self.mgm_ip}
 		
 		for x in self.storage_ips:
 			ndb_mgmd += ndb_mgmd_storage % {'storage_ip':x,'data_dir':self._data_dir,\
-				'backup_data_dir':self._backup_data_dir,'storage_data_memory':self._storage_data_memory}
+				'backup_data_dir':self._backup_data_dir}
 		
 		ndb_mgmd += '\n'
 		
 		if self._dedicated_query: 
 			for x in self.query_ips:
-				ndb_mgmd += '[MYSQLD]\nHostName=%s' % x
+				ndb_mgmd += '[MYSQLD]\nHostName=%s\n' % x
 		else:
 			for x in self.query_ips:
 				ndb_mgmd += '[MYSQLD]\n'
