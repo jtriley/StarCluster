@@ -46,7 +46,6 @@ ndb_mgmd_storage = \
 HostName=%(storage_ip)s
 DataDir=%(data_dir)s
 BackupDataDir=%(backup_data_dir)s
-DataMemory=%(storage_data_memory)s
 '''
 
 my_cnf = \
@@ -198,6 +197,7 @@ class MysqlCluster(ClusterSetup):
 		self._backup_data_dir=backup_data_dir
 		self._storage_data_memory=storage_data_memory
 		self._dedicated_query=dedicated_query
+                self._num_data_nodes=num_data_nodes
 
 	def run(self, master, nodes, user, user_shell, volumes):
 		mconn = master.ssh
@@ -206,10 +206,13 @@ class MysqlCluster(ClusterSetup):
 		if not self._dedicated_query: 
 			self.storage_ips = [x.private_ip_address for x in nodes[1:]]
 			self.query_ips = self.storage_ips
-		#else:
-		#	self.storage_ips = [x.private_ip.address for x in nodes[1:self._num_replicas]]
-		#	self.query_ips = [x.private_ip.address for x in nodes[self._num_replicas+1:]]
-		
+                        data_nodes = nodes
+		else:
+                        data_nodes = nodes[1:self._num_data_nodes]
+                        query_nodes = nodes[self._num_data_nodes+1:]
+			self.storage_ips = [x.private_ip.address for x in data_nodes]
+			self.query_ips = [x.private_ip.address for x in query_nodes]
+
 		# Create backup directory and change ownership of mysql-cluster directory
 		for node in nodes:
 			nconn = node.ssh
@@ -229,7 +232,7 @@ class MysqlCluster(ClusterSetup):
 		ndb_mgmd.close()
 		
 		# Generate and place my.cnf configuration file on each data node
-		for node in nodes[1:]:
+		for node in data_nodes:
 			log.info('Generating my.cnf on node %d' % nodes.index(node))
 			nconn = node.ssh
 			my_cnf = nconn.remote_file('/etc/mysql/my.cnf')
@@ -241,14 +244,19 @@ class MysqlCluster(ClusterSetup):
 		mconn.execute('/etc/init.d/mysql-ndb-mgm restart')
 		
 		
-		# Start mysql/mysqld-ndb on nodes
-		for node in nodes[1:]:
+		# Start mysqld-ndb on data nodes
+		for node in data_nodes:
 			nconn = node.ssh
-			log.info('Starting mysql on node %d, ignoring missing file error...' % nodes.index(node))
-			nconn.execute('/etc/init.d/mysql start', ignore_exit_status = True)
 			log.info('Restarting mysql-ndb on node %d...' % nodes.index(node))
 			nconn.execute('/etc/init.d/mysql-ndb restart')
-			
+                
+                # Start mysql on query nodes
+                for node in query_nodes:
+                        nconn = node.ssh
+                        log.info('Starting mysql on node %d, ignoring missing file error...' \
+                                 % nodes.index(node))
+                        nconn.execute('/etc/init.d/mysql start', ignore_exit_status = True)
+
 		log.info('MySQL Cluster installation complete. Run ndb_mgm to load Management Client.')
 		log.info('Use command \'show;\' to check configuration.')
 
