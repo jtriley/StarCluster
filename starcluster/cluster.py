@@ -183,7 +183,7 @@ def list_clusters(cfg):
 
 def run_plugin(plugin_name, cluster_tag, cfg):
     ec2 = cfg.get_easy_ec2()
-    cl = get_cluster(cluster_tag)
+    cl = get_cluster(cluster_tag, cfg)
     cl.load_receipt()
     plug = cfg.get_plugin(plugin_name)
     plugins = {}
