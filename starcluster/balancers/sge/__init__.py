@@ -307,7 +307,7 @@ class SGELoadBalancer(LoadBalancer):
         host information inside. The job array contains a hash for every job,
         containing statistics about the job name, priority, etc
         """
-        log.info("starting get_stats")
+        log.debug("starting get_stats")
         master = self._cluster.master_node
         self.stat = SGEStats()
 
@@ -444,7 +444,6 @@ class SGELoadBalancer(LoadBalancer):
                    log.error("Failed to add new host.")
                    log.error("Exception Type: %s, Message: %s" % \
                         (type(e),e))
-                   poop()
                    return -1
 
             self.__last_cluster_mod_time = datetime.datetime.utcnow()
@@ -520,8 +519,8 @@ class SGELoadBalancer(LoadBalancer):
             is_working = self.stat.is_node_working(node)
             mins_up = self._minutes_uptime(node) % 60
             if not is_working:
-                log.info("Idle Node %s has been up for %d minutes past the hour."
-                      % (node.id,mins_up))
+                log.info("Idle Node %s (%s) has been up for %d minutes past the hour."
+                      % (node.id,node.alias,mins_up))
 
             if self.polling_interval > 300:
                 self.kill_after = max(45,60 - (2*self.polling_interval/60))
