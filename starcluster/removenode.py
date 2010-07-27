@@ -3,12 +3,12 @@ import re
 from starcluster.logger import log
 
 def _remove_line_from_file(f, match):
-    fcontents = f.read().splitlines()
+    fcontents = f.readlines()
     lines = []
     for line in fcontents:
         if match not in line:
             lines.append(line)
-    return '\n'.join(lines)
+    return ''.join(lines)
 
 def remove_from_etc_hosts(node, cluster):
     for n in cluster.running_nodes:
