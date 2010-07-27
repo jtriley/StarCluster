@@ -76,8 +76,8 @@ def _get_node_number(alias):
     """
     if alias == "master":
         return 0
-    pattern = re.compile(r"node([0-9][0-9][0-9])")
-    if pattern.match(alias) and len(alias) == 7:
+    pattern = re.compile(r"node([0-9]{3})$")
+    if pattern.match(alias):
         return int(pattern.match(alias).groups()[0])
 
 def ssh_to_cluster_node(cluster_name, node_id, cfg, user='root'):
@@ -445,7 +445,7 @@ class Cluster(object):
                     "Running node's instance type (%s) != %s" % \
                     (ntype, self.node_instance_type))
             nimage = n.image_id
-            if nimage != image:
+            if nimage != self.node_image_id:
                 raise exception.ClusterValidationError(
                     "Running node's image id (%s) != %s" % \
                     (nimage, image))
