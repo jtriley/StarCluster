@@ -189,8 +189,8 @@ ndb-connectstring=%(mgm_ip)s
 '''
 
 class MysqlCluster(ClusterSetup):
-	def __init__(self,num_replicas,data_memory,index_memory,data_dir,backup_data_dir,\
-					dedicated_query,num_data_nodes):
+	def __init__(self,num_replicas=2,data_memory='80M',index_memory='18M',data_dir='/var/lib/mysql-cluster/',\
+	               backup_data_dir='/var/lib/mysql-cluster/', dedicated_query=False,num_data_nodes=0):
 		self._num_replicas=num_replicas
 		self._data_memory=data_memory
 		self._index_memory=index_memory
@@ -211,8 +211,8 @@ class MysqlCluster(ClusterSetup):
 		else:
 			self.data_nodes = nodes[1:self._num_data_nodes+1]
 			self.query_nodes = nodes[self._num_data_nodes+1:]
-			self.storage_ips = [x.private_ip_address for x in data_nodes]
-			self.query_ips = [x.private_ip_address for x in query_nodes]
+			self.storage_ips = [x.private_ip_address for x in self.data_nodes]
+			self.query_ips = [x.private_ip_address for x in self.query_nodes]
 
 		# Create backup directory and change ownership of mysql-cluster directory
 		for node in nodes:
