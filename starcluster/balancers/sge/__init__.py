@@ -239,17 +239,46 @@ class SGELoadBalancer(LoadBalancer):
     """
     This class is able to query each SGE host and return with load & queue statistics
     """
+    #       *** All times are in SECONDS unless otherwise specified ***
+
+    #The polling interval in seconds. recommended: 60-300. any more frequent is
+    #very wasteful. the polling loop with visualizer takes about 15 seconds.
     polling_interval = 60
+
+    #VERY IMPORTANT: Set this to the max nodes you're willing to have in your
+    #cluster. Try setting this to the default cluster size you'd ordinarily use.
     max_nodes = 5
+
+    #IMPORTANT: Set this to the longest time a job can wait before another host
+    #is added to the cluster to help. Recommended: 300-900 seconds (5-15 mins).
+    #Do not use a value less than 300 seconds because that is how long an
+    #instance will take to start up.
+    longest_allowed_queue_time = 900
+
+    #Keep this at 1 - your master, for now.
     min_nodes = 1
-    keep_polling = True
+
+    #This would allow the master to be killed when the queue empties. UNTESTED.
     allow_master_kill = False
-    longest_allowed_queue_time = 600
+    
+    #How many nodes to add per iteration. Setting it > 1 opens up possibility
+    #of spending too much $$
     add_nodes_per_iteration = 1
+    
+    #Kill an instance after it has been up for X minutes. Do not kill earlier,
+    #Since you've already paid for that hour. In Minutes.
     kill_after = 45
-    __last_cluster_mod_time = datetime.datetime.utcnow()
+       
+    #After adding a node, how long to wait for the instance to start new jobs
     stabilization_time = 180
+
+    #Visualizer off by default. Start it with "starcluster loadbalance -p tag"
     _visualizer_on = False
+
+    #not for modification
+    _keep_polling = True
+    __last_cluster_mod_time = datetime.datetime.utcnow()
+
 
     def __init__(self, cluster_tag, config,interval,plot):
         """
@@ -278,7 +307,7 @@ class SGELoadBalancer(LoadBalancer):
         host information inside. The job array contains a hash for every job,
         containing statistics about the job name, priority, etc
         """
-        log.info("starting get_stats")
+        log.debug("starting get_stats")
         master = self._cluster.master_node
         self.stat = SGEStats()
 
@@ -331,7 +360,7 @@ class SGELoadBalancer(LoadBalancer):
         decide whether to add or remove a node. It should later look at job
         durations. Doesn't yet.
         """
-        while(self.keep_polling):
+        while(self._keep_polling):
             if not self.are_nodes_up(self._cluster):
                 log.info("Entire cluster is not up,nodes added/removed. No Action.")
                 time.sleep(self.polling_interval)
@@ -409,7 +438,14 @@ class SGELoadBalancer(LoadBalancer):
         if need_to_add > 0:
             need_to_add = min(self.add_nodes_per_iteration, need_to_add)
             log.info("*** ADDING %d NODES." % need_to_add)
-            add_nodes(self._cluster, need_to_add)
+            try:
+                add_nodes(self._cluster, need_to_add)
+            except Exception, e:
+                   log.error("Failed to add new host.")
+                   log.error("Exception Type: %s, Message: %s" % \
+                        (type(e),e))
+                   return -1
+
             self.__last_cluster_mod_time = datetime.datetime.utcnow()
             log.info("Done adding nodes.")
         return need_to_add
@@ -449,7 +485,14 @@ class SGELoadBalancer(LoadBalancer):
                for n in to_kill:
                    if self._node_alive(n.id):
                        log.info("***KILLING NODE: %s (%s)." % (n.id,n.dns_name))
-                       remove_node(n,self._cluster) 
+                       try:
+                           remove_node(n,self._cluster) 
+                       except Exception, e:
+                           log.error("Failed to terminate the host.")
+                           log.error("Exception Type: %s, Message: %s" % \
+                                (type(e),e))
+                           return -1
+                       #successfully removed node
                        self.__last_cluster_mod_time = datetime.datetime.utcnow()
                    else:
                         log.error("Trying to kill a dead node! id = %s." % n.id)
@@ -476,8 +519,8 @@ class SGELoadBalancer(LoadBalancer):
             is_working = self.stat.is_node_working(node)
             mins_up = self._minutes_uptime(node) % 60
             if not is_working:
-                log.info("Idle Node %s has been up for %d minutes past the hour."
-                      % (node.id,mins_up))
+                log.info("Idle Node %s (%s) has been up for %d minutes past the hour."
+                      % (node.id,node.alias,mins_up))
 
             if self.polling_interval > 300:
                 self.kill_after = max(45,60 - (2*self.polling_interval/60))

@@ -94,11 +94,20 @@ def add_node(cluster, node):
     mount_nfs(cluster,node)
     add_to_sge(master, node)
 
+def next_node_num(cluster):
+    highest = 0
+    nodes = cluster.nodes
+    for n in nodes:
+        if n.alias != 'master' and n.state in [u'pending',u'running']:
+            highest = int(n.alias[4:8])
+    return highest + 1
+
 def add_nodes(cluster, num_nodes):
     cluster.load_receipt()
     current_num_nodes = len([i for i in cluster.cluster_group.instances() if i.state in ['pending','running']])
+    next_node_id = next_node_num(cluster)
     new_nodes = []
-    for id in range(current_num_nodes, current_num_nodes + num_nodes):
+    for id in range(next_node_id, next_node_id+ num_nodes):
         alias = 'node%.3d' % id
         print cluster.create_node(alias)
         new_nodes.append(alias)
