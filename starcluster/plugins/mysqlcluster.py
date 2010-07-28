@@ -206,11 +206,11 @@ class MysqlCluster(ClusterSetup):
 		if not self._dedicated_query: 
 			self.storage_ips = [x.private_ip_address for x in nodes[1:]]
 			self.query_ips = self.storage_ips
-			data_nodes = nodes
-			query_nodes = nodes
+			self.data_nodes = nodes[1:]
+			self.query_nodes = nodes
 		else:
-			data_nodes = nodes[1:self._num_data_nodes+1]
-			query_nodes = nodes[self._num_data_nodes+1:]
+			self.data_nodes = nodes[1:self._num_data_nodes+1]
+			self.query_nodes = nodes[self._num_data_nodes+1:]
 			self.storage_ips = [x.private_ip_address for x in data_nodes]
 			self.query_ips = [x.private_ip_address for x in query_nodes]
 
@@ -245,13 +245,13 @@ class MysqlCluster(ClusterSetup):
 		mconn.execute('/etc/init.d/mysql-ndb-mgm restart')
 		
 		# Start mysqld-ndb on data nodes
-		for node in data_nodes:
+		for node in self.data_nodes:
 			nconn = node.ssh
 			log.info('Restarting mysql-ndb on node %d...' % nodes.index(node))
 			nconn.execute('/etc/init.d/mysql-ndb restart')
                 
         # Start mysql on query nodes
-		for node in query_nodes:
+		for node in self.query_nodes:
 			nconn = node.ssh
 			log.info('Starting mysql on node %d, ignoring missing file error...' % nodes.index(node))
 			nconn.execute('/etc/init.d/mysql start', ignore_exit_status = True)
@@ -267,10 +267,10 @@ class MysqlCluster(ClusterSetup):
 		ndb_mgmd += '\n'
 		
 		if self._dedicated_query: 
-			for x in self.query_ips:
-				ndb_mgmd += '[MYSQLD]\nHostName=%s\n' % x
+			for x in self.query_nodes:
+				ndb_mgmd += '[MYSQLD]\nHostName=%s\n' % x.private_ip_address
 		else:
-			for x in self.query_ips:
+			for x in self.query_nodes:
 				ndb_mgmd += '[MYSQLD]\n'
 			
 		return ndb_mgmd
