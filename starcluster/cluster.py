@@ -82,17 +82,11 @@ def _get_node_number(alias):
 
 def ssh_to_cluster_node(cluster_name, node_id, cfg, user='root'):
     cluster = get_cluster(cluster_name, cfg)
-    node_num = _get_node_number(node_id)
-    if node_num is None:
-        node_num = node_id
-    node = None
-    try:
-        node = cluster.nodes[int(node_num)]
-    except:
-        if node_id.startswith('i-') and len(node_id) == 10:
-            node = cluster.get_node_by_id(node_id)
-        else:
-            node = cluster.get_node_by_dns_name(node_id)
+    node = cluster.get_node_by_alias(node_id)
+    if not node:
+        node = cluster.get_node_by_dns_name(node_id)
+    if not node:
+        node = cluster.get_node_by_id(node_id)
     if node:
         key = cfg.get_key(node.key_name)
         cmd = 'ssh -i %s %s@%s' % (key.key_location, user,
