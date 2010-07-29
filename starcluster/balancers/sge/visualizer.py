@@ -52,7 +52,6 @@ class SGEVisualizer(object):
         load_sum = float(reduce(self.add, arr))
         avg_load = load_sum / len(arr)
         bits.append(avg_load)
-        log.debug("load sum = %d" % load_sum)
 
         #write to file
         f = open(self.filepath, 'a')
