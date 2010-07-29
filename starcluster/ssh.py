@@ -208,7 +208,7 @@ class Connection(object):
         channel.exec_command(command)
 
     def execute(self, command, silent = True, only_printable = False,
-                ignore_exit_status=False):
+                ignore_exit_status=False, log_output=True):
         """
         Execute a remote command and return stdout/stderr
 
@@ -232,11 +232,10 @@ class Connection(object):
             while line != '':
                 line = stdout.readline()
                 if only_printable:
-                    line = ''.join(char for char in line if char in string.printable) 
+                    line = ''.join(char for char in line if char in string.printable)
                 if line != '':
                     output.append(line)
                     print line,
-
             for line in stderr.readlines():
                 output.append(line)
                 print line;
@@ -250,7 +249,7 @@ class Connection(object):
             else:
                 log.debug("command %s failed with status %d" % (command,
                                                                 exit_status))
-        if silent:
+        if log_output:
             for line in output:
                 log.debug(line.strip())
         return output
