@@ -99,7 +99,9 @@ def next_node_num(cluster):
     nodes = cluster.nodes
     for n in nodes:
         if n.alias != 'master' and n.state in [u'pending',u'running']:
-            highest = int(n.alias[4:8])
+            highest = max(highest,int(n.alias[4:8])) 
+            #the max is needed, sometimes nodes don't list in order
+    log.debug("Highest node number is %d. Will add %d." % (highest, highest+1))
     return highest + 1
 
 def add_nodes(cluster, num_nodes):
