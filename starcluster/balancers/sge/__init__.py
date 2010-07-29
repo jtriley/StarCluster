@@ -328,7 +328,7 @@ class SGELoadBalancer(LoadBalancer):
         self.stat.parse_qstat(qstatXml)
         self.stat.parse_qacct(qacct,now)
     
-    @print_timing
+    #@print_timing
     def _call_visualizer(self):
         if not self._visualizer_on:
             return
@@ -400,7 +400,7 @@ class SGELoadBalancer(LoadBalancer):
         """
         need_to_add = 0
         if len(self.stat.hosts) >= self.max_nodes:
-            log.info( "Can't add another host, already at max (%d)." % \
+            log.info( "Won't add another host, currently at max (%d)." % \
                    self.max_nodes)
             return 0
         qlen = len(self.stat.get_queued_jobs())
