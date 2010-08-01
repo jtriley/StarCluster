@@ -338,13 +338,17 @@ class StarClusterConfig(object):
 
     def _load_instance_types(self, section_name, store):
         cluster_section = store
-        instance_types = cluster_section.get('node_instance_types')
-        if not instance_types or isinstance(instance_types[0], AttributeDict):
+        instance_types = cluster_section.get('node_instance_type')
+        if isinstance(instance_types, basestring):
             return
         itypes = []
         cluster_section['node_instance_types'] = itypes
         total_num_nodes = 0
-        for type_spec in instance_types:
+        default_instance_type = instance_types[-1]
+        if not default_instance_type in static.INSTANCE_TYPES.keys():
+            raise exception.ConfigError('no default instance type specified')
+        cluster_section['node_instance_type'] = default_instance_type
+        for type_spec in instance_types[:-1]:
             type_spec = type_spec.split(':')
             if len(type_spec) > 3:
                 raise exception.ConfigError(
