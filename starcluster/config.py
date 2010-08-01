@@ -338,9 +338,9 @@ class StarClusterConfig(object):
 
     def _load_instance_types(self, section_name, store):
         cluster_section = store
-        if cluster_section.get('node_instance_types'):
-            return
         instance_types = cluster_section.get('node_instance_type')
+        if isinstance(instance_types, basestring):
+            return
         itypes = []
         cluster_section['node_instance_types'] = itypes
         total_num_nodes = 0
