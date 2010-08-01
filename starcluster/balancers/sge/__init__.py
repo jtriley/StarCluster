@@ -302,7 +302,7 @@ class SGELoadBalancer(LoadBalancer):
             self._visualizer_on = True
             log.debug("SGELoadBalancer: visualizer enabled.")
 
-    def get_qatime(self):
+    def get_qatime(self,now):
         """
         this function takes the lookback window and creates a string
         representation of the past few hours, to feed to qacct to
@@ -311,7 +311,6 @@ class SGELoadBalancer(LoadBalancer):
         if self.lookback_window > 24 or self.lookback_window < 1:
             log.warn("Lookback window %d out of range (1..24). Not recommended." % \
                     self.lookback_window)
-        now = utils.get_remote_time(self._cluster)
         now = now.replace(hour=now.hour - self.lookback_window)
         str = now.strftime("%Y%m%d%H%M")
         return str
@@ -330,19 +329,19 @@ class SGELoadBalancer(LoadBalancer):
         master = self._cluster.master_node
         self.stat = SGEStats()
 
-        qatime = self.get_qatime()
 
         qhostXml = ""
         qstatXml = ""
         qacct = ""
-        qacct_cmd = 'source /etc/profile && qacct -j -b ' + qatime
         try:
+            now = utils.get_remote_time(self._cluster)
+            qatime = self.get_qatime(now)
+            qacct_cmd = 'source /etc/profile && qacct -j -b ' + qatime
+            qstat_cmd = 'source /etc/profile && qstat -q all.q -u \"*\" -xml'
             qhostXml = '\n'.join(master.ssh.execute('source /etc/profile && qhost -xml', \
                                                     log_output=False))
-            qstatXml = '\n'.join(master.ssh.execute('source /etc/profile && qstat -xml', \
-                                                    log_output=False))
+            qstatXml = '\n'.join(master.ssh.execute( qstat_cmd, log_output=False))
             qacct = '\n'.join(master.ssh.execute(qacct_cmd,log_output=False))
-            now = utils.get_remote_time(self._cluster)
         except Exception, e:
             log.error("Error occured getting SGE stats via ssh. Cluster terminated?")
             log.error(e)
