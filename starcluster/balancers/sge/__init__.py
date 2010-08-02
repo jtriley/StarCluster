@@ -82,8 +82,8 @@ class SGEStats(object):
         start = int(sz_range[0:dashpos])
         fin = int(sz_range[dashpos+1:colpos])
         gran = int(sz_range[colpos+1:len(sz_range)])
-        log.debug("start = %d, fin = %d, dashpos = %d, gran = %d,\n sz_range = %s." % \
-                 (start,fin,dashpos,gran, sz_range))
+        log.debug("start = %d, fin = %d, granularity = %d, sz_range = %s." % \
+                 (start,fin, gran, sz_range))
         num_jobs = (fin - start) / gran
         log.debug("This job expands to %d tasks." % num_jobs)
         for n in range(0,num_jobs):
@@ -458,7 +458,7 @@ class SGELoadBalancer(LoadBalancer):
         #calculate job duration
         avg_duration = self.stat.avg_job_duration()
         #calculate estimated time to completion
-        ettc = avg_duration * qlen
+        ettc = avg_duration * qlen / len(self.stat.hosts)
 
         if qlen > ts:
             now = datetime.datetime.utcnow()
@@ -479,9 +479,10 @@ class SGELoadBalancer(LoadBalancer):
                          % (age_delta.seconds, self.longest_allowed_queue_time))
                 need_to_add = qlen / sph
                 
-                if ettc < 300 and not self.stat.on_first_job():
+                if ettc < 600 and not self.stat.on_first_job():
                     log.warn("There is a possibility that the job queue is" + \
-                             " shorter than 5 minutes in duration.")
+                             " shorter than 10 minutes in duration.")
+                    #need_to_add = 0
         
         if need_to_add > 0:
             need_to_add = min(self.add_nodes_per_iteration, need_to_add)
@@ -573,7 +574,7 @@ class SGELoadBalancer(LoadBalancer):
             if self.polling_interval > 300:
                 self.kill_after = max(45,60 - (2*self.polling_interval/60))
 
-            if not is_working and mins_up > self.kill_after:
+            if not is_working and mins_up >= self.kill_after:
                 to_rem.append(node)
         return to_rem
 
