@@ -23,7 +23,7 @@ class SGEStats(object):
     jobs = []
     jobstats = []
     _default_fields = \
-        ["JB_job_number","state","JB_submission_time","queue_name","slots"]
+        ["JB_job_number","state","JB_submission_time","queue_name","slots","tasks"]
 
     def parse_qhost(self,string):
         """
@@ -64,8 +64,30 @@ class SGEStats(object):
                         if node2.nodeType == Node.TEXT_NODE:
                             hash[tag] = node2.data 
             #grab the submit time on all jobs, the last job's val stays
-            self.jobs.append(hash)
+            if 'tasks' in hash and hash['tasks'].find('-') > 0:
+                self.job_multiply(hash)
+            else:
+                self.jobs.append(hash)
         return self.jobs
+
+    def job_multiply(self,hash):
+        """
+        this function deals with sge jobs with a task range, ie qsub -t 1-20:1 
+        makes 20 jobs. self.jobs needs to represent that it is 20 jobs instead
+        of just 1.
+        """
+        sz_range = hash['tasks']
+        dashpos = sz_range.find('-')
+        colpos = sz_range.find(':')
+        start = int(sz_range[0:dashpos])
+        fin = int(sz_range[dashpos+1:colpos])
+        gran = int(sz_range[colpos+1:len(sz_range)])
+        log.debug("start = %d, fin = %d, dashpos = %d, gran = %d,\n sz_range = %s." % \
+                 (start,fin,dashpos,gran, sz_range))
+        num_jobs = (fin - start) / gran
+        log.debug("This job expands to %d tasks." % num_jobs)
+        for n in range(0,num_jobs):
+            self.jobs.append(hash)
 
     def parse_qacct(self,string,dtnow):
         """
