@@ -13,7 +13,7 @@ setup(
 
     install_requires=[
         "paramiko>=1.7.6",
-        "boto>=2.0a2",
+        "boto>=2.0b1",
     ],
 
     zip_safe = True,
