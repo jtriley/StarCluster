@@ -189,8 +189,8 @@ ndb-connectstring=%(mgm_ip)s
 '''
 
 class MysqlCluster(ClusterSetup):
-	def __init__(self,num_replicas,data_memory,index_memory,data_dir,backup_data_dir,\
-					dedicated_query,num_data_nodes):
+	def __init__(self,num_replicas=2,data_memory='80M',index_memory='18M',data_dir='/var/lib/mysql-cluster/',\
+	               backup_data_dir='/var/lib/mysql-cluster/', dedicated_query=False,num_data_nodes=0):
 		self._num_replicas=num_replicas
 		self._data_memory=data_memory
 		self._index_memory=index_memory
@@ -206,13 +206,13 @@ class MysqlCluster(ClusterSetup):
 		if not self._dedicated_query: 
 			self.storage_ips = [x.private_ip_address for x in nodes[1:]]
 			self.query_ips = self.storage_ips
-			data_nodes = nodes
-			query_nodes = nodes
+			self.data_nodes = nodes[1:]
+			self.query_nodes = nodes
 		else:
-			data_nodes = nodes[1:self._num_data_nodes+1]
-			query_nodes = nodes[self._num_data_nodes+1:]
-			self.storage_ips = [x.private_ip_address for x in data_nodes]
-			self.query_ips = [x.private_ip_address for x in query_nodes]
+			self.data_nodes = nodes[1:self._num_data_nodes+1]
+			self.query_nodes = nodes[self._num_data_nodes+1:]
+			self.storage_ips = [x.private_ip_address for x in self.data_nodes]
+			self.query_ips = [x.private_ip_address for x in self.query_nodes]
 
 		# Create backup directory and change ownership of mysql-cluster directory
 		for node in nodes:
@@ -245,13 +245,13 @@ class MysqlCluster(ClusterSetup):
 		mconn.execute('/etc/init.d/mysql-ndb-mgm restart')
 		
 		# Start mysqld-ndb on data nodes
-		for node in data_nodes:
+		for node in self.data_nodes:
 			nconn = node.ssh
 			log.info('Restarting mysql-ndb on node %d...' % nodes.index(node))
 			nconn.execute('/etc/init.d/mysql-ndb restart')
                 
         # Start mysql on query nodes
-		for node in query_nodes:
+		for node in self.query_nodes:
 			nconn = node.ssh
 			log.info('Starting mysql on node %d, ignoring missing file error...' % nodes.index(node))
 			nconn.execute('/etc/init.d/mysql start', ignore_exit_status = True)
@@ -267,10 +267,10 @@ class MysqlCluster(ClusterSetup):
 		ndb_mgmd += '\n'
 		
 		if self._dedicated_query: 
-			for x in self.query_ips:
-				ndb_mgmd += '[MYSQLD]\nHostName=%s\n' % x
+			for x in self.query_nodes:
+				ndb_mgmd += '[MYSQLD]\nHostName=%s\n' % x.private_ip_address
 		else:
-			for x in self.query_ips:
+			for x in self.query_nodes:
 				ndb_mgmd += '[MYSQLD]\n'
 			
 		return ndb_mgmd
