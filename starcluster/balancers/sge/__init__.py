@@ -363,7 +363,8 @@ class SGELoadBalancer(LoadBalancer):
             qhostXml = '\n'.join(master.ssh.execute('source /etc/profile && qhost -xml', \
                                                     log_output=False))
             qstatXml = '\n'.join(master.ssh.execute( qstat_cmd, log_output=False))
-            qacct = '\n'.join(master.ssh.execute(qacct_cmd,log_output=False))
+            qacct = '\n'.join(master.ssh.execute(qacct_cmd,log_output=False, \
+                                                 ignore_exit_status=True))
         except Exception, e:
             log.error("Error occured getting SGE stats via ssh. Cluster terminated?")
             log.error(e)
