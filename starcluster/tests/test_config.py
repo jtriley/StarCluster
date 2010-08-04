@@ -1,18 +1,18 @@
+#!/usr/bin/env python
 import os
+import copy
 import tempfile
 
 import logging
 logging.disable(logging.WARN)
 
-from starcluster.logger import log
 from starcluster import exception
-from starcluster.tests import StarClusterTest
-from starcluster.static import STARCLUSTER_CFG_FILE
-from starcluster.config import StarClusterConfig
-from starcluster.utils import permute
-from starcluster.tests.templates.config import default_config, config_test_template, missing_required_template
+from starcluster import tests
+from starcluster import static
+from starcluster import config
+from starcluster import utils
 
-class TestStarClusterConfig(StarClusterTest):
+class TestStarClusterConfig(tests.StarClusterTest):
 
     def test_valid_config_template(self):
         cfg = self.config
@@ -23,7 +23,7 @@ class TestStarClusterConfig(StarClusterTest):
         tmp_file.close()
         assert not os.path.exists(non_existent_file)
         try:
-            cfg = StarClusterConfig(non_existent_file, cache=True); cfg.load()
+            cfg = config.StarClusterConfig(non_existent_file, cache=True); cfg.load()
         except exception.ConfigNotFound,e:
             pass
         else:
@@ -60,12 +60,19 @@ class TestStarClusterConfig(StarClusterTest):
                 raise Exception("config is not enforcing strs correctly")
 
     def test_missing_required(self):
-        try:
-            cfg = self.get_config(missing_required_template % default_config)
-        except exception.ConfigError,e:
-            pass
-        else:
-            raise Exception('config is not enforcing required settings correctly')
+        cfg = self.config._config
+        section_copy = copy.deepcopy(cfg._sections)
+        for setting in static.CLUSTER_SETTINGS:
+            if not static.CLUSTER_SETTINGS[setting][1]:
+                continue
+            del cfg._sections['cluster c1'][setting]
+            try:
+                self.config.load()
+            except exception.ConfigError,e:
+                pass
+            else:
+                raise Exception("config is not enforcing required setting '%s'" % setting)
+            cfg._sections = copy.deepcopy(section_copy)
 
     def test_volumes(self):
         c1 = self.config.get_cluster_template('c1')
@@ -132,7 +139,7 @@ class TestStarClusterConfig(StarClusterTest):
         orig = cfg.clusters
         cfg.clusters = None
         sections = cfg._get_sections('cluster')
-        for perm in permute(sections):
+        for perm in utils.permute(sections):
             new = cfg._load_cluster_sections(perm)
             assert new == orig
 
@@ -193,7 +200,7 @@ class TestStarClusterConfig(StarClusterTest):
         tmp_file.write("""<html>random garbage file with no section headings</html>""")
         tmp_file.flush()
         try:
-            cfg = StarClusterConfig(tmp_file.name, cache=True); cfg.load()
+            cfg = config.StarClusterConfig(tmp_file.name, cache=True); cfg.load()
         except exception.ConfigHasNoSections,e:
             pass
         else:
@@ -209,7 +216,7 @@ class TestStarClusterConfig(StarClusterTest):
         os.environ['AWS_ACCESS_KEY_ID'] = aws_key
         os.environ['AWS_SECRET_ACCESS_KEY'] = aws_secret_key
         tmp_file = tempfile.NamedTemporaryFile()
-        cfg = StarClusterConfig(tmp_file.name, cache=True); cfg.load()
+        cfg = config.StarClusterConfig(tmp_file.name, cache=True); cfg.load()
         assert cfg.aws['aws_access_key_id'] == aws_key
         assert cfg.aws['aws_secret_access_key'] == aws_secret_key
 
@@ -240,3 +247,37 @@ class TestStarClusterConfig(StarClusterTest):
             pass
         else:
             raise Exception('config not enforcing choices for setting')
+
+    def test_multiple_instance_types(self):
+        """
+        Test that config properly handles multiple instance types syntax
+        (within node_instance_type setting)
+        """
+        invalid_cases = [{'c1_node_type':'c1.xlarge:ami-asdffdas'},
+                 {'c1_node_type':'c1.xlarge:3'},
+                 {'c1_node_type':'c1.xlarge:ami-asdffdas:3'},
+                 {'c1_node_type':'c1.xlarge:asdf:asdf:asdf,m1.small'},
+                 {'c1_node_type':'c1.asdf:4, m1.small'},
+                 {'c1_node_type':'c1.xlarge: 0, m1.small'},
+                 {'c1_node_type':'c1.xlarge:-1, m1.small'},]
+        for case in invalid_cases:
+            try:
+                cfg = self.get_custom_config(**case)
+            except exception.ConfigError,e:
+                pass
+            else:
+                raise Exception(
+                    'config allows invalid multiple instance type syntax: %s' % case)
+        valid_cases = [
+            {'c1_node_type':'c1.xlarge:3, m1.small'},
+            {'c1_node_type':'c1.xlarge:ami-asdfasdf:3, m1.small'},
+            {'c1_node_type':'c1.xlarge:ami-asdfasdf:3, m1.large, m1.small'},
+            {'c1_node_type':'m1.large, c1.xlarge:ami-asdfasdf:3, m1.large, m1.small'},
+            {'c1_node_type':'c1.xlarge:ami-asdfasdf:2, m1.large:2, m1.small'},
+        ]
+        for case in valid_cases:
+            try:
+                cfg = self.get_custom_config(**case)
+            except exception.ConfigError,e:
+                raise Exception(
+                    'config rejects valid multiple instance type syntax: %s' % case)

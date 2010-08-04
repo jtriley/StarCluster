@@ -522,6 +522,43 @@ class CmdCreateImage(CmdBase):
                            **self.specified_options_dict)
         log.info("Your new AMI id is: %s" % ami_id)
 
+class CmdDownloadImage(CmdBase):
+    """
+    downloadimage [options] <image_id> <destination_directory>
+
+    Download the manifest.xml and all AMI parts for an image_id
+
+    Example:
+
+        $ starcluster downloadimage ami-asdfasdf /data/myamis/ami-asdfasdf
+    """
+    names = ['downloadimage', 'di']
+
+    bucket = None
+    image_name = None
+
+    @property
+    def completer(self):
+        if optcomplete:
+            try:
+                cfg = config.StarClusterConfig()
+                cfg.load()
+                ec2 = cfg.get_easy_ec2()
+                rimages = ec2.registered_images
+                completion_list = [i.id for i in rimages]
+                return optcomplete.ListCompleter(completion_list)
+            except Exception, e:
+                log.error('something went wrong fix me: %s' % e)
+
+    def execute(self, args):
+        if len(args) != 2:
+            self.parser.error(
+                'you must specify an <image_id> and <destination_directory>')
+        image_id, destdir = args
+        ec2 = self.cfg.get_easy_ec2()
+        ec2.download_image_files(image_id, destdir)
+        log.info("Finished downloading AMI: %s" % image_id)
+
 class CmdCreateVolume(CmdBase):
     """
     createvolume [options] <volume_size> <volume_zone>
@@ -1057,6 +1094,7 @@ def main():
         CmdListPublic(),
         CmdCreateImage(),
         CmdRemoveImage(),
+        CmdDownloadImage(),
         CmdListVolumes(),
         CmdCreateVolume(),
         CmdRemoveVolume(),
