@@ -520,6 +520,19 @@ class EasyEC2(EasyAWS):
                  part_regex.match(f.name) or manifest_regex.match(f.name) ]
         return files
 
+    @print_timing("Downloading image")
+    def download_image_files(self, image_id, destdir):
+        """
+        Downloads the manifest.xml and all AMI parts for image_id to destdir
+        """
+        if not os.path.isdir(destdir):
+            raise exception.BaseException(
+                "destination directory '%s' does not exist" % destdir)
+        files = self.get_image_files(image_id)
+        for file in files:
+            log.info("Downloading file: %s" % file.name)
+            file.get_contents_to_filename(os.path.join(destdir, file.name))
+
     def list_image_files(self, image_id):
         """
         Print a list of files for image_id to the screen 
