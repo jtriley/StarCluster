@@ -1115,7 +1115,7 @@ def main():
     for sc in subcmds:
         for n in sc.names:
             scmap[n] = sc
-  
+
     if optcomplete:
         listcter = optcomplete.ListCompleter(scmap.keys())
         subcter = optcomplete.NoneCompleter()
@@ -1142,6 +1142,8 @@ def main():
         log.error("Unable to connect: %s" % e)
         log.error("Check your internet connection?")
         sys.exit(1)
+    except SystemExit,e:
+        raise e
     except Exception,e:
         import traceback
         if not gopts.DEBUG:
