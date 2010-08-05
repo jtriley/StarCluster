@@ -277,12 +277,13 @@ class CmdStop(CmdBase):
             self.parser.error("please specify a cluster")
         cfg = self.cfg
         for cluster_name in args:
+            cl = cluster.get_cluster(cluster_name,cfg)
             if not self.opts.confirm:
                 resp = raw_input("Shutdown cluster %s (y/n)? " % cluster_name)
                 if resp not in ['y','Y', 'yes']:
                     log.info("Aborting...")
                     continue
-            cluster.stop_cluster(cluster_name, cfg)
+            cl.stop_cluster()
 
 class CmdSshMaster(CmdBase):
     """

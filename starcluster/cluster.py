@@ -102,7 +102,6 @@ def _get_cluster_name(cluster_name):
     return cluster_name
 
 def stop_cluster(cluster_name, cfg):
-    ec2 = cfg.get_easy_ec2()
     cl = get_cluster(cluster_name, cfg)
     cl.stop_cluster()
 
