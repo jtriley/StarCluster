@@ -60,6 +60,7 @@ class Node(object):
         self.user = user
         self._ssh = None
         self._num_procs = None
+        self._memory = None
 
     @property
     def num_processors(self):
@@ -67,6 +68,13 @@ class Node(object):
             self._num_procs = int(
                 self.ssh.execute('cat /proc/cpuinfo | grep processor | wc -l')[0])
         return self._num_procs
+
+    @property
+    def memory(self):
+        if not self._memory:
+            self._memory = float(
+                self.ssh.execute("free -m | grep -i mem | awk '{print $2}'")[0])
+        return self._memory
 
     @property
     def ip_address(self):
