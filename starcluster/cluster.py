@@ -485,10 +485,10 @@ class Cluster(object):
             return True
         except IOError,e:
             raise exception.ClusterReceiptError(
-                'cluster receipt does not exist')
+                'cluster receipt does not exist: %s' % e)
         except Exception,e:
             raise exception.ClusterReceiptError(
-                'failed to load cluster receipt')
+                'failed to load cluster receipt: %s' % e)
 
     def create_receipt(self):
         """
@@ -741,8 +741,9 @@ class Cluster(object):
         """
         Detach all volumes from the master node
         """
-        for vol in self.volumes:
-            vol_id = self.volumes.get(vol).get('volume_id')
+        block_devs = self.master_node.block_device_mapping
+        for dev in block_devs:
+            vol_id = block_devs[dev].volume_id
             vol = self.ec2.get_volume(vol_id)
             log.info("Detaching volume %s from master" % vol.id)
             vol.detach()
