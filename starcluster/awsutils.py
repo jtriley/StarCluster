@@ -5,12 +5,8 @@ EC2/S3 Utility Classes
 
 import os
 import re
-import sys
-import time
 import base64
 import string
-import platform
-from pprint import pprint
 
 import boto
 import boto.ec2
@@ -18,6 +14,7 @@ import boto.s3.connection
 from starcluster import static
 from starcluster import utils
 from starcluster import exception
+from starcluster import progressbar
 from starcluster.logger import log
 from starcluster.utils import print_timing
 
@@ -52,23 +49,23 @@ class EasyAWS(object):
         return self._conn
 
 class EasyEC2(EasyAWS):
-    def __init__(self, aws_access_key_id, aws_secret_access_key, aws_ec2_path='/',
-                 aws_s3_path='/', aws_port=None, aws_region_name=None, 
+    def __init__(self, aws_access_key_id, aws_secret_access_key,
+                 aws_ec2_path='/', aws_s3_host = None,
+                 aws_s3_path='/', aws_port=None, aws_region_name=None,
                  aws_is_secure=True, aws_region_host=None, cache=False, **kwargs):
         aws_region = None
         if aws_region_name and aws_region_host:
-            aws_region = boto.ec2.regioninfo.RegionInfo(name=aws_region_name, 
+            aws_region = boto.ec2.regioninfo.RegionInfo(name=aws_region_name,
                                                         endpoint=aws_region_host)
-        kwargs = dict(is_secure=aws_is_secure, region=aws_region, 
+        kwargs = dict(is_secure=aws_is_secure, region=aws_region,
                       port=aws_port, path=aws_ec2_path)
-        super(EasyEC2, self).__init__(aws_access_key_id, aws_secret_access_key, 
+        super(EasyEC2, self).__init__(aws_access_key_id, aws_secret_access_key,
                                       boto.connect_ec2, **kwargs)
-
-        kwargs = dict(aws_s3_path=aws_s3_path, aws_port=aws_port,
+        kwargs = dict(aws_s3_host=aws_s3_host,
+                      aws_s3_path=aws_s3_path,
+                      aws_port=aws_port,
                       aws_is_secure=aws_is_secure,
                       cache=cache)
-        if aws_region_host:
-            kwargs.update(dict(aws_region_host=aws_region_host))
         self.s3 = EasyS3(aws_access_key_id, aws_secret_access_key, **kwargs)
         self.cache = cache
         self._instance_response = None
@@ -516,7 +513,7 @@ class EasyEC2(EasyAWS):
         part_regex = re.compile(r'%s\.part\.(\d*)' % iname)
         # boto with eucalyptus returns boto.s3.prefix.Prefix class at the 
         # end of the list, we ignore these by checking for delete method
-        files = [ f for f in files if hasattr(f,'delete') and
+        files = [ f for f in files if hasattr(f,'delete') and 
                  part_regex.match(f.name) or manifest_regex.match(f.name) ]
         return files
 
@@ -528,14 +525,22 @@ class EasyEC2(EasyAWS):
         if not os.path.isdir(destdir):
             raise exception.BaseException(
                 "destination directory '%s' does not exist" % destdir)
+        widgets = ['file: ', progressbar.Percentage(), ' ',
+                   progressbar.Bar(marker=progressbar.RotatingMarker()), ' ',
+                   progressbar.ETA(), ' ', progressbar.FileTransferSpeed()]
         files = self.get_image_files(image_id)
+        def _dl_progress_cb(trans, total):
+            pbar.update(trans)
+        log.info("Downloading image: %s" % image_id)
         for file in files:
-            log.info("Downloading file: %s" % file.name)
-            file.get_contents_to_filename(os.path.join(destdir, file.name))
+            widgets[0] = "%s:" % file.name
+            pbar = progressbar.ProgressBar(widgets=widgets, maxval=file.size).start()
+            file.get_contents_to_filename(os.path.join(destdir, file.name), cb=_dl_progress_cb)
+            pbar.finish()
 
     def list_image_files(self, image_id):
         """
-        Print a list of files for image_id to the screen 
+        Print a list of files for image_id to the screen
         """
         files = self.get_image_files(image_id)
         for file in files:
@@ -548,7 +553,7 @@ class EasyEC2(EasyAWS):
             (self._instance_response, self.cache))
             self._instance_response=self.conn.get_all_instances()
         return self._instance_response
-            
+
     @property
     def keypairs(self):
         if not self.cache or self._keypair_response is None:
@@ -666,12 +671,12 @@ class EasyEC2(EasyAWS):
 class EasyS3(EasyAWS):
     DefaultHost = 's3.amazonaws.com'
     _calling_format=boto.s3.connection.OrdinaryCallingFormat()
-    def __init__(self, aws_access_key_id, aws_secret_access_key,  
-                 aws_s3_path='/', aws_port=None, aws_is_secure=True, 
-                 aws_region_host=DefaultHost, cache=False, **kwargs):
-        kwargs = dict(is_secure=aws_is_secure, host=aws_region_host or
-                      self.DefaultHost, 
-                      calling_format=self._calling_format, port=aws_port, 
+    def __init__(self, aws_access_key_id, aws_secret_access_key,
+                 aws_s3_path='/', aws_port=None, aws_is_secure=True,
+                 aws_s3_host=DefaultHost, cache=False, **kwargs):
+        kwargs = dict(is_secure=aws_is_secure,
+                      host=aws_s3_host or self.DefaultHost,
+                      port=aws_port,
                       path=aws_s3_path)
         super(EasyS3, self).__init__(aws_access_key_id, aws_secret_access_key,
                                      boto.connect_s3, **kwargs)
