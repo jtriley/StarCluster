@@ -151,7 +151,11 @@ def is_iso_time(iso):
 def iso_to_datetime_tuple(iso):
     #remove timezone
     iso = iso.split('.')[0]
-    return datetime.strptime(iso, "%Y-%m-%dT%H:%M:%S")
+    try:
+        return datetime.strptime(iso, "%Y-%m-%dT%H:%M:%S")
+    except AttributeError,e:
+        # python2.4 datetime module doesnt have strptime
+        return datetime(*time.strptime(iso, "%Y-%m-%dT%H:%M:%S")[:6])
 
 def datetime_tuple_to_iso(tup):
     iso = datetime.strftime(tup, "%Y-%m-%dT%H:%M:%S")

@@ -78,6 +78,7 @@ AWS_SETTINGS = {
     'aws_is_secure': (bool, False, True, None),
     'aws_region_name': (str, False, None, None),
     'aws_region_host': (str, False, None, None),
+    'aws_s3_host': (str, False, None, None),
 }
 
 KEY_SETTINGS = {

@@ -344,9 +344,12 @@ class StarClusterConfig(object):
         itypes = []
         cluster_section['node_instance_types'] = itypes
         total_num_nodes = 0
-        default_instance_type = instance_types[-1]
-        if not default_instance_type in static.INSTANCE_TYPES.keys():
-            raise exception.ConfigError('no default instance type specified')
+        try:
+            default_instance_type = instance_types[-1]
+            if not default_instance_type in static.INSTANCE_TYPES.keys():
+                raise exception.ConfigError('no default instance type specified')
+        except IndexError,e:
+            default_instance_type = None
         cluster_section['node_instance_type'] = default_instance_type
         for type_spec in instance_types[:-1]:
             type_spec = type_spec.split(':')
