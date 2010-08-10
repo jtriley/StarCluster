@@ -270,12 +270,12 @@ class MysqlCluster(ClusterSetup):
                             'backup_data_dir':self._backup_data_dir}
             ndb_mgmd += '\n'
             
-            if self._dedicated_query: 
-                for x in self.query_nodes:
-                    ndb_mgmd += '[MYSQLD]\nHostName=%s\n' % x.private_ip_address
-            else:
-                for x in self.query_nodes:
-                    ndb_mgmd += '[MYSQLD]\n'
+        if self._dedicated_query: 
+            for x in self.query_nodes:
+                ndb_mgmd += '[MYSQLD]\nHostName=%s\n' % x.private_ip_address
+        else:
+            for x in self.query_nodes:
+                ndb_mgmd += '[MYSQLD]\n'
                     
         return ndb_mgmd
         
