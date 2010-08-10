@@ -190,14 +190,14 @@ ndb-connectstring=%(mgm_ip)s
 
 class MysqlCluster(ClusterSetup):
     def __init__(self,num_replicas=2,data_memory='80M',index_memory='18M',data_dir='/var/lib/mysql-cluster/',\
-	               backup_data_dir='/var/lib/mysql-cluster/', dedicated_query=False,num_data_nodes=0):
-        self._num_replicas=num_replicas
-       	self._data_memory=data_memory
-       	self._index_memory=index_memory
-       	self._data_dir=data_dir
-       	self._backup_data_dir=backup_data_dir
-       	self._dedicated_query=dedicated_query
-       	self._num_data_nodes=num_data_nodes
+                       backup_data_dir='/var/lib/mysql-cluster/', dedicated_query=False,num_data_nodes=0):
+        self._num_replicas=int(num_replicas)
+        self._data_memory=data_memory
+        self._index_memory=index_memory
+        self._data_dir=data_dir
+        self._backup_data_dir=backup_data_dir
+        self._dedicated_query=dedicated_query
+        self._num_data_nodes=int(num_data_nodes)
         log.debug("mysql plugin received num_replicas = %s" % num_replicas)
         log.debug("mysql plugin received data_memory = %s" % data_memory)
         log.debug("mysql plugin received index_memory = %s" % index_memory)
@@ -205,15 +205,15 @@ class MysqlCluster(ClusterSetup):
         log.debug("mysql plugin received backup_data_dir = %s" % backup_data_dir)
 
     def run(self, nodes, master, user, user_shell, volumes):
-       	mconn = master.ssh
-       	# Get IPs for all nodes
-       	self.mgm_ip = master.private_ip_address
-       	if not self._dedicated_query: 
+        mconn = master.ssh
+        # Get IPs for all nodes
+        self.mgm_ip = master.private_ip_address
+        if not self._dedicated_query: 
             self.storage_ips = [x.private_ip_address for x in nodes[1:]]
             self.query_ips = self.storage_ips
             self.data_nodes = nodes[1:]
             self.query_nodes = nodes
-       	else:
+        else:
             self.data_nodes = nodes[1:self._num_data_nodes+1]
             self.query_nodes = nodes[self._num_data_nodes+1:]
             self.storage_ips = [x.private_ip_address for x in self.data_nodes]
@@ -227,58 +227,57 @@ class MysqlCluster(ClusterSetup):
             log.info('Killing all mysql processes on node %s...' % node_num)
             nconn.execute('pkill -9 mysql', ignore_exit_status = True)
             log.info('Creating backup directory and changing ownership of ' +\
-       	       	'data directory on node %s' % node_num)
+                'data directory on node %s' % node_num)
             nconn.execute('mkdir -p %s/BACKUP' % self._backup_data_dir)
             nconn.execute('chown -R mysql:mysql %s' % self._data_dir)
-       	
-       	# Generate and place ndb_mgmd configuration file
-       	log.info('Generating ndb_mgmd.cnf...')
-       	ndb_mgmd = mconn.remote_file('/etc/mysql/ndb_mgmd.cnf')
-       	ndb_mgmd.write(self.generate_ndb_mgmd())
-       	ndb_mgmd.close()
-       	
-       	# Generate and place my.cnf configuration file on each data node
-       	for node in nodes:
+        
+        # Generate and place ndb_mgmd configuration file
+        log.info('Generating ndb_mgmd.cnf...')
+        ndb_mgmd = mconn.remote_file('/etc/mysql/ndb_mgmd.cnf')
+        ndb_mgmd.write(self.generate_ndb_mgmd())
+        ndb_mgmd.close()
+        
+        # Generate and place my.cnf configuration file on each data node
+        for node in nodes:
             log.info('Generating my.cnf on node %d' % nodes.index(node))
             nconn = node.ssh
             my_cnf = nconn.remote_file('/etc/mysql/my.cnf')
             my_cnf.write(self.generate_my_cnf())
             my_cnf.close()
-       	
-       	# Restart mysql-ndb-mgm on master
-       	log.info('Restarting mysql-ndb-mgm on master node...')
-       	mconn.execute('/etc/init.d/mysql-ndb-mgm restart')
-       	
-       	# Start mysqld-ndb on data nodes
-       	for node in self.data_nodes:
+        
+        # Restart mysql-ndb-mgm on master
+        log.info('Restarting mysql-ndb-mgm on master node...')
+        mconn.execute('/etc/init.d/mysql-ndb-mgm restart')
+        
+        # Start mysqld-ndb on data nodes
+        for node in self.data_nodes:
             nconn = node.ssh
             log.info('Restarting mysql-ndb on node %d...' % nodes.index(node))
             nconn.execute('/etc/init.d/mysql-ndb restart')
                 
         # Start mysql on query nodes
-       	for node in self.query_nodes:
+        for node in self.query_nodes:
             nconn = node.ssh
             log.info('Starting mysql on node %d, ignoring missing file error...' % nodes.index(node))
             nconn.execute('/etc/init.d/mysql start', ignore_exit_status = True)
-		
-	def generate_ndb_mgmd(self):
-            ndb_mgmd = ndb_mgmd_template % {'num_replicas':self._num_replicas,'data_memory':self._data_memory, \
-	       	'index_memory':self._index_memory,'mgm_ip':self.mgm_ip}
-		
-            for x in self.storage_ips:
-	       	ndb_mgmd += ndb_mgmd_storage % {'storage_ip':x,'data_dir':self._data_dir,\
-				'backup_data_dir':self._backup_data_dir}
-		
-		ndb_mgmd += '\n'
-		
-		if self._dedicated_query: 
-                    for x in self.query_nodes:
-		       	ndb_mgmd += '[MYSQLD]\nHostName=%s\n' % x.private_ip_address
-		else:
-                    for x in self.query_nodes:
-		       	ndb_mgmd += '[MYSQLD]\n'
-			
-		return ndb_mgmd
-		
-	def generate_my_cnf(self):
-            return my_cnf % {'mgm_ip':self.mgm_ip}
+                
+    def generate_ndb_mgmd(self):
+        ndb_mgmd = ndb_mgmd_template % {'num_replicas':self._num_replicas,'data_memory':self._data_memory, \
+        'index_memory':self._index_memory,'mgm_ip':self.mgm_ip}
+        
+        for x in self.storage_ips:
+            ndb_mgmd += ndb_mgmd_storage % {'storage_ip':x,'data_dir':self._data_dir,\
+                            'backup_data_dir':self._backup_data_dir}
+            ndb_mgmd += '\n'
+            
+            if self._dedicated_query: 
+                for x in self.query_nodes:
+                    ndb_mgmd += '[MYSQLD]\nHostName=%s\n' % x.private_ip_address
+            else:
+                for x in self.query_nodes:
+                    ndb_mgmd += '[MYSQLD]\n'
+                    
+        return ndb_mgmd
+        
+    def generate_my_cnf(self):
+        return my_cnf % {'mgm_ip':self.mgm_ip}
