@@ -5,6 +5,7 @@ StarCluster SunGrinEngine stats parsing module
 import types
 import time
 import datetime
+from datetime import timedelta
 import logging
 import xml.dom.minidom
 from xml.dom.minidom import Node
@@ -333,7 +334,8 @@ class SGELoadBalancer(LoadBalancer):
         if self.lookback_window > 24 or self.lookback_window < 1:
             log.warn("Lookback window %d out of range (1..24). Not recommended." % \
                     self.lookback_window)
-        now = now.replace(hour=now.hour - self.lookback_window)
+        now = now -timedelta(hours=self.lookback_window)
+
         str = now.strftime("%Y%m%d%H%M")
         return str
 
