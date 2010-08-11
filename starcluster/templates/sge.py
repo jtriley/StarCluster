@@ -42,3 +42,30 @@ CSP_ORGA="MIT"
 CSP_ORGA_UNIT="OEIT"
 CSP_MAIL_ADDRESS="none@none.edu"
 """
+
+sge_pe_template = """
+pe_name           orte
+slots             %s
+user_lists        NONE
+xuser_lists       NONE
+start_proc_args   /bin/true
+stop_proc_args    /bin/true
+allocation_rule   $round_robin
+control_slaves    TRUE
+job_is_first_task FALSE
+urgency_slots     min
+accounting_summary FALSE
+"""
+
+sgeprofile_template="""
+export SGE_ROOT="/opt/sge6"
+export SGE_CELL="default"
+export SGE_CLUSTER_NAME="starcluster"
+export SGE_QMASTER_PORT="63231"
+export SGE_EXECD_PORT="63232"
+export MANTYPE="man"
+export MANPATH="$MANPATH/opt/sge6/man"
+export PATH="$PATH:/opt/sge6/bin/%(arch)s"
+export ROOTPATH="$ROOTPATH:/opt/sge6/bin/%(arch)s"
+export LDPATH="$LDPATH:/opt/sge6/lib/%(arch)s"
+"""

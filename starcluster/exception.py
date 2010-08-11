@@ -5,7 +5,7 @@ StarCluster Exception Classes
 import os
 from starcluster import static
 from starcluster.logger import log
-from starcluster.templates.config import config_template, copy_paste_template
+from starcluster.templates import config
 
 class BaseException(Exception):
     def __init__(self, *args):
@@ -143,14 +143,14 @@ class ConfigNotFound(ConfigError):
     def __init__(self, *args, **kwargs):
         self.msg = args[0]
         self.cfg = args[1]
-        self.template = copy_paste_template
+        self.template = config.copy_paste_template
 
     def create_config(self):
         cfg_parent_dir = os.path.dirname(self.cfg)
         if not os.path.exists(cfg_parent_dir):
             os.makedirs(cfg_parent_dir)
         cfg_file = open(self.cfg, 'w')
-        cfg_file.write(config_template)
+        cfg_file.write(config.config_template)
         cfg_file.close()
         log.info("Config template written to %s. Please customize this file." %
                  self.cfg)

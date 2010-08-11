@@ -517,6 +517,30 @@ class EasyEC2(EasyAWS):
                  part_regex.match(f.name) or manifest_regex.match(f.name) ]
         return files
 
+    @print_timing("Migrating image")
+    def migrate_image(self, image_id, destbucket):
+        """
+        Migrate image_id files to destbucket
+        """
+        files = self.get_image_files(image_id)
+        if not files:
+            log.info("No files found for image: %s" % image_id)
+            return
+        log.info("Downloading image: %s" % image_id)
+        widgets = [files[0].name, progressbar.Percentage(), ' ',
+                   progressbar.Bar(marker=progressbar.RotatingMarker()), ' ',
+                   progressbar.ETA(), ' ', ' ']
+        counter = 0
+        pbar = progressbar.ProgressBar(widgets=widgets, maxval=len(files)).start()
+        for f in files:
+            widgets[0] = "%s:" % f.name
+            f.copy(destbucket, f.name)
+            # needed so that EC2 has permission to READ from the bucket
+            f.add_email_grant('READ','za-team@amazon.com')
+            pbar.update(counter)
+            counter += 1
+        pbar.finish()
+
     @print_timing("Downloading image")
     def download_image_files(self, image_id, destdir):
         """
@@ -678,6 +702,8 @@ class EasyS3(EasyAWS):
                       host=aws_s3_host or self.DefaultHost,
                       port=aws_port,
                       path=aws_s3_path)
+        if aws_s3_host:
+            kwargs.update(dict(calling_format = self._calling_format))
         super(EasyS3, self).__init__(aws_access_key_id, aws_secret_access_key,
                                      boto.connect_s3, **kwargs)
         self.cache = cache

@@ -45,7 +45,7 @@ from starcluster import optcomplete
 from starcluster import image
 from starcluster import volume
 from starcluster import utils
-from starcluster.templates import experimental
+from starcluster.templates import user_msgs
 from starcluster.logger import log, console, DEBUG
 
 #try:
@@ -232,7 +232,7 @@ class CmdStart(CmdBase):
         if self.opts.spot_bid is not None:
             cmd = ' '.join(sys.argv[1:]) + ' --no-create'
             launch_group = static.SECURITY_GROUP_TEMPLATE % tag
-            msg = experimental.spotmsg % {'cmd':cmd, 
+            msg = user_msgs.spotmsg % {'cmd':cmd, 
                                           'launch_group': launch_group}
             self.warn_experimental(msg)
         self.catch_ctrl_c()
