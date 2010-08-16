@@ -14,6 +14,7 @@ from starcluster import clustersetup
 from starcluster import static
 from starcluster import exception
 from starcluster import utils
+from starcluster.templates import user_msgs 
 from starcluster.utils import print_timing
 from starcluster.spinner import Spinner
 from starcluster.logger import log, INFO_NO_NEWLINE
@@ -175,17 +176,16 @@ def list_clusters(cfg):
         print
 
 def run_plugin(plugin_name, cluster_tag, cfg):
+    """
+    Run a plugin defined in the config as plugin_name on the currently
+    running cluster identified by cluster_tag.
+    """
     ec2 = cfg.get_easy_ec2()
     cl = get_cluster(cluster_tag, cfg)
     cl.load_receipt()
-    plug = cfg.get_plugin(plugin_name)
-    plugins = {}
-    plugins[plugin_name] = plug
-    plugins = cl.load_plugins(plugins)
-    master = cl.master_node
-    for p in plugins:
-        p.run(cl.nodes, cl.master_node, cl.cluster_user, 
-              cl.cluster_shell, volumes)
+    plugs = [cfg.get_plugin(plugin_name)]
+    name, plugin = cl.load_plugins(plugs)[0]
+    cl.run_plugin(plugin,name)
 
 class Cluster(object):
     def __init__(self,
@@ -324,8 +324,6 @@ class Cluster(object):
         return volumes
 
     def load_plugins(self, plugins):
-        #for plugin in plugins:
-            #self._has_all_required_settings(self.__plugin_settings, plugin):
         plugs = []
         for plugin in plugins:
             setup_class = plugin.get('setup_class')
@@ -344,36 +342,34 @@ class Cluster(object):
                     "Failed to import plugin %s: %s" % (plugin_name, e.message)
                 )
             klass = getattr(mod, class_name, None)
-            if klass:
-                if issubclass(klass, clustersetup.ClusterSetup):
-                    (argspec_args, argspec_varargs, argspec_keywords, argspec_defaults) = \
-                        inspect.getargspec(klass.__init__)
-                    args = argspec_args[1:]
-                    nargs = len(args)
-                    ndefaults = 0
-                    if argspec_defaults:
-                        ndefaults = len(argspec_defaults)
-                    nrequired = nargs - ndefaults
-                    config_args = []
-                    for arg in argspec_args:
-                        if arg in plugin:
-                            config_args.append(plugin.get(arg))
-                    log.debug("config_args = %s" % config_args)
-                    log.debug("args = %s" % argspec_args)
-                    if nrequired > len(config_args):
-                        raise exception.PluginError(
-                        "Not enough settings provided for plugin %s" % \
-                            plugin_name
-                        )
-                    plugs.append((plugin_name,klass(*config_args)))
-                else:
-                    raise exception.PluginError(
-"""Plugin %s must be a subclass of starcluster.clustersetup.ClusterSetup""" \
-                                               % setup_class)
-            else:
+            if not klass:
                 raise exception.PluginError(
                     'Plugin class %s does not exist' % setup_class
                 )
+            if not issubclass(klass, clustersetup.ClusterSetup):
+                raise exception.PluginError(
+"""Plugin %s must be a subclass of starcluster.clustersetup.ClusterSetup""" \
+                                           % setup_class)
+            (argspec_args, argspec_varargs, argspec_keywords, argspec_defaults) = \
+                inspect.getargspec(klass.__init__)
+            args = argspec_args[1:]
+            nargs = len(args)
+            ndefaults = 0
+            if argspec_defaults:
+                ndefaults = len(argspec_defaults)
+            nrequired = nargs - ndefaults
+            config_args = []
+            for arg in argspec_args:
+                if arg in plugin:
+                    config_args.append(plugin.get(arg))
+            log.debug("config_args = %s" % config_args)
+            log.debug("args = %s" % argspec_args)
+            if nrequired > len(config_args):
+                raise exception.PluginError(
+                "Not enough settings provided for plugin %s" % \
+                    plugin_name
+                )
+            plugs.append((plugin_name,klass(*config_args)))
         return plugs
 
     def update(self, kwargs):
@@ -766,6 +762,20 @@ class Cluster(object):
         log.info("Removing %s security group" % self._security_group)
         self.cluster_group.delete()
 
+    def start(self, create=True, validate=True, validate_only=False,
+              validate_running=False):
+        """
+        Handles creating and configuring a cluster. 
+        Validates, creates, and configures a cluster.
+        Passing validate=False will ignore validate_only and validate_running
+        keywords and is effectively the same as running _start
+        """
+        if validate:
+            retval = self._validate(validate_running = validate_running)
+            if validate_only:
+                return retval
+        return self._start(create)
+
     @print_timing("Starting cluster")
     def _start(self, create=True):
         """
@@ -782,69 +792,52 @@ class Cluster(object):
         while not self.is_cluster_up():
             time.sleep(30)
         s.stop()
-
         log.info("The master node is %s" % self.master_node.dns_name)
-
         if self.volumes:
             self.attach_volumes_to_master()
-
         log.info("Setting up the cluster...")
         default_setup = clustersetup.DefaultClusterSetup().run(
-            self.nodes, self.master_node, 
-            self.cluster_user, self.cluster_shell, 
+            self.nodes, self.master_node,
+            self.cluster_user, self.cluster_shell,
             self.volumes
         )
         self.create_receipt()
-        for plugin in self.plugins:
-            try:
-                plugin_name = plugin[0]
-                plug = plugin[1]
-                log.info("Running plugin %s" % plugin_name)
-                plug.run(self.nodes, self.master_node, self.cluster_user,
-                              self.cluster_shell, self.volumes)
-            except Exception, e:
-                log.error("Error occured while running plugin '%s':" % \
-                          plugin_name)
-                print e
-            
-        log.info("""
-
-The cluster has been started and configured. 
-
-Login to the master node as root by running: 
-
-    $ starcluster sshmaster %(tag)s
-
-or manually as %(user)s:
-
-    $ ssh -i %(key)s %(user)s@%(master)s
-
-When you are finished using the cluster, run:
-
-    $ starcluster stop %(tag)s
-
-to shutdown the cluster and stop paying for service
-
-        """ % {
-            'master': self.master_node.dns_name, 
-            'user': self.cluster_user, 
+        self.run_plugins()
+        log.info(user_msgs.cluster_started_msg % {
+            'master': self.master_node.dns_name,
+            'user': self.cluster_user,
             'key': self.key_location,
             'tag': self.cluster_tag,
         })
 
-    def start(self, create=True, validate=True, validate_only=False,
-              validate_running=False):
+    def run_plugins(self, plugins = None):
         """
-        Handles creating and configuring a cluster. 
-        Validates, creates, and configures a cluster.
-        Passing validate=False will ignore validate_only and validate_running
-        keywords and is effectively the same as running _start
+        Run all plugins specified in this Cluster object's self.plugins list
+        Uses plugins list instead of self.plugins if specified.
+        plugins must be a tuple: the first element is the plugin's
+        name, the second element is the plugin object (a subclass of ClusterSetup)
         """
-        if validate:
-            retval = self._validate(validate_running = validate_running)
-            if validate_only:
-                return retval
-        return self._start(create)
+        plugs = plugins or self.plugins
+        for plug in plugs:
+            name, plugin = plug
+            self.run_plugin(plugin,name)
+
+    def run_plugin(self, plugin, name=''):
+        """
+        Run a StarCluster plugin.
+        plugin is an instance of the plugin's class
+        name is the user-friendly label for the plugin
+        """
+        plugin_name = name or str(plugin)
+        try:
+            log.info("Running plugin %s" % plugin_name)
+            plugin.run(self.nodes, self.master_node, self.cluster_user,
+                       self.cluster_shell, self.volumes)
+        except Exception, e:
+            log.error("Error occured while running plugin '%s':" % plugin_name)
+            import traceback
+            traceback.print_exc()
+            log.debug(traceback.format_exc())
 
     def is_running_valid(self):
         """
@@ -862,7 +855,7 @@ to shutdown the cluster and stop paying for service
         """
         Checks that all cluster template settings are valid. Raises
         a ClusterValidationError exception if not. Passing
-        validate_running=True will also check that the existing instances 
+        validate_running=True will also check that the existing instances
         properties match the configuration of this cluster template.
         """
         log.info("Validating cluster template settings...")
@@ -917,12 +910,12 @@ to shutdown the cluster and stop paying for service
                 raise ValueError
         except (ValueError,TypeError),e:
             raise exception.ClusterValidationError(
-                'cluster_size must be >= 1')
+                'cluster_size must be an integer >= 1')
         num_itypes = sum([i.get('size') for i in self.node_instance_types])
         num_nodes = self.cluster_size-1
         if num_itypes > num_nodes:
             raise exception.ClusterValidationError(
-                ("total number of nodes specified in node_instance_types (%s) " +
+                ("total number of nodes specified in node_instance_type (%s) " +
                 "must be <= cluster_size-1 (%s)") % (num_itypes,num_nodes))
         return True
 
@@ -992,7 +985,7 @@ to shutdown the cluster and stop paying for service
         master_instance_type = self.master_instance_type
         node_instance_type = self.node_instance_type
         instance_types = self.__instance_types
-        instance_type_list = ' '.join(instance_types.keys())
+        instance_type_list = ', '.join(instance_types.keys())
         if not instance_types.has_key(node_instance_type):
             raise exception.ClusterValidationError(
                 ("You specified an invalid node_instance_type %s \n" + 
@@ -1033,17 +1026,18 @@ to shutdown the cluster and stop paying for service
                 )
         for itype in self.node_instance_types:
             type = itype.get('type')
-            img = itype.get('image')
+            img = itype.get('image') or node_image_id
             if not instance_types.has_key(type):
                 raise exception.ClusterValidationError(
-                    ("You specified an invalid instance type %s \n" + 
+                    ("You specified an invalid instance type %s \n" +
                     "Possible options are:\n%s") % \
                     (type, instance_type_list))
             try:
-                self.__check_platform(img or node_image_id, type)
+                self.__check_platform(img, type)
             except exception.ClusterValidationError,e:
                 raise exception.ClusterValidationError(
-                    "Invalid node_instance_types: " + e.msg)
+                    "Invalid settings for node_instance_type %s: %s" %
+                    (type,e.msg))
         return True
 
     def _validate_ebs_aws_settings(self):

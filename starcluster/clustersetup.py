@@ -8,9 +8,7 @@ import os
 import shutil
 import tempfile
 
-from starcluster.templates.sgeprofile import sgeprofile_template
-from starcluster.templates.sgeinstall import sgeinstall_template
-from starcluster.templates.sge_pe import sge_pe_template
+from starcluster.templates import sge
 from starcluster.logger import log
 
 class ClusterSetup(object):
@@ -281,7 +279,7 @@ class DefaultClusterSetup(ClusterSetup):
             sge_profile = conn.remote_file("/etc/profile.d/sge.sh")
             arch = conn.execute("/opt/sge6/util/arch")[0]
 
-            print >> sge_profile, sgeprofile_template  % {'arch': arch}
+            print >> sge_profile, sge.sgeprofile_template  % {'arch': arch}
             sge_profile.close()
 
         # setup sge auto install file
@@ -297,7 +295,7 @@ class DefaultClusterSetup(ClusterSetup):
         ec2_sge_conf = mconn.remote_file("/opt/sge6/ec2_sge.conf")
 
         # todo: add sge section to config values for some of the below
-        print >> ec2_sge_conf, sgeinstall_template % (admin_list, exec_list, submit_list)
+        print >> ec2_sge_conf, sge.sgeinstall_template % (admin_list, exec_list, submit_list)
         ec2_sge_conf.close()
 
         # installs sge in /opt/sge6 and starts qmaster and schedd on master node
@@ -313,7 +311,7 @@ class DefaultClusterSetup(ClusterSetup):
             num_processors += node.num_processors
 
         parallel_environment = mconn.remote_file("/tmp/pe.txt")
-        print >> parallel_environment, sge_pe_template % num_processors
+        print >> parallel_environment, sge.sge_pe_template % num_processors
         parallel_environment.close()
         mconn.execute("source /etc/profile && qconf -Ap %s" % parallel_environment.name)
 
