@@ -271,11 +271,10 @@ class MysqlCluster(ClusterSetup):
         else:
             log.info('No dump file found, not importing.')
             
-        # Setup dump cronjob
-        nconn = node.ssh
+        # Setup dump cronjobh
         log.info('Adding dump cronjob to master node')
         cronjob = self.generate_mysqldump_crontab(sc_path)
-        nconn.execute("echo '%s' >> /etc/crontab" % cronjob)
+        mconn.execute("echo '%s' >> /etc/crontab" % cronjob)
 
         log.info('Management Node: %s' % master.public_dns_name)
         log.info('Data Nodes: %s' % [x.public_dns_name for x in self.data_nodes])
@@ -305,3 +304,4 @@ class MysqlCluster(ClusterSetup):
 
     def generate_mysqldump_crontab(self, path):
         crontab = '*/%(dump_interval)s * * * * root mysqldump --all-databases --add-drop-table --add-drop-database -Y --ignore-table=mysql.ndb_apply_status >> %(loc)s' % {'dump_interval': self._dump_interval, 'loc': path}
+        return crontab
