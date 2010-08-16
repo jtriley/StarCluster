@@ -21,6 +21,7 @@
 # 3. starcluster sh
 # 4. cluster.run_plugin({plugin name},{cluster name},cfg)
 
+import posixpath
 from starcluster.clustersetup import ClusterSetup
 from starcluster.logger import log
 
@@ -189,20 +190,16 @@ ndb-connectstring=%(mgm_ip)s
 '''
 
 class MysqlCluster(ClusterSetup):
-    def __init__(self,num_replicas=2,data_memory='80M',index_memory='18M',data_dir='/var/lib/mysql-cluster/',\
-                       backup_data_dir='/var/lib/mysql-cluster/', dedicated_query=False,num_data_nodes=0):
+    def __init__(self,num_replica,data_memory,index_memory, dump_dir,\ 
+                 dump_file,dump_interval,dedicated_query,num_data_nodes):
         self._num_replicas=int(num_replicas)
         self._data_memory=data_memory
         self._index_memory=index_memory
-        self._data_dir=data_dir
-        self._backup_data_dir=backup_data_dir
+        self._dump_dir=dump_dir
+        self._dump_file=dump_file
+        self._dump_interval=dump_interval
         self._dedicated_query=dedicated_query
         self._num_data_nodes=int(num_data_nodes)
-        log.debug("mysql plugin received num_replicas = %s" % num_replicas)
-        log.debug("mysql plugin received data_memory = %s" % data_memory)
-        log.debug("mysql plugin received index_memory = %s" % index_memory)
-        log.debug("mysql plugin received data_dir = %s" % data_dir)
-        log.debug("mysql plugin received backup_data_dir = %s" % backup_data_dir)
 
     def run(self, nodes, master, user, user_shell, volumes):
         mconn = master.ssh
@@ -216,6 +213,7 @@ class MysqlCluster(ClusterSetup):
         else:
             self.data_nodes = nodes[1:self._num_data_nodes+1]
             self.query_nodes = nodes[self._num_data_nodes+1:]
+            self.query_nodes.append(master)
             self.storage_ips = [x.private_ip_address for x in self.data_nodes]
             self.query_ips = [x.private_ip_address for x in self.query_nodes]
 
@@ -261,6 +259,29 @@ class MysqlCluster(ClusterSetup):
             log.info('Starting mysql on node %d, ignoring missing file error...' % nodes.index(node))
             nconn.execute('/etc/init.d/mysql start', ignore_exit_status = True)
                 
+        # Import sql dump
+        name, ext = posixpath.splitext(self._dumpfile)
+        sc_path = self._dump_dir + name + '.sc' + ext
+        orig_path = self._dump_dir + self._dumpfile
+        if mconn.isfile(sc_path):
+            mconn.ssh.execute('mysql < %s' % sc_path)
+        elif mconn.ssh.isfile(orig_path):
+            mconn.ssh.execute('mysql < %s' % orig_path)
+        else:
+            log.info('No dump file found, not importing.')
+            
+        # Setup dump cronjob
+        for node in self.query_nodes:
+            nconn = node.ssh
+            log.info('Adding dump cronjob to query nodes')
+            cronjob = generate_crontab(sc_path)
+            nconn.execute("echo '%s' >> /etc/crontab" % cronjob)
+
+        log.info('Management Node: %s' % master.public_dns_name)
+        log.info('Data Nodes: %s' % [x.public_dns_name for x in self._data_nodes]
+        log.info('Query Nodes: %s' % [x.public_dns_name for x in self._query_nodes]
+        
+
     def generate_ndb_mgmd(self):
         ndb_mgmd = ndb_mgmd_template % {'num_replicas':self._num_replicas,'data_memory':self._data_memory, \
         'index_memory':self._index_memory,'mgm_ip':self.mgm_ip}
@@ -281,3 +302,6 @@ class MysqlCluster(ClusterSetup):
         
     def generate_my_cnf(self):
         return my_cnf % {'mgm_ip':self.mgm_ip}
+
+    def generate_mysqldump_crontab(self, path):
+        crontab = '*/%(dump_intervals)s * * * * root mysqldump -r %(loc)s --all-databases' {'dump_interval': self._dump_interval, 'loc': path}
