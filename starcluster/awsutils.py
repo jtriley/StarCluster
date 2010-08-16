@@ -7,6 +7,7 @@ import os
 import re
 import base64
 import string
+import tempfile
 
 import boto
 import boto.ec2
@@ -549,8 +550,8 @@ class EasyEC2(EasyAWS):
             if not ramdisk_id:
                 raise exception.BaseException("no ramdisk_id specified")
         image = self.get_image(image_id)
-        bucket = self.get_image_bucket(image)
-        files = self._get_image_files(image, bucket)
+        ibucket = self.get_image_bucket(image)
+        files = self._get_image_files(image, ibucket)
         if not files:
             log.info("No files found for image: %s" % image_id)
             return
@@ -559,26 +560,26 @@ class EasyEC2(EasyAWS):
                    progressbar.Bar(marker=progressbar.RotatingMarker()), ' ',
                    progressbar.ETA(), ' ', ' ']
         counter = 0
-        pbar = progressbar.ProgressBar(widgets=widgets, maxval=len(files)).start()
+        num_files = len(files)
+        pbar = progressbar.ProgressBar(widgets=widgets, maxval=num_files).start()
         for f in files:
-            widgets[0] = "%s:" % f.name
+            widgets[0] = "%s: (%s/%s)" % (f.name, counter+1, num_files)
+            # copy file to destination bucket with the same name
             f.copy(destbucket, f.name)
-            # needed so that EC2 has permission to READ from the bucket
-            f.add_email_grant('READ','za-team@amazon.com')
             pbar.update(counter)
             counter += 1
         pbar.finish()
         if migrate_manifest:
             dbucket = self.s3.get_bucket(destbucket)
-            key = dbucket.get_key(self.get_image_manifest(image))
+            manifest_key = dbucket.get_key(self.get_image_manifest(image))
             f = tempfile.NamedTemporaryFile()
-            key.get_contents_to_file(f.file)
+            manifest_key.get_contents_to_file(f.file)
             f.file.close()
             cmd = ('ec2-migrate-manifest -c %s -k %s -m %s --kernel %s ' +
-                   '--ramdisk %s --no-mapping') %  (cert, private_key,
+                   '--ramdisk %s --no-mapping ') %  (cert, private_key,
                                                     f.name, kernel_id,
                                                     ramdisk_id)
-            register_cmd = "ec2-register %s/%s" % (destbucket, key.name)
+            register_cmd = "ec2-register %s/%s" % (destbucket, manifest_key.name)
             if region:
                 cmd += '--region %s' % region
                 register_cmd += " --region %s" % region
@@ -588,7 +589,9 @@ class EasyEC2(EasyAWS):
                 raise exception.BaseException(
                     "ec2-migrate-manifest failed with status %s" % retval)
             f.file = open(f.name, 'r')
-            key.set_contents_from_file(f.file)
+            manifest_key.set_contents_from_file(f.file)
+            # needed so that EC2 has permission to READ the manifest file
+            manifest_key.add_email_grant('READ','za-team@amazon.com')
             f.close()
             os.unlink(f.name+'.bak')
             log.info("Manifest migrated successfully. You can now run:\n" +
