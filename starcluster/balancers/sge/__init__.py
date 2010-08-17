@@ -261,7 +261,6 @@ class SGEStats(object):
 class SGELoadBalancer(LoadBalancer):
     """
     This class is able to query each SGE host and return with load & queue statistics
-    """
     #       *** All times are in SECONDS unless otherwise specified ***
 
     #The polling interval in seconds. recommended: 60-300. any more frequent is
@@ -301,29 +300,38 @@ class SGELoadBalancer(LoadBalancer):
     #How many hours qacct should look back to gather past job data. lower
     #values minimize data transfer
     lookback_window = 3
+    """
 
     #not for modification
     _keep_polling = True
     __last_cluster_mod_time = datetime.datetime.utcnow()
 
 
-    def __init__(self, cluster_tag, config,interval,plot):
+    def __init__(self, cluster_tag,config,
+                 interval=60,plot=False,max_nodes=5,wait_time=900,add_pi=1,
+                 kill_after=45,stab=180,lookback_win=3):
         """
         this is the constructor for SGELoadBalancer.
         """
         self._cluster_tag = cluster_tag
         self._cfg = config
         self._cluster = cluster.get_cluster(cluster_tag, self._cfg)
+        self.polling_interval = interval
+        self._visualizer_on = plot
+        self.max_nodes = max_nodes
+        self.longest_allowed_queue_time = wait_time
+        self.add_nodes_per_interval = add_pi
+        self.kill_after = kill_after
+        self.stabilization_time = stab
+        self.lookback_window = lookback_win
+       
         if self.longest_allowed_queue_time < 300:
             log.warn("Longest Allowed Queue Time should be > 300 seconds.")
             log.warn("It takes ~5 minutes to launch a new EC2 node.")
-        if interval != None:
-            self.polling_interval = interval
-            log.debug("SGELoadBalancer: polling interval set to %d seconds." 
-                      % polling_interval)
-        if plot == True:
-            self._visualizer_on = True
-            log.debug("SGELoadBalancer: visualizer enabled.")
+
+        for key in self.__dict__.keys():
+               log.info("bal: %s => %s." % (key, self.__dict__[key]))
+
 
     def get_qatime(self,now):
         """
