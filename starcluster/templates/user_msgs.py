@@ -1,3 +1,25 @@
+#!/usr/bin/env python
+
+cluster_started_msg = """
+
+The cluster has been started and configured.
+
+Login to the master node as root by running:
+
+    $ starcluster sshmaster %(tag)s
+
+or manually as %(user)s:
+
+    $ ssh -i %(key)s %(user)s@%(master)s
+
+When you are finished using the cluster, run:
+
+    $ starcluster stop %(tag)s
+
+to shutdown the cluster and stop paying for service
+
+"""
+
 spotmsg = """USING SPOT INSTANCES IS EXPERIMENTAL.
 
 Spot instances can take a long time to come up and may not come

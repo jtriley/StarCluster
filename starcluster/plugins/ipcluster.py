@@ -19,6 +19,6 @@ class IPCluster(ClusterSetup):
         f.writelines('engines = %s\n' % engines)
         f.close()
         log.info("Starting ipcluster...")
-        master.ssh.execute_async(
-            "nohup su - %s -c 'ipcluster ssh --clusterfile %s' > %s" % \
-                                 (user, self.cluster_file, self.log_file))
+        master.ssh.execute(
+            "su - %s -c 'screen -d -m ipcluster ssh --clusterfile %s'" %
+                                 (user, self.cluster_file))

@@ -287,7 +287,7 @@ class StarClusterConfig(object):
             return
         keypair = self.keys.get(keyname)
         if keypair is None:
-            raise exception.ConfigError("keypair %s not defined in config" % keyname)
+            raise exception.ConfigError("keypair '%s' not defined in config" % keyname)
         cluster_section['keyname'] = keyname
         cluster_section['key_location'] = keypair.get('key_location')
 
@@ -300,7 +300,7 @@ class StarClusterConfig(object):
         cluster_section['volumes'] = vols
         for volume in volumes:
             if not self.vols.has_key(volume):
-                raise exception.ConfigError("volume %s not defined in config" % volume)
+                raise exception.ConfigError("volume '%s' not defined in config" % volume)
             vol = self.vols.get(volume)
             vols[volume] = vol
 
@@ -317,7 +317,7 @@ class StarClusterConfig(object):
                 p['__name__'] = p['__name__'].split()[-1]
                 plugs.append(p)
             else:
-                raise exception.ConfigError("plugin %s not defined in config" % plugin)
+                raise exception.ConfigError("plugin '%s' not defined in config" % plugin)
 
     def _load_permissions(self, section_name, store):
         cluster_section = store
@@ -334,7 +334,7 @@ class StarClusterConfig(object):
                 perms[perm] = p
             else:
                 raise exception.ConfigError(
-                    "permission %s not defined in config" % perm)
+                    "permission '%s' not defined in config" % perm)
 
     def _load_instance_types(self, section_name, store):
         cluster_section = store
@@ -344,10 +344,14 @@ class StarClusterConfig(object):
         itypes = []
         cluster_section['node_instance_types'] = itypes
         total_num_nodes = 0
+        choices_string = ', '.join(static.INSTANCE_TYPES.keys())
         try:
             default_instance_type = instance_types[-1]
             if not default_instance_type in static.INSTANCE_TYPES.keys():
-                raise exception.ConfigError('no default instance type specified')
+                raise exception.ConfigError(
+                    ("invalid node_instance_type specified: '%s'\n" +
+                     "must be one of: %s") %
+                    (default_instance_type, choices_string))
         except IndexError,e:
             default_instance_type = None
         cluster_section['node_instance_type'] = default_instance_type
@@ -355,16 +359,15 @@ class StarClusterConfig(object):
             type_spec = type_spec.split(':')
             if len(type_spec) > 3:
                 raise exception.ConfigError(
-                    "invalid node_instance_types item specified: %s" % \
-                    type_spec)
+                    "invalid node_instance_type item specified: %s" % type_spec)
             itype = type_spec[0]
             itype_image = None
             itype_num = 1
             if not static.INSTANCE_TYPES.has_key(itype):
                 raise exception.ConfigError(
-                    ("invalid type specified (%s) in node_instance_types. " + \
-                    "must be one of: %s") % \
-                    (itype,', '.join(static.INSTANCE_TYPES.keys())))
+                    ("invalid type specified (%s) in node_instance_type item: '%s'\n" +
+                     "must be one of: %s") %
+                    (itype, type_spec, choices_string))
             if len(type_spec) == 2:
                 itype, next_var = type_spec
                 try:
@@ -380,7 +383,7 @@ class StarClusterConfig(object):
                 total_num_nodes += itype_num
             except (ValueError,TypeError), e:
                 raise exception.ConfigError(
-                    "number of instances (%s) of type %s must be an integer > 1" % \
+                    "number of instances (%s) of type '%s' must be an integer > 1" % \
                     (itype_num, itype))
             itype_dic = AttributeDict(size=itype_num, image=itype_image, type=itype)
             itypes.append(itype_dic)
@@ -532,7 +535,7 @@ class StarClusterConfig(object):
             kwargs = {}
             if tag_name:
                 kwargs.update(dict(cluster_tag=tag_name))
-            kwargs.update(**self.aws)
+            kwargs.update(self.aws)
             kwargs.update(self.clusters[template_name])
             clust = Cluster(**kwargs)
             return clust
