@@ -329,8 +329,8 @@ class SGELoadBalancer(LoadBalancer):
             log.warn("Longest Allowed Queue Time should be > 300 seconds.")
             log.warn("It takes ~5 minutes to launch a new EC2 node.")
 
-        for key in self.__dict__.keys():
-               log.info("bal: %s => %s." % (key, self.__dict__[key]))
+        #for key in self.__dict__.keys():
+            #log.info("bal: %s => %s." % (key, self.__dict__[key]))
 
 
     def get_qatime(self,now):
