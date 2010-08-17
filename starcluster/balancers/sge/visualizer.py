@@ -103,5 +103,5 @@ class SGEVisualizer(object):
         for sub in vals:
             self.graph(sub[1],sub[0])
 
-        log.info("done making graphs.")
+        log.info("Done making graphs.")
 
