@@ -214,8 +214,7 @@ class EasyEC2(EasyAWS):
         print "-" * len(msg)
 
     def get_image_name(self, img):
-        image_name = img.name or \
-                img.location.split('/')[1].split('.manifest.xml')[0]
+        image_name = re.sub('\.manifest\.xml$','',img.location.split('/')[-1])
         return image_name
 
     def get_instance_user_data(self, instance_id):
@@ -373,7 +372,6 @@ class EasyEC2(EasyAWS):
         if image is None:
             log.error('cannot remove AMI %s' % image_name)
             return
-        bucket = os.path.dirname(image.location)
         files = self.get_image_files(image_name)
         for file in files:
             if pretend:
@@ -503,13 +501,15 @@ class EasyEC2(EasyAWS):
     def _get_image_files(self, image, bucket):
         """
         """
-        files = bucket.list(prefix=image.name)
-        iname = re.escape(image.name)
-        manifest_regex = re.compile(r'%s\.manifest\.xml' % iname)
-        part_regex = re.compile(r'%s\.part\.(\d*)' % iname)
+        bname = re.escape(bucket.name)
+        prefix = re.sub('^%s\/' % bname,'', image.location)
+        prefix = re.sub('\.manifest\.xml$','', prefix)
+        files = bucket.list(prefix=prefix)
+        manifest_regex = re.compile(r'%s\.manifest\.xml' % prefix)
+        part_regex = re.compile(r'%s\.part\.(\d*)' % prefix)
         # boto with eucalyptus returns boto.s3.prefix.Prefix class at the 
-        # end of the list, we ignore these by checking for delete method
-        files = [ f for f in files if hasattr(f,'delete') and 
+        # end of the list, we ignore these by checking for delete
+        files = [ f for f in files if hasattr(f,'delete') and
                  part_regex.match(f.name) or manifest_regex.match(f.name) ]
         return files
 
@@ -523,7 +523,7 @@ class EasyEC2(EasyAWS):
         return self._get_image_files(image, bucket)
 
     def get_image_bucket(self, image):
-        bucket_name = '/'.join(image.location.split('/')[:-1])
+        bucket_name = image.location.split('/')[0]
         return self.s3.get_bucket(bucket_name)
 
     def get_image_manifest(self, image):
