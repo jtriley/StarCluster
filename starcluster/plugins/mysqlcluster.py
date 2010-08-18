@@ -257,8 +257,8 @@ class MysqlCluster(ClusterSetup):
         # Start mysql on query nodes
         for node in self.query_nodes:
             nconn = node.ssh
-            log.info('Starting mysql on node %d, ignoring missing file error...' % nodes.index(node))
-            nconn.execute('/etc/init.d/mysql start', ignore_exit_status = True)
+            log.info('Starting mysql on node %d...' % nodes.index(node))
+            nconn.execute('/etc/init.d/mysql restart', ignore_exit_status = True)
                 
         # Import sql dump
         name, ext = posixpath.splitext(self._dump_file)
