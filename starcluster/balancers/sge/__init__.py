@@ -324,6 +324,8 @@ class SGELoadBalancer(LoadBalancer):
         self.kill_after = kill_after
         self.stabilization_time = stab
         self.lookback_window = lookback_win
+        self.min_nodes = 1
+        self.allow_master_kill = False
        
         if self.longest_allowed_queue_time < 300:
             log.warn("Longest Allowed Queue Time should be > 300 seconds.")
