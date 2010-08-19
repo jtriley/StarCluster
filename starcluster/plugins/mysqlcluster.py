@@ -190,22 +190,23 @@ ndb-connectstring=%(mgm_ip)s
 '''
 
 class MysqlCluster(ClusterSetup):
-    def __init__(self,num_replica,data_memory,index_memory, dump_dir,\ 
-                 dump_file,dump_interval,dedicated_query,num_data_nodes):
+    def __init__(self,num_replicas,data_memory,index_memory, dump_dir,\
+                     dump_file,dump_interval,dedicated_query,num_data_nodes):
         self._num_replicas=int(num_replicas)
         self._data_memory=data_memory
         self._index_memory=index_memory
         self._dump_dir=dump_dir
         self._dump_file=dump_file
         self._dump_interval=dump_interval
-        self._dedicated_query=dedicated_query
+        self._dedicated_query=dedicated_query.lower() == 'true'
         self._num_data_nodes=int(num_data_nodes)
 
     def run(self, nodes, master, user, user_shell, volumes):
         mconn = master.ssh
+        mconn.execute('rm -f /usr/mysql-cluster/*')
         # Get IPs for all nodes
         self.mgm_ip = master.private_ip_address
-        if not self._dedicated_query: 
+        if not self._dedicated_query:
             self.storage_ips = [x.private_ip_address for x in nodes[1:]]
             self.query_ips = self.storage_ips
             self.data_nodes = nodes[1:]
@@ -223,11 +224,11 @@ class MysqlCluster(ClusterSetup):
             node_num = nodes.index(node)
             if node_num == 0: node_num = 'master'
             log.info('Killing all mysql processes on node %s...' % node_num)
-            nconn.execute('pkill -9 mysql', ignore_exit_status = True)
+            nconn.execute('pkill -9 mysql; pkill -9 ndb', ignore_exit_status = True)
             log.info('Creating backup directory and changing ownership of ' +\
                 'data directory on node %s' % node_num)
-            nconn.execute('mkdir -p %s/BACKUP' % self._backup_data_dir)
-            nconn.execute('chown -R mysql:mysql %s' % self._data_dir)
+            nconn.execute('mkdir -p /var/lib/mysql-cluster/BACKUP')
+            nconn.execute('chown -R mysql:mysql /var/lib/mysql-cluster')
         
         # Generate and place ndb_mgmd configuration file
         log.info('Generating ndb_mgmd.cnf...')
@@ -256,39 +257,39 @@ class MysqlCluster(ClusterSetup):
         # Start mysql on query nodes
         for node in self.query_nodes:
             nconn = node.ssh
-            log.info('Starting mysql on node %d, ignoring missing file error...' % nodes.index(node))
-            nconn.execute('/etc/init.d/mysql start', ignore_exit_status = True)
+            log.info('Starting mysql on node %d...' % nodes.index(node))
+            nconn.execute('/etc/init.d/mysql restart', ignore_exit_status = True)
                 
         # Import sql dump
-        name, ext = posixpath.splitext(self._dumpfile)
+        name, ext = posixpath.splitext(self._dump_file)
         sc_path = self._dump_dir + name + '.sc' + ext
-        orig_path = self._dump_dir + self._dumpfile
+        orig_path = self._dump_dir + self._dump_file
         if mconn.isfile(sc_path):
-            mconn.ssh.execute('mysql < %s' % sc_path)
-        elif mconn.ssh.isfile(orig_path):
-            mconn.ssh.execute('mysql < %s' % orig_path)
+            mconn.execute('mysql < %s' % sc_path)
+        elif mconn.isfile(orig_path):
+            mconn.execute('mysql < %s' % orig_path)
         else:
             log.info('No dump file found, not importing.')
             
-        # Setup dump cronjob
-        for node in self.query_nodes:
-            nconn = node.ssh
-            log.info('Adding dump cronjob to query nodes')
-            cronjob = generate_crontab(sc_path)
-            nconn.execute("echo '%s' >> /etc/crontab" % cronjob)
+        # Setup dump cronjobh
+        log.info('Adding dump cronjob to master node')
+        cronjob = self.generate_mysqldump_crontab(sc_path)
+        crontab_file = mconn.remote_file('/etc/crontab','a')
+        crontab_file.write(cronjob)
 
         log.info('Management Node: %s' % master.public_dns_name)
-        log.info('Data Nodes: %s' % [x.public_dns_name for x in self._data_nodes]
-        log.info('Query Nodes: %s' % [x.public_dns_name for x in self._query_nodes]
-        
+        log.info('Data Nodes: \n%s' % '\n'.join([x.public_dns_name for x in
+                                               self.data_nodes]))
+        log.info('Query Nodes: \n%s' % '\n'.join([x.public_dns_name for x in
+                                                self.query_nodes]))
 
     def generate_ndb_mgmd(self):
         ndb_mgmd = ndb_mgmd_template % {'num_replicas':self._num_replicas,'data_memory':self._data_memory, \
         'index_memory':self._index_memory,'mgm_ip':self.mgm_ip}
         
         for x in self.storage_ips:
-            ndb_mgmd += ndb_mgmd_storage % {'storage_ip':x,'data_dir':self._data_dir,\
-                            'backup_data_dir':self._backup_data_dir}
+            ndb_mgmd += ndb_mgmd_storage % {'storage_ip':x,'data_dir':'/var/lib/mysql-cluster',\
+                            'backup_data_dir':'/var/lib/mysql-cluster'}
             ndb_mgmd += '\n'
             
         if self._dedicated_query: 
@@ -304,4 +305,11 @@ class MysqlCluster(ClusterSetup):
         return my_cnf % {'mgm_ip':self.mgm_ip}
 
     def generate_mysqldump_crontab(self, path):
-        crontab = '*/%(dump_intervals)s * * * * root mysqldump -r %(loc)s --all-databases' {'dump_interval': self._dump_interval, 'loc': path}
+        crontab = (
+            '\n*/%(dump_interval)s * * * * root ' + \
+            'mysql --batch --skip-column-names --execute="show databases"' + \
+            " | egrep -v '(mysql|information_schema)' | " + \
+            "xargs mysqldump --add-drop-table --add-drop-database -Y -B" + \
+            '> %(loc)s\n'
+        ) % {'dump_interval': self._dump_interval, 'loc': path}
+        return crontab
