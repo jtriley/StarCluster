@@ -499,14 +499,9 @@ class EasyEC2(EasyAWS):
         except:
             pass
 
-    def get_image_files(self, image_id):
+    def _get_image_files(self, image, bucket):
         """
-        Return list of files on S3 for image_id
-        The list includes the image's manifest and part files
         """
-        image = self.get_image(image_id)
-        bucketname = image.location.split('/')[0]
-        bucket = self.s3.get_bucket(bucketname)
         files = bucket.list(prefix=image.name)
         iname = re.escape(image.name)
         manifest_regex = re.compile(r'%s\.manifest\.xml' % iname)
@@ -517,16 +512,49 @@ class EasyEC2(EasyAWS):
                  part_regex.match(f.name) or manifest_regex.match(f.name) ]
         return files
 
+    def get_image_files(self, image_id):
+        """
+        Return list of files on S3 for image_id
+        The list includes the image's manifest and part files
+        """
+        image = self.get_image(image_id)
+        bucket = self.get_image_bucket(image)
+        return self._get_image_files(image, bucket)
+
+    def get_image_bucket(self, image):
+        bucket_name = '/'.join(image.location.split('/')[:-1])
+        return self.s3.get_bucket(bucket_name)
+
+    def get_image_manifest(self, image):
+        return image.location.split('/')[-1]
+
     @print_timing("Migrating image")
-    def migrate_image(self, image_id, destbucket):
+    def migrate_image(self, image_id, destbucket, migrate_manifest=False,
+                      kernel_id=None, ramdisk_id=None, region=None, cert=None,
+                      private_key=None):
         """
         Migrate image_id files to destbucket
         """
-        files = self.get_image_files(image_id)
+        if migrate_manifest:
+            if os.system('which ec2-migrate-manifest') != 0:
+                raise exception.BaseException(
+                    "ec2-migrate-manifest command not found"
+                )
+            if not cert:
+                raise exception.BaseException("no cert specified")
+            if not private_key:
+                raise exception.BaseException("no private_key specified")
+            if not kernel_id:
+                raise exception.BaseException("no kernel_id specified")
+            if not ramdisk_id:
+                raise exception.BaseException("no ramdisk_id specified")
+        image = self.get_image(image_id)
+        bucket = self.get_image_bucket(image)
+        files = self._get_image_files(image, bucket)
         if not files:
             log.info("No files found for image: %s" % image_id)
             return
-        log.info("Downloading image: %s" % image_id)
+        log.info("Migrating image: %s" % image_id)
         widgets = [files[0].name, progressbar.Percentage(), ' ',
                    progressbar.Bar(marker=progressbar.RotatingMarker()), ' ',
                    progressbar.ETA(), ' ', ' ']
@@ -540,6 +568,31 @@ class EasyEC2(EasyAWS):
             pbar.update(counter)
             counter += 1
         pbar.finish()
+        if migrate_manifest:
+            dbucket = self.s3.get_bucket(destbucket)
+            key = dbucket.get_key(self.get_image_manifest(image))
+            f = tempfile.NamedTemporaryFile()
+            key.get_contents_to_file(f.file)
+            f.file.close()
+            cmd = ('ec2-migrate-manifest -c %s -k %s -m %s --kernel %s ' +
+                   '--ramdisk %s --no-mapping') %  (cert, private_key,
+                                                    f.name, kernel_id,
+                                                    ramdisk_id)
+            register_cmd = "ec2-register %s/%s" % (destbucket, key.name)
+            if region:
+                cmd += '--region %s' % region
+                register_cmd += " --region %s" % region
+            log.info("Migrating manifest file...")
+            retval = os.system(cmd)
+            if retval != 0:
+                raise exception.BaseException(
+                    "ec2-migrate-manifest failed with status %s" % retval)
+            f.file = open(f.name, 'r')
+            key.set_contents_from_file(f.file)
+            f.close()
+            os.unlink(f.name+'.bak')
+            log.info("Manifest migrated successfully. You can now run:\n" +
+                     register_cmd + "\nto register your migrated image.")
 
     @print_timing("Downloading image")
     def download_image_files(self, image_id, destdir):
