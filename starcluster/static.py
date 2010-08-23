@@ -45,7 +45,7 @@ INSTANCE_TYPES = {
     'm2.xlarge': 'x86_64',
     'm2.2xlarge': 'x86_64',
     'm2.4xlarge': 'x86_64',
-    #'cc1.4xlarge': 'x86_64',
+    'cc1.4xlarge': 'x86_64',
 }
 
 PROTOCOLS = [

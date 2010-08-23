@@ -550,6 +550,10 @@ class EasyEC2(EasyAWS):
             if not ramdisk_id:
                 raise exception.BaseException("no ramdisk_id specified")
         image = self.get_image(image_id)
+        if image.root_device_type == "ebs":
+            raise exception.AWSError(
+                "The image you wish to migrate is EBS-based. " +
+                "This method only works for instance-store images")
         ibucket = self.get_image_bucket(image)
         files = self._get_image_files(image, ibucket)
         if not files:
