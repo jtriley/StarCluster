@@ -47,12 +47,15 @@ class VolumeCreator(object):
         if not self._instance:
             log.info("No instance in group %s for zone %s, launching one now." % \
                      (self.security_group.name, zone))
-            self._resv = self._ec2.run_instances(image_id=self._image_id,
+            self._resv = self._ec2.run_instances(
+                image_id=self._image_id,
                 instance_type=self._instance_type,
                 min_count=1, max_count=1,
                 security_groups=[self.security_group.name],
                 key_name=self._keypair,
-                placement=zone)
+                placement=zone,
+                user_data='master',
+            )
             instance = self._resv.instances[0]
             self._instance = Node(instance, self._key_location, 'vol_host')
         s = Spinner()
