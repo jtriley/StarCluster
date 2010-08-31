@@ -259,6 +259,7 @@ class Cluster(object):
         self._zone = None
         self._plugins = plugins
         self._cluster_group = None
+        self._placement_group = None
 
     @property
     def zone(self):
@@ -540,6 +541,16 @@ class Cluster(object):
         return self._cluster_group
 
     @property
+    def _placement_group_name(self):
+        return static.PLACEMENT_GROUP_TEMPLATE % self.cluster_tag
+
+    def placement_group(self):
+        if self._placement_group is None:
+            pg = self.ec2.get_or_create_placement_group(self._placement_group_name)
+            self._placement_group = pg
+        return self._placement_group
+
+    @property
     def master_node(self):
         if not self._master:
             for node in self.nodes:
@@ -547,12 +558,18 @@ class Cluster(object):
                     self._master = node
         return self._master
 
-    def get_alias(self, instance_id):
+    def get_alias(self, node):
         """
         Return the alias stored in the instance's user data.
         """
-        user_data = self.ec2.get_instance_user_data(instance_id)
-        return user_data
+        instance_id = node.id
+        user_data = self.ec2.get_instance_user_data(instance_id).split('|')
+        if len(user_data) == 1:
+            return user_data[0]
+        index = int(node.ami_launch_index)
+        if index < len(user_data):
+            return user_data[index]
+        return ''
 
     @property
     def nodes(self):
@@ -562,7 +579,7 @@ class Cluster(object):
             for node in nodes:
                 if node.state not in ['pending','running','stopped']:
                     continue
-                alias = self.get_alias(node.id)
+                alias = self.get_alias(node)
                 n = Node(node, self.key_location, alias)
                 if n.is_master():
                     self._master = n
@@ -592,13 +609,33 @@ class Cluster(object):
             if node.alias == alias:
                 return node
 
-    @property
-    def running_nodes(self):
+    def _nodes_in_states(self, states):
         nodes = []
         for node in self.nodes:
-            if node.state == 'running':
+            if node.state in states:
                 nodes.append(node)
         return nodes
+    
+    @property
+    def running_nodes(self):
+        return self._nodes_in_states(['running'])
+    
+    @property
+    def stopped_or_running_nodes(self):
+        return self._nodes_in_states(['running', 'stopped'])
+    
+    @property
+    def stopped_nodes(self):
+        return self._nodes_in_states(['stopped'])
+    
+    def _is_cluster_compute(self):
+        """
+        Answer if the instance type is a cluster compute instance.
+        """
+        if self.master_instance_type:
+            return self.master_instance_type in static.CLUSTER_COMPUTE_TYPES
+        master = self.nodes[0]
+        return master is not None and master.instance_type in static.CLUSTER_COMPUTE_TYPES
 
     @property
     def spot_requests(self):
@@ -616,7 +653,7 @@ class Cluster(object):
                       min_count=1, max_count=1, count=1, key_name=None,
                       security_groups=None, launch_group=None,
                       availability_zone_group=None, placement=None,
-                      user_data=None):
+                      user_data=None, placement_group=None):
         """
         Convenience method for running spot or flat-rate instances
         """
@@ -627,17 +664,18 @@ class Cluster(object):
                 count=count, launch_group=launch_group, key_name=key_name,
                 security_groups=security_groups,
                 availability_zone_group=availability_zone_group,
-                placement=placement, user_data=user_data)
+                placement=placement, user_data=user_data, placement_group=placement_group)
         else:
             return conn.run_instances(image_id, instance_type=instance_type,
                                       min_count=min_count, max_count=max_count,
                                       key_name=key_name,
                                       security_groups=security_groups,
                                       placement=placement,
-                                      user_data=user_data)
+                                      user_data=user_data,
+                                      placement_group=placement_group)
 
     def create_node(self, alias, image_id=None, instance_type=None, count=1,
-                    zone=None):
+                    zone=None, placement_group=None):
         """
         Convenience method for requesting an instance with this cluster's settings
         """
@@ -651,7 +689,31 @@ class Cluster(object):
             availability_zone_group=cluster_sg,
             launch_group=cluster_sg,
             placement=zone or self.zone,
-            user_data=alias)
+            user_data=alias,
+            placement_group=placement_group)
+
+    def create_compute_cluster(self):
+        """
+        Launches all EC2 cluster compute instances based on this cluster's settings.
+        It is a Amazon recommendation to start all cluster compute instances
+        in a single launch request.
+        """
+        log.info("Launching a %d-node cluster..." % self.cluster_size)
+        self.master_image_id = self.master_image_id or self.node_image_id
+        log.info("Launching cluster compute nodes (AMI: %s, TYPE: %s)..." %
+                 (self.master_image_id, self.master_instance_type))
+        pgn = self.placement_group().name
+        user_data = 'master'
+        id_start = 1
+        for id in range(id_start, self.cluster_size):
+            alias = 'node%.3d' % id
+            user_data = user_data + '|' + alias
+        response = self.create_node(user_data,
+                                   image_id=self.master_image_id,
+                                   instance_type=self.master_instance_type,
+                                   count=self.cluster_size,
+                                   placement_group=pgn)
+        print response
 
     def create_cluster(self):
         """
@@ -659,8 +721,6 @@ class Cluster(object):
         """
         log.info("Launching a %d-node cluster..." % self.cluster_size)
         self.master_image_id = self.master_image_id or self.node_image_id
-        self.master_instance_type = self.master_instance_type or \
-                self.node_instance_type
         log.info("Launching master node (AMI: %s, TYPE: %s)..." %
                  (self.master_image_id, self.master_instance_type))
         master_response = self.create_node('master',
@@ -747,21 +807,46 @@ class Cluster(object):
 
     def stop_cluster(self):
         """
-        Stop this cluster by first detaching all volumes, shutting down all
-        instances, cancelling all spot requests (if any), and remove this
-        cluster's security group.
+        Stop this cluster by first detaching all volumes, stopping down all
+        instances and cancelling all spot requests (if any).
+        If is not a cluster compute terminate the instances and 
+        remove this cluster's security group.
         """
         if self.volumes:
             self.detach_volumes()
+        is_cci = self._is_cluster_compute()
         for node in self.running_nodes:
-            log.info("Shutting down instance: %s" % node.id)
+            log.info("Stopping or shutting down instance: %s" % node.id)
             node.shutdown()
+        for spot in self.spot_requests:
+            if spot.state not in ['cancelled','closed']:
+                log.info("Cancelling spot instance request: %s" % spot.id)
+                spot.cancel()
+        if not is_cci:
+            log.info("Removing %s security group" % self._security_group)
+            self.cluster_group.delete()
+
+    def terminate_cluster(self):
+        """
+        Stop this cluster by first detaching all volumes, shutting down all
+        instances, cancelling all spot requests (if any) remove this cluster's
+        placement group (if any) and remove this cluster's security group.
+        """
+        if self.volumes:
+            self.detach_volumes()
+        is_cci = self._is_cluster_compute()
+        for node in self.stopped_or_running_nodes:
+            log.info("Terminating instance: %s" % node.id)
+            node.terminate()
         for spot in self.spot_requests:
             if spot.state not in ['cancelled','closed']:
                 log.info("Cancelling spot instance request: %s" % spot.id)
                 spot.cancel()
         log.info("Removing %s security group" % self._security_group)
         self.cluster_group.delete()
+        if is_cci and self.placement_group():
+            log.info("Removing %s placement group" % self._placement_group_name)
+            self.placement_group().delete()
 
     def start(self, create=True, validate=True, validate_only=False,
               validate_running=False):
@@ -786,7 +871,16 @@ class Cluster(object):
         """
         log.info("Starting cluster...")
         if create:
-            self.create_cluster()
+            self.master_instance_type = self.master_instance_type or \
+                    self.node_instance_type            
+            if self._is_cluster_compute():
+                self.create_compute_cluster()
+            else:
+                self.create_cluster()
+        elif self._is_cluster_compute():
+            stopped_nodes = self.stopped_nodes
+            for node in stopped_nodes:
+                node.start()
         s = Spinner()
         log.log(INFO_NO_NEWLINE, "Waiting for cluster to start...")
         s.start()

@@ -162,6 +162,43 @@ class EasyEC2(EasyAWS):
             return True
         return False
 
+    def get_placement_group_or_none(self, name):
+        """
+        Returns placement group with name if it exists otherwise returns None
+        """
+        try:
+            pg = self.conn.get_all_placement_groups(groupnames=[name])[0]
+            return pg
+        except boto.exception.EC2ResponseError, e:
+            self.__check_for_auth_failure(e)
+        except IndexError, e:
+            pass
+
+    def create_placement_group(self, name):
+        """
+        Create a new placement group for your account.
+        This will create the placement group within the region you
+        are currently connected to.
+        """
+        if not name:
+            return None
+        log.info("Creating placement group %s..." % name)
+        pg = None
+        success = self.conn.create_placement_group(name)
+        if success:
+            pg = self.get_placement_group_or_none(name)
+        return pg
+
+    def get_or_create_placement_group(self, name):
+        """ 
+        Try to return a placement group by name.
+        If the group is not found, attempt to create it. 
+        """
+        pg = self.get_placement_group_or_none(name)
+        if not pg:
+            pg = self.create_placement_group(name)
+        return pg
+
     def request_spot_instances(self, price, image_id, instance_type='m1.small',
                                count=1, launch_group=None, key_name=None,
                                availability_zone_group=None, security_groups=None,
@@ -179,13 +216,14 @@ class EasyEC2(EasyAWS):
 
     def run_instances(self, image_id, instance_type='m1.small', min_count=1,
                       max_count=1, key_name=None, security_groups=None,
-                      placement=None, user_data=None):
+                      placement=None, user_data=None, placement_group=None):
         return self.conn.run_instances(image_id, instance_type=instance_type,
                                        min_count=min_count, max_count=max_count,
                                        key_name=key_name,
                                        security_groups=security_groups,
                                        placement=placement,
-                                       user_data=user_data)
+                                       user_data=user_data,
+                                       placement_group=placement_group)
 
     def register_image(self, name, description=None, image_location=None,
                        architecture=None, kernel_id=None, ramdisk_id=None,

@@ -117,6 +117,10 @@ class Node(object):
         return self.instance.launch_time
 
     @property
+    def ami_launch_index(self):
+        return self.ami_launch_index
+
+    @property
     def key_name(self):
         return self.instance.key_name
 

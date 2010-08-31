@@ -27,6 +27,7 @@ BASE_AMI_64="ami-a5c42dcc"
 
 SECURITY_GROUP_PREFIX="@sc"
 SECURITY_GROUP_TEMPLATE= '-'.join([SECURITY_GROUP_PREFIX, "%s"])
+PLACEMENT_GROUP_TEMPLATE= '-'.join([SECURITY_GROUP_PREFIX, "cluster", "%s"])
 MASTER_GROUP_NAME="masters"
 MASTER_GROUP=SECURITY_GROUP_TEMPLATE % MASTER_GROUP_NAME
 MASTER_GROUP_DESCRIPTION="StarCluster Master Nodes"
@@ -47,6 +48,8 @@ INSTANCE_TYPES = {
     'm2.4xlarge': 'x86_64',
     'cc1.4xlarge': 'x86_64',
 }
+
+CLUSTER_COMPUTE_TYPES = ['cc1.4xlarge']
 
 PROTOCOLS = [
     'tcp','udp','icmp'
