@@ -4,8 +4,8 @@ import sys
 from setuptools import setup, find_packages
 
 install_requires = [
-    "paramiko>=1.7.6",
-    "boto>=2.0b1",
+    "paramiko==1.7.6",
+    "boto==2.0b2",
 ]
 
 maj, min, micro, rel, serial = sys.version_info

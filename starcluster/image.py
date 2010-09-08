@@ -46,8 +46,9 @@ class EC2ImageCreator(object):
         self.ramdisk_id = ramdisk_id
         self.cert = ec2_cert
         self.remove_image_files = remove_image_files
-        if not utils.is_valid_bucket_name(self.bucket):
-            raise exception.InvalidBucketName(self.bucket)
+        for name in self.bucket.split("/"):
+            if not utils.is_valid_bucket_name(name):
+                raise exception.InvalidBucketName(self.bucket)
         if not utils.is_valid_image_name(self.prefix):
             raise exception.InvalidImageName(self.prefix)
         self.ec2 = awsutils.EasyEC2(

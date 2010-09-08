@@ -64,7 +64,7 @@ class StarClusterConfig(object):
     instance_types = static.INSTANCE_TYPES
 
     def __init__(self, config_file=None, cache=False):
-        self.cfg_file = config_file
+        self.cfg_file = config_file or static.STARCLUSTER_CFG_FILE
         self.type_validators = {
             int: self._get_int,
             str: self._get_string,
@@ -81,6 +81,9 @@ class StarClusterConfig(object):
         self.permissions = AttributeDict()
         self.cache = cache
 
+    def __repr__(self):
+        return "<StarClusterConfig: %s>" % self.cfg_file 
+
     def _get_urlfp(self, url):
         log.debug("Loading url: %s" % url)
         import socket
@@ -94,10 +97,9 @@ class StarClusterConfig(object):
             raise exception.ConfigError(
                 "error loading config from url %s\n%s" % (url,e))
 
-    def _get_fp(self, config_file):
+    def _get_fp(self, cfg_file):
         if not os.path.isdir(static.STARCLUSTER_CFG_DIR):
             os.makedirs(static.STARCLUSTER_CFG_DIR)
-        cfg_file = config_file or static.STARCLUSTER_CFG_FILE
         log.debug("Loading file: %s" % cfg_file)
         if os.path.exists(cfg_file):
             if not os.path.isfile(cfg_file):

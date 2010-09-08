@@ -62,6 +62,9 @@ class Node(object):
         self._num_procs = None
         self._memory = None
 
+    def __repr__(self):
+        return '<Node: %s (%s)>' % (self.alias, self.id)
+
     @property
     def num_processors(self):
         if not self._num_procs:
@@ -163,9 +166,23 @@ class Node(object):
     def is_ebs_backed(self):
         return self.instance.root_device_type == "ebs" 
 
+    def is_spot(self):
+        return self.spot_id is not None
+
+    def start(self):
+        """
+        Starts EBS-backed instance and puts it in the 'running' state.
+        Only works if this node is EBS-backed, raises exception.InvalidOperation
+        otherwise.
+        """
+        if not self.is_ebs_backed():
+            raise exception.InvalidOperation(
+                "Only EBS-backed instances can be started")
+        return self.instance.start()
+
     def stop(self):
         """
-        Shutdown EBS-backed instance and put it in the 'stopped' state. 
+        Shutdown EBS-backed instance and put it in the 'stopped' state.
         Only works if this node is EBS-backed, raises exception.InvalidOperation
         otherwise.
 
@@ -191,7 +208,7 @@ class Node(object):
         instance-store instances and stop EBS-backed instances 
         (ie not destroy EBS root dev)
         """
-        if self.is_ebs_backed():
+        if self.is_ebs_backed() and not self.is_spot():
             self.stop()
         else:
             self.terminate()

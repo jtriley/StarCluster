@@ -75,6 +75,9 @@ class EasyEC2(EasyAWS):
         self._executable_images = None
         self._security_group_response = None
 
+    def __repr__(self):
+        return '<EasyEC2: %s (%s)>' % (self.conn.region.name, self.conn.region.endpoint)
+
     def __check_for_auth_failure(self, e):
         if e.error_code in ["AuthFailure", "SignatureDoesNotMatch"]:
             raise e
@@ -214,8 +217,7 @@ class EasyEC2(EasyAWS):
         print "-" * len(msg)
 
     def get_image_name(self, img):
-        image_name = img.name or \
-                img.location.split('/')[1].split('.manifest.xml')[0]
+        image_name = re.sub('\.manifest\.xml$','',img.location.split('/')[-1])
         return image_name
 
     def get_instance_user_data(self, instance_id):
@@ -373,7 +375,6 @@ class EasyEC2(EasyAWS):
         if image is None:
             log.error('cannot remove AMI %s' % image_name)
             return
-        bucket = os.path.dirname(image.location)
         files = self.get_image_files(image_name)
         for file in files:
             if pretend:
@@ -503,13 +504,15 @@ class EasyEC2(EasyAWS):
     def _get_image_files(self, image, bucket):
         """
         """
-        files = bucket.list(prefix=image.name)
-        iname = re.escape(image.name)
-        manifest_regex = re.compile(r'%s\.manifest\.xml' % iname)
-        part_regex = re.compile(r'%s\.part\.(\d*)' % iname)
+        bname = re.escape(bucket.name)
+        prefix = re.sub('^%s\/' % bname,'', image.location)
+        prefix = re.sub('\.manifest\.xml$','', prefix)
+        files = bucket.list(prefix=prefix)
+        manifest_regex = re.compile(r'%s\.manifest\.xml' % prefix)
+        part_regex = re.compile(r'%s\.part\.(\d*)' % prefix)
         # boto with eucalyptus returns boto.s3.prefix.Prefix class at the 
-        # end of the list, we ignore these by checking for delete method
-        files = [ f for f in files if hasattr(f,'delete') and 
+        # end of the list, we ignore these by checking for delete
+        files = [ f for f in files if hasattr(f,'delete') and
                  part_regex.match(f.name) or manifest_regex.match(f.name) ]
         return files
 
@@ -523,7 +526,7 @@ class EasyEC2(EasyAWS):
         return self._get_image_files(image, bucket)
 
     def get_image_bucket(self, image):
-        bucket_name = '/'.join(image.location.split('/')[:-1])
+        bucket_name = image.location.split('/')[0]
         return self.s3.get_bucket(bucket_name)
 
     def get_image_manifest(self, image):
@@ -550,6 +553,10 @@ class EasyEC2(EasyAWS):
             if not ramdisk_id:
                 raise exception.BaseException("no ramdisk_id specified")
         image = self.get_image(image_id)
+        if image.root_device_type == "ebs":
+            raise exception.AWSError(
+                "The image you wish to migrate is EBS-based. " +
+                "This method only works for instance-store images")
         ibucket = self.get_image_bucket(image)
         files = self._get_image_files(image, ibucket)
         if not files:
@@ -763,6 +770,9 @@ class EasyS3(EasyAWS):
         super(EasyS3, self).__init__(aws_access_key_id, aws_secret_access_key,
                                      boto.connect_s3, **kwargs)
         self.cache = cache
+
+    def __repr__(self):
+        return '<EasyS3: %s>' % self.conn.server_name()
 
     def __check_for_auth_failure(self,e):
         if e.error_code == "InvalidAccessKeyId":

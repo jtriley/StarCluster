@@ -34,12 +34,13 @@ def get_cluster(cluster_name, cfg):
         cluster = ec2.get_security_group(_get_cluster_name(cluster_name))
         kwargs = {}
         kwargs.update(cfg.aws)
-        cluster_key = None
+        cluster_key = None; key_location = None
         try:
             cluster_key = cluster.instances()[0].key_name
-            key = cfg.get_key(cluster_key)
+            key_location = cfg.get_key(cluster_key).get('key_location')
         except (IndexError, exception.KeyNotFound),e:
-            key = dict(keyname=cluster_key, key_location=None)
+            pass
+        key = dict(keyname=cluster_key, key_location=key_location)
         kwargs.update(key)
         kwargs.update(dict(cluster_tag=cluster_name))
         return Cluster(**kwargs)
@@ -258,6 +259,10 @@ class Cluster(object):
         self._zone = None
         self._plugins = plugins
         self._cluster_group = None
+
+    def __repr__(self):
+        return '<Cluster: %s (%s-node)>' % (self.cluster_tag,
+                                            self.cluster_size)
 
     @property
     def zone(self):
@@ -559,7 +564,7 @@ class Cluster(object):
             nodes = self.cluster_group.instances()
             self._nodes = []
             for node in nodes:
-                if node.state not in ['pending','running']:
+                if node.state not in ['pending','running','stopped']:
                     continue
                 alias = self.get_alias(node.id)
                 n = Node(node, self.key_location, alias)
@@ -1185,6 +1190,10 @@ class Cluster(object):
                     'Keypair %s not in availability zone region %s' % (keyname,
                                                                        z.region))
         return True
+
+    def ssh_to_node(self, alias):
+        n = self.get_node_by_alias(alias)
+        n.ssh.interactive_shell()
 
 if __name__ == "__main__":
     from starcluster.config import StarClusterConfig

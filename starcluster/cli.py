@@ -234,8 +234,8 @@ class CmdStart(CmdBase):
         if self.opts.spot_bid is not None:
             cmd = ' '.join(sys.argv[1:]) + ' --no-create'
             launch_group = static.SECURITY_GROUP_TEMPLATE % tag
-            msg = user_msgs.spotmsg % {'cmd':cmd, 
-                                          'launch_group': launch_group}
+            msg = user_msgs.spotmsg % {'cmd':cmd,
+                                       'launch_group': launch_group}
             self.warn_experimental(msg)
         self.catch_ctrl_c()
         scluster.start(create=create, validate=False)

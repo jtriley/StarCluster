@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+import os
 import time
 import string
 from starcluster.logger import log
@@ -11,7 +13,7 @@ from starcluster import exception
 class VolumeCreator(object):
     def __init__(self, cfg, add_to_cfg=False, keypair=None, device='/dev/sdz',
                  image_id=static.BASE_AMI_32, instance_type="m1.small",
-                 shutdown_instance=True):
+                 shutdown_instance=False):
         self._cfg = cfg
         self._ec2 = cfg.get_easy_ec2()
         self._keypair = keypair
@@ -45,12 +47,15 @@ class VolumeCreator(object):
         if not self._instance:
             log.info("No instance in group %s for zone %s, launching one now." % \
                      (self.security_group.name, zone))
-            self._resv = self._ec2.run_instances(image_id=self._image_id,
+            self._resv = self._ec2.run_instances(
+                image_id=self._image_id,
                 instance_type=self._instance_type,
                 min_count=1, max_count=1,
                 security_groups=[self.security_group.name],
                 key_name=self._keypair,
-                placement=zone)
+                placement=zone,
+                user_data='master',
+            )
             instance = self._resv.instances[0]
             self._instance = Node(instance, self._key_location, 'vol_host')
         s = Spinner()
@@ -141,20 +146,27 @@ class VolumeCreator(object):
                                    silent=False)
 
     def _load_keypair(self):
-        kps = self._ec2.keypairs; cfg = self._cfg
+        ec2 = self._ec2; cfg = self._cfg
         if self._keypair:
-            for kp in kps:
-                if kp.name == self._keypair and cfg.keys.get(kp.name):
-                    log.info('Using keypair %s' % kp.name)
+            kp = ec2.get_keypair(self._keypair)
+            key = cfg.get_key(kp.name)
+            self._key_location = key.get('key_location','')
+        else:
+            for kp in ec2.keypairs:
+                if self._cfg.keys.has_key(kp.name):
                     self._keypair = kp.name
-                    self._key_location = cfg.keys.get(kp.name).get('key_location')
-                    return
-        for kp in kps:
-            if self._cfg.keys.has_key(kp.name):
-                log.info('Using keypair %s' % kp.name)
-                self._keypair = kp.name
-                self._key_location = cfg.keys.get(kp.name).get('key_location')
-                return
+                    self._key_location = kl = cfg.get_key(kp.name).get('key_location','')
+                    if os.path.exists(kl) and os.path.isfile(kl):
+                        self._key_location = kl
+        log.info('Using keypair %s' % self._keypair)
+        if not os.path.exists(self._key_location):
+            raise exception.ValidationError(
+                'key_location=%s does not exist.' % \
+                self._key_location)
+        elif not os.path.isfile(self._key_location):
+            raise exception.ValidationError(
+                'key_location=%s is not a file.' % \
+                self._key_location)
 
     @print_timing("Creating volume")
     def create(self, volume_size, volume_zone):
@@ -186,6 +198,11 @@ class VolumeCreator(object):
                 log.info("Removing security group %s" % \
                          self.security_group.name)
                 self.security_group.delete()
+            else:
+                log.info(("The volume host instance %s is still running. " + \
+                         "Run 'starcluster stop volumecreator' to shut " + \
+                         "down all volume host instances manually.") %
+                         self._instance.id)
             return vol.id
         except Exception,e:
             log.error("exception thrown: %s" % e)
