@@ -260,6 +260,10 @@ class Cluster(object):
         self._plugins = plugins
         self._cluster_group = None
 
+    def __repr__(self):
+        return '<Cluster: %s (%s-node)>' % (self.cluster_tag,
+                                            self.cluster_size)
+
     @property
     def zone(self):
         """
