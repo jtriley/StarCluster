@@ -3,6 +3,7 @@
 Utils module for StarCluster
 """
 
+import os
 import re
 import types
 import string
@@ -206,3 +207,24 @@ def permute(a):
             if i == first:
                 a.reverse()
                 return
+
+def which(program):
+    """
+    Returns the path to the program provided it exists and
+    is on the system's PATH
+
+    retrieved from code snippet by Jay:
+
+    http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
+    """
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
