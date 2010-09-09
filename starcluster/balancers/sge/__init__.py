@@ -320,7 +320,7 @@ class SGELoadBalancer(LoadBalancer):
         self._visualizer_on = plot
         self.max_nodes = max_nodes
         self.longest_allowed_queue_time = wait_time
-        self.add_nodes_per_interval = add_pi
+        self.add_nodes_per_iteration = add_pi
         self.kill_after = kill_after
         self.stabilization_time = stab
         self.lookback_window = lookback_win
