@@ -1,32 +1,17 @@
 #!/usr/bin/env python
 import os
 import socket
+from starcluster import utils
 from starcluster import static
 from starcluster import exception
 from starcluster import ssh
 from starcluster.logger import log
 
 def ssh_to_node(node_id, cfg, user='root'):
-    ec2 = cfg.get_easy_ec2()
-    instances = ec2.get_all_instances()
-    node = None
-    for instance in instances:
-        if instance.dns_name == node_id:
-            node = instance
-            break
-        elif instance.id == node_id:
-            node = instance
-            break
-    if not node:
-        raise exception.InstanceDoesNotExist(node_id)
-    if node.state != 'running':
-        raise exception.InstanceNotRunning(node_id, node.state,
-                                           label='node')
-    key = cfg.get_key(node.key_name)
-    os.system(static.SSH_TEMPLATE % (key.key_location, user,
-                                   node.dns_name))
+    node = get_node(node_id, cfg)
+    node.shell(user=user)
 
-def get_node(node_id, cfg):
+def get_node(node_id, cfg, user='root'):
     """Factory for Node class"""
     ec2 = cfg.get_easy_ec2()
     instances = ec2.get_all_instances()
@@ -40,9 +25,9 @@ def get_node(node_id, cfg):
             break
     if not node:
         raise exception.InstanceDoesNotExist(node_id)
-    key_location = cfg.keys.get(node.key_name, {}).get('key_location')
-    alias = node_id
-    node = Node(node, key_location, node_id)
+    alias = ec2.get_instance_user_data(node.id)
+    key = cfg.get_key(node.key_name)
+    node = Node(node, key.key_location, alias, user=user)
     return node
 
 class Node(object):
@@ -263,6 +248,29 @@ class Node(object):
                                        username=self.user,
                                        private_key=self.key_location)
         return self._ssh
+
+    def shell(self, user=None):
+        """
+        Attempts to launch an interactive shell by first trying the system's
+        ssh client. If the system does not have the ssh command it falls back
+        to a pure-python ssh shell.
+        """
+        if self.state != 'running':
+            label = 'instance'
+            if self.alias == "master":
+                label = "master node"
+            elif self.alias:
+                label = "node '%s'" % self.alias
+            raise exception.InstanceNotRunning(self.id, self.state,
+                                               label=label)
+        if utils.has_required(['ssh']):
+            log.debug("using system's ssh client")
+            user = user or self.user
+            os.system(static.SSH_TEMPLATE % (self.key_location, user,
+                                             self.dns_name))
+        else:
+            log.debug("using pure-python ssh client")
+            self.ssh.interactive_shell()
 
     def get_hosts_entry(self):
         """ Returns /etc/hosts entry for this node """

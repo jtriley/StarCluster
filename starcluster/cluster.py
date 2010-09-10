@@ -65,12 +65,8 @@ def cluster_exists(tag_name, cfg):
 
 def ssh_to_master(cluster_name, cfg, user='root'):
     cluster = get_cluster(cluster_name, cfg)
-    master = cluster.master_node
-    if master.state != 'running':
-        raise exception.InstanceNotRunning(master.id, master.state, label="master node")
-    key = cfg.get_key(master.key_name)
-    os.system(static.SSH_TEMPLATE % (key.key_location, user,
-                                   master.dns_name))
+    cluster.ssh_to_master(user=user)
+
 def _get_node_number(alias):
     """
     Maps aliases master, node001, etc to 0,1,etc
@@ -86,18 +82,7 @@ def _get_node_number(alias):
 
 def ssh_to_cluster_node(cluster_name, node_id, cfg, user='root'):
     cluster = get_cluster(cluster_name, cfg)
-    node = cluster.get_node_by_alias(node_id)
-    node = node or cluster.get_node_by_dns_name(node_id)
-    node = node or cluster.get_node_by_id(node_id)
-    if not node:
-        raise exception.InstanceDoesNotExist(node_id, label='node')
-    if node.state != 'running':
-        raise exception.InstanceNotRunning(node.id, node.state, label="cluster node")
-    key = cfg.get_key(node.key_name)
-    cmd = static.SSH_TEMPLATE % (key.key_location, user,
-                                          node.dns_name)
-    log.debug('Executing command: ' + cmd)
-    os.system(cmd)
+    cluster.ssh_to_node(node_id, user=user)
 
 def _get_cluster_name(cluster_name):
     if not cluster_name.startswith(static.SECURITY_GROUP_PREFIX):
@@ -1192,9 +1177,16 @@ class Cluster(object):
                                                                        z.region))
         return True
 
-    def ssh_to_node(self, alias):
-        n = self.get_node_by_alias(alias)
-        n.ssh.interactive_shell()
+    def ssh_to_master(self, user='root'):
+        self.ssh_to_node('master', user=user)
+
+    def ssh_to_node(self, alias, user='root'):
+        node = self.get_node_by_alias(alias)
+        node = node or self.get_node_by_dns_name(alias)
+        node = node or self.get_node_by_id(alias)
+        if not node:
+            raise exception.InstanceDoesNotExist(alias, label='node')
+        node.shell(user=user)
 
 if __name__ == "__main__":
     from starcluster.config import StarClusterConfig
