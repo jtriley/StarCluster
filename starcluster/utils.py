@@ -10,6 +10,7 @@ import string
 import urlparse
 import time
 from datetime import datetime
+from starcluster import exception
 from starcluster.logger import log
 from starcluster.iptools import validate_ip, validate_cidr
 
@@ -207,6 +208,25 @@ def permute(a):
             if i == first:
                 a.reverse()
                 return
+
+def has_required(programs):
+    """
+    Same as check_required but returns False if not all commands exist
+    """
+    try:
+        return check_required(programs)
+    except exception.CommandNotFound,e:
+        return False
+
+def check_required(programs):
+    """
+    Checks that all commands in the programs list exist. Returns 
+    True if all commands exist and raises exception.CommandNotFound if not.
+    """
+    for prog in programs:
+        if not which(prog):
+            raise exception.CommandNotFound(prog)
+    return True
 
 def which(program):
     """

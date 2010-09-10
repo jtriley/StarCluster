@@ -66,8 +66,10 @@ def cluster_exists(tag_name, cfg):
 def ssh_to_master(cluster_name, cfg, user='root'):
     cluster = get_cluster(cluster_name, cfg)
     master = cluster.master_node
+    if master.state != 'running':
+        raise exception.InstanceNotRunning(master.id, master.state, label="master node")
     key = cfg.get_key(master.key_name)
-    os.system('ssh -i %s %s@%s' % (key.key_location, user,
+    os.system(static.SSH_TEMPLATE % (key.key_location, user,
                                    master.dns_name))
 def _get_node_number(alias):
     """
@@ -85,18 +87,17 @@ def _get_node_number(alias):
 def ssh_to_cluster_node(cluster_name, node_id, cfg, user='root'):
     cluster = get_cluster(cluster_name, cfg)
     node = cluster.get_node_by_alias(node_id)
+    node = node or cluster.get_node_by_dns_name(node_id)
+    node = node or cluster.get_node_by_id(node_id)
     if not node:
-        node = cluster.get_node_by_dns_name(node_id)
-    if not node:
-        node = cluster.get_node_by_id(node_id)
-    if node:
-        key = cfg.get_key(node.key_name)
-        cmd = 'ssh -i %s %s@%s' % (key.key_location, user,
-                                              node.dns_name)
-        log.debug('Executing command: ' + cmd)
-        os.system(cmd)
-    else:
-        log.error("node '%s' does not exist" % node_id)
+        raise exception.InstanceDoesNotExist(node_id, label='node')
+    if node.state != 'running':
+        raise exception.InstanceNotRunning(node.id, node.state, label="cluster node")
+    key = cfg.get_key(node.key_name)
+    cmd = static.SSH_TEMPLATE % (key.key_location, user,
+                                          node.dns_name)
+    log.debug('Executing command: ' + cmd)
+    os.system(cmd)
 
 def _get_cluster_name(cluster_name):
     if not cluster_name.startswith(static.SECURITY_GROUP_PREFIX):
@@ -262,7 +263,7 @@ class Cluster(object):
 
     def __repr__(self):
         return '<Cluster: %s (%s-node)>' % (self.cluster_tag,
-                                            self.cluster_size)
+                                            self.cluster_size or 0)
 
     @property
     def zone(self):

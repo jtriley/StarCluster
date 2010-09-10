@@ -15,6 +15,11 @@ class BaseException(Exception):
     def explain(self):
         return "%s: %s" % (self.__class__.__name__, self.msg)
 
+class CommandNotFound(BaseException):
+    """Raised when command is not found on the system's PATH """
+    def __init__(self, cmd):
+        self.msg = "command not found: '%s'" % cmd
+
 class SSHError(BaseException):
     """Base class for all SSH related errors"""
 
@@ -33,15 +38,19 @@ class SSHNoCredentialsError(BaseException):
         self.msg = "No password or key specified"
 
 class AWSError(BaseException):
-    pass
+    """Base exception for all AWS related errors"""
+
+class InstanceNotRunning(AWSError):
+    def __init__(self, instance_id, state, label='instance'):
+        self.msg = "%s %s is not running (%s)" % (label, instance_id, state)
 
 class AMIDoesNotExist(AWSError):
     def __init__(self, image_id):
         self.msg = "AMI %s does not exist" % image_id
 
 class InstanceDoesNotExist(AWSError):
-    def __init__(self, instance_id):
-        self.msg = "instance %s does not exist" % instance_id
+    def __init__(self, instance_id, label='instance'):
+        self.msg = "%s %s does not exist" % (label,instance_id)
 
 class SecurityGroupDoesNotExist(AWSError):
     def __init__(self, sg_name):
@@ -62,10 +71,6 @@ class VolumeDoesNotExist(AWSError):
 class RegionDoesNotExist(AWSError):
     def __init__(self, region):
         self.msg = "region %s does not exist" % region
-
-class InstanceNotRunning(AWSError):
-    def __init__(self, instance_id):
-        self.msg = "instance %s is not running" % instance_id
 
 class InvalidOperation(AWSError):
     pass

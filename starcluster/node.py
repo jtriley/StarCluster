@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import os
 import socket
+from starcluster import static
 from starcluster import exception
 from starcluster import ssh
 from starcluster.logger import log
@@ -16,12 +17,14 @@ def ssh_to_node(node_id, cfg, user='root'):
         elif instance.id == node_id:
             node = instance
             break
-    if node:
-        key = cfg.get_key(node.key_name)
-        os.system('ssh -i %s %s@%s' % (key.key_location, user, 
-                                       node.dns_name))
-    else:
-        log.error("node %s does not exist" % node_id)
+    if not node:
+        raise exception.InstanceDoesNotExist(node_id)
+    if node.state != 'running':
+        raise exception.InstanceNotRunning(node_id, node.state,
+                                           label='node')
+    key = cfg.get_key(node.key_name)
+    os.system(static.SSH_TEMPLATE % (key.key_location, user,
+                                   node.dns_name))
 
 def get_node(node_id, cfg):
     """Factory for Node class"""

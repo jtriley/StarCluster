@@ -12,6 +12,7 @@ try:
     CURRENT_USER = getpass.getuser()
 except:
     pass
+SSH_TEMPLATE = 'ssh -i %s %s@%s'
 DEBUG_FILE = os.path.join(TMP_DIR, 'starcluster-debug-%s.log' % CURRENT_USER)
 
 STARCLUSTER_CFG_DIR = os.path.join(os.path.expanduser('~'),'.starcluster')
