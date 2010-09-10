@@ -12,9 +12,14 @@ or manually as %(user)s:
 
     $ ssh -i %(key)s %(user)s@%(master)s
 
-When you are finished using the cluster, run:
+When you are finished using the cluster, run either:
 
     $ starcluster stop %(tag)s
+
+to stop (if cluster compute) or else shutdown the cluster and stop paying for service
+or:
+
+    $ starcluster terminate %(tag)s
 
 to shutdown the cluster and stop paying for service
 

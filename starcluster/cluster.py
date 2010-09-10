@@ -625,6 +625,10 @@ class Cluster(object):
         return self._nodes_in_states(['running', 'stopped'])
     
     @property
+    def not_terminated_nodes(self):
+        return self._nodes_in_states(['running', 'stopped', 'shutting-down'])
+    
+    @property
     def stopped_nodes(self):
         return self._nodes_in_states(['stopped'])
     
@@ -771,6 +775,14 @@ class Cluster(object):
                 return False
         return True
 
+    def is_cluster_terminated(self):
+        """
+        Check whether there are zero nodes running
+        associated with the cluster
+        """
+        nodes = self.not_terminated_nodes
+        return len(nodes) == 0
+
     def attach_volumes_to_master(self):
         """
         Attach each volume to the master node
@@ -842,6 +854,12 @@ class Cluster(object):
             if spot.state not in ['cancelled','closed']:
                 log.info("Cancelling spot instance request: %s" % spot.id)
                 spot.cancel()
+        s = Spinner()
+        log.log(INFO_NO_NEWLINE, "Waiting for instances to terminate...")
+        s.start()
+        while not self.is_cluster_terminated():
+            time.sleep(30)
+        s.stop()
         log.info("Removing %s security group" % self._security_group)
         self.cluster_group.delete()
         if is_cci and self.placement_group():
