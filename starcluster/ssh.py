@@ -255,6 +255,18 @@ class Connection(object):
                 log.debug(line.strip())
         return output
 
+    def get_path(self):
+        """Returns the PATH environment variable on the remote machine"""
+        return self.get_env()['PATH']
+
+    def get_env(self):
+        """Returns the remote machine's environment as a dictionary"""
+        env = {}
+        for line in self.execute('env'):
+            key, val = line.split('=',1)
+            env[key] = val
+        return env
+
     def close(self):
         """Closes the connection and cleans up."""
         # Close SFTP Connection.
