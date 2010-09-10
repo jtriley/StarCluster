@@ -117,25 +117,34 @@ This temporary latency typically lasts less than one hour.
 Amazon EC2 Keypairs
 -------------------
 In addition to supplying your **[aws info]** you must also define at least one **[keypair]** section that
-represents one of your keypairs on Amazon EC2. You can also define a new **[keypair]** section for each Amazon EC2
-keypair you want to use with StarCluster. 
+represents one of your keypairs on Amazon EC2. Amazon EC2 keypairs are used by StarCluster to connect and configure your 
+instances.
 
-As an example, suppose we have two keypairs on Amazon EC2 that we wish to use with StarCluster called "mykeypair1" 
-and "mykeypair2".  To configure StarCluster for these keypairs we define a **[keypair]** section for each of them 
-in the configuration file:
+You should define a new **[keypair]** section for each Amazon EC2 keypair you wish to use with StarCluster.  
+As an example, suppose we have two keypairs on Amazon EC2 that we wish to use with StarCluster named "mykeypair1" 
+and "mykeypair2" on Amazon. 
+
+**NOTE**: If you do not know the name of your keypair(s), use StarCluster's *listkeypairs* command or the *ec2-describe-keypairs* 
+command in the EC2 command line tools. The **[keypair]** section name *must* match the name of the keypair on Amazon EC2.
+
+To configure StarCluster for these keypairs we define a **[keypair]** section for each of them in the configuration file:
 
 .. code-block:: ini
 
     [keypair mykeypair1]
-    # this is the path to your openssh private key for mykeypair1
+    # this is the path to your openssh private key for mykeypair4
     key_location=/path/to/your/mykeypair1.rsa
 
-    [keypair mykeypair2]
+    [keypair mykeypair3]
     # this is the path to your openssh private key for mykeypair2
     key_location=/path/to/your/mykeypair2.rsa
 
 These keypair sections can now be referenced in a *cluster templates*' **keyname** setting as we'll show below in an
 example *cluster template*.
+
+**NOTE**: In order for StarCluster to interact with **any** instances you have on EC2, the keypair used to launch those instances 
+**must** be defined in the config. You can check what keypairs were used to launch an instance using StarCluster's *listinstances* 
+command or the *ec2-describe-instances* command from the ec2 command-line tools.
 
 Defining Cluster Templates
 --------------------------
