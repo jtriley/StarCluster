@@ -427,6 +427,12 @@ class EasyEC2(EasyAWS):
         for file in files:
             print file
 
+    def list_keypairs(self):
+        max_length = max([len(key.name) for key in self.keypairs])
+        templ = "%" + str(max_length) + "s  %s"
+        for key in self.keypairs:
+            print templ % (key.name, key.fingerprint)
+
     def list_zones(self, region=None):
         conn = self.conn
         if region:
@@ -540,10 +546,7 @@ class EasyEC2(EasyAWS):
         Migrate image_id files to destbucket
         """
         if migrate_manifest:
-            if os.system('which ec2-migrate-manifest') != 0:
-                raise exception.BaseException(
-                    "ec2-migrate-manifest command not found"
-                )
+            utils.check_required(['ec2-migrate-manifest'])
             if not cert:
                 raise exception.BaseException("no cert specified")
             if not private_key:
@@ -648,6 +651,7 @@ class EasyEC2(EasyAWS):
             (self._keypair_response, self.cache))
             self._keypair_response = self.conn.get_all_key_pairs()
         return self._keypair_response
+
 
     def terminate_instances(self, instances=None):
         if instances:

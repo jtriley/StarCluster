@@ -432,7 +432,7 @@ class CmdCreateImage(CmdBase):
     """
     createimage [options] <instance-id> <image_name> <bucket> 
 
-    Create a new image (AMI) from a currently running EC2 instance
+    Create a new instance-store image (AMI) from a currently running EC2 instance
 
     Example:
 
@@ -527,7 +527,7 @@ class CmdDownloadImage(CmdBase):
     """
     downloadimage [options] <image_id> <destination_directory>
 
-    Download the manifest.xml and all AMI parts for an image_id
+    Download the manifest.xml and all AMI parts for an instance-store AMI
 
     Example:
 
@@ -603,6 +603,17 @@ class CmdCreateVolume(CmdBase):
         else:
             log.error("failed to create new volume")
 
+class CmdListKeyPairs(CmdBase):
+    """
+    listkeypairs
+
+    List all EC2 keypairs
+    """
+    names = ['listkeypairs', 'lk']
+    def execute(self, args):
+        ec2 = self.cfg.get_easy_ec2()
+        ec2.list_keypairs()
+
 class CmdListZones(CmdBase):
     """
     listzones
@@ -666,7 +677,7 @@ class CmdShowImage(CmdBase):
     """
     showimage <image_id>
 
-    Show all AMI parts and manifest files on S3 for an EC2 image (AMI)
+    Show all AMI parts and manifest files on S3 for an instance-store AMI
 
     Example:
 
@@ -1102,6 +1113,7 @@ def main():
         CmdListSpots(),
         CmdSpotHistory(),
         CmdShowConsole(),
+        CmdListKeyPairs(),
         CmdListRegions(),
         CmdListZones(),
         CmdListBuckets(),
