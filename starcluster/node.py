@@ -62,6 +62,9 @@ class Node(object):
         self._num_procs = None
         self._memory = None
 
+    def __repr__(self):
+        return '<Node: %s (%s)>' % (self.alias, self.id)
+
     @property
     def num_processors(self):
         if not self._num_procs:

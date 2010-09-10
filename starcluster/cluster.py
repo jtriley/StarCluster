@@ -261,6 +261,10 @@ class Cluster(object):
         self._cluster_group = None
         self._placement_group = None
 
+    def __repr__(self):
+        return '<Cluster: %s (%s-node)>' % (self.cluster_tag,
+                                            self.cluster_size)
+
     @property
     def zone(self):
         """

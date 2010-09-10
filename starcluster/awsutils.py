@@ -75,6 +75,9 @@ class EasyEC2(EasyAWS):
         self._executable_images = None
         self._security_group_response = None
 
+    def __repr__(self):
+        return '<EasyEC2: %s (%s)>' % (self.conn.region.name, self.conn.region.endpoint)
+
     def __check_for_auth_failure(self, e):
         if e.error_code in ["AuthFailure", "SignatureDoesNotMatch"]:
             raise e
@@ -805,6 +808,9 @@ class EasyS3(EasyAWS):
         super(EasyS3, self).__init__(aws_access_key_id, aws_secret_access_key,
                                      boto.connect_s3, **kwargs)
         self.cache = cache
+
+    def __repr__(self):
+        return '<EasyS3: %s>' % self.conn.server_name()
 
     def __check_for_auth_failure(self,e):
         if e.error_code == "InvalidAccessKeyId":
