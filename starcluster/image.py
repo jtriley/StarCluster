@@ -12,7 +12,8 @@ from starcluster.utils import print_timing
 def create_image(instanceid, image_name, bucket, cfg, **kwargs):
     instance = node.get_node(instanceid, cfg)
     if instance.state != 'running':
-        raise exception.InstanceNotRunning(instance.id)
+        raise exception.InstanceNotRunning(instance.id, instance.state,
+                                           instance.alias)
     kwargs.update(cfg.aws)
     kwargs.update({
         'instance': instance,
@@ -31,7 +32,7 @@ class EC2ImageCreator(object):
     def __init__(self, instance=None, aws_access_key_id=None,
                  aws_secret_access_key=None, aws_user_id=None, 
                  ec2_cert=None, ec2_private_key=None, prefix='image', 
-                 bucket=None, description=None,
+                 bucket='', description=None,
                  kernel_id=None, ramdisk_id=None, 
                  remove_image_files=False, **kwargs):
         self.host = instance # starcluster.node.Node instance
@@ -65,6 +66,8 @@ class EC2ImageCreator(object):
                 self.private_key = os.environ['EC2_PRIVATE_KEY']
             except KeyError,e:
                 raise exception.EC2PrivateKeyRequired()
+        if not self.userid:
+            raise exception.AWSUserIdRequired()
         if not os.path.exists(self.cert):
             raise exception.EC2CertDoesNotExist(self.cert)
         if not os.path.exists(self.private_key):
@@ -80,9 +83,14 @@ class EC2ImageCreator(object):
             'arch': self.host.arch,
         }
 
+    def __repr__(self):
+        return "<EC2ImageCreator: %s>" % self.host.id
+
     @print_timing
     def create_image(self):
         # first remove any image files from a previous run
+        log.info("Checking for EC2 API tools...")
+        self.host.ssh.check_required(['ec2-upload-bundle','ec2-bundle-vol'])
         self._remove_image_files()
         self._bundle_image()
         self._upload_image()

@@ -20,6 +20,11 @@ class CommandNotFound(BaseException):
     def __init__(self, cmd):
         self.msg = "command not found: '%s'" % cmd
 
+class RemoteCommandNotFound(CommandNotFound):
+    """Raised when command is not found on a *remote* system's PATH """
+    def __init__(self, cmd):
+        self.msg = "command not found on remote system: '%s'" % cmd
+
 class SSHError(BaseException):
     """Base class for all SSH related errors"""
 
@@ -40,17 +45,17 @@ class SSHNoCredentialsError(BaseException):
 class AWSError(BaseException):
     """Base exception for all AWS related errors"""
 
-class InstanceNotRunning(AWSError):
-    def __init__(self, instance_id, state, label='instance'):
-        self.msg = "%s %s is not running (%s)" % (label, instance_id, state)
-
 class AMIDoesNotExist(AWSError):
     def __init__(self, image_id):
         self.msg = "AMI %s does not exist" % image_id
 
 class InstanceDoesNotExist(AWSError):
     def __init__(self, instance_id, label='instance'):
-        self.msg = "%s %s does not exist" % (label,instance_id)
+        self.msg = "%s '%s' does not exist" % (label,instance_id)
+
+class InstanceNotRunning(AWSError):
+    def __init__(self, instance_id, state, label='instance'):
+        self.msg = "%s %s is not running (%s)" % (label, instance_id, state)
 
 class SecurityGroupDoesNotExist(AWSError):
     def __init__(self, sg_name):
@@ -83,13 +88,18 @@ class InvalidImageName(AWSError):
     def __init__(self, image_name):
         self.msg = "image name %s is not valid" % image_name
 
+class AWSUserIdRequired(AWSError):
+    def __init__(self):
+        self.msg = "No Amazon user id specified in config (AWS_USER_ID)"
+
 class EC2CertRequired(AWSError):
     def __init__(self):
-        self.msg = "No certificate file (pem) file specified"
+        self.msg = "No certificate file (pem) file specified in config (EC2_CERT)"
 
 class EC2PrivateKeyRequired(AWSError):
     def __init__(self):
-        self.msg = "No certificate file (pem) file specified"
+        self.msg = "No private certificate file (pem) file specified in " + \
+                   "config (EC2_PRIVATE_KEY)"
 
 class EC2CertDoesNotExist(AWSError):
     def __init__(self, key):
