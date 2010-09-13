@@ -255,6 +255,29 @@ class Connection(object):
                 log.debug(line.strip())
         return output
 
+    def has_required(self, progs):
+        """
+        Same as check_required but returns False if not all commands exist
+        """
+        try:
+            return self.check_required(progs)
+        except exception.RemoteCommandNotFound,e:
+            return False
+
+    def check_required(self, progs):
+        """
+        Checks that all commands in the progs list exist on the remote system.
+        Returns True if all commands exist and raises exception.CommandNotFound
+        if not.
+        """
+        for prog in progs:
+            if not self.which(prog):
+                raise exception.RemoteCommandNotFound(prog)
+        return True
+
+    def which(self, prog):
+        return self.execute('which %s' % prog, ignore_exit_status=True)
+
     def get_path(self):
         """Returns the PATH environment variable on the remote machine"""
         return self.get_env()['PATH']
