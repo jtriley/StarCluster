@@ -498,6 +498,7 @@ class StarClusterConfig(object):
                                                self.permission_settings)
         sections = self._get_sections('cluster')
         self.clusters = self._load_cluster_sections(sections)
+        return self
 
     def get_aws_from_environ(self):
         """

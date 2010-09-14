@@ -17,6 +17,7 @@ __all__ = [
     "tests",
     "templates",
     "optcomplete",
+    "commands",
 ]
 
 import sys
