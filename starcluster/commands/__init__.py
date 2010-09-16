@@ -26,6 +26,7 @@ from listpublic import CmdListPublic
 from runplugin import CmdRunPlugin
 from spothistory import CmdSpotHistory
 from shell import CmdShell
+from createkey import CmdCreateKey
 
 all_cmds = [
     CmdStart(),
@@ -37,6 +38,7 @@ all_cmds = [
     CmdListInstances(),
     CmdListImages(),
     CmdListPublic(),
+    CmdCreateKey(),
     CmdCreateImage(),
     CmdRemoveImage(),
     CmdDownloadImage(),

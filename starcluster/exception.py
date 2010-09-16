@@ -38,7 +38,7 @@ class SSHAuthException(SSHError):
     def __init__(self, user, host):
         self.msg = "failed to authenticate to host %s as user %s" % (user, host)
 
-class SSHNoCredentialsError(BaseException):
+class SSHNoCredentialsError(SSHError):
     def __init__(self, *args):
         self.msg = "No password or key specified"
 
@@ -76,6 +76,10 @@ class VolumeDoesNotExist(AWSError):
 class RegionDoesNotExist(AWSError):
     def __init__(self, region):
         self.msg = "region %s does not exist" % region
+
+class BucketDoesNotExist(AWSError):
+    def __init__(self, bucket_name):
+        self.msg = "bucket '%s' does not exist" % bucket_name
 
 class InvalidOperation(AWSError):
     pass
