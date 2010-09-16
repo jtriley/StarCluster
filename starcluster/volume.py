@@ -13,7 +13,7 @@ from starcluster import exception
 class VolumeCreator(object):
     def __init__(self, cfg, add_to_cfg=False, keypair=None, device='/dev/sdz',
                  image_id=static.BASE_AMI_32, instance_type="m1.small",
-                 shutdown_instance=False):
+                 shutdown_instance=False, mkfs_cmd='mkfs.ext3'):
         self._cfg = cfg
         self._ec2 = cfg.get_easy_ec2()
         self._keypair = keypair
@@ -28,6 +28,10 @@ class VolumeCreator(object):
         self._instance_type = instance_type or 'm1.small'
         self._shutdown = shutdown_instance
         self._security_group = None
+        self._mkfs_cmd = mkfs_cmd
+
+    def __repr__(self):
+        return "<VolumeCreator: %s>" % self._mkfs_cmd
 
     @property
     def security_group(self):
@@ -123,6 +127,10 @@ class VolumeCreator(object):
             raise exception.ValidationError("volume device %s is not valid" % \
                                             device)
 
+    def _validate_required_progs(self, progs):
+        log.info("Checking for required remote commands...")
+        self._instance.ssh.check_required(progs)
+
     def validate(self, size, zone, device, image):
         self._validate_size(size)
         self._validate_zone(zone)
@@ -142,7 +150,7 @@ class VolumeCreator(object):
                                    silent=False)
 
     def _format_volume_partitions(self):
-        self._instance.ssh.execute('mkfs.ext3 %s' % (self._device + '1'),
+        self._instance.ssh.execute('%s %s' % (self._mkfs_cmd, self._device+'1'),
                                    silent=False)
 
     def _load_keypair(self):
@@ -176,6 +184,7 @@ class VolumeCreator(object):
             log.info(("Requesting host instance in zone %s to attach volume" + \
                      " to...") % volume_zone)
             instance = self._request_instance(volume_zone)
+            self._validate_required_progs([self._mkfs_cmd, 'sfdisk'])
             self._determine_device()
             log.info("Creating %sGB volume in zone %s" % (volume_size,
                                                           volume_zone))
@@ -205,9 +214,14 @@ class VolumeCreator(object):
                          self._instance.id)
             return vol.id
         except Exception,e:
-            log.error("exception thrown: %s" % e)
             if self._volume:
-                self._volume.detach()
+                log.error("Error occured, detaching and deleting volume: %s" % \
+                          self._volume.id)
+                self._volume.detach(force=True)
                 time.sleep(5)
-            if self._instance:
-                self._instance.terminate()
+                self._volume.delete()
+            if self._instance and self._instance.state in ['running','pending']:
+                log.info(("The volume host instance %s is still running. " + \
+                         "Run 'starcluster stop volumecreator' to shut " + \
+                         "down all volume host instances manually.") %
+                         self._instance.id)
