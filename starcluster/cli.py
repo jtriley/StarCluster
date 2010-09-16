@@ -1,7 +1,26 @@
 #!/usr/bin/env python
 """
+StarCluster Command Line Interface:
+
 starcluster [global-opts] action [action-opts] [<action-args> ...]
 """
+
+import os
+import sys
+import socket
+
+# hack for now to ignore paramiko 1.7.6 using RandomPool (report bug)
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+from boto.exception import BotoServerError, EC2ResponseError, S3ResponseError
+
+from starcluster import config
+from starcluster import static
+from starcluster import exception
+from starcluster import optcomplete
+from starcluster.commands import all_cmds
+from starcluster.logger import log, console, DEBUG
 
 from starcluster import __version__
 from starcluster import __author__
@@ -20,30 +39,6 @@ Each command consists of a class, which has the following properties:
 - Can optionally have a addopts(self, parser) method which adds options to the
   given parser. This defines command options.
 """
-
-import os
-import sys
-import socket
-
-# hack for now to ignore pycrypto 2.0.1 using md5 and sha
-# why is pycrypto 2.1.0 not on pypi?
-import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning)
-
-from boto.exception import BotoServerError, EC2ResponseError, S3ResponseError
-
-from starcluster import config
-from starcluster import static
-from starcluster import exception
-from starcluster import optcomplete
-from starcluster.commands import all_cmds
-from starcluster.logger import log, console, DEBUG
-
-#try:
-    #import optcomplete
-    #CmdComplete = optcomplete.CmdComplete
-#except ImportError,e:
-    #optcomplete, CmdComplete = None, object
 
 class CmdHelp:
     """
