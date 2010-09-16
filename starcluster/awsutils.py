@@ -197,6 +197,33 @@ class EasyEC2(EasyAWS):
                            architecture, kernel_id, ramdisk_id,
                            root_device_name, block_device_map)
 
+    def delete_keypair(self, name):
+        return self.conn.delete_key_pair(name)
+
+    def create_keypair(self, name, output_file=None):
+        """
+        Create a new EC2 keypair and optionally save to output_file
+
+        Returns boto.ec2.keypair.KeyPair
+        """
+        if output_file:
+            output_dir = os.path.dirname(output_file)
+            if output_dir and not os.path.exists(output_dir):
+                raise exception.BaseException("output directory does not exist")
+            if os.path.exists(output_file):
+                raise exception.BaseException(
+                    "cannot save keypair %s: file already exists" % output_file)
+        kp = self.conn.create_key_pair(name)
+        if output_file:
+            try:
+                kfile = open(output_file,'wb')
+                kfile.write(kp.material)
+                kfile.close()
+                os.chmod(output_file, 0400)
+            except IOError,e:
+                raise exception.BaseException(str(e))
+        return kp
+
     def get_keypair(self, keypair):
         try:
             return self.conn.get_all_key_pairs(keynames=[keypair])[0]
@@ -791,7 +818,6 @@ class EasyS3(EasyAWS):
             return True
         except boto.exception.S3ResponseError,e:
             self.__check_for_auth_failure(e)
-            log.error('bucket %s does not exist' % bucket_name)
             return False
 
     def get_bucket_or_none(self, bucket_name):
@@ -801,22 +827,23 @@ class EasyS3(EasyAWS):
         """
         try:
             return self.get_bucket(bucket_name)
-        except boto.exception.S3ResponseError,e:
-            self.__check_for_auth_failure(e)
+        except exception.BucketDoesNotExist,e:
+            pass
 
     def get_bucket(self, bucketname):
         """
         Returns bucket object representing S3 bucket
         """
-        return self.conn.get_bucket(bucketname)
+        try:
+            return self.conn.get_bucket(bucketname)
+        except boto.exception.S3ResponseError,e:
+            self.__check_for_auth_failure(e)
+            raise exception.BucketDoesNotExist(bucketname)
 
     def list_bucket(self, bucketname):
-        bucket = self.get_bucket_or_none(bucketname)
-        if bucket:
-            for file in bucket.list():
-                if file.name: print file.name
-        else:
-            log.error('bucket %s does not exist' % bucketname)
+        bucket = self.get_bucket(bucketname)
+        for file in bucket.list():
+            if file.name: print file.name
 
     def get_buckets(self):
         try:
@@ -838,12 +865,6 @@ class EasyS3(EasyAWS):
         except:
             pass
         return files
-
-    def show_bucket_files(self, bucket_name):
-        if self.bucket_exists(bucket_name):
-            files = self.get_bucket_files(bucket_name)
-            for file in files:
-                print file
 
 if __name__ == "__main__":
     from starcluster.config import get_easy_ec2
