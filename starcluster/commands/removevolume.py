@@ -6,14 +6,15 @@ from starcluster.logger import log
 
 from base import CmdBase
 
+
 class CmdRemoveVolume(CmdBase):
     """
     removevolume [options] <volume_id>
 
     Delete one or more EBS volumes
 
-    WARNING: This command *permanently* removes an EBS volume.
-    Be careful!
+    WARNING: This command will *permanently* remove an EBS volume.
+    Please be careful!
 
     Example:
 
@@ -33,9 +34,10 @@ class CmdRemoveVolume(CmdBase):
                 log.error('something went wrong fix me: %s' % e)
 
     def addopts(self, parser):
-        parser.add_option("-c","--confirm", dest="confirm", action="store_true",
-            default=False,
-            help="do not prompt for confirmation, just remove the volume")
+        parser.add_option("-c", "--confirm", dest="confirm",
+                          action="store_true", default=False,
+                          help="do not prompt for confirmation, just " + \
+                          "remove the volume")
 
     def execute(self, args):
         if not args:
@@ -53,7 +55,7 @@ class CmdRemoveVolume(CmdBase):
                 return
             if not self.opts.confirm:
                 resp = raw_input("**PERMANENTLY** delete %s (y/n)? " % volid)
-                if resp not in ['y','Y', 'yes']:
+                if resp not in ['y', 'Y', 'yes']:
                     log.info("Aborting...")
                     return
             if vol.delete():

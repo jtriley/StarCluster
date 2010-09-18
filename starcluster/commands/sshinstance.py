@@ -7,6 +7,7 @@ from starcluster.logger import log
 
 from base import CmdBase
 
+
 class CmdSshInstance(CmdBase):
     """
     sshintance [options] <instance-id>
@@ -35,9 +36,9 @@ class CmdSshInstance(CmdBase):
                 log.error('something went wrong fix me: %s' % e)
 
     def addopts(self, parser):
-        opt = parser.add_option("-u","--user", dest="USER", action="store",
-                                type="string", default='root',
-                                help="login as USER (defaults to root)")
+        parser.add_option("-u", "--user", dest="USER", action="store",
+                          type="string", default='root',
+                          help="login as USER (defaults to root)")
 
     def execute(self, args):
         if not args:

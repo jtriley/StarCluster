@@ -4,39 +4,39 @@
 # Copyright (c) 2008-2010, Bryan Davis
 # All rights reserved.
 #
-# Redistribution and use in source and binary forms, with or without 
+# Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
-#     - Redistributions of source code must retain the above copyright notice, 
+#     - Redistributions of source code must retain the above copyright notice,
 #     this list of conditions and the following disclaimer.
-#     - Redistributions in binary form must reproduce the above copyright 
-#     notice, this list of conditions and the following disclaimer in the 
+#     - Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in the
 #     documentation and/or other materials provided with the distribution.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
-# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE 
-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 """Utitlities for dealing with ip addresses.
 
   Functions:
     - validate_ip: Validate a dotted-quad ip address.
-    - ip2long: Convert a dotted-quad ip address to a network byte order 32-bit 
+    - ip2long: Convert a dotted-quad ip address to a network byte order 32-bit
       integer.
-    - long2ip: Convert a network byte order 32-bit integer to a dotted quad ip 
+    - long2ip: Convert a network byte order 32-bit integer to a dotted quad ip
       address.
     - ip2hex: Convert a dotted-quad ip address to a hex encoded network byte
       order 32-bit integer.
     - hex2ip: Convert a hex encoded network byte order 32-bit integer to a
       dotted-quad ip address.
     - validate_cidr: Validate a CIDR notation ip address.
-    - cidr2block: Convert a CIDR notation ip address into a tuple containing 
+    - cidr2block: Convert a CIDR notation ip address into a tuple containing
       network block start and end addresses.
 
   Objects:
@@ -44,7 +44,7 @@
     - IpRangeList: List of IpRange objects providing ``in`` and iteration.
 
 
-  The IpRangeList object can be used in a django settings file to allow CIDR 
+  The IpRangeList object can be used in a django settings file to allow CIDR
   notation and/or (start, end) ranges to be used in the INTERNAL_IPS list.
 
   Example:
@@ -77,17 +77,19 @@ except NameError:
 try:
     next = next
 except NameError:
+
     # builtin next function doesn't exist
-    def next (iterable):
+    def next(iterable):
         return iterable.next()
 
 
 _DOTTED_QUAD_RE = re.compile(r'^(\d{1,3}\.){0,3}\d{1,3}$')
 
-def validate_ip (s):
+
+def validate_ip(s):
     """Validate a dotted-quad ip address.
 
-    The string is considered a valid dotted-quad address if it consists of 
+    The string is considered a valid dotted-quad address if it consists of
     one to four octets (0-255) seperated by periods (.).
 
 
@@ -122,11 +124,12 @@ def validate_ip (s):
 
 _CIDR_RE = re.compile(r'^(\d{1,3}\.){0,3}\d{1,3}/\d{1,2}$')
 
-def validate_cidr (s):
+
+def validate_cidr(s):
     """Validate a CIDR notation ip address.
 
-    The string is considered a valid CIDR address if it consists of one to 
-    four octets (0-255) seperated by periods (.) followed by a forward slash 
+    The string is considered a valid CIDR address if it consists of one to
+    four octets (0-255) seperated by periods (.) followed by a forward slash
     (/) and a bit mask length (1-32).
 
 
@@ -164,7 +167,8 @@ def validate_cidr (s):
     return False
 #end validate_cidr
 
-def ip2long (ip):
+
+def ip2long(ip):
     """
     Convert a dotted-quad ip address to a network byte order 32-bit integer.
 
@@ -197,7 +201,7 @@ def ip2long (ip):
     elif len(quads) < 4:
         # partial form, last supplied quad is host address, rest is network
         host = quads[-1:]
-        quads = quads[:-1] + [0,] * (4 - len(quads)) + host
+        quads = quads[:-1] + [0, ] * (4 - len(quads)) + host
 
     lngip = 0
     for q in quads:
@@ -208,7 +212,8 @@ def ip2long (ip):
 _MAX_IP = 0xffffffff
 _MIN_IP = 0x0
 
-def long2ip (l):
+
+def long2ip(l):
     """
     Convert a network byte order 32-bit integer to a dotted quad ip address.
 
@@ -250,10 +255,12 @@ def long2ip (l):
     """
     if _MAX_IP < l or l < 0:
         raise TypeError("expected int between 0 and %d inclusive" % _MAX_IP)
-    return '%d.%d.%d.%d' % (l>>24 & 255, l>>16 & 255, l>>8 & 255, l & 255) 
+    return '%d.%d.%d.%d' % (l >> 24 & 255, l >> 16 & 255,
+                            l >> 8 & 255, l & 255)
 #end long2ip
 
-def ip2hex (addr):
+
+def ip2hex(addr):
     """
     Convert a dotted-quad ip address to a hex encoded number.
 
@@ -277,7 +284,8 @@ def ip2hex (addr):
     return "%08x" % netip
 #end ip2hex
 
-def hex2ip (hex_str):
+
+def hex2ip(hex_str):
     """
     Convert a hex encoded integer to a dotted-quad ip address.
 
@@ -300,9 +308,10 @@ def hex2ip (hex_str):
     return long2ip(netip)
 #end hex2ip
 
-def cidr2block (cidr):
+
+def cidr2block(cidr):
     """
-    Convert a CIDR notation ip address into a tuple containing the network 
+    Convert a CIDR notation ip address into a tuple containing the network
     block start and end addresses.
 
 
@@ -337,7 +346,7 @@ def cidr2block (cidr):
     prefix = int(prefix)
 
     # convert dotted-quad ip to base network number
-    # can't use ip2long because partial addresses are treated as all network 
+    # can't use ip2long because partial addresses are treated as all network
     # instead of network plus host (eg. '127.1' expands to '127.1.0.0')
     quads = ip.split('.')
     baseIp = 0
@@ -354,12 +363,13 @@ def cidr2block (cidr):
     return (long2ip(start), long2ip(end))
 #end cidr2block
 
-class IpRange (object):
+
+class IpRange(object):
     """
     Range of ip addresses.
 
-    Converts a CIDR notation address, tuple of ip addresses or start and end 
-    addresses into a smart object which can perform ``in`` and ``not in`` 
+    Converts a CIDR notation address, tuple of ip addresses or start and end
+    addresses into a smart object which can perform ``in`` and ``not in``
     tests and iterate all of the addresses in the range.
 
 
@@ -388,10 +398,10 @@ class IpRange (object):
     >>> print(IpRange('127.0.0.255', '127.0.0.0'))
     ('127.0.0.0', '127.0.0.255')
     """
-    def __init__ (self, start, end=None):
+    def __init__(self, start, end=None):
         """
         Args:
-            start: Ip address in dotted quad format or CIDR notation or tuple 
+            start: Ip address in dotted quad format or CIDR notation or tuple
                 of ip addresses in dotted quad format
             end: Ip address in dotted quad format or None
         """
@@ -414,7 +424,7 @@ class IpRange (object):
         self.endIp = max(start, end)
     #end __init__
 
-    def __repr__ (self):
+    def __repr__(self):
         """
         >>> print(IpRange('127.0.0.1'))
         ('127.0.0.1', '127.0.0.1')
@@ -428,9 +438,9 @@ class IpRange (object):
         return (long2ip(self.startIp), long2ip(self.endIp)).__repr__()
     #end __repr__
 
-    def __contains__ (self, item):
+    def __contains__(self, item):
         """
-        Implements membership test operators `in` and `not in` for the address 
+        Implements membership test operators `in` and `not in` for the address
         range.
 
 
@@ -464,7 +474,7 @@ class IpRange (object):
         return self.startIp <= item <= self.endIp
     #end __contains__
 
-    def __iter__ (self):
+    def __iter__(self):
         """
         Return an iterator over the range.
 
@@ -486,19 +496,21 @@ class IpRange (object):
     #end __iter__
 #end class IpRange
 
-class IpRangeList (object):
+
+class IpRangeList(object):
     """
     List of IpRange objects.
 
-    Converts a list of dotted quad ip address and/or CIDR addresses into a 
-    list of IpRange objects. This list can perform ``in`` and ``not in`` tests 
+    Converts a list of dotted quad ip address and/or CIDR addresses into a
+    list of IpRange objects. This list can perform ``in`` and ``not in`` tests
     and iterate all of the addresses in the range.
 
-    This can be used to convert django's conf.settings.INTERNAL_IPS list into 
+    This can be used to convert django's conf.settings.INTERNAL_IPS list into
     a smart object which allows CIDR notation.
 
 
-    >>> INTERNAL_IPS = IpRangeList('127.0.0.1','10/8',('192.168.0.1','192.168.255.255'))
+    >>> private_range = ('192.168.0.1','192.168.255.255')
+    >>> INTERNAL_IPS = IpRangeList('127.0.0.1','10/8', private_range)
     >>> '127.0.0.1' in INTERNAL_IPS
     True
     >>> '10.10.10.10' in INTERNAL_IPS
@@ -508,21 +520,24 @@ class IpRangeList (object):
     >>> '172.16.0.1' in INTERNAL_IPS
     False
     """
-    def __init__ (self, *args):
+    def __init__(self, *args):
         self.ips = tuple(map(IpRange, args))
     #end __init__
 
-    def __repr__ (self):
+    def __repr__(self):
         """
-        >>> print(IpRangeList('127.0.0.1', '10/8', '192.168/16'))
-        (('127.0.0.1', '127.0.0.1'), ('10.0.0.0', '10.255.255.255'), ('192.168.0.0', '192.168.255.255'))
+        >>> repr = IpRangeList('127.0.0.1', '10/8', '192.168/16').__repr__()
+        >>> repr = eval(repr)
+        >>> assert repr[0] == ('127.0.0.1', '127.0.0.1')
+        >>> assert repr[1] == ('10.0.0.0', '10.255.255.255')
+        >>> assert repr[2] == ('192.168.0.0', '192.168.255.255')
         """
         return self.ips.__repr__()
     #end __repr__
 
-    def __contains__ (self, item):
+    def __contains__(self, item):
         """
-        Implements membership test operators `in` and `not in` for the address 
+        Implements membership test operators `in` and `not in` for the address
         range.
 
 
@@ -553,7 +568,7 @@ class IpRangeList (object):
         return False
     #end __contains__
 
-    def __iter__ (self):
+    def __iter__(self):
         """
         >>> iter = IpRangeList('127.0.0.1').__iter__()
         >>> next(iter)
@@ -581,11 +596,12 @@ class IpRangeList (object):
     #end __iter__
 #end class IpRangeList
 
-def iptools_test ():
+
+def iptools_test():
     import doctest
     doctest.testmod()
 #end iptools_test
 
 if __name__ == '__main__':
-   iptools_test()
+    iptools_test()
 # vim: set sw=4 ts=4 sts=4 et :

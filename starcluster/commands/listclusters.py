@@ -4,6 +4,7 @@ from starcluster import cluster
 
 from base import CmdBase
 
+
 class CmdListClusters(CmdBase):
     """
     listclusters
@@ -11,6 +12,7 @@ class CmdListClusters(CmdBase):
     List all active clusters
     """
     names = ['listclusters', 'lc']
+
     def execute(self, args):
         cfg = self.cfg
         cluster.list_clusters(cfg)

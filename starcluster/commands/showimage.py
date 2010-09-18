@@ -3,6 +3,7 @@
 #from base import CmdBase
 from downloadimage import CmdDownloadImage
 
+
 class CmdShowImage(CmdDownloadImage):
     """
     showimage <image_id>
@@ -14,6 +15,7 @@ class CmdShowImage(CmdDownloadImage):
         $ starcluster showimage ami-999999
     """
     names = ['showimage', 'simg']
+
     def execute(self, args):
         if not args:
             self.parser.error('please specify an AMI id')

@@ -7,17 +7,31 @@ import signal
 from starcluster import optcomplete
 from starcluster.logger import log
 
+
 class CmdBase(optcomplete.CmdComplete):
+    """
+    Base class for StarCluster commands
+
+    Each command consists of a class, which has the following properties:
+
+    - Must have a class member 'names' which is a list of the names for
+    the command
+
+    - Can optionally define an addopts(self, parser) method which adds options
+    to the given parser. This defines the command's options.
+    """
     parser = None
     opts = None
     gopts = None
+    gparser = None
+    subcmds_map = None
 
     @property
     def comp_words(self):
         """
         Property that returns COMP_WORDS from Bash/Zsh completion
         """
-        return os.environ.get('COMP_WORDS','').split()
+        return os.environ.get('COMP_WORDS', '').split()
 
     @property
     def goptions_dict(self):
@@ -52,6 +66,9 @@ class CmdBase(optcomplete.CmdComplete):
         """
         return self.goptions_dict.get('CONFIG')
 
+    def addopts(self, parser):
+        pass
+
     def cancel_command(self, signum, frame):
         """
         Exits program with return value of 1
@@ -74,7 +91,7 @@ class CmdBase(optcomplete.CmdComplete):
         """
         for l in msg.splitlines():
             log.warn(l)
-        r = range(1,num_secs+1)
+        r = range(1, num_secs + 1)
         r.reverse()
         print
         log.warn("Waiting %d seconds before continuing..." % num_secs)

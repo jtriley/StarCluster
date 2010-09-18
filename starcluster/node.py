@@ -1,15 +1,18 @@
 #!/usr/bin/env python
 import os
 import socket
+
 from starcluster import utils
 from starcluster import static
 from starcluster import exception
 from starcluster import ssh
 from starcluster.logger import log
 
+
 def ssh_to_node(node_id, cfg, user='root'):
     node = get_node(node_id, cfg)
     node.shell(user=user)
+
 
 def get_node(node_id, cfg, user='root'):
     """Factory for Node class"""
@@ -30,13 +33,14 @@ def get_node(node_id, cfg, user='root'):
     node = Node(node, key.key_location, alias, user=user)
     return node
 
+
 class Node(object):
     """
-    This class represents a single compute node in a StarCluster. 
-    
-    It contains all useful metadata for the node such as the internal/external 
-    hostnames, ips, etc as well as a paramiko ssh object for executing commands,
-    creating/modifying files on the node.
+    This class represents a single compute node in a StarCluster.
+
+    It contains all useful metadata for the node such as the internal/external
+    hostnames, ips, etc as well as a paramiko ssh object for executing
+    commands, creating/modifying files on the node.
 
     Takes boto.ec2.instance.Instance, key_location, and alias as input and
     optionally a user to ssh as (defaults to root)
@@ -57,14 +61,16 @@ class Node(object):
     def num_processors(self):
         if not self._num_procs:
             self._num_procs = int(
-                self.ssh.execute('cat /proc/cpuinfo | grep processor | wc -l')[0])
+                self.ssh.execute(
+                    'cat /proc/cpuinfo | grep processor | wc -l')[0])
         return self._num_procs
 
     @property
     def memory(self):
         if not self._memory:
             self._memory = float(
-                self.ssh.execute("free -m | grep -i mem | awk '{print $2}'")[0])
+                self.ssh.execute(
+                    "free -m | grep -i mem | awk '{print $2}'")[0])
         return self._memory
 
     @property
@@ -79,11 +85,11 @@ class Node(object):
     def private_ip_address(self):
         return self.instance.private_ip_address
 
-    @property 
+    @property
     def private_dns_name(self):
         return self.instance.private_dns_name
 
-    @property 
+    @property
     def private_dns_name_short(self):
         return self.instance.private_dns_name.split('.')[0]
 
@@ -152,7 +158,7 @@ class Node(object):
         return self.instance.root_device_type == "instance-store"
 
     def is_ebs_backed(self):
-        return self.instance.root_device_type == "ebs" 
+        return self.instance.root_device_type == "ebs"
 
     def is_spot(self):
         return self.spot_id is not None
@@ -160,8 +166,8 @@ class Node(object):
     def start(self):
         """
         Starts EBS-backed instance and puts it in the 'running' state.
-        Only works if this node is EBS-backed, raises exception.InvalidOperation
-        otherwise.
+        Only works if this node is EBS-backed, raises
+        exception.InvalidOperation otherwise.
         """
         if not self.is_ebs_backed():
             raise exception.InvalidOperation(
@@ -171,8 +177,8 @@ class Node(object):
     def stop(self):
         """
         Shutdown EBS-backed instance and put it in the 'stopped' state.
-        Only works if this node is EBS-backed, raises exception.InvalidOperation
-        otherwise.
+        Only works if this node is EBS-backed, raises
+        exception.InvalidOperation otherwise.
 
         NOTE: The EBS root device will *not* be deleted and the instance can
         be 'started' later on.
@@ -185,15 +191,15 @@ class Node(object):
     def terminate(self):
         """
         Shutdown and destroy this instance. For EBS-backed instances, this will
-        also destroy the EBS root device for the instance. Puts this instance 
+        also destroy the EBS root device for the instance. Puts this instance
         into a 'terminated' state
         """
         return self.instance.terminate()
 
     def shutdown(self):
         """
-        Shutdown this instance. This method will terminate traditional 
-        instance-store instances and stop EBS-backed instances 
+        Shutdown this instance. This method will terminate traditional
+        instance-store instances and stop EBS-backed instances
         (ie not destroy EBS root dev)
         """
         if self.is_ebs_backed() and not self.is_spot():
@@ -222,17 +228,17 @@ class Node(object):
             return False
         if self.private_ip_address is None:
             log.debug("instance %s has no private_ip_address" % self.id)
-            log.debug(
-                "attempting to determine private_ip_address for instance %s" % \
-                self.id)
+            log.debug(("attempting to determine private_ip_address for" + \
+                       "instance %s") % self.id)
             try:
-                private_ip = self.ssh.execute(
-                    'python -c "import socket; print socket.gethostbyname(\'%s\')"' % \
+                private_ip = self.ssh.execute((
+                    'python -c ' + \
+                    '"import socket; print socket.gethostbyname(\'%s\')"') % \
                     self.private_dns_name)[0].strip()
                 log.debug("determined instance %s's private ip to be %s" % \
                           (self.id, private_ip))
                 self.instance.private_ip_address = private_ip
-            except Exception,e:
+            except Exception, e:
                 print e
                 return False
         return True
@@ -274,7 +280,8 @@ class Node(object):
 
     def get_hosts_entry(self):
         """ Returns /etc/hosts entry for this node """
-        etc_hosts_line = "%(INTERNAL_IP)s %(INTERNAL_NAME)s %(INTERNAL_NAME_SHORT)s %(INTERNAL_ALIAS)s" 
+        etc_hosts_line = "%(INTERNAL_IP)s %(INTERNAL_NAME)s "
+        etc_hosts_line += "%(INTERNAL_NAME_SHORT)s %(INTERNAL_ALIAS)s"
         etc_hosts_line = etc_hosts_line % self.network_names
         return etc_hosts_line
 

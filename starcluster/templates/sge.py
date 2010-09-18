@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-sgeinstall_template="""
+
+sgeinstall_template = """
 SGE_CLUSTER_NAME="starcluster"
 SGE_ROOT="/opt/sge6"
 SGE_QMASTER_PORT="63231"
@@ -57,7 +58,7 @@ urgency_slots     min
 accounting_summary FALSE
 """
 
-sgeprofile_template="""
+sgeprofile_template = """
 export SGE_ROOT="/opt/sge6"
 export SGE_CELL="default"
 export SGE_CLUSTER_NAME="starcluster"

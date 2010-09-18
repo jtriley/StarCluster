@@ -2,6 +2,7 @@
 
 from base import CmdBase
 
+
 class CmdListInstances(CmdBase):
     """
     listinstances [options]
@@ -11,9 +12,9 @@ class CmdListInstances(CmdBase):
     names = ['listinstances', 'lsi']
 
     def addopts(self, parser):
-        parser.add_option("-t","--show-terminated", dest="show_terminated", action="store_true",
-            default=False,
-            help="show terminated instances")
+        parser.add_option("-t", "--show-terminated", dest="show_terminated",
+                          action="store_true", default=False,
+                          help="show terminated instances")
 
     def execute(self, args):
         ec2 = self.cfg.get_easy_ec2()

@@ -4,6 +4,7 @@ from starcluster import cluster
 
 from base import CmdBase
 
+
 class CmdRunPlugin(CmdBase):
     """
     runplugin <plugin_name> <cluster_tag>
@@ -18,7 +19,8 @@ class CmdRunPlugin(CmdBase):
        $ starcluster runplugin myplugin mycluster
     """
     names = ['runplugin', 'rp']
-    def execute(self,args):
+
+    def execute(self, args):
         if len(args) != 2:
             self.parser.error("Please provide a plugin_name and <cluster_tag>")
         plugin_name, cluster_tag = args

@@ -2,5 +2,5 @@
 __all__ = [
     'config',
     'sge',
-    'user_msgs'
+    'user_msgs',
 ]

@@ -2,6 +2,7 @@
 
 from base import CmdBase
 
+
 class CmdListImages(CmdBase):
     """
     listimages [options]
@@ -11,8 +12,8 @@ class CmdListImages(CmdBase):
     names = ['listimages', 'li']
 
     def addopts(self, parser):
-        opt = parser.add_option(
-            "-x","--executable-by-me", dest="executable",
+        parser.add_option(
+            "-x", "--executable-by-me", dest="executable",
             action="store_true", default=False,
             help="Show images that you have permission to execute")
 

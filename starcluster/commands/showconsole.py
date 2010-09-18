@@ -6,6 +6,7 @@ from starcluster.logger import log
 
 from base import CmdBase
 
+
 class CmdShowConsole(CmdBase):
     """
     showconsole <instance-id>

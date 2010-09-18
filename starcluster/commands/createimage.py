@@ -12,11 +12,12 @@ from starcluster.logger import log
 
 from base import CmdBase
 
+
 class CmdCreateImage(CmdBase):
     """
     createimage [options] <instance-id> <image_name> <bucket>
 
-    Create a new instance-store image (AMI) from a currently running EC2 instance
+    Create a new instance-store image (AMI) from a running EC2 instance
 
     Example:
 
@@ -47,24 +48,25 @@ class CmdCreateImage(CmdBase):
                 log.error('something went wrong fix me: %s' % e)
 
     def addopts(self, parser):
-        opt = parser.add_option(
-            "-c","--confirm", dest="confirm",
+        parser.add_option(
+            "-c", "--confirm", dest="confirm",
             action="store_true", default=False,
             help="Do not warn about re-imaging StarCluster instances")
-        opt = parser.add_option(
-            "-r","--remove-image-files", dest="remove_image_files",
+        parser.add_option(
+            "-r", "--remove-image-files", dest="remove_image_files",
             action="store_true", default=False,
-            help="Remove generated image files on the instance after registering")
-        opt = parser.add_option(
-            "-d","--description", dest="description", action="store",
+            help="Remove generated image files on the " + \
+            "instance after registering")
+        parser.add_option(
+            "-d", "--description", dest="description", action="store",
             type="string", default=time.strftime("%Y%m%d%H%M"),
             help="short description of this AMI")
-        opt = parser.add_option(
-            "-k","--kernel-id", dest="kernel_id", action="store",
+        parser.add_option(
+            "-k", "--kernel-id", dest="kernel_id", action="store",
             type="string", default=None,
             help="kernel id for the new AMI")
-        opt = parser.add_option(
-            "-R","--ramdisk-id", dest="ramdisk_id", action="store",
+        parser.add_option(
+            "-R", "--ramdisk-id", dest="ramdisk_id", action="store",
             type="string", default=None,
             help="ramdisk id for the new AMI")
 
@@ -73,7 +75,8 @@ class CmdCreateImage(CmdBase):
 
     def execute(self, args):
         if len(args) != 3:
-            self.parser.error('you must specify an instance-id, image name, and bucket')
+            self.parser.error(
+                'you must specify an instance-id, image name, and bucket')
         instanceid, image_name, bucket = args
         self.bucket = bucket
         self.image_name = image_name
@@ -85,19 +88,21 @@ class CmdCreateImage(CmdBase):
                 if group.id.startswith(static.SECURITY_GROUP_PREFIX):
                     log.warn("Instance %s is a StarCluster instance" % i.id)
                     print
-                    log.warn("Creating an image from a StarCluster instance " + \
-                    "can lead to problems when attempting to use the resulting " + \
-                    "image with StarCluster later on")
+                    log.warn(
+                        "Creating an image from a StarCluster instance can " +
+                        "lead to problems when attempting to use the " +
+                        "resulting image with StarCluster later on")
                     print
                     log.warn(
-                    "The recommended way to re-image a StarCluster AMI is " + \
-                    "to launch a single instance using either ElasticFox, the " +\
-                    "EC2 command line tools, or the AWS management console. " +\
-                    "Then login to the instance, modify it, and use this " + \
-                    "command to create a new AMI from it.")
+                        "The recommended way to re-image a StarCluster AMI " +
+                        "is to launch a single instance using either " +
+                        "ElasticFox, the EC2 command line tools, or the AWS" +
+                        "management console. Then login to the instance, " +
+                        "modify it, and use this command to create a new " +
+                        "AMI from it.")
                     print
                     resp = raw_input("Continue anyway (y/n)? ")
-                    if resp not in ['y','Y','yes']:
+                    if resp not in ['y', 'Y', 'yes']:
                         log.info("Aborting...")
                         sys.exit(1)
                     break

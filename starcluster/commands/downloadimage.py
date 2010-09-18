@@ -6,6 +6,7 @@ from starcluster.logger import log
 
 from base import CmdBase
 
+
 class CmdDownloadImage(CmdBase):
     """
     downloadimage [options] <image_id> <destination_directory>

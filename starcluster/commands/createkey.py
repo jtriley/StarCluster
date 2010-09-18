@@ -4,6 +4,7 @@ from starcluster.logger import log
 
 from base import CmdBase
 
+
 class CmdCreateKey(CmdBase):
     """
     createkey [options] <name>
@@ -13,7 +14,7 @@ class CmdCreateKey(CmdBase):
     names = ['createkey', 'ck']
 
     def addopts(self, parser):
-        parser.add_option("-o","--output-file", dest="output_file",
+        parser.add_option("-o", "--output-file", dest="output_file",
                           action="store", type="string", default=None,
                           help="Save the new keypair to a file")
         #parser.add_option("-a","--add-to-config", dest="add_to_config",

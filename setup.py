@@ -9,7 +9,7 @@ install_requires = [
 ]
 
 maj, min, micro, rel, serial = sys.version_info
-if (maj,min) == (2,4):
+if (maj, min) == (2, 4):
     # boto needs hashlib module which is not in py2.4
     # this hack should be in boto instead (file a bug)
     install_requires.append("hashlib")
@@ -17,20 +17,20 @@ if (maj,min) == (2,4):
 src = os.path.realpath(os.path.dirname(__file__))
 
 setup(
-    name = 'StarCluster',
-    version = '0.9999',
-    package_dir = {'starcluster':'starcluster'},
-    packages = find_packages(src),
-    scripts=['bin/starcluster',],
-    install_requires = install_requires,
-    zip_safe = True,
+    name='StarCluster',
+    version='0.9999',
+    package_dir={'starcluster': 'starcluster'},
+    packages=find_packages(src),
+    scripts=['bin/starcluster'],
+    install_requires=install_requires,
+    zip_safe=True,
     download_url='http://web.mit.edu/starcluster',
     license='LGPL3',
     author='Justin Riley',
     author_email='justin.t.riley@gmail.com',
     url="http://web.mit.edu/starcluster",
     description="StarCluster is a utility for creating and managing computing clusters hosted on Amazon's Elastic Compute Cloud (EC2).",
-    long_description = """
+    long_description="""
     StarCluster is a utility for creating and managing computing clusters hosted on
     Amazon's Elastic Compute Cloud (EC2). StarCluster utilizes Amazon's EC2 web service
     to create and destroy clusters of Linux virtual machines on demand.

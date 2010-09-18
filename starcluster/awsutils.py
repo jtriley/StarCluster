@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-""" 
+"""
 EC2/S3 Utility Classes
 """
 
@@ -12,6 +12,7 @@ import tempfile
 import boto
 import boto.ec2
 import boto.s3.connection
+
 from starcluster import static
 from starcluster import utils
 from starcluster import exception
@@ -19,19 +20,20 @@ from starcluster import progressbar
 from starcluster.logger import log
 from starcluster.utils import print_timing
 
+
 class EasyAWS(object):
     def __init__(self, aws_access_key_id, aws_secret_access_key,
                  connection_authenticator, **kwargs):
         """
-        Create an EasyAWS object. 
+        Create an EasyAWS object.
 
-        Requires AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY from an Amazon Web 
-        Services (AWS) account and a CONNECTION_AUTHENTICATOR function that 
+        Requires aws_access_key_id/aws_secret_access_key from an Amazon Web
+        Services (AWS) account and a connection_authenticator function that
         returns an authenticated AWS connection object
 
         Providing only the keys will default to using Amazon EC2
 
-        kwargs are passed to the connection_authenticator constructor
+        kwargs are passed to the connection_authenticator's constructor
         """
         self.aws_access_key = aws_access_key_id
         self.aws_secret_access_key = aws_secret_access_key
@@ -42,22 +44,23 @@ class EasyAWS(object):
     @property
     def conn(self):
         if self._conn is None:
-            log.debug('creating self._conn w/ connection_authenticator kwargs' +
-                      ' = %s' % self._kwargs)
+            log.debug('creating self._conn w/ connection_authenticator ' +
+                      'kwargs = %s' % self._kwargs)
             self._conn = self.connection_authenticator(
-                self.aws_access_key, self.aws_secret_access_key, **self._kwargs
-            )
+                self.aws_access_key, self.aws_secret_access_key,
+                **self._kwargs)
         return self._conn
+
 
 class EasyEC2(EasyAWS):
     def __init__(self, aws_access_key_id, aws_secret_access_key,
-                 aws_ec2_path='/', aws_s3_host = None,
-                 aws_s3_path='/', aws_port=None, aws_region_name=None,
-                 aws_is_secure=True, aws_region_host=None, cache=False, **kwargs):
+                 aws_ec2_path='/', aws_s3_host=None, aws_s3_path='/',
+                 aws_port=None, aws_region_name=None, aws_is_secure=True,
+                 aws_region_host=None, cache=False, **kwargs):
         aws_region = None
         if aws_region_name and aws_region_host:
-            aws_region = boto.ec2.regioninfo.RegionInfo(name=aws_region_name,
-                                                        endpoint=aws_region_host)
+            aws_region = boto.ec2.regioninfo.RegionInfo(
+                name=aws_region_name, endpoint=aws_region_host)
         kwargs = dict(is_secure=aws_is_secure, region=aws_region,
                       port=aws_port, path=aws_ec2_path)
         super(EasyEC2, self).__init__(aws_access_key_id, aws_secret_access_key,
@@ -76,7 +79,8 @@ class EasyEC2(EasyAWS):
         self._security_group_response = None
 
     def __repr__(self):
-        return '<EasyEC2: %s (%s)>' % (self.conn.region.name, self.conn.region.endpoint)
+        return '<EasyEC2: %s (%s)>' % (self.conn.region.name,
+                                       self.conn.region.endpoint)
 
     def __check_for_auth_failure(self, e):
         if e.error_code in ["AuthFailure", "SignatureDoesNotMatch"]:
@@ -105,7 +109,7 @@ class EasyEC2(EasyAWS):
     def create_group(self, name, description, auth_ssh=False,
                      auth_group_traffic=False):
         """
-        Create security group with name/description. auth_ssh=True 
+        Create security group with name/description. auth_ssh=True
         will open port 22 to world (0.0.0.0/0). auth_group_traffic
         will allow all traffic between instances in the same security
         group
@@ -132,11 +136,11 @@ class EasyEC2(EasyAWS):
         except IndexError, e:
             pass
 
-    def get_or_create_group(self, name, description, auth_ssh=True, 
+    def get_or_create_group(self, name, description, auth_ssh=True,
                             auth_group_traffic=False):
-        """ 
+        """
         Try to return a security group by name.
-        If the group is not found, attempt to create it. 
+        If the group is not found, attempt to create it.
         Description only applies to creation.
 
         Authorizes all traffic between members of the group
@@ -159,7 +163,7 @@ class EasyEC2(EasyAWS):
                 continue
             if int(rule.to_port) != to_port:
                 continue
-            cidr_grants = [ g for g in rule.grants if g.cidr_ip == cidr_ip]
+            cidr_grants = [g for g in rule.grants if g.cidr_ip == cidr_ip]
             if not cidr_grants:
                 continue
             return True
@@ -167,24 +171,22 @@ class EasyEC2(EasyAWS):
 
     def request_spot_instances(self, price, image_id, instance_type='m1.small',
                                count=1, launch_group=None, key_name=None,
-                               availability_zone_group=None, security_groups=None,
+                               availability_zone_group=None,
+                               security_groups=None,
                                placement=None, user_data=None):
-        return self.conn.request_spot_instances(price, image_id,
-                                                instance_type=instance_type,
-                                                count=count,
-                                                launch_group=launch_group,
-                                                key_name=key_name,
-                                                security_groups=security_groups,
-                                                availability_zone_group = \
-                                                availability_zone_group,
-                                                placement=placement,
-                                                user_data=user_data)
+        return self.conn.request_spot_instances(
+            price, image_id, instance_type=instance_type, count=count,
+            launch_group=launch_group, key_name=key_name,
+            security_groups=security_groups,
+            availability_zone_group=availability_zone_group,
+            placement=placement, user_data=user_data)
 
     def run_instances(self, image_id, instance_type='m1.small', min_count=1,
                       max_count=1, key_name=None, security_groups=None,
                       placement=None, user_data=None):
         return self.conn.run_instances(image_id, instance_type=instance_type,
-                                       min_count=min_count, max_count=max_count,
+                                       min_count=min_count,
+                                       max_count=max_count,
                                        key_name=key_name,
                                        security_groups=security_groups,
                                        placement=placement,
@@ -209,34 +211,36 @@ class EasyEC2(EasyAWS):
         if output_file:
             output_dir = os.path.dirname(output_file)
             if output_dir and not os.path.exists(output_dir):
-                raise exception.BaseException("output directory does not exist")
+                raise exception.BaseException(
+                    "output directory does not exist")
             if os.path.exists(output_file):
                 raise exception.BaseException(
-                    "cannot save keypair %s: file already exists" % output_file)
+                    "cannot save keypair %s: file already exists" % \
+                    output_file)
         kp = self.conn.create_key_pair(name)
         if output_file:
             try:
-                kfile = open(output_file,'wb')
+                kfile = open(output_file, 'wb')
                 kfile.write(kp.material)
                 kfile.close()
                 os.chmod(output_file, 0400)
-            except IOError,e:
+            except IOError, e:
                 raise exception.BaseException(str(e))
         return kp
 
     def get_keypair(self, keypair):
         try:
             return self.conn.get_all_key_pairs(keynames=[keypair])[0]
-        except boto.exception.EC2ResponseError,e:
+        except boto.exception.EC2ResponseError, e:
             self.__check_for_auth_failure(e)
             raise exception.KeyPairDoesNotExist(keypair)
-        except IndexError,e:
+        except IndexError:
             raise exception.KeyPairDoesNotExist(keypair)
 
     def get_keypair_or_none(self, keypair):
         try:
             return self.get_keypair(keypair)
-        except: 
+        except:
             pass
 
     def __print_header(self, msg):
@@ -244,7 +248,8 @@ class EasyEC2(EasyAWS):
         print "-" * len(msg)
 
     def get_image_name(self, img):
-        image_name = re.sub('\.manifest\.xml$','',img.location.split('/')[-1])
+        image_name = re.sub('\.manifest\.xml$', '',
+                            img.location.split('/')[-1])
         return image_name
 
     def get_instance_user_data(self, instance_id):
@@ -257,13 +262,13 @@ class EasyEC2(EasyAWS):
         try:
             res = self.conn.get_all_instances(instance_ids=[instance_id])
             i = res[0].instances[0]
-            # set group info 
+            # set group info
             i.groups = res[0].groups
             return i
-        except boto.exception.EC2ResponseError,e:
+        except boto.exception.EC2ResponseError, e:
             self.__check_for_auth_failure(e)
             raise exception.InstanceDoesNotExist(instance_id)
-        except IndexError,e:
+        except IndexError:
             # for eucalyptus, invalid instance_id returns []
             raise exception.InstanceDoesNotExist(instance_id)
 
@@ -271,7 +276,7 @@ class EasyEC2(EasyAWS):
         try:
             self.get_all_instances()
             return True
-        except boto.exception.EC2ResponseError,e:
+        except boto.exception.EC2ResponseError:
             return False
 
     def get_all_spot_requests(self, spot_ids=[]):
@@ -284,7 +289,7 @@ class EasyEC2(EasyAWS):
         for res in reservations:
             insts = res.instances
             for i in insts:
-                # set group info 
+                # set group info
                 i.groups = res.groups
             instances.extend(insts)
         return instances
@@ -335,9 +340,9 @@ class EasyEC2(EasyAWS):
             return
         instances = []
         for res in reservations:
-            groups = ', '.join([ g.id for g in res.groups]) or 'N/A'
+            groups = ', '.join([g.id for g in res.groups]) or 'N/A'
             for instance in res.instances:
-                if instance.state in ['shutting-down','terminated'] \
+                if instance.state in ['shutting-down', 'terminated'] \
                    and not show_terminated:
                     continue
                 id = instance.id or 'N/A'
@@ -355,7 +360,7 @@ class EasyEC2(EasyAWS):
                 print "dns_name: %s" % dns_name
                 print "private_dns_name: %s" % private_dns_name
                 print "state: %s" % state
-                print "public_ip: %s" % public_ip 
+                print "public_ip: %s" % public_ip
                 print "private_ip: %s" % private_ip
                 print "zone: %s" % zone
                 print "ami: %s" % ami
@@ -369,16 +374,16 @@ class EasyEC2(EasyAWS):
     def list_images(self, images):
         def get_key(obj):
             return str(obj.region) + ' ' + str(obj.location)
-        imgs_i386 = [ img for img in images if img.architecture == "i386" ]
+        imgs_i386 = [img for img in images if img.architecture == "i386"]
         imgs_i386.sort(key=get_key)
-        imgs_x86_64 = [ img for img in images if img.architecture == "x86_64" ]
+        imgs_x86_64 = [img for img in images if img.architecture == "x86_64"]
         imgs_x86_64.sort(key=get_key)
         print
         self.__list_images("32bit Images:", imgs_i386)
         self.__list_images("\n64bit Images:", imgs_x86_64)
         print "\ntotal images: %d" % len(images)
         print
-            
+
     def list_registered_images(self):
         images = self.registered_images
         log.info("Your registered images:")
@@ -394,7 +399,8 @@ class EasyEC2(EasyAWS):
         self.__print_header(msg)
         for image in imgs:
             name = self.get_image_name(image)
-            print "[%d] %s %s %s" % (counter, image.id, image.region.name, name)
+            print "[%d] %s %s %s" % (counter, image.id,
+                                     image.region.name, name)
             counter += 1
 
     def remove_image_files(self, image_name, pretend=True):
@@ -430,7 +436,7 @@ class EasyEC2(EasyAWS):
 
         # first remove image files
         log.info('Removing image files...')
-        self.remove_image_files(image_name, pretend = pretend)
+        self.remove_image_files(image_name, pretend=pretend)
 
         # then deregister ami
         if pretend:
@@ -442,17 +448,12 @@ class EasyEC2(EasyAWS):
     def list_starcluster_public_images(self):
         images = self.conn.get_all_images(owners=[static.STARCLUSTER_OWNER_ID])
         log.info("Listing all public StarCluster images...")
-        imgs = [ image for image in images if image.is_public ]
+        imgs = [image for image in images if image.is_public]
         self.list_images(imgs)
 
     def remove_volume(self, volume_id):
         vol = self.get_volume(volume_id)
         vol.delete()
-
-    def list_image_files(self, image_name, bucket=None):
-        files = self.get_image_files(image_name, bucket)
-        for file in files:
-            print file
 
     def list_keypairs(self):
         max_length = max([len(key.name) for key in self.keypairs])
@@ -464,7 +465,7 @@ class EasyEC2(EasyAWS):
         conn = self.conn
         if region:
             regs = self.conn.get_all_regions()
-            regions = [ r.name for r in regs ]
+            regions = [r.name for r in regs]
             if not region in regions:
                 raise exception.RegionDoesNotExist(region)
             for reg in regs:
@@ -495,10 +496,10 @@ class EasyEC2(EasyAWS):
         """
         try:
             return self.conn.get_all_zones(zones=[zone])[0]
-        except boto.exception.EC2ResponseError,e:
+        except boto.exception.EC2ResponseError, e:
             self.__check_for_auth_failure(e)
             raise exception.ZoneDoesNotExist(zone)
-        except IndexError,e:
+        except IndexError:
             raise exception.ZoneDoesNotExist(zone)
 
     def get_zone_or_none(self, zone):
@@ -518,10 +519,10 @@ class EasyEC2(EasyAWS):
         """
         try:
             return self.conn.get_all_images(image_ids=[image_id])[0]
-        except boto.exception.EC2ResponseError,e:
+        except boto.exception.EC2ResponseError, e:
             self.__check_for_auth_failure(e)
             raise exception.AMIDoesNotExist(image_id)
-        except IndexError,e:
+        except IndexError:
             raise exception.AMIDoesNotExist(image_id)
 
     def get_image_or_none(self, image_id):
@@ -538,15 +539,15 @@ class EasyEC2(EasyAWS):
         """
         """
         bname = re.escape(bucket.name)
-        prefix = re.sub('^%s\/' % bname,'', image.location)
-        prefix = re.sub('\.manifest\.xml$','', prefix)
+        prefix = re.sub('^%s\/' % bname, '', image.location)
+        prefix = re.sub('\.manifest\.xml$', '', prefix)
         files = bucket.list(prefix=prefix)
         manifest_regex = re.compile(r'%s\.manifest\.xml' % prefix)
         part_regex = re.compile(r'%s\.part\.(\d*)' % prefix)
-        # boto with eucalyptus returns boto.s3.prefix.Prefix class at the 
+        # boto with eucalyptus returns boto.s3.prefix.Prefix class at the
         # end of the list, we ignore these by checking for delete
-        files = [ f for f in files if hasattr(f,'delete') and
-                 part_regex.match(f.name) or manifest_regex.match(f.name) ]
+        files = [f for f in files if hasattr(f, 'delete') and
+                 part_regex.match(f.name) or manifest_regex.match(f.name)]
         return files
 
     def get_image_files(self, image_id):
@@ -598,9 +599,10 @@ class EasyEC2(EasyAWS):
                    progressbar.ETA(), ' ', ' ']
         counter = 0
         num_files = len(files)
-        pbar = progressbar.ProgressBar(widgets=widgets, maxval=num_files).start()
+        pbar = progressbar.ProgressBar(widgets=widgets,
+                                       maxval=num_files).start()
         for f in files:
-            widgets[0] = "%s: (%s/%s)" % (f.name, counter+1, num_files)
+            widgets[0] = "%s: (%s/%s)" % (f.name, counter + 1, num_files)
             # copy file to destination bucket with the same name
             f.copy(destbucket, f.name)
             pbar.update(counter)
@@ -613,10 +615,11 @@ class EasyEC2(EasyAWS):
             manifest_key.get_contents_to_file(f.file)
             f.file.close()
             cmd = ('ec2-migrate-manifest -c %s -k %s -m %s --kernel %s ' +
-                   '--ramdisk %s --no-mapping ') %  (cert, private_key,
+                   '--ramdisk %s --no-mapping ') % (cert, private_key,
                                                     f.name, kernel_id,
                                                     ramdisk_id)
-            register_cmd = "ec2-register %s/%s" % (destbucket, manifest_key.name)
+            register_cmd = "ec2-register %s/%s" % (destbucket,
+                                                   manifest_key.name)
             if region:
                 cmd += '--region %s' % region
                 register_cmd += " --region %s" % region
@@ -628,9 +631,9 @@ class EasyEC2(EasyAWS):
             f.file = open(f.name, 'r')
             manifest_key.set_contents_from_file(f.file)
             # needed so that EC2 has permission to READ the manifest file
-            manifest_key.add_email_grant('READ','za-team@amazon.com')
+            manifest_key.add_email_grant('READ', 'za-team@amazon.com')
             f.close()
-            os.unlink(f.name+'.bak')
+            os.unlink(f.name + '.bak')
             log.info("Manifest migrated successfully. You can now run:\n" +
                      register_cmd + "\nto register your migrated image.")
 
@@ -646,13 +649,16 @@ class EasyEC2(EasyAWS):
                    progressbar.Bar(marker=progressbar.RotatingMarker()), ' ',
                    progressbar.ETA(), ' ', progressbar.FileTransferSpeed()]
         files = self.get_image_files(image_id)
+
         def _dl_progress_cb(trans, total):
             pbar.update(trans)
         log.info("Downloading image: %s" % image_id)
         for file in files:
             widgets[0] = "%s:" % file.name
-            pbar = progressbar.ProgressBar(widgets=widgets, maxval=file.size).start()
-            file.get_contents_to_filename(os.path.join(destdir, file.name), cb=_dl_progress_cb)
+            pbar = progressbar.ProgressBar(widgets=widgets,
+                                           maxval=file.size).start()
+            file.get_contents_to_filename(os.path.join(destdir, file.name),
+                                          cb=_dl_progress_cb)
             pbar.finish()
 
     def list_image_files(self, image_id):
@@ -668,7 +674,7 @@ class EasyEC2(EasyAWS):
         if not self.cache or self._instance_response is None:
             log.debug('instance_response = %s, cache = %s' %
             (self._instance_response, self.cache))
-            self._instance_response=self.conn.get_all_instances()
+            self._instance_response = self.conn.get_all_instances()
         return self._instance_response
 
     @property
@@ -678,7 +684,6 @@ class EasyEC2(EasyAWS):
             (self._keypair_response, self.cache))
             self._keypair_response = self.conn.get_all_key_pairs()
         return self._keypair_response
-
 
     def terminate_instances(self, instances=None):
         if instances:
@@ -690,7 +695,7 @@ class EasyEC2(EasyAWS):
         """
         try:
             return self.conn.get_all_volumes()
-        except boto.exception.EC2ResponseError,e:
+        except boto.exception.EC2ResponseError, e:
             self.__check_for_auth_failure(e)
 
     def get_volume(self, volume_id):
@@ -700,10 +705,10 @@ class EasyEC2(EasyAWS):
         """
         try:
             return self.conn.get_all_volumes(volume_ids=[volume_id])[0]
-        except boto.exception.EC2ResponseError,e:
+        except boto.exception.EC2ResponseError, e:
             self.__check_for_auth_failure(e)
             raise exception.VolumeDoesNotExist(volume_id)
-        except IndexError,e:
+        except IndexError:
             raise exception.VolumeDoesNotExist(volume_id)
 
     def get_volume_or_none(self, volume_id):
@@ -729,15 +734,16 @@ class EasyEC2(EasyAWS):
                 print "availability_zone: %s" % vol.zone
                 if vol.snapshot_id:
                     print "snapshot_id: %s" % vol.snapshot_id
-                snapshots=vol.snapshots()
+                snapshots = vol.snapshots()
                 if snapshots:
-                    print 'snapshots: %s' % ' '.join([snap.id for snap in snapshots])
+                    snap_list = ' '.join([snap.id for snap in snapshots])
+                    print 'snapshots: %s' % snap_list
                 print
 
     def get_security_group(self, groupname):
         try:
             return self.conn.get_all_security_groups(groupnames=[groupname])[0]
-        except boto.exception.EC2ResponseError,e:
+        except boto.exception.EC2ResponseError, e:
             self.__check_for_auth_failure(e)
             raise exception.SecurityGroupDoesNotExist(groupname)
         except IndexError:
@@ -746,49 +752,53 @@ class EasyEC2(EasyAWS):
     def get_security_groups(self):
         return self.conn.get_all_security_groups()
 
-    def get_spot_history(self, instance_type, start=None, end=None, plot=False):
+    def get_spot_history(self, instance_type,
+                         start=None, end=None, plot=False):
         if not utils.is_iso_time(start):
             raise exception.InvalidIsoDate(start)
         if not utils.is_iso_time(end):
             raise exception.InvalidIsoDate(end)
-        hist = self.conn.get_spot_price_history(start_time=start, 
+        hist = self.conn.get_spot_price_history(start_time=start,
                                         end_time=end,
-                                        instance_type=instance_type, 
+                                        instance_type=instance_type,
                                         product_description="Linux/UNIX")
         if not hist:
-            raise exception.SpotHistoryError(start,end)
-        dates = [ utils.iso_to_datetime_tuple(i.timestamp) for i in hist]
-        prices = [ i.price for i in hist ]
+            raise exception.SpotHistoryError(start, end)
+        dates = [utils.iso_to_datetime_tuple(i.timestamp) for i in hist]
+        prices = [i.price for i in hist]
         maximum = max(prices)
-        avg = sum(prices)/len(prices)
+        avg = sum(prices) / len(prices)
         log.info("Current price: $%.2f" % hist[-1].price)
         log.info("Max price: $%.2f" % maximum)
         log.info("Average price: $%.2f" % avg)
         if plot:
             try:
                 import pylab
-                pylab.plot_date(pylab.date2num(dates), prices, linestyle='-') 
+                pylab.plot_date(pylab.date2num(dates), prices, linestyle='-')
                 pylab.xlabel('date')
                 pylab.ylabel('price (cents)')
-                pylab.title('%s Price vs Date (%s - %s)' % (instance_type, start, end))
+                pylab.title('%s Price vs Date (%s - %s)' % (instance_type,
+                                                            start, end))
                 pylab.grid(True)
                 pylab.show()
-            except ImportError,e:
+            except ImportError, e:
                 log.error("Error importing pylab:")
-                log.error(str(e)) 
-                log.error("please check that matplotlib is installed and that:")
+                log.error(str(e))
+                log.error("please ensure matplotlib is installed and that:")
                 log.error("   $ python -c 'import pylab'")
                 log.error("completes without error")
-        return zip(dates,prices)
+        return zip(dates, prices)
 
     def show_console_output(self, instance_id):
         instance = self.get_instance(instance_id)
-        print ''.join([c for c in instance.get_console_output().output
-                       if c in string.printable])
+        console_output = instance.get_console_output().output
+        print ''.join([c for c in console_output if c in string.printable])
+
 
 class EasyS3(EasyAWS):
     DefaultHost = 's3.amazonaws.com'
-    _calling_format=boto.s3.connection.OrdinaryCallingFormat()
+    _calling_format = boto.s3.connection.OrdinaryCallingFormat()
+
     def __init__(self, aws_access_key_id, aws_secret_access_key,
                  aws_s3_path='/', aws_port=None, aws_is_secure=True,
                  aws_s3_host=DefaultHost, cache=False, **kwargs):
@@ -797,7 +807,7 @@ class EasyS3(EasyAWS):
                       port=aws_port,
                       path=aws_s3_path)
         if aws_s3_host:
-            kwargs.update(dict(calling_format = self._calling_format))
+            kwargs.update(dict(calling_format=self._calling_format))
         super(EasyS3, self).__init__(aws_access_key_id, aws_secret_access_key,
                                      boto.connect_s3, **kwargs)
         self.cache = cache
@@ -805,7 +815,7 @@ class EasyS3(EasyAWS):
     def __repr__(self):
         return '<EasyS3: %s>' % self.conn.server_name()
 
-    def __check_for_auth_failure(self,e):
+    def __check_for_auth_failure(self, e):
         if e.error_code == "InvalidAccessKeyId":
             raise e
 
@@ -816,7 +826,7 @@ class EasyS3(EasyAWS):
         try:
             self.conn.get_bucket(bucket_name)
             return True
-        except boto.exception.S3ResponseError,e:
+        except boto.exception.S3ResponseError, e:
             self.__check_for_auth_failure(e)
             return False
 
@@ -827,7 +837,7 @@ class EasyS3(EasyAWS):
         """
         try:
             return self.get_bucket(bucket_name)
-        except exception.BucketDoesNotExist,e:
+        except exception.BucketDoesNotExist:
             pass
 
     def get_bucket(self, bucketname):
@@ -836,19 +846,20 @@ class EasyS3(EasyAWS):
         """
         try:
             return self.conn.get_bucket(bucketname)
-        except boto.exception.S3ResponseError,e:
+        except boto.exception.S3ResponseError, e:
             self.__check_for_auth_failure(e)
             raise exception.BucketDoesNotExist(bucketname)
 
     def list_bucket(self, bucketname):
         bucket = self.get_bucket(bucketname)
         for file in bucket.list():
-            if file.name: print file.name
+            if file.name:
+                print file.name
 
     def get_buckets(self):
         try:
             buckets = self.conn.get_all_buckets()
-        except TypeError,e:
+        except TypeError:
             #hack until boto fixes get_all_buckets
             raise exception.AWSError("AWS credentials are not valid")
         return buckets
@@ -861,7 +872,7 @@ class EasyS3(EasyAWS):
         files = []
         try:
             bucket = self.get_bucket(bucketname)
-            files = [ file for file in bucket.list() ]
+            files = [file for file in bucket.list()]
         except:
             pass
         return files

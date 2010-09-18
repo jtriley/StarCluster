@@ -3,6 +3,7 @@
 from downloadimage import CmdDownloadImage
 from starcluster.logger import log
 
+
 class CmdRemoveImage(CmdDownloadImage):
     """
     removeami [options] <imageid>
@@ -19,12 +20,13 @@ class CmdRemoveImage(CmdDownloadImage):
     names = ['removeimage', 'ri']
 
     def addopts(self, parser):
-        parser.add_option("-p","--pretend", dest="pretend", action="store_true",
-            default=False,
-            help="pretend run, dont actually remove anything")
-        parser.add_option("-c","--confirm", dest="confirm", action="store_true",
-            default=False,
-            help="do not prompt for confirmation, just remove the image")
+        parser.add_option("-p", "--pretend", dest="pretend",
+                          action="store_true", default=False,
+                          help="pretend run, dont actually remove anything")
+        parser.add_option("-c", "--confirm", dest="confirm",
+                          action="store_true", default=False,
+                          help="do not prompt for confirmation, just " + \
+                          "remove the image")
 
     def execute(self, args):
         if not args:
@@ -32,13 +34,14 @@ class CmdRemoveImage(CmdDownloadImage):
         for arg in args:
             imageid = arg
             ec2 = self.cfg.get_easy_ec2()
-            image = ec2.get_image(imageid)
+            ec2.get_image(imageid)
             confirmed = self.opts.confirm
             pretend = self.opts.pretend
             if not confirmed:
                 if not pretend:
-                    resp = raw_input("**PERMANENTLY** delete %s (y/n)? " % imageid)
-                    if resp not in ['y','Y', 'yes']:
+                    resp = raw_input("**PERMANENTLY** delete %s (y/n)? " % \
+                                     imageid)
+                    if resp not in ['y', 'Y', 'yes']:
                         log.info("Aborting...")
                         return
             ec2.remove_image(imageid, pretend=pretend)

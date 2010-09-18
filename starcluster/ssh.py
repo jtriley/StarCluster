@@ -26,20 +26,22 @@ except ImportError:
 from starcluster import exception
 from starcluster.logger import log
 
+
 class Connection(object):
-    """Establishes an ssh connection to a remote host using either password or private
-    key authentication. Once established, this object allows executing and
-    copying files to/from the remote host"""
+    """
+    Establishes an SSH connection to a remote host using either password or
+    private key authentication. Once established, this object allows executing
+    and copying files to/from the remote host
+    """
 
     def __init__(self,
                  host,
-                 username = None,
-                 password = None,
-                 private_key = None,
-                 private_key_pass = None,
-                 port = 22,
-                 timeout=30,
-                 ):
+                 username=None,
+                 password=None,
+                 private_key=None,
+                 private_key_pass=None,
+                 port=22,
+                 timeout=30):
         self._timeout = timeout
         self._sftp_live = False
         self._sftp = None
@@ -63,9 +65,9 @@ class Connection(object):
         if password:
             # Using Password.
             try:
-                self._transport.connect(username = username, password = password)
+                self._transport.connect(username=username, password=password)
             except paramiko.AuthenticationException:
-                raise exception.SSHAuthException(username,host)
+                raise exception.SSHAuthException(username, host)
         elif private_key:
             # Use Private Key.
             pkey = None
@@ -75,15 +77,16 @@ class Connection(object):
             elif private_key.endswith('dsa') or private_key.count('dsa'):
                 pkey = self._load_dsa_key(private_key, private_key_pass)
             else:
-                log.warn("specified key does not end in either rsa or dsa, trying both")
+                log.warn("specified key does not end in either rsa or dsa" + \
+                         ", trying both")
                 pkey = self._load_rsa_key(private_key, private_key_pass)
                 if pkey is None:
                     pkey = self._load_dsa_key(private_key, private_key_pass)
             try:
-                self._transport.connect(username = username, pkey = pkey)
+                self._transport.connect(username=username, pkey=pkey)
             except paramiko.AuthenticationException:
                 raise exception.SSHAuthException(username, host)
-            except paramiko.SSHException,e:
+            except paramiko.SSHException, e:
                 msg = e.args[0]
                 raise exception.SSHError(msg)
         else:
@@ -91,13 +94,14 @@ class Connection(object):
 
     def _get_socket(self, hostname, port):
         for (family, socktype, proto, canonname, sockaddr) in \
-        socket.getaddrinfo(hostname, port, socket.AF_UNSPEC, socket.SOCK_STREAM):
+        socket.getaddrinfo(hostname, port, socket.AF_UNSPEC,
+                           socket.SOCK_STREAM):
             if socktype == socket.SOCK_STREAM:
                 af = family
-                addr = sockaddr
                 break
             else:
-                raise exception.SSHError('No suitable address family for %s' % hostname)
+                raise exception.SSHError(
+                    'No suitable address family for %s' % hostname)
         sock = socket.socket(af, socket.SOCK_STREAM)
         sock.settimeout(self._timeout)
         sock.connect((hostname, port))
@@ -106,21 +110,23 @@ class Connection(object):
     def _load_rsa_key(self, private_key, private_key_pass=None):
         private_key_file = os.path.expanduser(private_key)
         try:
-            rsa_key = paramiko.RSAKey.from_private_key_file(private_key_file, private_key_pass)
+            rsa_key = paramiko.RSAKey.from_private_key_file(private_key_file,
+                                                            private_key_pass)
             log.info("Using private key %s (rsa)" % private_key)
             return rsa_key
-        except paramiko.SSHException,e:
+        except paramiko.SSHException:
             log.error('invalid rsa key or password specified')
 
     def _load_dsa_key(self, private_key, private_key_pass=None):
         private_key_file = os.path.expanduser(private_key)
         try:
-            dsa_key = paramiko.DSSKey.from_private_key_file(private_key_file, private_key_pass)
+            dsa_key = paramiko.DSSKey.from_private_key_file(private_key_file,
+                                                            private_key_pass)
             log.info("Using private key %s (dsa)" % private_key)
             return dsa_key
-        except paramiko.SSHException,e:
+        except paramiko.SSHException:
             log.error('invalid dsa key or password specified')
-    
+
     def _sftp_connect(self):
         """Establish the SFTP connection."""
         if not self._sftp_live:
@@ -131,18 +137,19 @@ class Connection(object):
         """Returns a remote file descriptor"""
         self._sftp_connect()
         rfile = self._sftp.open(file, mode)
-        rfile.name=file
+        rfile.name = file
         return rfile
 
     def path_exists(self, path):
         """
-        Test whether a remote path exists.  Returns False for broken symbolic links
+        Test whether a remote path exists.
+        Returns False for broken symbolic links
         """
         self._sftp_connect()
         try:
             self.stat(path)
             return True
-        except IOError,e:
+        except IOError:
             return False
 
     def ls(self, path):
@@ -150,7 +157,7 @@ class Connection(object):
         Return a list containing the names of the entries in the remote path.
         """
         self._sftp_connect()
-        return [os.path.join(path,f) for f in self._sftp.listdir(path)]
+        return [os.path.join(path, f) for f in self._sftp.listdir(path)]
 
     def isdir(self, path):
         """
@@ -159,7 +166,7 @@ class Connection(object):
         self._sftp_connect()
         try:
             s = self.stat(path)
-        except IOError,e:
+        except IOError:
             return False
         return stat.S_ISDIR(s.st_mode)
 
@@ -170,7 +177,7 @@ class Connection(object):
         self._sftp_connect()
         try:
             s = self.stat(path)
-        except IOError,e:
+        except IOError:
             return False
         return stat.S_ISREG(s.st_mode)
 
@@ -181,15 +188,19 @@ class Connection(object):
         self._sftp_connect()
         return self._sftp.stat(path)
 
-    def get(self, remotepath, localpath = None):
-        """Copies a file between the remote host and the local host."""
+    def get(self, remotepath, localpath=None):
+        """
+        Copies a file between the remote host and the local host.
+        """
         if not localpath:
             localpath = os.path.split(remotepath)[1]
         self._sftp_connect()
         self._sftp.get(remotepath, localpath)
 
-    def put(self, localpath, remotepath = None):
-        """Copies a file between the local host and the remote host."""
+    def put(self, localpath, remotepath=None):
+        """
+        Copies a file between the local host and the remote host.
+        """
         if not remotepath:
             remotepath = os.path.split(localpath)[1]
         self._sftp_connect()
@@ -198,16 +209,16 @@ class Connection(object):
     def execute_async(self, command):
         """
         Executes a remote command without blocking
-        
+
         NOTE: this method will not block, however, if your process does not
-        complete or background itself before the python process executing this 
+        complete or background itself before the python process executing this
         code exits, it will not persist on the remote machine
         """
 
         channel = self._transport.open_session()
         channel.exec_command(command)
 
-    def execute(self, command, silent = True, only_printable = False,
+    def execute(self, command, silent=True, only_printable=False,
                 ignore_exit_status=False):
         """
         Execute a remote command and return stdout/stderr
@@ -232,16 +243,16 @@ class Connection(object):
             while line != '':
                 line = stdout.readline()
                 if only_printable:
-                    line = ''.join(char for char in line if char in string.printable) 
+                    line = ''.join(
+                        char for char in line if char in string.printable)
                 if line != '':
                     output.append(line)
                     print line,
 
             for line in stderr.readlines():
                 output.append(line)
-                print line;
-        output = [ line.strip() for line in output ]
-        #TODO: warn about command failures
+                print line
+        output = [line.strip() for line in output]
         exit_status = channel.recv_exit_status()
         if exit_status != 0:
             if not ignore_exit_status:
@@ -261,7 +272,7 @@ class Connection(object):
         """
         try:
             return self.check_required(progs)
-        except exception.RemoteCommandNotFound,e:
+        except exception.RemoteCommandNotFound:
             return False
 
     def check_required(self, progs):
@@ -286,7 +297,7 @@ class Connection(object):
         """Returns the remote machine's environment as a dictionary"""
         env = {}
         for line in self.execute('env'):
-            key, val = line.split('=',1)
+            key, val = line.split('=', 1)
             env[key] = val
         return env
 
@@ -319,14 +330,15 @@ class Connection(object):
 
     def _posix_shell(self, chan):
         import select
-        
+
         oldtty = termios.tcgetattr(sys.stdin)
         try:
             tty.setraw(sys.stdin.fileno())
             tty.setcbreak(sys.stdin.fileno())
             chan.settimeout(0.0)
 
-            chan.send('eval $(resize)\n') # needs to be sent to give vim correct size FIX
+            # needs to be sent to give vim correct size FIX
+            chan.send('eval $(resize)\n')
 
             while True:
                 r, w, e = select.select([chan, sys.stdin], [], [])
@@ -341,20 +353,21 @@ class Connection(object):
                     except socket.timeout:
                         pass
                 if sys.stdin in r:
-                    x = os.read(sys.stdin.fileno(),1) # fixes up arrow problem
+                    # fixes up arrow problem
+                    x = os.read(sys.stdin.fileno(), 1)
                     if len(x) == 0:
                         break
                     chan.send(x)
         finally:
             termios.tcsetattr(sys.stdin, termios.TCSADRAIN, oldtty)
 
-        
     # thanks to Mike Looijmans for this code
     def _windows_shell(self, chan):
         import threading
 
-        sys.stdout.write("Line-buffered terminal emulation. Press F6 or ^Z to send EOF.\r\n\r\n")
-            
+        sys.stdout.write("Line-buffered terminal emulation. " + \
+                         "Press F6 or ^Z to send EOF.\r\n\r\n")
+
         def writeall(sock):
             while True:
                 data = sock.recv(256)
@@ -364,10 +377,10 @@ class Connection(object):
                     break
                 sys.stdout.write(data)
                 sys.stdout.flush()
-            
+
         writer = threading.Thread(target=writeall, args=(chan,))
         writer.start()
-            
+
         try:
             while True:
                 d = sys.stdin.read(1)
@@ -382,6 +395,7 @@ class Connection(object):
         """Attempt to clean up if not explicitly closed."""
         log.debug('__del__ called')
         self.close()
+
 
 def main():
     """Little test when called directly."""

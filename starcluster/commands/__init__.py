@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from base import CmdBase
 from start import CmdStart
 from stop import CmdStop
 from sshmaster import CmdSshMaster
@@ -27,6 +26,7 @@ from runplugin import CmdRunPlugin
 from spothistory import CmdSpotHistory
 from shell import CmdShell
 from createkey import CmdCreateKey
+from help import CmdHelp
 
 all_cmds = [
     CmdStart(),
@@ -56,4 +56,5 @@ all_cmds = [
     CmdShowImage(),
     CmdRunPlugin(),
     CmdShell(),
+    CmdHelp(),
 ]
