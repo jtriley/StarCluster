@@ -330,7 +330,7 @@ class Cluster(object):
         plugs = []
         for plugin in plugins:
             setup_class = plugin.get('setup_class')
-            plugin_name = plugin.get('__name__')
+            plugin_name = plugin.get('__name__').split()[-1]
             mod_name = '.'.join(setup_class.split('.')[:-1])
             class_name = setup_class.split('.')[-1]
             try:
@@ -351,24 +351,34 @@ class Cluster(object):
                 raise exception.PluginError(
                     ("Plugin %s must be a subclass of " + \
                      "starcluster.clustersetup.ClusterSetup") % setup_class)
-            (argspec_args, argspec_varargs, argspec_keywords,
-             argspec_defaults) = inspect.getargspec(klass.__init__)
-            args = argspec_args[1:]
+            (args, varargs,
+             keywords, defaults) = inspect.getargspec(klass.__init__)
+            log.debug('plugin args = %s' % args)
+            log.debug('plugin varargs = %s' % varargs)
+            log.debug('plugin keywords = %s' % keywords)
+            log.debug('plugin defaults = %s' % str(defaults))
+            args = args[1:]  # ignore self
             nargs = len(args)
             ndefaults = 0
-            if argspec_defaults:
-                ndefaults = len(argspec_defaults)
+            if defaults:
+                ndefaults = len(defaults)
             nrequired = nargs - ndefaults
+            args = args[:nrequired]
+            kwargs = args[nrequired:]
             config_args = []
-            for arg in argspec_args:
+            for arg in args:
                 if arg in plugin:
                     config_args.append(plugin.get(arg))
+            config_kwargs = {}
+            for arg in kwargs:
+                if arg in plugin:
+                    config_kwargs[arg] = plugin.get(arg)
             log.debug("config_args = %s" % config_args)
-            log.debug("args = %s" % argspec_args)
+            log.debug("config_kwargs = %s" % config_kwargs)
             if nrequired > len(config_args):
                 raise exception.PluginError(
                 "Not enough settings provided for plugin %s" % plugin_name)
-            plugs.append((plugin_name, klass(*config_args)))
+            plugs.append((plugin_name, klass(*config_args, **config_kwargs)))
         return plugs
 
     def update(self, kwargs):
