@@ -471,6 +471,10 @@ class CmdLoadBalance(CmdBase):
             action="store",type="int",default=None,
             help="Minutes to look back for past job history")
 
+        ope = parser.add_option("-n","--min_nodes", dest="min_nodes",
+            action="store",type="int",default=None,
+            help="Minimum number of nodes in cluster")
+
 
 
     def execute(self, args):
