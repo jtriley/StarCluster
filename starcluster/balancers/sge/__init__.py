@@ -10,7 +10,7 @@ import logging
 import xml.dom.minidom
 from xml.dom.minidom import Node
 from starcluster import balancers
-from starcluster.balancers import LoadBalancer 
+from starcluster.balancers import LoadBalancer
 from starcluster import utils
 from starcluster import config
 from starcluster import cluster
@@ -19,23 +19,25 @@ from starcluster.utils import print_timing
 from starcluster.removenode import remove_node
 from starcluster.addnode import add_nodes
 
+
 class SGEStats(object):
     hosts = []
     jobs = []
     jobstats = []
     _default_fields = \
-        ["JB_job_number","state","JB_submission_time","queue_name","slots","tasks"]
+        ["JB_job_number", "state", "JB_submission_time",
+         "queue_name", "slots", "tasks"]
 
-    def parse_qhost(self,string):
+    def parse_qhost(self, string):
         """
         this function parses qhost -xml output and makes a neat array
         takes in a string, so we can pipe in output from ssh.exec('qhost -xml')
         """
-        self.hosts = [] #clear the old hosts
+        self.hosts = []  # clear the old hosts
         doc = xml.dom.minidom.parseString(string)
         for h in doc.getElementsByTagName("host"):
             name = h.getAttribute("name")
-            hash = {"name" : name }
+            hash = {"name": name}
             for stat in h.getElementsByTagName("hostvalue"):
                 for hvalue in stat.childNodes:
                     attr = stat.attributes['name'].value
@@ -47,33 +49,33 @@ class SGEStats(object):
                 self.hosts.append(hash)
         return self.hosts
 
-    def parse_qstat(self,string, fields=None):
+    def parse_qstat(self, string, fields=None):
         """
-        This method parses qstat -xml oputput and makes a neat array 
+        This method parses qstat -xml oputput and makes a neat array
         """
         if fields == None:
             fields = self._default_fields
-        self.jobs = [] #clear the old jobs
+        self.jobs = []  # clear the old jobs
         doc = xml.dom.minidom.parseString(string)
         for job in doc.getElementsByTagName("job_list"):
             jstate = job.getAttribute("state")
-            hash = {"job_state" : jstate }
+            hash = {"job_state": jstate}
             for tag in fields:
                 es = job.getElementsByTagName(tag)
                 for node in es:
                     for node2 in node.childNodes:
                         if node2.nodeType == Node.TEXT_NODE:
-                            hash[tag] = node2.data 
-            #grab the submit time on all jobs, the last job's val stays
+                            hash[tag] = node2.data
+            # grab the submit time on all jobs, the last job's val stays
             if 'tasks' in hash and hash['tasks'].find('-') > 0:
                 self.job_multiply(hash)
             else:
                 self.jobs.append(hash)
         return self.jobs
 
-    def job_multiply(self,hash):
+    def job_multiply(self, hash):
         """
-        this function deals with sge jobs with a task range, ie qsub -t 1-20:1 
+        this function deals with sge jobs with a task range, ie qsub -t 1-20:1
         makes 20 jobs. self.jobs needs to represent that it is 20 jobs instead
         of just 1.
         """
@@ -81,16 +83,16 @@ class SGEStats(object):
         dashpos = sz_range.find('-')
         colpos = sz_range.find(':')
         start = int(sz_range[0:dashpos])
-        fin = int(sz_range[dashpos+1:colpos])
-        gran = int(sz_range[colpos+1:len(sz_range)])
+        fin = int(sz_range[dashpos + 1:colpos])
+        gran = int(sz_range[colpos + 1:len(sz_range)])
         log.debug("start = %d, fin = %d, granularity = %d, sz_range = %s." % \
-                 (start,fin, gran, sz_range))
+                 (start, fin, gran, sz_range))
         num_jobs = (fin - start) / gran
         log.debug("This job expands to %d tasks." % num_jobs)
-        for n in range(0,num_jobs):
+        for n in range(0, num_jobs):
             self.jobs.append(hash)
 
-    def parse_qacct(self,string,dtnow):
+    def parse_qacct(self, string, dtnow):
         """
         This method parses qacct -j output and makes a neat array and
         calculates some statistics.
@@ -107,9 +109,9 @@ class SGEStats(object):
             l = l.strip()
             if l.find('qsub_time') != -1:
                     qd = utils.qacct_to_datetime_tuple(l[13:len(l)])
-            
+
             if l.find('start_time') != -1:
-                    if l.find('-/-') >0:
+                    if l.find('-/-') > 0:
                         start = dtnow
                     else:
                         start = utils.qacct_to_datetime_tuple(l[13:len(l)])
@@ -122,13 +124,12 @@ class SGEStats(object):
 
             if l.find('==========') != -1:
                 if qd != None:
-                    hash = {'queued' : qd, 'start' : start, 'end' : end}
+                    hash = {'queued': qd, 'start': start, 'end': end}
                     self.jobstats.append(hash)
                 qd = None
                 start = None
                 end = None
         return self.jobstats
-
 
     def get_running_jobs(self):
         """
@@ -149,7 +150,7 @@ class SGEStats(object):
             if j['job_state'] == u'pending':
                 queued.append(j)
         return queued
-    
+
     def count_hosts(self):
         """
         returns a count of the hosts in the cluster
@@ -175,10 +176,10 @@ class SGEStats(object):
         total = self.count_total_slots()
         single = int(self.hosts[0][u'num_proc'])
         if (total != (single * len(self.hosts))):
-            log.error("ERROR: Number of slots is not consistent across cluster")
+            log.error("ERROR: Number of slots not consistent across cluster")
             return -1
-        return single 
-    
+        return single
+
     def oldest_queued_job_age(self):
         """
         This returns the age of the oldest job in the queue
@@ -205,7 +206,7 @@ class SGEStats(object):
         log.debug("Node %s is IDLE." % node.id)
         return False
 
-    def num_slots_for_job(self,job_id):
+    def num_slots_for_job(self, job_id):
         """
         returns the number of slots requested for the given job id
         returns -1 if job_id is invalid
@@ -242,7 +243,8 @@ class SGEStats(object):
 
     def on_first_job(self):
         """
-        returns true if the cluster is processing the first job, False otherwise
+        returns true if the cluster is processing the first job,
+        False otherwise
         """
         if len(self.jobs) > 0 and self.jobs[0]['JB_job_number'] != u'1':
             print "ON THE FIRST JOB"
@@ -258,9 +260,11 @@ class SGEStats(object):
             loads.append(h['load_avg'])
         return loads
 
+
 class SGELoadBalancer(LoadBalancer):
     """
-    This class is able to query each SGE host and return with load & queue statistics
+    This class is able to query each SGE host and return load & queue
+    statistics
     #       *** All times are in SECONDS unless otherwise specified ***
 
     #The polling interval in seconds. recommended: 60-300. any more frequent is
@@ -268,7 +272,8 @@ class SGELoadBalancer(LoadBalancer):
     polling_interval = 60
 
     #VERY IMPORTANT: Set this to the max nodes you're willing to have in your
-    #cluster. Try setting this to the default cluster size you'd ordinarily use.
+    #cluster. Try setting this to the default cluster size you'd ordinarily
+    #use.
     max_nodes = 5
 
     #IMPORTANT: Set this to the longest time a job can wait before another host
@@ -282,15 +287,15 @@ class SGELoadBalancer(LoadBalancer):
 
     #This would allow the master to be killed when the queue empties. UNTESTED.
     allow_master_kill = False
-    
+
     #How many nodes to add per iteration. Setting it > 1 opens up possibility
     #of spending too much $$
     add_nodes_per_iteration = 1
-    
+
     #Kill an instance after it has been up for X minutes. Do not kill earlier,
     #Since you've already paid for that hour. In Minutes.
     kill_after = 45
-       
+
     #After adding a node, how long to wait for the instance to start new jobs
     stabilization_time = 180
 
@@ -306,10 +311,10 @@ class SGELoadBalancer(LoadBalancer):
     _keep_polling = True
     __last_cluster_mod_time = datetime.datetime.utcnow()
 
-
-    def __init__(self, cluster_tag,config,
-                 interval=60,plot=False,max_nodes=5,wait_time=900,add_pi=1,
-                 kill_after=45,stab=180,lookback_win=3):
+    def __init__(self, cluster_tag, config,
+                 interval=60, plot=False, max_nodes=5, wait_time=900,
+                 add_pi=1, kill_after=45, stab=180, lookback_win=3,
+                 min_nodes=1):
         """
         this is the constructor for SGELoadBalancer.
         """
@@ -324,9 +329,9 @@ class SGELoadBalancer(LoadBalancer):
         self.kill_after = kill_after
         self.stabilization_time = stab
         self.lookback_window = lookback_win
-        self.min_nodes = 1
+        self.min_nodes = min_nodes
         self.allow_master_kill = False
-       
+
         if self.longest_allowed_queue_time < 300:
             log.warn("Longest Allowed Queue Time should be > 300 seconds.")
             log.warn("It takes ~5 minutes to launch a new EC2 node.")
@@ -334,34 +339,31 @@ class SGELoadBalancer(LoadBalancer):
         #for key in self.__dict__.keys():
             #log.info("bal: %s => %s." % (key, self.__dict__[key]))
 
-
-    def get_qatime(self,now):
+    def get_qatime(self, now):
         """
         this function takes the lookback window and creates a string
         representation of the past few hours, to feed to qacct to
         limit the data set qacct returns.
         """
         if self.lookback_window > 24 or self.lookback_window < 1:
-            log.warn("Lookback window %d out of range (1..24). Not recommended." % \
-                    self.lookback_window)
+            log.warn("Lookback window %d out of range (1-24). Not recommended."
+                     % self.lookback_window)
         now = now - timedelta(hours=self.lookback_window)
         str = now.strftime("%Y%m%d%H%M")
         return str
-
 
     #@print_timing
     def get_stats(self):
         """
         this function will ssh to the SGE master and get load & queue stats.
         it will feed these stats to SGEStats, which parses the XML.
-        it will return two arrays: one of hosts, each host has a hash with its 
+        it will return two arrays: one of hosts, each host has a hash with its
         host information inside. The job array contains a hash for every job,
         containing statistics about the job name, priority, etc
         """
         log.debug("starting get_stats")
         master = self._cluster.master_node
         self.stat = SGEStats()
-
 
         qhostXml = ""
         qstatXml = ""
@@ -371,32 +373,34 @@ class SGELoadBalancer(LoadBalancer):
             qatime = self.get_qatime(now)
             qacct_cmd = 'source /etc/profile && qacct -j -b ' + qatime
             qstat_cmd = 'source /etc/profile && qstat -q all.q -u \"*\" -xml'
-            qhostXml = '\n'.join(master.ssh.execute('source /etc/profile && qhost -xml', \
+            qhostXml = '\n'.join(master.ssh.execute( \
+                'source /etc/profile && qhost -xml', log_output=False))
+            qstatXml = '\n'.join(master.ssh.execute(qstat_cmd,
                                                     log_output=False))
-            qstatXml = '\n'.join(master.ssh.execute( qstat_cmd, log_output=False))
-            qacct = '\n'.join(master.ssh.execute(qacct_cmd,log_output=False, \
+            qacct = '\n'.join(master.ssh.execute(qacct_cmd, log_output=False, \
                                                  ignore_exit_status=True))
         except Exception, e:
-            log.error("Error occured getting SGE stats via ssh. Cluster terminated?")
+            log.error("Error occured getting SGE stats via ssh. "\
+                      "Cluster terminated?")
             log.error(e)
             return -1
 
         log.debug("sizes: qhost: %d, qstat: %d, qacct: %d." % \
-                  (len(qhostXml),len(qstatXml),len(qacct)))
+                  (len(qhostXml), len(qstatXml), len(qacct)))
 
         self.stat.parse_qhost(qhostXml)
         self.stat.parse_qstat(qstatXml)
-        self.stat.parse_qacct(qacct,now)
-    
+        self.stat.parse_qacct(qacct, now)
+
     #@print_timing
     def _call_visualizer(self):
         if not self._visualizer_on:
             return
         try:
             from starcluster.balancers.sge import visualizer
-        except ImportError,e:
+        except ImportError, e:
                 log.error("Error importing matplotlib and numpy:")
-                log.error(str(e)) 
+                log.error(str(e))
                 log.error("check that matplotlib and numpy are installed and:")
                 log.error("   $ python -c 'import matplotlib'")
                 log.error("   $ python -c 'import numpy'")
@@ -411,18 +415,18 @@ class SGELoadBalancer(LoadBalancer):
         visualizer.read()
         visualizer.graph_all()
 
-
     def run(self):
         """
-        this is a rough looping function. it will loop indefinitely, using 
+        this is a rough looping function. it will loop indefinitely, using
         SGELoadBalancer.get_stats()
-        to get the clusters status. It will look at the job queue and try to 
+        to get the clusters status. It will look at the job queue and try to
         decide whether to add or remove a node. It should later look at job
         durations. Doesn't yet.
         """
         while(self._keep_polling):
             if not self.are_nodes_up(self._cluster):
-                log.info("Entire cluster is not up,nodes added/removed. No Action.")
+                log.info("Entire cluster is not up,nodes added/removed."\
+                         "No Action.")
                 time.sleep(self.polling_interval)
                 continue
 
@@ -430,8 +434,8 @@ class SGELoadBalancer(LoadBalancer):
                 log.error("Failed to get stats. LoadBalancer is terminating.")
                 return
 
-            log.info("Oldest job is from %s. # queued jobs = %d. # hosts = %d."  
-                     % (self.stat.oldest_queued_job_age(), 
+            log.info("Oldest job is from %s. # queued jobs = %d. # hosts = %d."
+                     % (self.stat.oldest_queued_job_age(),
                      len(self.stat.get_queued_jobs()), len(self.stat.hosts)))
 
             log.info("Avg job duration = %d sec, Avg wait time = %d sec." %
@@ -447,7 +451,7 @@ class SGELoadBalancer(LoadBalancer):
             self._call_visualizer()
 
             #sleep for the specified number of seconds
-            log.info("Sleeping, looping again in %d seconds.\n" 
+            log.info("Sleeping, looping again in %d seconds.\n"
                      % self.polling_interval)
             time.sleep(self.polling_interval)
 
@@ -460,7 +464,7 @@ class SGELoadBalancer(LoadBalancer):
         """
         need_to_add = 0
         if len(self.stat.hosts) >= self.max_nodes:
-            log.info( "Won't add another host, currently at max (%d)." % \
+            log.info("Won't add another host, currently at max (%d)." % \
                    self.max_nodes)
             return 0
         qlen = len(self.stat.get_queued_jobs())
@@ -474,12 +478,14 @@ class SGELoadBalancer(LoadBalancer):
 
         if qlen > ts:
             now = datetime.datetime.utcnow()
-            if (now - self.__last_cluster_mod_time).seconds < self.stabilization_time:
-               log.info("Cluster change was made less than %d seconds ago (%s)."
-                        % (self.stabilization_time, self.__last_cluster_mod_time))
-               log.info("Not changing cluster size until cluster stabilizes." )
+            if (now - self.__last_cluster_mod_time).seconds < \
+            self.stabilization_time:
+                log.info("Cluster change made less than %d seconds ago (%s)."
+                        % (self.stabilization_time,
+                           self.__last_cluster_mod_time))
+                log.info("Not changing cluster size until cluster stabilizes.")
 
-               return 0
+                return 0
 
             #there are more jobs queued than will be consumed with one
             #cycle of job processing from all nodes
@@ -487,25 +493,26 @@ class SGELoadBalancer(LoadBalancer):
             now = utils.get_remote_time(self._cluster)
             age_delta = now - oldest_job_dt
             if age_delta.seconds > self.longest_allowed_queue_time:
-                log.info("A job has been waiting for %d sec, longer than max %d." 
-                         % (age_delta.seconds, self.longest_allowed_queue_time))
+                log.info("A job has been waiting for %d sec, longer than " \
+                         "max %d." % (age_delta.seconds,
+                            self.longest_allowed_queue_time))
                 need_to_add = qlen / sph
-                
+
                 if ettc < 600 and not self.stat.on_first_job():
                     log.warn("There is a possibility that the job queue is" + \
                              " shorter than 10 minutes in duration.")
                     #need_to_add = 0
-        
+
         if need_to_add > 0:
             need_to_add = min(self.add_nodes_per_iteration, need_to_add)
             log.info("*** ADDING %d NODES." % need_to_add)
             try:
                 add_nodes(self._cluster, need_to_add)
             except Exception, e:
-                   log.error("Failed to add new host.")
-                   log.error("Exception Type: %s, Message: %s" % \
-                        (type(e),e))
-                   return -1
+                log.error("Failed to add new host.")
+                log.error("Exception Type: %s, Message: %s" % \
+                    (type(e), e))
+                return -1
 
             self.__last_cluster_mod_time = datetime.datetime.utcnow()
             log.info("Done adding nodes.")
@@ -524,42 +531,47 @@ class SGELoadBalancer(LoadBalancer):
     def _eval_remove_node(self):
         """
         This function uses the metrics available to it to decide whether to
-        remove a new new from the cluster. It isn't able to actually remove 
+        remove a new new from the cluster. It isn't able to actually remove
         a node yet.
         """
         qlen = len(self.stat.get_queued_jobs())
         if qlen == 0:
-           now = datetime.datetime.utcnow()
-           if (now - self.__last_cluster_mod_time).seconds < self.stabilization_time:
-               log.info("Cluster change was made less than %d seconds ago (%s)."
-                        % (self.stabilization_time, self.__last_cluster_mod_time))
-               log.info("Not changing cluster size until cluster stabilizes." )
-               return 0
+            now = datetime.datetime.utcnow()
+            if (now - self.__last_cluster_mod_time).seconds < \
+            self.stabilization_time:
+                log.info("Cluster change made less than %d seconds ago (%s)."
+                        % (self.stabilization_time,
+                           self.__last_cluster_mod_time))
+                log.info("Not changing cluster size until cluster stabilizes.")
+                return 0
 
            #if at 0, remove all nodes but master
-           if len(self.stat.hosts) > self.min_nodes:
-               log.info("Checking to remove a node...")
-               to_kill = self._find_node_for_removal()
-               if len(to_kill) == 0:
-                   log.info("No nodes can be killed at this time.")
-               #kill the nodes returned
-               for n in to_kill:
-                   if self._node_alive(n.id):
-                       log.info("***KILLING NODE: %s (%s)." % (n.id,n.dns_name))
-                       try:
-                           remove_node(n,self._cluster) 
-                       except Exception, e:
-                           log.error("Failed to terminate the host.")
-                           log.error("Exception Type: %s, Message: %s" % \
-                                (type(e),e))
-                           return -1
-                       #successfully removed node
-                       self.__last_cluster_mod_time = datetime.datetime.utcnow()
-                   else:
-                        log.error("Trying to kill a dead node! id = %s." % n.id)
-           else:
-               log.info("Can't remove a node, already at min (%d)." 
-                         % self.min_nodes)
+            if len(self.stat.hosts) > self.min_nodes:
+                log.info("Checking to remove a node...")
+                to_kill = self._find_node_for_removal()
+                if len(to_kill) == 0:
+                    log.info("No nodes can be killed at this time.")
+                #kill the nodes returned
+                for n in to_kill:
+                    if self._node_alive(n.id):
+                        log.info("***KILLING NODE: %s (%s)." %
+                                 (n.id, n.dns_name))
+                        try:
+                            remove_node(n, self._cluster)
+                        except Exception, e:
+                            log.error("Failed to terminate the host.")
+                            log.error("Exception Type: %s, Message: %s" % \
+                                 (type(e), e))
+                            return -1
+                        #successfully removed node
+                        self.__last_cluster_mod_time = \
+                        datetime.datetime.utcnow()
+                    else:
+                        log.error("Trying to kill a dead node! id = %s."
+                                  % n.id)
+            else:
+                log.info("Can't remove a node, already at min (%d)."
+                          % self.min_nodes)
 
     def _find_node_for_removal(self):
         """
@@ -580,11 +592,13 @@ class SGELoadBalancer(LoadBalancer):
             is_working = self.stat.is_node_working(node)
             mins_up = self._minutes_uptime(node) % 60
             if not is_working:
-                log.info("Idle Node %s (%s) has been up for %d minutes past the hour."
-                      % (node.id,node.alias,mins_up))
+                log.info("Idle Node %s (%s) has been up for %d minutes " \
+                         "past the hour."
+                      % (node.id, node.alias, mins_up))
 
             if self.polling_interval > 300:
-                self.kill_after = max(45,60 - (2*self.polling_interval/60))
+                self.kill_after = \
+                max(45, 60 - (2 * self.polling_interval / 60))
 
             if not is_working and mins_up >= self.kill_after:
                 to_rem.append(node)
@@ -602,7 +616,7 @@ class SGELoadBalancer(LoadBalancer):
         timedelta = now - dt
         return timedelta.seconds / 60
 
-    def are_nodes_up(self,cl):
+    def are_nodes_up(self, cl):
         """
         Check whether the nodes in the cluster are all up,
         that ssh (port 22) is up on all nodes, and that each node
@@ -617,6 +631,6 @@ class SGELoadBalancer(LoadBalancer):
     if __name__ == "__main__":
         #TODO: replace this with something else or delete
         cfg = config.StarClusterConfig()
-        cl = cluster.get_cluster('mycluster',cfg)
+        cl = cluster.get_cluster('mycluster', cfg)
         balancer = LoadBalancer(cl)
         balancer.run()

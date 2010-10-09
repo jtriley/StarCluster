@@ -11,23 +11,25 @@ import matplotlib.mlab as mlab
 import matplotlib.cbook as cbook
 import matplotlib.ticker as ticker
 #from starcluster import balancers
-#from starcluster.balancers import LoadBalancer 
+#from starcluster.balancers import LoadBalancer
 #from starcluster import utils
 from starcluster.logger import log, INFO_NO_NEWLINE
 from starcluster.utils import print_timing
+
 
 class SGEVisualizer(object):
     stat = None
     filepath = '/tmp/starcluster-sge-stats.csv'
     pngpath = '/home/rajat/Dropbox/Public/sc/'
 
-    def add(self,x,y):
+    def add(self, x, y):
         return float(x) + float(y)
 
-    def record(self,s):
+    def record(self, s):
         """
-        This function takes an SGEStats object and takes a snapshot to a CSV file.
-        It takes an SGEStats object as a parameter. Appends one line to the CSV.
+        This function takes an SGEStats object and takes a snapshot to a CSV
+        file. It takes an SGEStats object as a parameter. Appends one line to
+        the CSV.
         """
         stat = s
         bits = []
@@ -63,45 +65,45 @@ class SGEVisualizer(object):
 
     def read(self):
         list = []
-        file = open(self.filepath,'r')
+        file = open(self.filepath, 'r')
         for line in file:
             parts = line.split(',')
-            a = [datetime.strptime(parts[0],'%Y-%m-%d %H:%M:%S.%f'), int(parts[1]),int(parts[2]),
-                 int(parts[3]),int(parts[4]),int(parts[5]),int(parts[6]),float(parts[7])]
+            a = [datetime.strptime(parts[0], '%Y-%m-%d %H:%M:%S.%f'),
+                 int(parts[1]), int(parts[2]), int(parts[3]), int(parts[4]),
+                 int(parts[5]), int(parts[6]), float(parts[7])]
             list.append(a)
         file.close()
 
         self.records = \
-           np.rec.fromrecords(list,names='dt,hosts,running_jobs,queued_jobs,slots,avg_duration,avg_wait,avg_load')
+           np.rec.fromrecords(list, names='dt,hosts,running_jobs,queued_jobs,slots,avg_duration,avg_wait,avg_load')
 
     def graph(self, yaxis, title):
         if self.records == None:
             log.error("ERROR: File hasn't been read() yet.")
             return -1
-        
+
         fig = plt.figure()
         ax = fig.add_subplot(111)
         ax.plot(self.records.dt, yaxis)
         ax.grid(True)
-    
+
         fig.autofmt_xdate()
-        
+
         filename = self.pngpath + title + '.png'
         plt.savefig(filename, dpi=100)
         log.debug("saved graph %s." % title)
-        plt.close(fig) #close it when its done
+        plt.close(fig)  # close it when its done
 
     def graph_all(self):
-        vals = [ ['queued',self.records.queued_jobs], \
+        vals = [['queued', self.records.queued_jobs], \
                 ['running', self.records.running_jobs],\
                 ['num_hosts', self.records.hosts],\
                 #['slots',self.records.slots],\
-                ['avg_duration',self.records.avg_duration],\
-                ['avg_wait',self.records.avg_wait], \
-                ['avg_load',self.records.avg_load]
+                ['avg_duration', self.records.avg_duration],\
+                ['avg_wait', self.records.avg_wait], \
+                ['avg_load', self.records.avg_load]
                ]
         for sub in vals:
-            self.graph(sub[1],sub[0])
+            self.graph(sub[1], sub[0])
 
         log.info("Done making graphs.")
-
