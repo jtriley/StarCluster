@@ -3,12 +3,12 @@ import os
 import urllib
 import ConfigParser
 
-from starcluster.cluster import Cluster
+from starcluster import utils
 from starcluster import static
 from starcluster import awsutils
-from starcluster import utils
-from starcluster.utils import AttributeDict
 from starcluster import exception
+from starcluster.cluster import Cluster
+from starcluster.utils import AttributeDict
 
 from starcluster.logger import log
 
@@ -178,7 +178,7 @@ class StarClusterConfig(object):
         Reloads the configuration file
         """
         self._config = self.__load_config()
-        self.load()
+        return self.load()
 
     @property
     def config(self):
@@ -537,7 +537,8 @@ class StarClusterConfig(object):
     def get_cluster_names(self):
         return self.clusters
 
-    def get_cluster_template(self, template_name, tag_name=None):
+    def get_cluster_template(self, template_name, tag_name=None,
+                             ec2_conn=None):
         """
         Returns Cluster instance configured with the settings in the
         config file.
@@ -551,9 +552,10 @@ class StarClusterConfig(object):
             kwargs = {}
             if tag_name:
                 kwargs.update(dict(cluster_tag=tag_name))
-            kwargs.update(self.aws)
             kwargs.update(self.clusters[template_name])
-            clust = Cluster(**kwargs)
+            if not ec2_conn:
+                ec2_conn = self.get_easy_ec2()
+            clust = Cluster(ec2_conn, **kwargs)
             return clust
         except KeyError:
             raise exception.ClusterTemplateDoesNotExist(template_name)
@@ -569,7 +571,6 @@ class StarClusterConfig(object):
         if not default:
             raise exception.NoDefaultTemplateFound(
                 options=self.clusters.keys())
-        #if not self.clusters.has_key(default):
         if not default in self.clusters:
             raise exception.ClusterTemplateDoesNotExist(default)
         return default

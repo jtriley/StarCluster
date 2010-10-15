@@ -44,8 +44,7 @@ class CmdRemoveVolume(CmdBase):
             self.parser.error("no volumes specified. exiting...")
         for arg in args:
             volid = arg
-            ec2 = self.cfg.get_easy_ec2()
-            vol = ec2.get_volume(volid)
+            vol = self.ec2.get_volume(volid)
             if vol.status in ['attaching', 'in-use']:
                 log.error("volume is currently in use. aborting...")
                 return

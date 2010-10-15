@@ -17,5 +17,4 @@ class CmdListSpots(CmdBase):
                           help="show closed/cancelled spot instance requests")
 
     def execute(self, args):
-        ec2 = self.cfg.get_easy_ec2()
-        ec2.list_all_spot_instances(self.opts.show_closed)
+        self.ec2.list_all_spot_instances(self.opts.show_closed)

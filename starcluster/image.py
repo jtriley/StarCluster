@@ -1,62 +1,78 @@
 #!/usr/bin/env python
 import os
+import time
+import string
 
-from starcluster import awsutils
+from starcluster import ssh
 from starcluster import exception
 from starcluster import utils
-from starcluster import node
-from starcluster.logger import log
+from starcluster import progressbar
 from starcluster.utils import print_timing
+from starcluster.logger import log
 
 
-def create_image(instanceid, image_name, bucket, cfg, **kwargs):
-    instance = node.get_node(instanceid, cfg)
-    if instance.state != 'running':
-        raise exception.InstanceNotRunning(instance.id, instance.state,
-                                           instance.alias)
-    kwargs.update(cfg.aws)
-    kwargs.update({
-        'instance': instance,
-        'prefix': image_name,
-        'bucket': bucket,
-    })
-    icreator = EC2ImageCreator(**kwargs)
-    return icreator.create_image()
-
-
-class EC2ImageCreator(object):
+class ImageCreator(object):
     """
-    Class for creating a new AMI from a running instance
+    Base class for S3/EBS Image Creators. Handles fetching the host and setting
+    up a connection object as well as setting common attributes (description,
+    kernel_id, ramdisk_id)
 
-    instance must be a starcluster.node.Node instance
+    easy_ec2 must be an awsutils.EasyEC2 object
+
+    instance_id is the identified of the instance to be imaged
+
+    key_location must point to the private key file corresponding to the
+    keypair used to launch instance_id
     """
-    def __init__(self, instance=None, aws_access_key_id=None,
-                 aws_secret_access_key=None, aws_user_id=None,
-                 ec2_cert=None, ec2_private_key=None, prefix='image',
-                 bucket='', description=None,
-                 kernel_id=None, ramdisk_id=None,
-                 remove_image_files=False, **kwargs):
-        self.host = instance  # starcluster.node.Node instance
-        self.access_key = aws_access_key_id
-        self.secret_key = aws_secret_access_key
-        self.userid = aws_user_id
-        self.private_key = ec2_private_key
-        self.bucket = bucket
-        self.prefix = prefix
+    def __init__(self, easy_ec2, instance_id, key_location, description=None,
+                 kernel_id=None, ramdisk_id=None):
+        self.ec2 = easy_ec2
+        self.host = self.ec2.get_instance(instance_id)
+        if self.host.state != 'running':
+            raise exception.InstanceNotRunning(self.host.id, self.host.state,
+                                               self.host.dns_name)
+        self.host_ssh = ssh.SSHClient(self.host.dns_name, username='root',
+                                      private_key=key_location)
         self.description = description
         self.kernel_id = kernel_id
         self.ramdisk_id = ramdisk_id
+
+    def clean_private_data(self):
+        log.info('Removing private data...')
+        conn = self.host_ssh
+        conn.execute('find /home -maxdepth 1 -type d -exec rm -rf {}/.ssh \;')
+        conn.execute('rm -f /var/log/secure')
+        conn.execute('rm -f /var/log/lastlog')
+        conn.execute('rm -rf /root/*')
+        conn.execute('rm -f ~/.bash_history')
+        conn.execute('rm -rf /tmp/*')
+        conn.execute('rm -rf /root/*.hist*')
+        conn.execute('rm -rf /var/log/*.gz')
+
+
+class S3ImageCreator(ImageCreator):
+    """
+    Class for creating a new instance-store AMI from a running instance
+    """
+    def __init__(self, easy_ec2, instance_id, key_location, aws_user_id,
+                 ec2_cert, ec2_private_key, bucket, image_name='image',
+                 description=None, kernel_id=None, ramdisk_id=None,
+                 remove_image_files=False, **kwargs):
+        super(S3ImageCreator, self).__init__(easy_ec2, instance_id,
+                                             key_location, description,
+                                             kernel_id, ramdisk_id)
+        self.userid = aws_user_id
         self.cert = ec2_cert
+        self.private_key = ec2_private_key
+        self.bucket = bucket
+        self.prefix = image_name
+        self.description = description
         self.remove_image_files = remove_image_files
         for name in self.bucket.split("/"):
             if not utils.is_valid_bucket_name(name):
                 raise exception.InvalidBucketName(self.bucket)
         if not utils.is_valid_image_name(self.prefix):
             raise exception.InvalidImageName(self.prefix)
-        self.ec2 = awsutils.EasyEC2(
-            aws_access_key_id=self.access_key,
-            aws_secret_access_key=self.secret_key,
-        )
         if not self.cert:
             try:
                 self.cert = os.environ['EC2_CERT']
@@ -74,24 +90,24 @@ class EC2ImageCreator(object):
         if not os.path.exists(self.private_key):
             raise exception.EC2PrivateKeyDoesNotExist(self.private_key)
         self.config_dict = {
-            'access_key': self.access_key,
-            'secret_key': self.secret_key,
+            'access_key': self.ec2.aws_access_key_id,
+            'secret_key': self.ec2.aws_secret_access_key,
             'private_key': os.path.split(self.private_key)[-1],
             'userid': self.userid,
             'cert': os.path.split(self.cert)[-1],
             'bucket': self.bucket,
             'prefix': self.prefix,
-            'arch': self.host.arch,
+            'arch': self.host.architecture,
         }
 
     def __repr__(self):
-        return "<EC2ImageCreator: %s>" % self.host.id
+        return "<S3ImageCreator: %s>" % self.host.id
 
     @print_timing
     def create_image(self):
         # first remove any image files from a previous run
         log.info("Checking for EC2 API tools...")
-        self.host.ssh.check_required(['ec2-upload-bundle', 'ec2-bundle-vol'])
+        self.host_ssh.check_required(['ec2-upload-bundle', 'ec2-bundle-vol'])
         self._remove_image_files()
         self._bundle_image()
         self._upload_image()
@@ -102,14 +118,14 @@ class EC2ImageCreator(object):
         return ami_id
 
     def _remove_image_files(self):
-        conn = self.host.ssh
+        conn = self.host_ssh
         conn.execute('umount /mnt/img-mnt', ignore_exit_status=True)
         conn.execute('rm -rf /mnt/img-mnt')
         conn.execute('rm -rf /mnt/%(prefix)s*' % self.config_dict)
 
     def _transfer_pem_files(self):
         """copy pem files to /mnt on image host"""
-        conn = self.host.ssh
+        conn = self.host_ssh
         pkey_dest = "/mnt/" + os.path.basename(self.private_key)
         cert_dest = "/mnt/" + os.path.basename(self.cert)
         conn.put(self.private_key, pkey_dest)
@@ -118,10 +134,10 @@ class EC2ImageCreator(object):
     @print_timing
     def _bundle_image(self):
         # run script to prepare the host
-        conn = self.host.ssh
+        conn = self.host_ssh
         config_dict = self.config_dict
         self._transfer_pem_files()
-        self.__clean_private_data()
+        self.clean_private_data()
         log.info('Creating the bundled image:')
         conn.execute('ec2-bundle-vol -d /mnt -k /mnt/%(private_key)s \
 -c /mnt/%(cert)s -p %(prefix)s -u %(userid)s -r %(arch)s -e /root/.ssh' % \
@@ -132,7 +148,7 @@ class EC2ImageCreator(object):
     @print_timing
     def _upload_image(self):
         log.info('Uploading bundled image:')
-        conn = self.host.ssh
+        conn = self.host_ssh
         config_dict = self.config_dict
         conn.execute('ec2-upload-bundle -b %(bucket)s \
 -m /mnt/%(prefix)s.manifest.xml -a %(access_key)s -s %(secret_key)s' % \
@@ -141,13 +157,13 @@ class EC2ImageCreator(object):
     def _cleanup(self):
         #just in case...
         self._cleanup_pem_files()
-        conn = self.host.ssh
+        conn = self.host_ssh
         conn.execute('rm -f ~/.bash_history', silent=False)
 
     def _cleanup_pem_files(self):
         log.info('Cleaning up...')
         # delete keys and remove bash history
-        conn = self.host.ssh
+        conn = self.host_ssh
         conn.execute('rm -f /mnt/*.pem /mnt/*.pem', silent=False)
 
     def _register_image(self):
@@ -163,15 +179,110 @@ class EC2ImageCreator(object):
             architecture=config_dict.get('arch'),
         )
 
-    def __clean_private_data(self):
-        log.info('Removing private data...')
-        conn = self.host.ssh
-        conn.execute('find /home -maxdepth 1 -type d -exec rm -rf {}/.ssh \;',
-                     silent=False)
-        conn.execute('rm -f /var/log/secure', silent=False)
-        conn.execute('rm -f /var/log/lastlog', silent=False)
-        conn.execute('rm -rf /root/*', silent=False)
-        conn.execute('rm -f ~/.bash_history', silent=False)
-        conn.execute('rm -rf /tmp/*', silent=False)
-        conn.execute('rm -rf /root/*.hist*', silent=False)
-        conn.execute('rm -rf /var/log/*.gz', silent=False)
+
+class EBSImageCreator(ImageCreator):
+    """
+    Creates a new EBS image from a running instance
+
+    If the instance is an instance-store image, then this class will create a
+    new volume, attach it to the instance, sync the root filesystem to the
+    volume, detach the volume, snapshot it, and then create a new AMI from the
+    snapshot
+
+    If the instance is EBS-backed, this class simply calls ec2.create_image
+    which tells Amazon to create a new image in a single API call.
+    """
+
+    def __init__(self, easy_ec2, instance_id, key_location, name,
+                 description=None, snapshot_description=None,
+                 kernel_id=None, ramdisk_id=None, **kwargs):
+        super(EBSImageCreator, self).__init__(easy_ec2, instance_id,
+                                              key_location, description,
+                                              kernel_id, ramdisk_id)
+        self.name = name
+        self.description = description
+        self.snapshot_description = snapshot_description or description
+        self.base_img = self.ec2.get_image(self.host.image_id)
+        self.kernel_id = kernel_id or self.base_img.kernel_id
+        self.ramdisk_id = ramdisk_id or self.base_img.ramdisk_id
+
+    def create(self, size):
+        host = self.host
+        host_ssh = self.host_ssh
+        self.clean_private_data()
+        if self.host.root_device_type == "ebs":
+            imgid = self.ec2.create_image(host.id, self.name,
+                                          self.description)
+            return imgid
+        log.info("Creating new EBS-backed image from instance-store instance")
+        log.info("Creating new root volume...")
+        vol = self.ec2.create_volume(size, host.placement)
+        log.info("Created new volume: %s" % vol.id)
+        while vol.update() != 'available':
+            time.sleep(5)
+        dev = None
+        for i in string.ascii_lowercase[::-1]:
+            dev = '/dev/sd%s' % i
+            if not dev in host.block_device_mapping:
+                break
+        log.info("Attaching volume %s to instance %s on %s" %
+                 (vol.id, host.id, dev))
+        vol.attach(host.id, dev)
+        while vol.update() != 'in-use':
+            time.sleep(5)
+        while not host_ssh.path_exists(dev):
+            time.sleep(5)
+        host_ssh.execute('mkfs.ext3 -F %s' % dev)
+        mount_point = '/ebs'
+        while host_ssh.path_exists(mount_point):
+            mount_point += '1'
+        host_ssh.mkdir(mount_point)
+        log.info("Mounting %s on %s" % (dev, mount_point))
+        host_ssh.execute('mount %s %s' % (dev, mount_point))
+        log.info("Configuring /etc/fstab")
+        host_ssh.remove_lines_from_file('/etc/fstab', '/mnt')
+        fstab = host_ssh.remote_file('/etc/fstab', 'a')
+        fstab.write('/dev/sdb1 /mnt auto defaults,nobootwait 0 0\n')
+        fstab.close()
+        log.info("Syncing root filesystem to new volume (%s)" % vol.id)
+        host_ssh.execute(
+            'rsync -avx --exclude %(mpt)s --exclude /root/.ssh / %(mpt)s' %
+            {'mpt': mount_point})
+        log.info("Unmounting %s from %s" % (dev, mount_point))
+        host_ssh.execute('umount %s' % mount_point)
+        log.info("Detaching volume %s from %s" % (dev, mount_point))
+        vol.detach()
+        while vol.update() != 'available':
+            time.sleep(5)
+        log.info("Creating snapshot of new volume: %s" % vol.id)
+        snap = vol.create_snapshot(self.snapshot_description)
+        log.info("Waiting for snapshot to finish: %s" % snap.id)
+        widgets = ['%s: ' % snap.id, '',
+                   progressbar.Bar(marker=progressbar.RotatingMarker()),
+                   '', progressbar.Percentage(), ' ', progressbar.ETA()]
+        pbar = progressbar.ProgressBar(widgets=widgets, maxval=100).start()
+        while snap.status != 'completed':
+            try:
+                progress = int(snap.update().replace('%', ''))
+                pbar.update(progress)
+            except ValueError:
+                time.sleep(5)
+                continue
+            time.sleep(30)
+        pbar.finish()
+        log.info("New snapshot created: %s" % snap.id)
+        bmap = self.ec2.create_root_block_device_map(snap.id,
+                                                     add_ephemeral_drives=True)
+        log.info("Registering new image...")
+        img_id = self.ec2.register_image(name=self.name,
+                                         description=self.description,
+                                         architecture=host.architecture,
+                                         kernel_id=self.kernel_id,
+                                         ramdisk_id=self.ramdisk_id,
+                                         root_device_name='/dev/sda1',
+                                         block_device_map=bmap)
+        return img_id
+
+
+# for backwards compatibility
+EC2ImageCreator = S3ImageCreator

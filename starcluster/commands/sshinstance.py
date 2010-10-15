@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from starcluster import node
 from starcluster import config
 from starcluster import optcomplete
 from starcluster.logger import log
@@ -36,7 +35,7 @@ class CmdSshInstance(CmdBase):
                 log.error('something went wrong fix me: %s' % e)
 
     def addopts(self, parser):
-        parser.add_option("-u", "--user", dest="USER", action="store",
+        parser.add_option("-u", "--user", dest="user", action="store",
                           type="string", default='root',
                           help="login as USER (defaults to root)")
 
@@ -47,4 +46,4 @@ class CmdSshInstance(CmdBase):
         for arg in args:
             # user specified dns name or instance id
             instance = args[0]
-            node.ssh_to_node(instance, self.cfg, user=self.opts.USER)
+            self.nm.ssh_to_node(instance, user=self.opts.user)

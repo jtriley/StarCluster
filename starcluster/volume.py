@@ -1,26 +1,38 @@
 #!/usr/bin/env python
-import os
 import time
 import string
+import cPickle
 
-from starcluster.node import Node
 from starcluster import static
 from starcluster import utils
 from starcluster import exception
+from starcluster.node import Node
 from starcluster.spinner import Spinner
 from starcluster.utils import print_timing
 from starcluster.logger import log, INFO_NO_NEWLINE
 
 
 class VolumeCreator(object):
-    def __init__(self, cfg, add_to_cfg=False, keypair=None, device='/dev/sdz',
-                 image_id=static.BASE_AMI_32, instance_type="m1.small",
-                 shutdown_instance=False, mkfs_cmd='mkfs.ext3'):
-        self._cfg = cfg
-        self._ec2 = cfg.get_easy_ec2()
+    """
+    Handles creating, partitioning, and formatting a new EBS volume.
+    By default this class will create a single partition the size of the volume
+    and format the partition using the ext3 filesystem.
+
+    A host instance is needed in order to partition and format a new EBS
+    volume. This class will look for host instances in the @sc-volumecreator
+    security group. If it can't find an instance in that group that matches the
+    zone of the new volume, a new instance is launched. By default the
+    VolumeCreator class will not shutdown the host instance after creating a
+    new volume. To shutdown the host instance after volume creation pass
+    shutdown_instance=True.
+    """
+    def __init__(self, ec2_conn, keypair=None, key_location=None,
+                 device='/dev/sdz', image_id=static.BASE_AMI_32,
+                 instance_type="m1.small", shutdown_instance=False,
+                 mkfs_cmd='mkfs.ext3'):
+        self._ec2 = ec2_conn
         self._keypair = keypair
-        self._key_location = None
-        self._add_to_cfg = add_to_cfg
+        self._key_location = key_location
         self._resv = None
         self._instance = None
         self._volume = None
@@ -35,21 +47,25 @@ class VolumeCreator(object):
     def __repr__(self):
         return "<VolumeCreator: %s>" % self._mkfs_cmd
 
+    def __getstate__(self):
+        return {}
+
     @property
     def security_group(self):
         if not self._security_group:
             sg = self._ec2.get_or_create_group(static.VOLUME_GROUP,
-                                               static.VOLUME_GROUP_DESCRIPTION,
+                                               cPickle.dumps(self),
                                                auth_ssh=True)
             self._security_group = sg
         return self._security_group
 
     def _request_instance(self, zone):
+        alias = 'volume_host-%s' % zone
         for i in self.security_group.instances():
             if i.state in ['pending', 'running'] and i.placement == zone:
                 log.info("Using existing instance %s in group %s" % \
                          (i.id, self.security_group.name))
-                self._instance = Node(i, self._key_location, 'vol_host')
+                self._instance = Node(i, self._key_location, alias)
                 break
         if not self._instance:
             log.info(
@@ -62,10 +78,9 @@ class VolumeCreator(object):
                 security_groups=[self.security_group.name],
                 key_name=self._keypair,
                 placement=zone,
-                user_data='master',
-            )
+                user_data=alias)
             instance = self._resv.instances[0]
-            self._instance = Node(instance, self._key_location, 'vol_host')
+            self._instance = Node(instance, self._key_location, alias)
         s = Spinner()
         log.log(INFO_NO_NEWLINE,
                  "Waiting for instance %s to come up..." % self._instance.id)
@@ -76,7 +91,7 @@ class VolumeCreator(object):
         return self._instance
 
     def _create_volume(self, size, zone):
-        vol = self._ec2.conn.create_volume(size, zone)
+        vol = self._ec2.create_volume(size, zone)
         while vol.status != 'available':
             time.sleep(5)
             vol.update()
@@ -157,33 +172,10 @@ class VolumeCreator(object):
                                               self._device + '1'),
                                    silent=False)
 
-    def _load_keypair(self):
-        ec2 = self._ec2
-        cfg = self._cfg
-        if self._keypair:
-            kp = ec2.get_keypair(self._keypair)
-            key = cfg.get_key(kp.name)
-            self._key_location = key.get('key_location', '')
-        else:
-            for kp in ec2.keypairs:
-                if kp.name in self._cfg.keys:
-                    self._keypair = kp.name
-                    kl = cfg.get_key(kp.name).get('key_location', '')
-                    if os.path.exists(kl) and os.path.isfile(kl):
-                        self._key_location = kl
-        log.info('Using keypair %s' % self._keypair)
-        if not os.path.exists(self._key_location):
-            raise exception.ValidationError(
-                'key_location=%s does not exist.' % self._key_location)
-        elif not os.path.isfile(self._key_location):
-            raise exception.ValidationError(
-                'key_location=%s is not a file.' % self._key_location)
-
     @print_timing("Creating volume")
     def create(self, volume_size, volume_zone):
         self.validate(volume_size, volume_zone, self._device, self._image_id)
         try:
-            self._load_keypair()
             log.info(("Requesting host instance in zone %s to attach " + \
                       "volume to...") % volume_zone)
             instance = self._request_instance(volume_zone)
@@ -212,14 +204,14 @@ class VolumeCreator(object):
                 self.security_group.delete()
             else:
                 log.info(("The volume host instance %s is still running. " + \
-                         "Run 'starcluster stop volumecreator' to shut " + \
-                         "down all volume host instances manually.") %
+                          "Run 'starcluster stop volumecreator' to shut " + \
+                          "down all volume host instances manually.") % \
                          self._instance.id)
             return vol.id
         except Exception:
             if self._volume:
                 log.error(
-                    "Error occured, detaching and deleting volume: %s" % \
+                    "Error occured, detaching, and deleting volume: %s" % \
                     self._volume.id)
                 self._volume.detach(force=True)
                 time.sleep(5)
@@ -227,6 +219,6 @@ class VolumeCreator(object):
             i = self._instance
             if i and i.state in ['running', 'pending']:
                 log.info(("The volume host instance %s is still running. " + \
-                         "Run 'starcluster stop volumecreator' to shut " + \
-                         "down all volume host instances manually.") % i.id)
+                          "Run 'starcluster stop volumecreator' to shut " + \
+                          "down all volume host instances manually.") % i.id)
             raise

@@ -2,6 +2,7 @@
 """
 StarCluster logging module
 """
+import os
 import types
 import logging
 import logging.handlers
@@ -19,6 +20,7 @@ INFO_FORMAT = ">>> %(message)s\n"
 INFO_FORMAT_NONL = ">>> %(message)s"
 DEFAULT_FORMAT = "%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n"
 DEFAULT_FORMAT_NONL = "%(filename)s:%(lineno)d - %(levelname)s - %(message)s"
+DEFAULT_FORMAT_NONL_PID = ("PID: %s " % str(os.getpid())) + DEFAULT_FORMAT_NONL
 
 
 class ConsoleLogger(logging.StreamHandler):
@@ -55,7 +57,7 @@ class ConsoleLogger(logging.StreamHandler):
 log = logging.getLogger('starcluster')
 log.setLevel(logging.DEBUG)
 
-formatter = logging.Formatter(DEFAULT_FORMAT_NONL)
+formatter = logging.Formatter(DEFAULT_FORMAT_NONL_PID)
 
 rfh = logging.handlers.RotatingFileHandler(static.DEBUG_FILE,
                                            maxBytes=1048576,

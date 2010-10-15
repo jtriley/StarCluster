@@ -36,5 +36,5 @@ class CmdShowConsole(CmdBase):
     def execute(self, args):
         if not len(args) == 1:
             self.parser.error('please provide an instance id')
-        ec2 = self.cfg.get_easy_ec2()
-        ec2.show_console_output(args[0])
+        instance_id = args[0]
+        self.ec2.show_console_output(instance_id)

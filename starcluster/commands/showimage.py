@@ -19,6 +19,5 @@ class CmdShowImage(CmdDownloadImage):
     def execute(self, args):
         if not args:
             self.parser.error('please specify an AMI id')
-        ec2 = self.cfg.get_easy_ec2()
         for arg in args:
-            ec2.list_image_files(arg)
+            self.ec2.list_image_files(arg)

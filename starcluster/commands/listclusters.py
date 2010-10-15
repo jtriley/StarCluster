@@ -1,18 +1,15 @@
 #!/usr/bin/env python
 
-from starcluster import cluster
-
 from base import CmdBase
 
 
 class CmdListClusters(CmdBase):
     """
-    listclusters
+    listclusters [<cluster_tag> ...]
 
     List all active clusters
     """
     names = ['listclusters', 'lc']
 
     def execute(self, args):
-        cfg = self.cfg
-        cluster.list_clusters(cfg)
+        self.cm.list_clusters(cluster_groups=args)

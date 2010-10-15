@@ -15,11 +15,11 @@ class CmdListImages(CmdBase):
         parser.add_option(
             "-x", "--executable-by-me", dest="executable",
             action="store_true", default=False,
-            help="Show images that you have permission to execute")
+            help=("Show images owned by other users that " +
+                  "you have permission to execute"))
 
     def execute(self, args):
-        ec2 = self.cfg.get_easy_ec2()
         if self.opts.executable:
-            ec2.list_executable_images()
+            self.ec2.list_executable_images()
         else:
-            ec2.list_registered_images()
+            self.ec2.list_registered_images()

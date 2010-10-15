@@ -17,5 +17,4 @@ class CmdListInstances(CmdBase):
                           help="show terminated instances")
 
     def execute(self, args):
-        ec2 = self.cfg.get_easy_ec2()
-        ec2.list_all_instances(self.opts.show_terminated)
+        self.ec2.list_all_instances(self.opts.show_terminated)

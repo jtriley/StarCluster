@@ -25,9 +25,8 @@ class CmdCreateKey(CmdBase):
         if len(args) != 1:
             self.parser.error("please provide a key name")
         name = args[0]
-        ec2 = self.cfg.get_easy_ec2()
         ofile = self.opts.output_file
-        kp = ec2.create_keypair(name, output_file=ofile)
+        kp = self.ec2.create_keypair(name, output_file=ofile)
         log.info("Successfully created keypair: %s" % name)
         log.info("fingerprint: %s" % kp.fingerprint)
         log.info("contents: \n%s" % kp.material)

@@ -32,10 +32,11 @@ class CmdSshNode(CmdBase):
     def completer(self):
         if optcomplete:
             try:
-                cfg = config.StarClusterConfig()
-                cfg.load()
-                clusters = cluster.get_cluster_security_groups(cfg)
-                compl_list = [cluster.get_tag_from_sg(sg.name) \
+                cfg = config.StarClusterConfig().load()
+                ec2 = cfg.get_easy_ec2()
+                cm = cluster.ClusterManager(cfg, ec2)
+                clusters = cm.get_cluster_security_groups()
+                compl_list = [cm.get_tag_from_sg(sg.name) \
                               for sg in clusters]
                 max_num_nodes = 0
                 for scluster in clusters:
@@ -52,7 +53,7 @@ class CmdSshNode(CmdBase):
                 log.error('something went wrong fix me: %s' % e)
 
     def addopts(self, parser):
-        parser.add_option("-u", "--user", dest="USER", action="store",
+        parser.add_option("-u", "--user", dest="user", action="store",
                           type="string", default='root',
                           help="login as USER (defaults to root)")
 
@@ -63,5 +64,4 @@ class CmdSshNode(CmdBase):
         scluster = args[0]
         ids = args[1:]
         for id in ids:
-            cluster.ssh_to_cluster_node(scluster, id, self.cfg,
-                                        user=self.opts.USER)
+            self.cm.ssh_to_cluster_node(scluster, id, user=self.opts.user)

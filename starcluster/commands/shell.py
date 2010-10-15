@@ -26,8 +26,9 @@ class CmdShell(CmdBase):
 
     def execute(self, args):
         cfg = self.cfg
-        ec2 = cfg.get_easy_ec2()
+        ec2 = self.ec2
         s3 = ec2.s3
+        cm = self.cm
         import starcluster
         modules = [(starcluster.__name__ + '.' + i, i) \
                    for i in starcluster.__all__]

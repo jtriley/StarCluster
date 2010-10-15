@@ -39,6 +39,5 @@ class CmdDownloadImage(CmdBase):
             self.parser.error(
                 'you must specify an <image_id> and <destination_directory>')
         image_id, destdir = args
-        ec2 = self.cfg.get_easy_ec2()
-        ec2.download_image_files(image_id, destdir)
+        self.ec2.download_image_files(image_id, destdir)
         log.info("Finished downloading AMI: %s" % image_id)

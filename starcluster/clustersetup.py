@@ -7,6 +7,7 @@ clustersetup.py
 import os
 import shutil
 import tempfile
+import posixpath
 
 from starcluster.templates import sge
 from starcluster.logger import log
@@ -34,6 +35,14 @@ class DefaultClusterSetup(ClusterSetup):
         self._user = None
         self._user_shell = None
         self._volumes = None
+
+    def _setup_hostnames(self):
+        """
+        Set each node's hostname to their alias.
+        """
+        log.info("Configuring hostnames...")
+        for node in self._nodes:
+            node.set_hostname_to_alias()
 
     def _setup_cluster_user(self):
         """
@@ -75,6 +84,8 @@ class DefaultClusterSetup(ClusterSetup):
         log.info("Creating cluster user: %s" % self._user)
         for node in self._nodes:
             nconn = node.ssh
+            nconn.execute('userdel %s' % self._user, ignore_exit_status=True)
+            nconn.execute('groupdel %s' % self._user, ignore_exit_status=True)
             nconn.execute('groupadd -o -g %s %s' % (gid, self._user))
             nconn.execute('useradd -o -u %s -g %s -m -s `which %s` %s' %
                           (uid, gid, self._user_shell, self._user))
@@ -84,11 +95,16 @@ class DefaultClusterSetup(ClusterSetup):
         log.info("Configuring scratch space for user: %s" % self._user)
         for node in self._nodes:
             nconn = node.ssh
-            nconn.execute('mkdir /mnt/%s' % self._user)
+            user_scratch = '/mnt/%s' % self._user
+            if not nconn.path_exists(user_scratch):
+                nconn.mkdir(user_scratch)
             nconn.execute('chown -R %(user)s:%(user)s /mnt/%(user)s' % \
                           {'user': self._user})
-            nconn.execute('mkdir /scratch')
-            nconn.execute('ln -s /mnt/%s /scratch' % self._user)
+            scratch = '/scratch'
+            if not nconn.path_exists(scratch):
+                nconn.mkdir(scratch)
+            if not nconn.path_exists(posixpath.join(scratch, self._user)):
+                nconn.execute('ln -s %s %s' % (user_scratch, scratch))
 
     def _setup_etc_hosts(self):
         """ Configure /etc/hosts on all StarCluster nodes"""
@@ -224,11 +240,13 @@ class DefaultClusterSetup(ClusterSetup):
                              "been partitioned or that the partition" + \
                              "specified does not exist on the volume")
                     continue
+                mconn.remove_lines_from_file('/etc/fstab', mount_path)
                 master_fstab = mconn.remote_file('/etc/fstab', mode='a')
-                print >> master_fstab, "%s %s auto noauto,defaults 0 0 " % (
-                    volume_partition, mount_path)
+                print >> master_fstab, "%s %s auto noauto,defaults 0 0 " % \
+                (volume_partition, mount_path)
                 master_fstab.close()
-                mconn.execute('mkdir -p %s' % mount_path)
+                if not mconn.path_exists(mount_path):
+                    mconn.makedirs(mount_path)
                 mconn.execute('mount %s' % mount_path)
 
     def _setup_nfs(self):
@@ -263,40 +281,34 @@ class DefaultClusterSetup(ClusterSetup):
                                           nfs_export_settings + '\n')
         etc_exports.close()
         mconn.execute('/etc/init.d/portmap start')
-        mconn.execute('mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs/')
+        mconn.execute('mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs/',
+                      ignore_exit_status=True)
         mconn.execute('/etc/init.d/nfs start')
         mconn.execute('/usr/sbin/exportfs -r')
         # fix for xterm/mpi printing to stdout
         mconn.execute('mount -t devpts none /dev/pts', ignore_exit_status=True)
 
         # setup /etc/fstab and mount /home and /opt/sge6 on each node
+        mount_paths = ['/home', '/opt/sge6']
+        mount_paths.extend([self._volumes[vol].get('mount_path') for vol in \
+                            self._volumes])
         for node in self._nodes:
-            if not node.is_master():
-                nconn = node.ssh
-                nconn.execute('/etc/init.d/portmap start')
-                nconn.execute('mkdir /opt/sge6')
-                nconn.execute('chown -R %(user)s:%(user)s /opt/sge6' %
-                              {'user': self._user})
-                nconn.execute(('echo "%s:/home /home nfs user,rw,exec 0 0" ' +
-                              '>> /etc/fstab') % master.private_dns_name)
-                nconn.execute(
-                    ('echo "%s:/opt/sge6 /opt/sge6 nfs user,rw,exec 0 0" ' +
-                    '>> /etc/fstab') % master.private_dns_name)
-                nconn.execute('mount /home')
-                nconn.execute('mount /opt/sge6')
-                # fix for xterm
-                nconn.execute('mount -t devpts none /dev/pts',
-                              ignore_exit_status=True)
-                for vol in self._volumes:
-                    vol = self._volumes[vol]
-                    mount_path = vol.get('mount_path')
-                    if not mount_path in ['/home', '/opt/sge6']:
-                        nconn.execute((
-                            'echo "%s:%s %s nfs user,rw,exec 0 0" >>' +
-                            '/etc/fstab') % (master.private_dns_name,
-                                            mount_path, mount_path))
-                        nconn.execute('mkdir -p %s' % mount_path)
-                        nconn.execute('mount %s' % mount_path)
+            if node.is_master():
+                continue
+            nconn = node.ssh
+            nconn.execute('/etc/init.d/portmap start')
+            ## fix for xterm
+            nconn.execute('mount -t devpts none /dev/pts',
+                          ignore_exit_status=True)
+            nconn.remove_lines_from_file('/etc/fstab', '|'.join(mount_paths))
+            nfstab = nconn.remote_file('/etc/fstab', 'a')
+            for path in mount_paths:
+                nfstab.write('%s:%s %s nfs user,rw,exec,noauto 0 0\n' %
+                             (master.private_dns_name, path, path))
+                if not nconn.path_exists(path):
+                    nconn.makedirs(path)
+                nconn.execute('mount %s' % path)
+            nfstab.close()
 
     def _setup_sge(self):
         """
@@ -308,6 +320,7 @@ class DefaultClusterSetup(ClusterSetup):
         # generate /etc/profile.d/sge.sh for each node
         for node in self._nodes:
             conn = node.ssh
+            conn.execute('rm /etc/init.d/sge*', ignore_exit_status=True)
             sge_profile = conn.remote_file("/etc/profile.d/sge.sh")
             arch = conn.execute("/opt/sge6/util/arch")[0]
 
@@ -364,6 +377,7 @@ class DefaultClusterSetup(ClusterSetup):
         self._user = user
         self._user_shell = user_shell
         self._volumes = volumes
+        self._setup_hostnames()
         self._setup_ebs_volumes()
         self._setup_cluster_user()
         self._setup_scratch()

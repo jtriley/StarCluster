@@ -59,6 +59,11 @@ class AWSError(BaseException):
     """Base exception for all AWS related errors"""
 
 
+class RegionDoesNotExist(AWSError):
+    def __init__(self, region_name):
+        self.msg = "region %s does not exist" % region_name
+
+
 class AMIDoesNotExist(AWSError):
     def __init__(self, image_id):
         self.msg = "AMI %s does not exist" % image_id
@@ -92,6 +97,11 @@ class ZoneDoesNotExist(AWSError):
 class VolumeDoesNotExist(AWSError):
     def __init__(self, vol_id):
         self.msg = "volume %s does not exist" % vol_id
+
+
+class SnapshotDoesNotExist(AWSError):
+    def __init__(self, snap_id):
+        self.msg = "snapshot %s does not exist" % snap_id
 
 
 class RegionDoesNotExist(AWSError):
@@ -299,7 +309,8 @@ class InvalidZone(ClusterValidationError):
     """
     def __init__(self, zone, common_vol_zone):
         cvz = common_vol_zone
-        self.msg = "zone %s does not match common volume zone %s" % (zone, cvz)
+        self.msg = ("availability_zone setting '%s' does not " +
+                    "match the common volume zone '%s'") % (zone, cvz)
 
 
 class VolumesZoneError(ClusterValidationError):

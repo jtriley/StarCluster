@@ -12,5 +12,4 @@ class CmdListBuckets(CmdBase):
     names = ['listbuckets', 'lb']
 
     def execute(self, args):
-        s3 = self.cfg.get_easy_s3()
-        s3.list_buckets()
+        self.s3.list_buckets()

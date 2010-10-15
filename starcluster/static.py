@@ -33,9 +33,11 @@ MASTER_GROUP = SECURITY_GROUP_TEMPLATE % MASTER_GROUP_NAME
 MASTER_GROUP_DESCRIPTION = "StarCluster Master Nodes"
 VOLUME_GROUP_NAME = "volumecreator"
 VOLUME_GROUP = SECURITY_GROUP_TEMPLATE % VOLUME_GROUP_NAME
-VOLUME_GROUP_DESCRIPTION = "StarCluster createvolume instances"
 
 IGNORE_GROUPS = [MASTER_GROUP]
+
+VOLUME_STATUS = ['creating', 'available', 'in-use', 'deleting', 'deleted', 'error']
+VOLUME_ATTACH_STATUS = ['attaching', 'attached', 'detaching', 'detached']
 
 INSTANCE_TYPES = {
     'm1.small': 'i386',
@@ -48,6 +50,10 @@ INSTANCE_TYPES = {
     'm2.4xlarge': 'x86_64',
     'cc1.4xlarge': 'x86_64',
 }
+
+CLUSTER_COMPUTE_TYPES = ['cc1.4xlarge']
+
+SPOT_TYPES = [t for t in INSTANCE_TYPES if t not in CLUSTER_COMPUTE_TYPES]
 
 PROTOCOLS = ['tcp', 'udp', 'icmp']
 

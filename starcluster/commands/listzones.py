@@ -17,5 +17,4 @@ class CmdListZones(CmdBase):
                           "(see listregions)")
 
     def execute(self, args):
-        ec2 = self.cfg.get_easy_ec2()
-        ec2.list_zones(region=self.opts.region)
+        self.ec2.list_zones(region=self.opts.region)

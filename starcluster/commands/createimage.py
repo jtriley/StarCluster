@@ -3,7 +3,6 @@
 import sys
 import time
 
-from starcluster import image
 from starcluster import config
 from starcluster import static
 from starcluster import exception
@@ -81,8 +80,7 @@ class CmdCreateImage(CmdBase):
         self.bucket = bucket
         self.image_name = image_name
         cfg = self.cfg
-        ec2 = cfg.get_easy_ec2()
-        i = ec2.get_instance(instanceid)
+        i = self.ec2.get_instance(instanceid)
         if not self.opts.confirm:
             for group in i.groups:
                 if group.id.startswith(static.SECURITY_GROUP_PREFIX):
@@ -106,7 +104,14 @@ class CmdCreateImage(CmdBase):
                         log.info("Aborting...")
                         sys.exit(1)
                     break
+        key_location = cfg.get_key(i.key_name).get('key_location')
+        aws_user_id = cfg.aws.get('aws_user_id')
+        ec2_cert = cfg.aws.get('ec2_cert')
+        ec2_private_key = cfg.aws.get('ec2_private_key')
         self.catch_ctrl_c()
-        ami_id = image.create_image(instanceid, image_name, bucket, cfg,
-                           **self.specified_options_dict)
+        ami_id = self.ec2.create_s3_image(instanceid, key_location,
+                                          aws_user_id, ec2_cert,
+                                          ec2_private_key, bucket,
+                                          image_name=image_name,
+                                          **self.specified_options_dict)
         log.info("Your new AMI id is: %s" % ami_id)

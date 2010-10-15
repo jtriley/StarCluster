@@ -33,8 +33,7 @@ class CmdRemoveImage(CmdDownloadImage):
             self.parser.error("no images specified. exiting...")
         for arg in args:
             imageid = arg
-            ec2 = self.cfg.get_easy_ec2()
-            ec2.get_image(imageid)
+            self.ec2.get_image(imageid)
             confirmed = self.opts.confirm
             pretend = self.opts.pretend
             if not confirmed:
@@ -44,4 +43,4 @@ class CmdRemoveImage(CmdDownloadImage):
                     if resp not in ['y', 'Y', 'yes']:
                         log.info("Aborting...")
                         return
-            ec2.remove_image(imageid, pretend=pretend)
+            self.ec2.remove_image(imageid, pretend=pretend)

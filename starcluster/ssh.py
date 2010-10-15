@@ -7,10 +7,12 @@ modified by justin riley (justin.t.riley@gmail.com)
 """
 
 import os
+import re
 import stat
 import string
 import tempfile
 import paramiko
+import posixpath
 
 import socket
 import sys
@@ -27,11 +29,12 @@ from starcluster import exception
 from starcluster.logger import log
 
 
-class Connection(object):
+class SSHClient(object):
     """
     Establishes an SSH connection to a remote host using either password or
     private key authentication. Once established, this object allows executing
-    and copying files to/from the remote host
+    commands, copying files to/from the remote host, various file querying
+    similar to os.path.*, and much more.
     """
 
     def __init__(self,
@@ -133,6 +136,74 @@ class Connection(object):
             self._sftp = paramiko.SFTPClient.from_transport(self._transport)
             self._sftp_live = True
 
+    def makedirs(self, path, mode=0755):
+        """
+        Same os os.makedirs - makes a new directory and automatically creates
+        all parent directories if they do not exist.
+
+        mode specifies unix permissions to apply to the new dir
+        """
+        head, tail = posixpath.split(path)
+        if not tail:
+            head, tail = posixpath.split(head)
+        if head and tail and not posixpath.exists(head):
+            try:
+                self.makedirs(head, mode)
+            except OSError, e:
+                # be happy if someone already created the path
+                if e.errno != os.errno.EEXIST:
+                    raise
+            # xxx/newdir/. exists if xxx/newdir exists
+            if tail == posixpath.curdir:
+                return
+        self.mkdir(path, mode)
+
+    def mkdir(self, path, mode=0755, ignore_failure=False):
+        """
+        Make a new directory on the remote machine
+
+        If parent is True, create all parent directories that do not exist
+
+        mode specifies unix permissions to apply to the new dir
+        """
+        self._sftp_connect()
+        try:
+            return self._sftp.mkdir(path, mode)
+        except IOError:
+            if not ignore_failure:
+                raise
+
+    def get_remote_file_lines(self, remote_file, regex=None, matching=True):
+        """
+        Returns list of lines in a remote_file
+
+        If regex is passed only lines that contain a pattern that matches
+        regex will be returned
+
+        If matching is set to False then only lines *not* containing a pattern
+        that matches regex will be returned
+        """
+        f = self.remote_file(remote_file, 'r')
+        flines = f.readlines()
+        f.close()
+        if not regex:
+            return flines
+        r = re.compile(regex)
+        lines = []
+        for line in flines:
+            match = r.search(line)
+            if matching and match:
+                lines.append(line)
+            elif not matching and not match:
+                lines.append(line)
+        return lines
+
+    def remove_lines_from_file(self, remote_file, regex):
+        lines = self.get_remote_file_lines(remote_file, regex, matching=False)
+        f = self.remote_file(remote_file)
+        f.writelines(lines)
+        f.close()
+
     def remote_file(self, file, mode='w'):
         """Returns a remote file descriptor"""
         self._sftp_connect()
@@ -233,6 +304,7 @@ class Connection(object):
         """
         channel = self._transport.open_session()
         channel.exec_command(command)
+        #stdin = channel.makefile('wb', -1)
         stdout = channel.makefile('rb', -1)
         stderr = channel.makefile_stderr('rb', -1)
         output = []
@@ -256,11 +328,11 @@ class Connection(object):
         exit_status = channel.recv_exit_status()
         if exit_status != 0:
             if not ignore_exit_status:
-                log.error("command %s failed with status %d" % (command,
-                                                                exit_status))
+                log.error("command '%s' failed with status %d" % (command,
+                                                                  exit_status))
             else:
-                log.debug("command %s failed with status %d" % (command,
-                                                                exit_status))
+                log.debug("command '%s' failed with status %d" % (command,
+                                                                  exit_status))
         if silent:
             for line in output:
                 log.debug(line.strip())
@@ -397,10 +469,14 @@ class Connection(object):
         self.close()
 
 
+# for backwards compatibility
+Connection = SSHClient
+
+
 def main():
     """Little test when called directly."""
     # Set these to your own details.
-    myssh = Connection('somehost.domain.com')
+    myssh = SSHClient('somehost.domain.com')
     print myssh.execute('hostname')
     #myssh.put('ssh.py')
     myssh.close()

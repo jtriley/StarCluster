@@ -1,37 +1,42 @@
 #!/usr/bin/env python
 import os
+import time
 import socket
 
+from starcluster import ssh
 from starcluster import utils
 from starcluster import static
+from starcluster import awsutils
+from starcluster import managers
 from starcluster import exception
-from starcluster import ssh
 from starcluster.logger import log
 
 
-def ssh_to_node(node_id, cfg, user='root'):
-    node = get_node(node_id, cfg)
-    node.shell(user=user)
+class NodeManager(managers.Manager):
+    """
+    Manager class for Node objects
+    """
+    def ssh_to_node(self, node_id, user='root'):
+        node = self.get_node(node_id, user=user)
+        node.shell(user=user)
 
-
-def get_node(node_id, cfg, user='root'):
-    """Factory for Node class"""
-    ec2 = cfg.get_easy_ec2()
-    instances = ec2.get_all_instances()
-    node = None
-    for instance in instances:
-        if instance.dns_name == node_id:
-            node = instance
-            break
-        elif instance.id == node_id:
-            node = instance
-            break
-    if not node:
-        raise exception.InstanceDoesNotExist(node_id)
-    alias = ec2.get_instance_user_data(node.id)
-    key = cfg.get_key(node.key_name)
-    node = Node(node, key.key_location, alias, user=user)
-    return node
+    def get_node(self, node_id, user='root'):
+        """Factory for Node class"""
+        instances = self.ec2.get_all_instances()
+        node = None
+        for instance in instances:
+            if instance.dns_name == node_id:
+                node = instance
+                break
+            elif instance.id == node_id:
+                node = instance
+                break
+        if not node:
+            raise exception.InstanceDoesNotExist(node_id)
+        alias = self.ec2.get_instance_user_data(node.id)
+        key = self.cfg.get_key(node.key_name)
+        node = Node(node, key.key_location, alias, user=user)
+        return node
 
 
 class Node(object):
@@ -42,20 +47,49 @@ class Node(object):
     hostnames, ips, etc as well as a paramiko ssh object for executing
     commands, creating/modifying files on the node.
 
-    Takes boto.ec2.instance.Instance, key_location, and alias as input and
-    optionally a user to ssh as (defaults to root)
+    'instance' arg must be an instance of boto.ec2.instance.Instance
+
+    'key_location' arg is a string that contains the full path to the
+    private key corresponding to the keypair used to launch this node
+
+    'alias' keyword arg optionally names the node. If no alias is provided,
+    the alias is retrieved from the node's user_data based on the node's
+    launch index
+
+    'user' keyword optionally specifies user to ssh as (defaults to root)
     """
-    def __init__(self, instance, key_location, alias, user='root'):
+    def __init__(self, instance, key_location, alias=None, user='root'):
         self.instance = instance
+        self.ec2 = awsutils.EasyEC2(None, None)
+        self.ec2._conn = instance.connection
         self.key_location = key_location
-        self.alias = alias
         self.user = user
+        self._alias = alias
         self._ssh = None
         self._num_procs = None
         self._memory = None
 
     def __repr__(self):
         return '<Node: %s (%s)>' % (self.alias, self.id)
+
+    @property
+    def alias(self):
+        """
+        Return the alias stored in this node's user data.
+        Alias returned as:
+            user_data.split('|')[self.ami_launch_index]
+        """
+        if not self._alias:
+            user_data = self.ec2.get_instance_user_data(self.id)
+            aliases = user_data.split('|')
+            index = self.ami_launch_index
+            alias = aliases[index]
+            if not alias:
+                # TODO: raise exception about old version
+                raise exception.BaseException(
+                    "instance %s has no alias" % alias)
+            return alias
+        return self._alias
 
     @property
     def num_processors(self):
@@ -114,12 +148,24 @@ class Node(object):
         return self.instance.launch_time
 
     @property
+    def ami_launch_index(self):
+        return int(self.instance.ami_launch_index)
+
+    @property
     def key_name(self):
         return self.instance.key_name
 
     @property
     def arch(self):
         return self.instance.architecture
+
+    @property
+    def kernel(self):
+        return self.instance.kernel
+
+    @property
+    def ramdisk(self):
+        return self.instance.ramdisk
 
     @property
     def instance_type(self):
@@ -134,8 +180,21 @@ class Node(object):
         return self.instance.placement
 
     @property
+    def root_device_name(self):
+        return self.instance.root_device_name
+
+    @property
     def root_device_type(self):
         return self.instance.root_device_type
+
+    def set_hostname_to_alias(self):
+        """
+        Set this node's hostname to self.alias
+        """
+        hostname_file = self.ssh.remote_file("/etc/hostname", "w")
+        hostname_file.write(self.alias)
+        hostname_file.close()
+        self.ssh.execute('hostname -F /etc/hostname')
 
     @property
     def network_names(self):
@@ -146,6 +205,46 @@ class Node(object):
         names['INTERNAL_NAME_SHORT'] = self.private_dns_name_short
         names['INTERNAL_ALIAS'] = self.alias
         return names
+
+    @property
+    def attached_vols(self):
+        """
+        Returns a dictionary of all attached volumes minus the root device in
+        the case of EBS backed instances
+        """
+        attached_vols = {}
+        attached_vols.update(self.block_device_mapping)
+        if self.is_ebs_backed():
+            # exclude the root device from the list
+            attached_vols.pop(self.root_device_name)
+        return attached_vols
+
+    def detach_external_volumes(self):
+        """
+        Detaches all volumes returned by self.attached_vols
+        """
+        block_devs = self.attached_vols
+        for dev in block_devs:
+            vol_id = block_devs[dev].volume_id
+            vol = self.ec2.get_volume(vol_id)
+            log.info("Detaching volume %s from %s" % (vol.id, self.alias))
+            if vol.status not in ['available', 'detaching']:
+                vol.detach()
+
+    def delete_root_volume(self):
+        """
+        Detach and destroy EBS root volume (EBS-backed node only)
+        """
+        if not self.is_ebs_backed():
+            return
+        root_vol = self.block_device_mapping[self.root_device_name]
+        vol_id = root_vol.volume_id
+        vol = self.ec2.get_volume(vol_id)
+        vol.detach()
+        while vol.update() != 'availabile':
+            time.sleep(5)
+        log.info("Deleting node %s's root volume" % self.alias)
+        root_vol.delete()
 
     @property
     def spot_id(self):
@@ -183,17 +282,22 @@ class Node(object):
         NOTE: The EBS root device will *not* be deleted and the instance can
         be 'started' later on.
         """
-        if not self.is_ebs_backed():
+        if self.is_spot():
+            raise exception.InvalidOperation(
+                "spot instances can not be stopped")
+        elif not self.is_ebs_backed():
             raise exception.InvalidOperation(
                 "Only EBS-backed instances can be stopped")
+        log.info("Stopping instance: %s (%s)" % (self.alias, self.id))
         return self.instance.stop()
 
     def terminate(self):
         """
-        Shutdown and destroy this instance. For EBS-backed instances, this will
-        also destroy the EBS root device for the instance. Puts this instance
-        into a 'terminated' state
+        Shutdown and destroy this instance. For EBS-backed nodes, this
+        will also destroy the node's EBS root device. Puts this node
+        into a 'terminated' state.
         """
+        log.info("Terminating node: %s (%s)" % (self.alias, self.id))
         return self.instance.terminate()
 
     def shutdown(self):
@@ -244,15 +348,16 @@ class Node(object):
         return True
 
     def update(self):
-        retval = self.instance.update()
-        return retval
+        res = self.ec2.get_all_instances(filters={'instance-id': self.id})
+        self.instance = res[0]
+        return self.state
 
     @property
     def ssh(self):
         if not self._ssh:
-            self._ssh = ssh.Connection(self.instance.dns_name,
-                                       username=self.user,
-                                       private_key=self.key_location)
+            self._ssh = ssh.SSHClient(self.instance.dns_name,
+                                      username=self.user,
+                                      private_key=self.key_location)
         return self._ssh
 
     def shell(self, user=None):

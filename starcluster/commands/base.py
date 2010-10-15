@@ -4,6 +4,8 @@ import os
 import sys
 import time
 import signal
+from starcluster import node
+from starcluster import cluster
 from starcluster import optcomplete
 from starcluster.logger import log
 
@@ -25,6 +27,10 @@ class CmdBase(optcomplete.CmdComplete):
     gopts = None
     gparser = None
     subcmds_map = None
+    _ec2 = None
+    _s3 = None
+    _cm = None
+    _nm = None
 
     @property
     def comp_words(self):
@@ -60,11 +66,58 @@ class CmdBase(optcomplete.CmdComplete):
         return specified
 
     @property
+    def log(self):
+        return log
+
+    @property
     def cfg(self):
         """
         Get global StarClusterConfig object
         """
         return self.goptions_dict.get('CONFIG')
+
+    @property
+    def ec2(self):
+        """
+        Get EasyEC2 object from config and connect to the region specified
+        by the user in the global options (if any)
+        """
+        if not self._ec2:
+            ec2 = self.cfg.get_easy_ec2()
+            if self.gopts.REGION:
+                ec2.connect_to_region(self.gopts.REGION)
+            self._ec2 = ec2
+        return self._ec2
+
+    @property
+    def cluster_manager(self):
+        """
+        Returns ClusterManager object configured with self.cfg and self.ec2
+        """
+        if not self._cm:
+            cm = cluster.ClusterManager(self.cfg, ec2=self.ec2)
+            self._cm = cm
+        return self._cm
+
+    cm = cluster_manager
+
+    @property
+    def node_manager(self):
+        """
+        Returns NodeManager object configured with self.cfg and self.ec2
+        """
+        if not self._nm:
+            nm = node.NodeManager(self.cfg, ec2=self.ec2)
+            self._nm = nm
+        return self._nm
+
+    nm = node_manager
+
+    @property
+    def s3(self):
+        if not self._s3:
+            self._s3 = self.cfg.get_easy_s3()
+        return self._s3
 
     def addopts(self, parser):
         pass

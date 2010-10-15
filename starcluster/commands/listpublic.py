@@ -12,5 +12,4 @@ class CmdListPublic(CmdBase):
     names = ['listpublic', 'lp']
 
     def execute(self, args):
-        ec2 = self.cfg.get_easy_ec2()
-        ec2.list_starcluster_public_images()
+        self.ec2.list_starcluster_public_images()

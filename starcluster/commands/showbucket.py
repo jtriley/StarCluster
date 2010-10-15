@@ -19,5 +19,4 @@ class CmdShowBucket(CmdBase):
         if not args:
             self.parser.error('please specify an S3 bucket')
         for arg in args:
-            s3 = self.cfg.get_easy_s3()
-            s3.list_bucket(arg)
+            self.s3.list_bucket(arg)

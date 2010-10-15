@@ -6,7 +6,7 @@ from starcluster.config import StarClusterConfig
 
 print 'Simple wrapper script for s3fs (http://s3fs.googlecode.com/)'
 
-cfg = StarClusterConfig(); cfg.load()
+cfg = StarClusterConfig().load()
 ec2 = cfg.get_easy_ec2()
 buckets = ec2.s3.get_buckets()
 counter = 0

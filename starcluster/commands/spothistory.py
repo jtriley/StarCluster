@@ -55,9 +55,9 @@ class CmdSpotHistory(CmdBase):
                 'please provide an instance type (options: %s)' % \
                              instance_types)
         instance_type = args[0]
-        if not instance_type in static.INSTANCE_TYPES:
+        if not instance_type in static.SPOT_TYPES:
             self.parser.error('invalid instance type. possible options: %s' % \
-                              instance_types)
+                              ', '.join(static.SPOT_TYPES))
         start = self.opts.start_time
         end = self.opts.end_time
         if self.opts.days_ago:
@@ -65,5 +65,4 @@ class CmdSpotHistory(CmdBase):
             end = utils.datetime_tuple_to_iso(now)
             start = utils.datetime_tuple_to_iso(
                 now - timedelta(days=self.opts.days_ago))
-        ec2 = self.cfg.get_easy_ec2()
-        ec2.get_spot_history(instance_type, start, end, self.opts.plot)
+        self.ec2.get_spot_history(instance_type, start, end, self.opts.plot)

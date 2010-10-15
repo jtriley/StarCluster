@@ -12,5 +12,4 @@ class CmdListRegions(CmdBase):
     names = ['listregions', 'lr']
 
     def execute(self, args):
-        ec2 = self.cfg.get_easy_ec2()
-        ec2.list_regions()
+        self.ec2.list_regions()

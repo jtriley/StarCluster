@@ -17,8 +17,10 @@ from starcluster import static
 from starcluster import utils
 from starcluster import exception
 from starcluster import progressbar
-from starcluster.logger import log
+from starcluster import image
+#from starcluster import volume
 from starcluster.utils import print_timing
+from starcluster.logger import log
 
 
 class EasyAWS(object):
@@ -40,6 +42,10 @@ class EasyAWS(object):
         self.connection_authenticator = connection_authenticator
         self._conn = None
         self._kwargs = kwargs
+
+    def reload(self):
+        self._conn = None
+        return self.conn
 
     @property
     def conn(self):
@@ -77,6 +83,7 @@ class EasyEC2(EasyAWS):
         self._images = None
         self._executable_images = None
         self._security_group_response = None
+        self._regions = None
 
     def __repr__(self):
         return '<EasyEC2: %s (%s)>' % (self.conn.region.name,
@@ -85,6 +92,49 @@ class EasyEC2(EasyAWS):
     def __check_for_auth_failure(self, e):
         if e.error_code in ["AuthFailure", "SignatureDoesNotMatch"]:
             raise e
+
+    def connect_to_region(self, region_name):
+        """
+        Connects to a given region if it exists, raises RegionDoesNotExist
+        otherwise. Once connected, this object will return only data from the
+        given region.
+        """
+        region = self.get_region(region_name)
+        self._kwargs['region'] = region
+        self.reload()
+        return self
+
+    @property
+    def regions(self):
+        """
+        This property returns all AWS Regions, caching the results the first
+        time a request is made to Amazon
+        """
+        if not self._regions:
+            self._regions = {}
+            regions = self.conn.get_all_regions()
+            for region in regions:
+                self._regions[region.name] = region
+        return self._regions
+
+    def get_region(self, region_name):
+        """
+        Returns boto Region object if it exists, raises RegionDoesNotExist
+        otherwise.
+        """
+        if not region_name in self.regions:
+            raise exception.RegionDoesNotExist(region_name)
+        return self.regions.get(region_name)
+
+    def list_regions(self):
+        """
+        Print name/endpoint for all AWS regions
+        """
+        for r in self.regions:
+            region = self.regions.get(r)
+            print 'name: ', region.name
+            print 'endpoint: ', region.endpoint
+            print
 
     @property
     def registered_images(self):
@@ -102,9 +152,9 @@ class EasyEC2(EasyAWS):
     def get_registered_image(self, image_id):
         if not image_id.startswith('ami') or len(image_id) != 12:
             raise TypeError("invalid AMI name/id requested: %s" % image_id)
-        for image in self.registered_images:
-            if image.id == image_id:
-                return image
+        for img in self.registered_images:
+            if img.id == image_id:
+                return img
 
     def create_group(self, name, description, auth_ssh=False,
                      auth_group_traffic=False):
@@ -169,6 +219,42 @@ class EasyEC2(EasyAWS):
             return True
         return False
 
+    def get_placement_group_or_none(self, name):
+        """
+        Returns placement group with name if it exists otherwise returns None
+        """
+        try:
+            pg = self.conn.get_all_placement_groups(groupnames=[name])[0]
+            return pg
+        except boto.exception.EC2ResponseError, e:
+            print e
+            self.__check_for_auth_failure(e)
+        except IndexError:
+            pass
+
+    def create_placement_group(self, name):
+        """
+        Create a new placement group for your account.
+        This will create the placement group within the region you
+        are currently connected to.
+        """
+        if not name:
+            return
+        log.info("Creating placement group %s..." % name)
+        success = self.conn.create_placement_group(name)
+        if success:
+            return self.get_placement_group_or_none(name)
+
+    def get_or_create_placement_group(self, name):
+        """
+        Try to return a placement group by name.
+        If the group is not found, attempt to create it.
+        """
+        pg = self.get_placement_group_or_none(name)
+        if not pg:
+            pg = self.create_placement_group(name)
+        return pg
+
     def request_spot_instances(self, price, image_id, instance_type='m1.small',
                                count=1, launch_group=None, key_name=None,
                                availability_zone_group=None,
@@ -183,21 +269,32 @@ class EasyEC2(EasyAWS):
 
     def run_instances(self, image_id, instance_type='m1.small', min_count=1,
                       max_count=1, key_name=None, security_groups=None,
-                      placement=None, user_data=None):
+                      placement=None, user_data=None, placement_group=None):
         return self.conn.run_instances(image_id, instance_type=instance_type,
                                        min_count=min_count,
                                        max_count=max_count,
                                        key_name=key_name,
                                        security_groups=security_groups,
                                        placement=placement,
-                                       user_data=user_data)
+                                       user_data=user_data,
+                                       placement_group=placement_group)
+
+    def create_image(self, instance_id, name, description=None,
+                     no_reboot=False):
+        return self.conn.create_image(instance_id, name,
+                                      description=description,
+                                      no_reboot=no_reboot)
 
     def register_image(self, name, description=None, image_location=None,
                        architecture=None, kernel_id=None, ramdisk_id=None,
                        root_device_name=None, block_device_map=None):
-        return self.conn.register_image(name, description, image_location,
-                           architecture, kernel_id, ramdisk_id,
-                           root_device_name, block_device_map)
+        return self.conn.register_image(name=name, description=description,
+                                        image_location=image_location,
+                                        architecture=architecture,
+                                        kernel_id=kernel_id,
+                                        ramdisk_id=ramdisk_id,
+                                        root_device_name=root_device_name,
+                                        block_device_map=block_device_map)
 
     def delete_keypair(self, name):
         return self.conn.delete_key_pair(name)
@@ -279,12 +376,14 @@ class EasyEC2(EasyAWS):
         except boto.exception.EC2ResponseError:
             return False
 
-    def get_all_spot_requests(self, spot_ids=[]):
-        spots = self.conn.get_all_spot_instance_requests(spot_ids)
+    def get_all_spot_requests(self, spot_ids=[], filters=None):
+        spots = self.conn.get_all_spot_instance_requests(spot_ids,
+                                                         filters=filters)
         return spots
 
-    def get_all_instances(self, instance_ids=[]):
-        reservations = self.conn.get_all_instances(instance_ids)
+    def get_all_instances(self, instance_ids=[], filters=None):
+        reservations = self.conn.get_all_instances(instance_ids,
+                                                   filters=filters)
         instances = []
         for res in reservations:
             insts = res.instances
@@ -371,13 +470,15 @@ class EasyEC2(EasyAWS):
         if not instances:
             log.info("No instances found")
 
-    def list_images(self, images):
+    def list_images(self, images, sort_key=None, reverse=False):
         def get_key(obj):
-            return str(obj.region) + ' ' + str(obj.location)
+            return ' '.join([obj.region.name, obj.location])
+        if not sort_key:
+            sort_key = get_key
         imgs_i386 = [img for img in images if img.architecture == "i386"]
-        imgs_i386.sort(key=get_key)
+        imgs_i386.sort(key=sort_key, reverse=reverse)
         imgs_x86_64 = [img for img in images if img.architecture == "x86_64"]
-        imgs_x86_64.sort(key=get_key)
+        imgs_x86_64.sort(key=sort_key, reverse=reverse)
         print
         self.__list_images("32bit Images:", imgs_i386)
         self.__list_images("\n64bit Images:", imgs_x86_64)
@@ -391,23 +492,24 @@ class EasyEC2(EasyAWS):
 
     def list_executable_images(self):
         images = self.executable_images
-        log.info("Images executable by you:")
+        log.info("Private images owned by other users that you can execute:")
         self.list_images(images)
 
     def __list_images(self, msg, imgs):
         counter = 0
         self.__print_header(msg)
-        for image in imgs:
-            name = self.get_image_name(image)
-            print "[%d] %s %s %s" % (counter, image.id,
-                                     image.region.name, name)
+        for img in imgs:
+            name = self.get_image_name(img)
+            template = "[%d] %s %s %s"
+            if img.virtualizationType == 'hvm':
+                template += ' (HVM-EBS)'
+            if img.root_device_type == 'ebs':
+                template += ' (EBS)'
+            print template % (counter, img.id, img.region.name, name)
             counter += 1
 
     def remove_image_files(self, image_name, pretend=True):
-        image = self.get_image(image_name)
-        if image is None:
-            log.error('cannot remove AMI %s' % image_name)
-            return
+        img = self.get_image(image_name)
         files = self.get_image_files(image_name)
         for file in files:
             if pretend:
@@ -428,7 +530,7 @@ class EasyEC2(EasyAWS):
 
     @print_timing("Removing image")
     def remove_image(self, image_name, pretend=True):
-        image = self.get_image(image_name)
+        img = self.get_image(image_name)
         if pretend:
             log.info("Pretending to remove AMI: %s" % image_name)
         else:
@@ -440,16 +542,28 @@ class EasyEC2(EasyAWS):
 
         # then deregister ami
         if pretend:
-            log.info('Would run deregister_image for ami: %s)' % image.id)
+            log.info('Would run deregister_image for ami: %s)' % img.id)
         else:
-            log.info('Deregistering ami: %s' % image.id)
-            image.deregister()
+            log.info('Deregistering ami: %s' % img.id)
+            img.deregister()
 
     def list_starcluster_public_images(self):
         images = self.conn.get_all_images(owners=[static.STARCLUSTER_OWNER_ID])
         log.info("Listing all public StarCluster images...")
-        imgs = [image for image in images if image.is_public]
-        self.list_images(imgs)
+        imgs = [img for img in images if img.is_public]
+
+        def sc_public_sort(obj):
+            split = obj.name.split('-')
+            osname, osversion, arch = split[2:5]
+            osversion = float(osversion)
+            rc = 0
+            if split[-1].startswith('rc'):
+                rc = int(split[-1].replace('rc', ''))
+            return (osversion, rc)
+        self.list_images(imgs, sort_key=sc_public_sort, reverse=True)
+
+    def create_volume(self, size, zone):
+        return self.conn.create_volume(size, zone)
 
     def remove_volume(self, volume_id):
         vol = self.get_volume(volume_id)
@@ -483,12 +597,6 @@ class EasyEC2(EasyAWS):
             print 'status: ', zone.state
             print
 
-    def list_regions(self):
-        for region in self.conn.get_all_regions():
-            print 'name: ', region.name
-            print 'endpoint: ', region.endpoint
-            print
-
     def get_zone(self, zone):
         """
         Return zone object respresenting an EC2 availability zone
@@ -511,6 +619,39 @@ class EasyEC2(EasyAWS):
             return self.get_zone(zone)
         except:
             pass
+
+    def create_s3_image(self, instance_id, key_location, aws_user_id,
+                        ec2_cert, ec2_private_key, bucket, image_name="image",
+                        description=None, kernel_id=None, ramdisk_id=None,
+                        remove_image_files=False):
+        """
+        Create instance-store (S3) image from running instance
+        """
+        icreator = image.S3ImageCreator(self, instance_id, key_location,
+                                         aws_user_id, ec2_cert,
+                                         ec2_private_key, bucket,
+                                         image_name=image_name,
+                                         description=None,
+                                         kernel_id=None, ramdisk_id=None,
+                                         remove_image_files=False)
+        #return icreator.create_image()
+        return icreator
+
+    def create_ebs_image(self, instance_id, key_location, name,
+                         description=None, snapshot_description=None,
+                         kernel_id=None, ramdisk_id=None, **kwargs):
+        """
+        Create EBS-backed image from running instance
+        """
+        sdescription = snapshot_description
+        icreator = image.EBSImageCreator(self, instance_id, key_location,
+                                         name, description=description,
+                                         snapshot_description=sdescription,
+                                         kernel_id=kernel_id,
+                                         ramdisk_id=ramdisk_id,
+                                         **kwargs)
+        #return icreator.create_image()
+        return icreator
 
     def get_image(self, image_id):
         """
@@ -545,7 +686,7 @@ class EasyEC2(EasyAWS):
         manifest_regex = re.compile(r'%s\.manifest\.xml' % prefix)
         part_regex = re.compile(r'%s\.part\.(\d*)' % prefix)
         # boto with eucalyptus returns boto.s3.prefix.Prefix class at the
-        # end of the list, we ignore these by checking for delete
+        # end of the list, we ignore these by checking for delete attr
         files = [f for f in files if hasattr(f, 'delete') and
                  part_regex.match(f.name) or manifest_regex.match(f.name)]
         return files
@@ -556,6 +697,9 @@ class EasyEC2(EasyAWS):
         The list includes the image's manifest and part files
         """
         image = self.get_image(image_id)
+        if image.root_device_type == 'ebs':
+            raise exception.AWSError(
+                "Image %s is an EBS image. No image files on S3." % image_id)
         bucket = self.get_image_bucket(image)
         return self._get_image_files(image, bucket)
 
@@ -637,6 +781,38 @@ class EasyEC2(EasyAWS):
             log.info("Manifest migrated successfully. You can now run:\n" +
                      register_cmd + "\nto register your migrated image.")
 
+    def create_root_block_device_map(self, snapshot_id,
+                                     root_device_name='/dev/sda1',
+                                     add_ephemeral_drives=False,
+                                     ephemeral_drive_0='/dev/sdb1',
+                                     ephemeral_drive_1='/dev/sdc1',
+                                     ephemeral_drive_2='/dev/sdd1',
+                                     ephemeral_drive_3='/dev/sde1'):
+        """
+        Utility method for building a new block_device_map for a given snapshot
+        id. This is useful when creating a new image from a volume snapshot.
+        The returned block device map can be used with self.register_image
+        """
+        bmap = boto.ec2.blockdevicemapping.BlockDeviceMapping()
+        sda1 = boto.ec2.blockdevicemapping.BlockDeviceType()
+        sda1.snapshot_id = snapshot_id
+        sda1.delete_on_termination = True
+        bmap[root_device_name] = sda1
+        if add_ephemeral_drives:
+            sdb1 = boto.ec2.blockdevicemapping.BlockDeviceType()
+            sdb1.ephemeral_name = 'ephemeral0'
+            bmap[ephemeral_drive_0] = sdb1
+            sdc1 = boto.ec2.blockdevicemapping.BlockDeviceType()
+            sdc1.ephemeral_name = 'ephemeral1'
+            bmap[ephemeral_drive_1] = sdc1
+            sdd1 = boto.ec2.blockdevicemapping.BlockDeviceType()
+            sdd1.ephemeral_name = 'ephemeral2'
+            bmap[ephemeral_drive_2] = sdd1
+            sde1 = boto.ec2.blockdevicemapping.BlockDeviceType()
+            sde1.ephemeral_name = 'ephemeral3'
+            bmap[ephemeral_drive_3] = sde1
+        return bmap
+
     @print_timing("Downloading image")
     def download_image_files(self, image_id, destdir):
         """
@@ -689,12 +865,12 @@ class EasyEC2(EasyAWS):
         if instances:
             self.conn.terminate_instances(instances)
 
-    def get_volumes(self):
+    def get_volumes(self, filters=None):
         """
         Returns a list of all EBS volumes
         """
         try:
-            return self.conn.get_all_volumes()
+            return self.conn.get_all_volumes(filters=filters)
         except boto.exception.EC2ResponseError, e:
             self.__check_for_auth_failure(e)
 
@@ -711,6 +887,28 @@ class EasyEC2(EasyAWS):
         except IndexError:
             raise exception.VolumeDoesNotExist(volume_id)
 
+    def get_snapshots(self):
+        """
+        Returns a list of all EBS volume snapshots for this account
+        """
+        try:
+            return self.conn.get_all_snapshots(owner='self')
+        except boto.exception.EC2ResponseError, e:
+            self.__check_for_auth_failure(e)
+
+    def get_snapshot(self, snapshot_id):
+        """
+        Returns EBS snapshot object representing volume_id.
+        Raises exception.SnapshotDoesNotExist if unsuccessful
+        """
+        try:
+            return self.conn.get_all_snapshots(snapshot_ids=[snapshot_id])[0]
+        except boto.exception.EC2ResponseError, e:
+            self.__check_for_auth_failure(e)
+            raise exception.SnapshotDoesNotExist(snapshot_id)
+        except IndexError:
+            raise exception.SnapshotDoesNotExist(snapshot_id)
+
     def get_volume_or_none(self, volume_id):
         """
         Returns EBS volume object representing volume_id.
@@ -721,11 +919,27 @@ class EasyEC2(EasyAWS):
         except:
             pass
 
-    def list_volumes(self):
+    def list_volumes(self, volume_id=None, status=None, attach_status=None,
+                     size=None, zone=None, snapshot_id=None, show_deleted=False):
         """
         Print a list of volumes to the screen
         """
-        vols = self.get_volumes()
+        filters = {}
+        if status:
+            filters['status'] = status
+        elif not show_deleted:
+            filters['status'] = ['creating', 'available', 'in-use', 'error']
+        if attach_status:
+            filters['attachment.status'] = attach_status
+        if volume_id:
+            filters['volume-id'] = volume_id
+        if size:
+            filters['size'] = size
+        if zone:
+            filters['availability-zone'] = zone
+        if snapshot_id:
+            filters['snapshot-id'] = snapshot_id
+        vols = self.get_volumes(filters=filters)
         if vols:
             for vol in vols:
                 print "volume_id: %s" % vol.id
@@ -739,18 +953,20 @@ class EasyEC2(EasyAWS):
                     snap_list = ' '.join([snap.id for snap in snapshots])
                     print 'snapshots: %s' % snap_list
                 print
+        print 'Total: %s' % len(vols)
 
     def get_security_group(self, groupname):
         try:
-            return self.conn.get_all_security_groups(groupnames=[groupname])[0]
+            return self.conn.get_all_security_groups(filters={'group-name':
+                                                              groupname})[0]
         except boto.exception.EC2ResponseError, e:
             self.__check_for_auth_failure(e)
             raise exception.SecurityGroupDoesNotExist(groupname)
         except IndexError:
             raise exception.SecurityGroupDoesNotExist(groupname)
 
-    def get_security_groups(self):
-        return self.conn.get_all_security_groups()
+    def get_security_groups(self, filters=None):
+        return self.conn.get_all_security_groups(filters=filters)
 
     def get_spot_history(self, instance_type,
                          start=None, end=None, plot=False):

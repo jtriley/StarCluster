@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from start import CmdStart
 from stop import CmdStop
+from terminate import CmdTerminate
 from sshmaster import CmdSshMaster
 from sshnode import CmdSshNode
 from sshinstance import CmdSshInstance
@@ -26,11 +27,13 @@ from runplugin import CmdRunPlugin
 from spothistory import CmdSpotHistory
 from shell import CmdShell
 from createkey import CmdCreateKey
+from removekey import CmdRemoveKey
 from help import CmdHelp
 
 all_cmds = [
     CmdStart(),
     CmdStop(),
+    CmdTerminate(),
     CmdListClusters(),
     CmdSshMaster(),
     CmdSshNode(),
@@ -38,7 +41,9 @@ all_cmds = [
     CmdListInstances(),
     CmdListImages(),
     CmdListPublic(),
+    CmdListKeyPairs(),
     CmdCreateKey(),
+    CmdRemoveKey(),
     CmdCreateImage(),
     CmdRemoveImage(),
     CmdDownloadImage(),
@@ -48,7 +53,6 @@ all_cmds = [
     CmdListSpots(),
     CmdSpotHistory(),
     CmdShowConsole(),
-    CmdListKeyPairs(),
     CmdListRegions(),
     CmdListZones(),
     CmdListBuckets(),

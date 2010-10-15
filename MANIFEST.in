@@ -1,2 +1,3 @@
 recursive-include docs *
 recursive-include utils *
+recursive-include completion *

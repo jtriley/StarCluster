@@ -12,5 +12,4 @@ class CmdListKeyPairs(CmdBase):
     names = ['listkeypairs', 'lk']
 
     def execute(self, args):
-        ec2 = self.cfg.get_easy_ec2()
-        ec2.list_keypairs()
+        self.ec2.list_keypairs()

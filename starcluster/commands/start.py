@@ -3,10 +3,10 @@
 import sys
 import time
 
+from starcluster import config
+from starcluster import static
 from starcluster import exception
 from starcluster import optcomplete
-from starcluster import static
-from starcluster import cluster
 from starcluster.templates import user_msgs
 from starcluster.logger import log
 
@@ -39,10 +39,15 @@ class CmdStart(CmdBase):
     tag = None
 
     def addopts(self, parser):
+        cfg = config.StarClusterConfig().load()
         parser.add_option("-x", "--no-create", dest="no_create",
                           action="store_true", default=False,
-                          help="Do not launch new EC2 instances when" + \
+                          help="Do not launch new EC2 instances when " + \
                           "starting cluster (use existing instances instead)")
+        parser.add_option("-o", "--create-only", dest="create_only",
+                          action="store_true", default=False,
+                          help="Only launch/start EC2 instances, " + \
+                          "do not perform any setup routines")
         parser.add_option("-v", "--validate-only", dest="validate_only",
                           action="store_true", default=False,
                           help="Only validate cluster settings, do " + \
@@ -54,10 +59,15 @@ class CmdStart(CmdBase):
                           type="float", default=None,
                           help="Requests spot instances instead of flat " + \
                           "rate instances. Uses SPOT_BID as max bid for " + \
-                          "the request. (EXPERIMENTAL)")
-        parser.add_option("-c", "--cluster-template", dest="cluster_template",
-                          action="store", type="string", default=None,
-                          help="cluster template to use from the config file")
+                          "the request.")
+        templates = cfg.get_cluster_names().keys()
+        opt = parser.add_option("-c", "--cluster-template", action="store",
+                                dest="cluster_template", choices=templates,
+                                default=None,
+                                help="cluster template to use " + \
+                                "from the config file")
+        if optcomplete:
+            opt.completer = optcomplete.ListCompleter(opt.choices)
         parser.add_option("-d", "--description", dest="cluster_description",
                           action="store", type="string",
                           default="Cluster requested at %s" % \
@@ -114,41 +124,52 @@ class CmdStart(CmdBase):
 
     def execute(self, args):
         if len(args) != 1:
-            self.parser.error("please specify a <tag_name> for this cluster")
-        cfg = self.cfg
-        use_experimental = cfg.globals.get('enable_experimental')
-        if self.opts.spot_bid is not None and not use_experimental:
-            raise exception.ExperimentalFeature('Using spot instances')
+            self.parser.error("please specify a cluster <tag_name>")
         tag = self.tag = args[0]
-        template = self.opts.cluster_template
-        if not template:
-            template = cfg.get_default_cluster_template(tag)
-            log.info("Using default cluster template: %s" % template)
         create = not self.opts.no_create
-        cluster_exists = cluster.cluster_exists(tag, cfg)
+        create_only = self.opts.create_only
+        cluster_exists = self.cm.cluster_exists(tag)
+        validate_running = self.opts.no_create
+        validate_only = self.opts.validate_only
         if cluster_exists and create:
             raise exception.ClusterExists(tag)
         if not cluster_exists and not create:
             raise exception.ClusterDoesNotExist(tag)
-        scluster = cfg.get_cluster_template(template, tag)
+        scluster = None
+        if cluster_exists:
+            validate_running = True
+            scluster = self.cm.get_cluster(tag)
+            if scluster.nodes:
+                create = False
+            log.info(
+                "Using original template used to launch cluster '%s'" % \
+                scluster.cluster_tag)
+        else:
+            template = self.opts.cluster_template
+            if not template:
+                template = self.cm.get_default_cluster_template(tag)
+                log.info("Using default cluster template: %s" % template)
+            scluster = self.cm.get_cluster_template(template, tag)
         scluster.update(self.specified_options_dict)
-        validate_running = self.opts.no_create
-        validate_only = self.opts.validate_only
         try:
             scluster._validate(validate_running=validate_running)
             if validate_only:
                 return
         except exception.ClusterValidationError:
-            log.error(
-                'settings for cluster template "%s" are not valid:' % template)
+            if not cluster_exists:
+                log.error(
+                    'settings for cluster template "%s" are not valid:' % \
+                    template)
             raise
         if self.opts.spot_bid is not None:
-            cmd = ' '.join(sys.argv[1:]) + ' --no-create'
-            launch_group = static.SECURITY_GROUP_TEMPLATE % tag
+            cmd = ' '.join(sys.argv[1:])
+            cmd = cmd.replace('--no-create', '').replace('-x', '')
+            cmd += ' --no-create'
             msg = user_msgs.spotmsg % {'cmd': cmd,
-                                       'launch_group': launch_group}
-            self.warn_experimental(msg)
+                                       'size': scluster.cluster_size,
+                                       'tag': tag}
+            self.warn_experimental(msg, num_secs=5)
         self.catch_ctrl_c()
-        scluster.start(create=create, validate=False)
+        scluster.start(create=create, create_only=create_only, validate=False)
         if self.opts.login_master:
-            cluster.ssh_to_master(tag, self.cfg)
+            scluster.ssh_to_master()

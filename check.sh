@@ -1,6 +1,7 @@
 #!/bin/bash
+SRC=$(dirname $0)
 echo ">>> Running pyflakes..."
-find starcluster -iname \*.py -exec pyflakes {} \;
+find $SRC/starcluster -iname \*.py -exec pyflakes {} \;
 echo ">>> Running pep8..."
-find starcluster -iname \*.py -exec pep8 {} \;
+find $SRC/starcluster -iname \*.py -exec pep8 {} \;
 echo ">>> Done"
