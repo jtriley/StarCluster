@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
-from downloadimage import CmdDownloadImage
 from starcluster.logger import log
 
+from completers import ImageCompleter
 
-class CmdRemoveImage(CmdDownloadImage):
+
+class CmdRemoveImage(ImageCompleter):
     """
     removeami [options] <imageid>
 

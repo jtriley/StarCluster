@@ -1,13 +1,11 @@
 #!/usr/bin/env python
 
-from starcluster import config
-from starcluster import optcomplete
 from starcluster.logger import log
 
-from base import CmdBase
+from completers import VolumeCompleter
 
 
-class CmdRemoveVolume(CmdBase):
+class CmdRemoveVolume(VolumeCompleter):
     """
     removevolume [options] <volume_id>
 
@@ -21,17 +19,6 @@ class CmdRemoveVolume(CmdBase):
         $ starcluster removevolume vol-999999
     """
     names = ['removevolume', 'rv']
-
-    @property
-    def completer(self):
-        if optcomplete:
-            try:
-                cfg = config.StarClusterConfig().load()
-                ec2 = cfg.get_easy_ec2()
-                completion_list = [v.id for v in ec2.get_volumes()]
-                return optcomplete.ListCompleter(completion_list)
-            except Exception, e:
-                log.error('something went wrong fix me: %s' % e)
 
     def addopts(self, parser):
         parser.add_option("-c", "--confirm", dest="confirm",

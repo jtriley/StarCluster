@@ -1,13 +1,9 @@
 #!/usr/bin/env python
 
-from starcluster import config
-from starcluster import optcomplete
-from starcluster.logger import log
-
-from base import CmdBase
+from completers import InstanceCompleter
 
 
-class CmdSshInstance(CmdBase):
+class CmdSshInstance(InstanceCompleter):
     """
     sshintance [options] <instance-id>
 
@@ -20,19 +16,7 @@ class CmdSshInstance(CmdBase):
 
     """
     names = ['sshinstance', 'si']
-
-    @property
-    def completer(self):
-        if optcomplete:
-            try:
-                cfg = config.StarClusterConfig().load()
-                ec2 = cfg.get_easy_ec2()
-                instances = ec2.get_all_instances()
-                completion_list = [i.id for i in instances]
-                completion_list.extend([i.dns_name for i in instances])
-                return optcomplete.ListCompleter(completion_list)
-            except Exception, e:
-                log.error('something went wrong fix me: %s' % e)
+    show_dns_names = True
 
     def addopts(self, parser):
         parser.add_option("-u", "--user", dest="user", action="store",

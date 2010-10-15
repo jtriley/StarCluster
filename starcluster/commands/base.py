@@ -27,6 +27,7 @@ class CmdBase(optcomplete.CmdComplete):
     gopts = None
     gparser = None
     subcmds_map = None
+    _cfg = None
     _ec2 = None
     _s3 = None
     _cm = None
@@ -74,7 +75,9 @@ class CmdBase(optcomplete.CmdComplete):
         """
         Get global StarClusterConfig object
         """
-        return self.goptions_dict.get('CONFIG')
+        if not self._cfg:
+            self._cfg = self.goptions_dict.get('CONFIG')
+        return self._cfg
 
     @property
     def ec2(self):

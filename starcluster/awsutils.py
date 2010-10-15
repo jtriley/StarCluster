@@ -509,7 +509,6 @@ class EasyEC2(EasyAWS):
             counter += 1
 
     def remove_image_files(self, image_name, pretend=True):
-        img = self.get_image(image_name)
         files = self.get_image_files(image_name)
         for file in files:
             if pretend:
@@ -919,8 +918,9 @@ class EasyEC2(EasyAWS):
         except:
             pass
 
-    def list_volumes(self, volume_id=None, status=None, attach_status=None,
-                     size=None, zone=None, snapshot_id=None, show_deleted=False):
+    def list_volumes(self, volume_id=None, status=None,
+                     attach_status=None, size=None, zone=None,
+                     snapshot_id=None, show_deleted=False):
         """
         Print a list of volumes to the screen
         """

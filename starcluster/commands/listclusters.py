@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-from base import CmdBase
+from completers import ClusterCompleter
 
 
-class CmdListClusters(CmdBase):
+class CmdListClusters(ClusterCompleter):
     """
     listclusters [<cluster_tag> ...]
 

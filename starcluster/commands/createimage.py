@@ -3,16 +3,14 @@
 import sys
 import time
 
-from starcluster import config
 from starcluster import static
 from starcluster import exception
-from starcluster import optcomplete
 from starcluster.logger import log
 
-from base import CmdBase
+from completers import InstanceCompleter
 
 
-class CmdCreateImage(CmdBase):
+class CmdCreateImage(InstanceCompleter):
     """
     createimage [options] <instance-id> <image_name> <bucket>
 
@@ -29,22 +27,10 @@ class CmdCreateImage(CmdBase):
     the running instance.
     """
     names = ['createimage', 'ci']
+    show_dns_names = True
 
     bucket = None
     image_name = None
-
-    @property
-    def completer(self):
-        if optcomplete:
-            try:
-                cfg = config.StarClusterConfig().load()
-                ec2 = cfg.get_easy_ec2()
-                instances = ec2.get_all_instances()
-                completion_list = [i.id for i in instances]
-                completion_list.extend([i.dns_name for i in instances])
-                return optcomplete.ListCompleter(completion_list)
-            except Exception, e:
-                log.error('something went wrong fix me: %s' % e)
 
     def addopts(self, parser):
         parser.add_option(

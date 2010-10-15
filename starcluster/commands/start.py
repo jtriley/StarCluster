@@ -10,10 +10,10 @@ from starcluster import optcomplete
 from starcluster.templates import user_msgs
 from starcluster.logger import log
 
-from base import CmdBase
+from completers import ClusterCompleter
 
 
-class CmdStart(CmdBase):
+class CmdStart(ClusterCompleter):
     """
     start [options] <cluster_tag>
 

@@ -135,21 +135,6 @@ class ClusterManager(managers.Manager):
         sgs = self.ec2.get_security_groups(filters={'group-name': glob})
         return sgs
 
-    def get_tag_from_sg(self, tag):
-        """
-        Returns security group that has a name equal to tag prefixed
-        with static.SECURITY_GROUP_PREFIX
-
-        Example:
-            tag = 'mycluster'
-            print get_sg_from_tag(tag).name
-            '@sc-mycluster'
-        """
-        regex = re.compile(static.SECURITY_GROUP_PREFIX + '-(.*)')
-        match = regex.match(sg)
-        if match:
-            return match.groups()[0]
-
     def get_tag_from_sg(self, sg):
         """
         Returns the cluster tag name from a security group name that starts
@@ -602,8 +587,8 @@ class Cluster(object):
     def nodes(self):
         if not self._nodes or len(self._nodes) != self.cluster_size:
             states = ['pending', 'running', 'stopping', 'stopped']
-            filters={'group-id': self._security_group,
-                     'instance-state-name': states}
+            filters = {'group-id': self._security_group,
+                       'instance-state-name': states}
             nodes = self.ec2.get_all_instances(filters=filters)
             self._nodes = []
             for node in nodes:

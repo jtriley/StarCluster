@@ -33,9 +33,8 @@ class NodeManager(managers.Manager):
                 break
         if not node:
             raise exception.InstanceDoesNotExist(node_id)
-        alias = self.ec2.get_instance_user_data(node.id)
         key = self.cfg.get_key(node.key_name)
-        node = Node(node, key.key_location, alias, user=user)
+        node = Node(node, key.key_location, user=user)
         return node
 
 

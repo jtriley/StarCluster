@@ -13,7 +13,7 @@ When you are finished using the cluster, run:
 
 to shutdown the cluster and stop paying for service.
 
-If this cluster uses EBS instances then the 'stop' command 
+If this cluster uses EBS instances then the 'stop' command
 above will put all nodes into a 'stopped' state. The cluster
 may then be restarted at a later time, without losing data,
 by passing the -x option to the 'start' command.

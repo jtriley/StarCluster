@@ -1,13 +1,11 @@
 #!/usr/bin/env python
 
-from starcluster import config
-from starcluster import optcomplete
 from starcluster.logger import log
 
-from base import CmdBase
+from completers import ImageCompleter
 
 
-class CmdDownloadImage(CmdBase):
+class CmdDownloadImage(ImageCompleter):
     """
     downloadimage [options] <image_id> <destination_directory>
 
@@ -21,18 +19,6 @@ class CmdDownloadImage(CmdBase):
 
     bucket = None
     image_name = None
-
-    @property
-    def completer(self):
-        if optcomplete:
-            try:
-                cfg = config.StarClusterConfig().load()
-                ec2 = cfg.get_easy_ec2()
-                rimages = ec2.registered_images
-                completion_list = [i.id for i in rimages]
-                return optcomplete.ListCompleter(completion_list)
-            except Exception, e:
-                log.error('something went wrong fix me: %s' % e)
 
     def execute(self, args):
         if len(args) != 2:

@@ -1,13 +1,9 @@
 #!/usr/bin/env python
 
-from starcluster import config
-from starcluster import optcomplete
-from starcluster.logger import log
-
-from base import CmdBase
+from completers import InstanceCompleter
 
 
-class CmdShowConsole(CmdBase):
+class CmdShowConsole(InstanceCompleter):
     """
     showconsole <instance-id>
 
@@ -20,18 +16,6 @@ class CmdShowConsole(CmdBase):
     This will display the startup logs for instance i-999999
     """
     names = ['showconsole', 'sc']
-
-    @property
-    def completer(self):
-        if optcomplete:
-            try:
-                cfg = config.StarClusterConfig().load()
-                ec2 = cfg.get_easy_ec2()
-                instances = ec2.get_all_instances()
-                completion_list = [i.id for i in instances]
-                return optcomplete.ListCompleter(completion_list)
-            except Exception, e:
-                log.error('something went wrong fix me: %s' % e)
 
     def execute(self, args):
         if not len(args) == 1:
