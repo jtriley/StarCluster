@@ -34,8 +34,8 @@ class ImageCreator(object):
         self.host_ssh = ssh.SSHClient(self.host.dns_name, username='root',
                                       private_key=key_location)
         self.description = description
-        self.kernel_id = kernel_id
-        self.ramdisk_id = ramdisk_id
+        self.kernel_id = kernel_id or self.host.kernel
+        self.ramdisk_id = ramdisk_id or self.host.ramdisk
 
     def clean_private_data(self):
         log.info('Removing private data...')

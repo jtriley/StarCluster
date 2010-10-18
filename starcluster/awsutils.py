@@ -357,7 +357,8 @@ class EasyEC2(EasyAWS):
 
     def get_instance(self, instance_id):
         try:
-            res = self.conn.get_all_instances(instance_ids=[instance_id])
+            res = self.conn.get_all_instances(
+                filters={'instance-id': instance_id})
             i = res[0].instances[0]
             # set group info
             i.groups = res[0].groups
