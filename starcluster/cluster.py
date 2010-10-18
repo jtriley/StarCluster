@@ -1165,6 +1165,14 @@ class Cluster(object):
             raise exception.ClusterValidationError('Image %s does not exist' %
                                                    image_id)
         image_platform = image.architecture
+        image_is_hvm = (image.virtualizationType == "hvm")
+        if image_is_hvm and not instance_type in static.CLUSTER_COMPUTE_TYPES:
+            cctypes_list = ', '.join(static.CLUSTER_COMPUTE_TYPES)
+            raise exception.ClusterValidationError(
+                ("Image '%s' is a cluster compute image (HVM) and cannot " + \
+                 "be used with instance type '%s'\nThe instance type " + \
+                 "for a cluster compute image (HVM) must be one of: %s") % \
+                (image_id, instance_type, cctypes_list))
         instance_platform = self.__instance_types[instance_type]
         if instance_platform != image_platform:
             error_msg = "Instance type %(instance_type)s is for an " + \
@@ -1199,7 +1207,7 @@ class Cluster(object):
             self.__check_platform(node_image_id, node_instance_type)
         except exception.ClusterValidationError, e:
             raise exception.ClusterValidationError(
-                'Incompatible node_image_id and node_instance_type\n' + e.msg)
+                'Incompatible node_image_id and node_instance_type:\n' + e.msg)
         if master_image_id and not master_instance_type:
             try:
                 self.__check_platform(master_image_id, node_instance_type)
