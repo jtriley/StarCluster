@@ -5,13 +5,14 @@ Utils module for StarCluster
 
 import os
 import re
+import time
 import types
 import urlparse
-import time
 from datetime import datetime
+
+from starcluster import iptools
 from starcluster import exception
 from starcluster.logger import log
-from starcluster.iptools import validate_ip, validate_cidr
 
 
 class AttributeDict(dict):
@@ -110,7 +111,7 @@ def is_valid_bucket_name(bucket_name):
     regex = re.compile('[a-z0-9][a-z0-9\._-]{2,254}$')
     if not regex.match(bucket_name):
         return False
-    if validate_ip(bucket_name):
+    if iptools.validate_ip(bucket_name):
         return False
     return True
 

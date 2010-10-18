@@ -9,14 +9,15 @@ import cPickle
 
 from starcluster import utils
 from starcluster import static
+from starcluster import iptools
 from starcluster import managers
 from starcluster import exception
 from starcluster import clustersetup
-from starcluster.templates import user_msgs
-from starcluster.utils import print_timing
-from starcluster.spinner import Spinner
-from starcluster.logger import log, INFO_NO_NEWLINE
 from starcluster.node import Node
+from starcluster.spinner import Spinner
+from starcluster.utils import print_timing
+from starcluster.templates import user_msgs
+from starcluster.logger import log, INFO_NO_NEWLINE
 
 
 class ClusterManager(managers.Manager):
@@ -1297,7 +1298,7 @@ class Cluster(object):
                     from_port, to_port,
                     reason="'from_port' must be <= 'to_port'")
             cidr_ip = permission.get('cidr_ip')
-            if not utils.validate_cidr(cidr_ip):
+            if not iptools.validate_cidr(cidr_ip):
                 raise exception.InvalidCIDRSpecified(cidr_ip)
 
     def _validate_ebs_settings(self):

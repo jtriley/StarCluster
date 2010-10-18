@@ -25,11 +25,9 @@ class CmdShell(CmdBase):
     names = ['shell', 'sh']
 
     def execute(self, args):
-        cfg = self.cfg
-        ec2 = self.ec2
-        s3 = ec2.s3
-        cm = self.cm
+        local_ns = dict(cfg=self.cfg, ec2=self.ec2, s3=self.s3, cm=self.cm)
         import starcluster
+        local_ns.update(dict(starcluster=starcluster))
         modules = [(starcluster.__name__ + '.' + i, i) \
                    for i in starcluster.__all__]
         modules += [('boto', 'boto'), ('paramiko', 'paramiko')]
@@ -37,7 +35,7 @@ class CmdShell(CmdBase):
             log.info('Importing module %s' % modname)
             try:
                 __import__(fullname)
-                locals()[modname] = sys.modules[fullname]
+                local_ns[modname] = sys.modules[fullname]
             except ImportError, e:
                 log.error("Error loading module %s: %s" % (modname, e))
-        utils.ipy_shell()
+        utils.ipy_shell(local_ns=local_ns)
