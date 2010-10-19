@@ -8,6 +8,7 @@ modified by justin riley (justin.t.riley@gmail.com)
 
 import os
 import re
+import pwd
 import stat
 import string
 import tempfile
@@ -276,6 +277,47 @@ class SSHClient(object):
             remotepath = os.path.split(localpath)[1]
         self._sftp_connect()
         self._sftp.put(localpath, remotepath)
+
+    def get_user_map(self, key_by_uid=False):
+        """
+        Returns dictionary where keys are usernames and values are
+        pwd.struct_passwd objects from the standard pwd module
+
+        key_by_uid=True will use the integer uid as the returned dictionary's
+        keys instead of the user's login name
+        """
+        etc_passwd = self.remote_file('/etc/passwd','r')
+        users = [l.strip().split(':') for l in etc_passwd.readlines()]
+        etc_passwd.close()
+        user_map = {}
+        for user in users:
+            name, passwd, uid, gid, gecos, home, shell = user
+            uid = int(uid)
+            gid = int(gid)
+            key = name
+            if key_by_uid:
+                key = uid
+            user_map[key] = pwd.struct_passwd([name, passwd, uid, gid,
+                                               gecos, home, shell])
+        return user_map
+
+    def getpwuid(self, uid):
+        """
+        Remote version of the getpwuid method in the standard pwd module
+
+        returns a pwd.struct_passwd
+        """
+        umap = self.get_user_map(key_by_uid=True)
+        return umap.get(uid)
+
+    def getpwnam(self, username):
+        """
+        Remote version of the getpwnam method in the standard pwd module
+
+        returns a pwd.struct_passwd
+        """
+        umap = self.get_user_map()
+        return umap.get(username)
 
     def execute_async(self, command):
         """

@@ -59,6 +59,7 @@ class DefaultClusterSetup(ClusterSetup):
         home_folder = '/home/%s' % self._user
         first_uid = 1000
         uid, gid = first_uid, first_uid
+        umap = mconn.get_user_map(key_by_uid=True)
         if mconn.path_exists(home_folder):
             # get /home/user's owner/group uid and create
             # user with that uid/gid
@@ -78,12 +79,23 @@ class DefaultClusterSetup(ClusterSetup):
                 max_uid = max(uid_db.keys())
                 max_gid = uid_db[max_uid][1]
                 uid, gid = max_uid + 1, max_gid + 1
-        uid = max(uid, first_uid)
-        gid = max(gid, first_uid)
-        log.debug("Cluster user gid/uid: (%d, %d)" % (uid, gid))
-        log.info("Creating cluster user: %s" % self._user)
+                # make sure the newly selected uid/gid is >= 1000
+                uid = max(uid, first_uid)
+                gid = max(gid, first_uid)
+            # search /etc/fstab and make sure newly selected uid
+            # is not already an account in /etc/passwd
+            while umap.get(uid):
+                uid += 1
+                gid += 1
+        log.info("Creating cluster user: %s (uid: %d, gid: %d)" % (self._user,
+                                                                   uid, gid))
+        existing_user = umap.get(uid)
         for node in self._nodes:
             nconn = node.ssh
+            if existing_user:
+                name = existing_user.pw_name
+                nconn.execute('userdel %s' % name, ignore_exit_status=True)
+                nconn.execute('groupdel %s' % name, ignore_exit_status=True)
             nconn.execute('userdel %s' % self._user, ignore_exit_status=True)
             nconn.execute('groupdel %s' % self._user, ignore_exit_status=True)
             nconn.execute('groupadd -o -g %s %s' % (gid, self._user))
