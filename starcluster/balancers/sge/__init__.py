@@ -1,26 +1,21 @@
 #!/usr/bin/env python
-"""
-StarCluster SunGrinEngine stats parsing module
-"""
-import types
 import time
 import datetime
-from datetime import timedelta
-import logging
 import xml.dom.minidom
-from xml.dom.minidom import Node
-from starcluster import balancers
-from starcluster.balancers import LoadBalancer
+
 from starcluster import utils
 from starcluster import config
 from starcluster import cluster
-from starcluster.logger import log, INFO_NO_NEWLINE
-from starcluster.utils import print_timing
-from starcluster.removenode import remove_node
 from starcluster.addnode import add_nodes
+from starcluster.removenode import remove_node
+from starcluster.balancers import LoadBalancer
+from starcluster.logger import log
 
 
 class SGEStats(object):
+    """
+    SunGridEngine stats parsing class
+    """
     hosts = []
     jobs = []
     jobstats = []
@@ -42,7 +37,7 @@ class SGEStats(object):
                 for hvalue in stat.childNodes:
                     attr = stat.attributes['name'].value
                     val = ""
-                    if hvalue.nodeType == Node.TEXT_NODE:
+                    if hvalue.nodeType == xml.dom.minidom.Node.TEXT_NODE:
                         val = hvalue.data
                     hash[attr] = val
             if hash['name'] != u'global':
@@ -64,7 +59,7 @@ class SGEStats(object):
                 es = job.getElementsByTagName(tag)
                 for node in es:
                     for node2 in node.childNodes:
-                        if node2.nodeType == Node.TEXT_NODE:
+                        if node2.nodeType == xml.dom.minidom.Node.TEXT_NODE:
                             hash[tag] = node2.data
             # grab the submit time on all jobs, the last job's val stays
             if 'tasks' in hash and hash['tasks'].find('-') > 0:
@@ -348,7 +343,7 @@ class SGELoadBalancer(LoadBalancer):
         if self.lookback_window > 24 or self.lookback_window < 1:
             log.warn("Lookback window %d out of range (1-24). Not recommended."
                      % self.lookback_window)
-        now = now - timedelta(hours=self.lookback_window)
+        now = now - datetime.timedelta(hours=self.lookback_window)
         str = now.strftime("%Y%m%d%H%M")
         return str
 

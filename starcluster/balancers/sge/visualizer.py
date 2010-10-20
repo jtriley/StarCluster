@@ -2,19 +2,10 @@
 """
 StarCluster SunGrinEngine stats parsing module
 """
-import types
-import time
 from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.mlab as mlab
-import matplotlib.cbook as cbook
-import matplotlib.ticker as ticker
-#from starcluster import balancers
-#from starcluster.balancers import LoadBalancer
-#from starcluster import utils
-from starcluster.logger import log, INFO_NO_NEWLINE
-from starcluster.utils import print_timing
+from starcluster.logger import log
 
 
 class SGEVisualizer(object):
@@ -31,7 +22,6 @@ class SGEVisualizer(object):
         file. It takes an SGEStats object as a parameter. Appends one line to
         the CSV.
         """
-        stat = s
         bits = []
         #first field is the time
         now = datetime.utcnow()
@@ -73,9 +63,9 @@ class SGEVisualizer(object):
                  int(parts[5]), int(parts[6]), float(parts[7])]
             list.append(a)
         file.close()
-
-        self.records = \
-           np.rec.fromrecords(list, names='dt,hosts,running_jobs,queued_jobs,slots,avg_duration,avg_wait,avg_load')
+        names = ['dt', 'hosts', 'running_jobs', 'queued_jobs',
+                 'slots', 'avg_duration', 'avg_wait', 'avg_load']
+        self.records = np.rec.fromrecords(list, ','.join(names))
 
     def graph(self, yaxis, title):
         if self.records == None:

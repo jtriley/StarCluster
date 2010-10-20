@@ -331,7 +331,7 @@ class SSHClient(object):
         channel = self._transport.open_session()
         channel.exec_command(command)
 
-    def execute(self, command, silent = True, only_printable = False,
+    def execute(self, command, silent=True, only_printable=False,
                 ignore_exit_status=False, log_output=True):
         """
         Execute a remote command and return stdout/stderr
