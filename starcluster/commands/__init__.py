@@ -26,6 +26,7 @@ from listvolumes import CmdListVolumes
 from listpublic import CmdListPublic
 from runplugin import CmdRunPlugin
 from spothistory import CmdSpotHistory
+from loadbalance import CmdLoadBalance
 from shell import CmdShell
 from createkey import CmdCreateKey
 from removekey import CmdRemoveKey
@@ -39,6 +40,7 @@ all_cmds = [
     CmdListClusters(),
     CmdSshMaster(),
     CmdSshNode(),
+    CmdLoadBalance(),
     CmdSshInstance(),
     CmdListInstances(),
     CmdListImages(),
