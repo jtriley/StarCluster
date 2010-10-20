@@ -17,7 +17,7 @@ class CmdTerminate(ClusterCompleter):
 
     This will terminate a currently running or stopped cluster tagged
     "mycluster".
-    
+
     All nodes will be terminated, all spot requests (if any) will be
     cancelled, and the cluster's security group will be removed. If the
     cluster uses EBS-backed nodes then each node's root volume will be

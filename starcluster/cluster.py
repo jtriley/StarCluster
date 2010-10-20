@@ -231,8 +231,7 @@ class ClusterManager(managers.Manager):
         plugin_name must match the plugin's section name in the config
         cluster_tag specifies the cluster to run the plugin on
         """
-        cl = self.get_cluster(cluster_tag)
-        cl.load_receipt(load_plugins=False)
+        cl = self.get_cluster(cluster_tag, load_plugins=False)
         if not cl.is_cluster_up():
             raise exception.ClusterNotRunning(cluster_tag)
         plugs = [self.cfg.get_plugin(plugin_name)]

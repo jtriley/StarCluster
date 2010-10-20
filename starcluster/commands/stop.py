@@ -43,8 +43,8 @@ class CmdStop(ClusterCompleter):
                 action = "Terminate"
                 if is_ebs:
                     action = "Stop EBS"
-                    if cl.spot_requests:
-                        action = "Terminate EBS"
+                    if cl.spot_bid:
+                        action = "Terminate Spot EBS"
                 resp = raw_input("%s cluster %s (y/n)? " %
                                  (action, cluster_name))
                 if resp not in ['y', 'Y', 'yes']:

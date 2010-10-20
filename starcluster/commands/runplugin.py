@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-from starcluster import cluster
-
 from base import CmdBase
 
 
