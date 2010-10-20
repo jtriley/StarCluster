@@ -16,9 +16,13 @@ class CmdTerminate(ClusterCompleter):
         $ starcluster terminate mycluster
 
     This will terminate a currently running or stopped cluster tagged
-    "mycluster". All instances will be terminated and the cluster's
-    security group will be removed. In the case of EBS-backed instances,
-    the instance's root volume will also be deleted.
+    "mycluster".
+    
+    All nodes will be terminated, all spot requests (if any) will be
+    cancelled, and the cluster's security group will be removed. If the
+    cluster uses EBS-backed nodes then each node's root volume will be
+    deleted.  If the cluster uses "cluster compute" instance types the
+    cluster's placement group will be removed.
     """
     names = ['terminate']
 

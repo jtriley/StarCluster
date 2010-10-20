@@ -24,4 +24,4 @@ class CmdRunPlugin(CmdBase):
         if len(args) != 2:
             self.parser.error("Please provide a plugin_name and <cluster_tag>")
         plugin_name, cluster_tag = args
-        cluster.run_plugin(plugin_name, cluster_tag, self.cfg)
+        self.cm.run_plugin(plugin_name, cluster_tag)

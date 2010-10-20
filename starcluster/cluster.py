@@ -181,8 +181,10 @@ class ClusterManager(managers.Manager):
                 n = nodes[0]
             except IndexError:
                 n = None
-            if n.state in ['pending', 'running']:
-                print 'Launch time: %s' % getattr(n, 'local_launch_time', 'N/A')
+            state = getattr(n, 'state', None)
+            if state in ['pending', 'running']:
+                print 'Launch time: %s' % \
+                        getattr(n, 'local_launch_time', 'N/A')
                 print 'Uptime: %s' % getattr(n, 'uptime', 'N/A')
             print 'Zone: %s' % getattr(n, 'placement', 'N/A')
             print 'Keypair: %s' % getattr(n, 'key_name', 'N/A')
@@ -230,8 +232,10 @@ class ClusterManager(managers.Manager):
         cluster_tag specifies the cluster to run the plugin on
         """
         cl = self.get_cluster(cluster_tag)
+        cl.load_receipt(load_plugins=False)
+        if not cl.is_cluster_up():
+            raise exception.ClusterNotRunning(cluster_tag)
         plugs = [self.cfg.get_plugin(plugin_name)]
-        cl.load_receipt()
         name, plugin = cl.load_plugins(plugs)[0]
         cl.run_plugin(plugin, name)
 
@@ -455,7 +459,8 @@ class Cluster(object):
         try:
             nodes = self.nodes[1:]
         except IndexError:
-            return
+            raise exception.ClusterValidationError(
+                "Cluster has no running instances")
         mazone = self.master_node.placement
         id_start = 0
         for itype in self.node_instance_types:
@@ -801,7 +806,7 @@ class Cluster(object):
         master_response = self.create_node('master',
                                            image_id=mimage,
                                            instance_type=mtype)
-        print master_response
+        print master_response[0]
         if self.cluster_size <= 1:
             return
         # Make sure nodes are in same zone as master

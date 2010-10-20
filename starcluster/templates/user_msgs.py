@@ -1,5 +1,46 @@
 #!/usr/bin/env python
 
+active_ebs_cluster = """EBS Cluster '%(cluster_name)s' already exists.
+
+Either choose a different tag name, or stop the EBS cluster using:
+
+  $ starcluster stop %(cluster_name)s
+
+This command will put all nodes into a 'stopped' state and preserve their local
+disks. The cluster can later be resumed by passing the -x option to the start
+command. (NOTE: You pay for the local disks when the nodes are not running)
+
+Another option is to terminate the existing EBS Cluster using:
+
+  $ starcluster terminate %(cluster_name)s
+
+NOTE: Terminating an EBS cluster will destroy the local disks (volumes)
+backing the nodes.
+"""
+
+stopped_ebs_cluster = """Stopped EBS Cluster '%(cluster_name)s' already exists.
+
+Either choose a different tag name, or start the stopped EBS cluster using:
+
+  $ starcluster start %(cluster_name)s -x
+
+Another option is to terminate the existing EBS Cluster using:
+
+  $ starcluster terminate %(cluster_name)s
+
+NOTE: Terminating an EBS cluster will destroy all volumes backing the nodes.
+"""
+
+cluster_exists = """Cluster with tag name %(cluster_name)s already exists.
+
+Either choose a different tag name, or terminate the existing cluster using:
+
+  $ starcluster terminate %(cluster_name)s
+
+If you wish to use these existing instances anyway, pass --no-create to
+the start command
+"""
+
 cluster_started_msg = """
 
 The cluster has been started and configured.

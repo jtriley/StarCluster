@@ -17,14 +17,13 @@ class CmdStop(ClusterCompleter):
 
     This will stop a currently running cluster tagged "mycluster"
 
-    If the cluster uses EBS-backed instances, all instances will be put into
-    a stopped state. You can then use the start command to resume the cluster
-    later on without losing data.
+    If the cluster uses EBS-backed instances, all nodes will be put into
+    a 'stopped' state preserving the local disks. You can then use the start
+    command to resume the cluster later on without losing data.
 
-    If the cluster uses instance-store instances then all instances wil be
-    terminated and the cluster's security group will be removed. This command
-    has the same behaviour as the 'terminate' command in the case of
-    instance-store instances.
+    If the cluster uses instance-store (S3) instances then all nodes wil be
+    terminated and the cluster's security group will be removed. This is the
+    same behavior as the 'terminate' command.
     """
     names = ['stop']
 
@@ -44,6 +43,8 @@ class CmdStop(ClusterCompleter):
                 action = "Terminate"
                 if is_ebs:
                     action = "Stop EBS"
+                    if cl.spot_requests:
+                        action = "Terminate EBS"
                 resp = raw_input("%s cluster %s (y/n)? " %
                                  (action, cluster_name))
                 if resp not in ['y', 'Y', 'yes']:

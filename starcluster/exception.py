@@ -7,7 +7,7 @@ import os
 
 from starcluster import static
 from starcluster.logger import log
-from starcluster.templates import config
+from starcluster.templates import config, user_msgs
 
 
 class BaseException(Exception):
@@ -327,6 +327,14 @@ class ClusterTemplateDoesNotExist(BaseException):
         self.msg = "cluster template %s does not exist" % cluster_name
 
 
+class ClusterNotRunning(BaseException):
+    """
+    Exception raised when user requests a running cluster that does not exist
+    """
+    def __init__(self, cluster_name):
+        self.msg = "cluster %s is not running" % cluster_name
+
+
 class ClusterDoesNotExist(BaseException):
     """
     Exception raised when user requests a running cluster that does not exist
@@ -336,13 +344,14 @@ class ClusterDoesNotExist(BaseException):
 
 
 class ClusterExists(BaseException):
-    def __init__(self, cluster_name):
-        self.msg = "Cluster with tag name %s already exists. " % cluster_name
-        self.msg += "\n\nEither choose a different tag name, or stop the "
-        self.msg += "existing cluster using:"
-        self.msg += "\n\n   $ starcluster stop %s" % cluster_name
-        self.msg += "\n\nIf you wish to use these existing instances " + \
-                    "anyway, pass --no-create to the start command"
+    def __init__(self, cluster_name, is_ebs=False, stopped_ebs=False):
+        ctx = dict(cluster_name=cluster_name)
+        if stopped_ebs:
+            self.msg = user_msgs.stopped_ebs_cluster % ctx
+        elif is_ebs:
+            self.msg = user_msgs.active_ebs_cluster % ctx
+        else:
+            self.msg = user_msgs.cluster_exists % ctx
 
 
 class CancelledStartRequest(BaseException):
@@ -367,7 +376,8 @@ class CancelledCreateVolume(BaseException):
         self.msg += "\n\nPlease be aware that the volume host instance"
         self.msg += "may still be running. "
         self.msg += "\n\nTo destroy this instance please run:"
-        self.msg += "\n\n   $ starcluster stop %s" % static.VOLUME_GROUP_NAME
+        self.msg += "\n\n   $ starcluster terminate %s" % \
+                static.VOLUME_GROUP_NAME
         self.msg += "\n\nand then use\n\n   $ starcluster listinstances"
         self.msg += "\n\nto verify that this instance has been terminated."
         self.msg += "\n\nAnother option is to use the AWS management console "

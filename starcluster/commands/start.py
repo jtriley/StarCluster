@@ -128,19 +128,22 @@ class CmdStart(ClusterCompleter):
         tag = self.tag = args[0]
         create = not self.opts.no_create
         create_only = self.opts.create_only
-        cluster_exists = self.cm.cluster_exists(tag)
+        cluster_exists = self.cm.get_cluster_or_none(tag)
         validate_running = self.opts.no_create
         validate_only = self.opts.validate_only
         if cluster_exists and create:
-            raise exception.ClusterExists(tag)
+            stopped_ebs = cluster_exists.is_cluster_stopped()
+            is_ebs = False
+            if not stopped_ebs:
+                is_ebs = cluster_exists.is_ebs_cluster()
+            raise exception.ClusterExists(tag, is_ebs=is_ebs,
+                                          stopped_ebs=stopped_ebs)
         if not cluster_exists and not create:
             raise exception.ClusterDoesNotExist(tag)
         scluster = None
         if cluster_exists:
             validate_running = True
             scluster = self.cm.get_cluster(tag)
-            if scluster.nodes:
-                create = False
             log.info(
                 "Using original template used to launch cluster '%s'" % \
                 scluster.cluster_tag)
