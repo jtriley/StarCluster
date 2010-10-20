@@ -1,61 +1,65 @@
 #!/usr/bin/env python
+import os
+import sys
+from setuptools import setup, find_packages
 
-from setuptools import setup
+install_requires = [
+    "paramiko==1.7.6",
+    "boto==2.0b3",
+]
+
+maj, min, micro, rel, serial = sys.version_info
+if (maj, min) == (2, 4):
+    # boto needs hashlib module which is not in py2.4
+    # this hack should be in boto instead (file a bug)
+    install_requires.append("hashlib")
+
+src = os.path.realpath(os.path.dirname(__file__))
 
 setup(
-    name = 'StarCluster',
-    version = '0.91',
-    packages = ['starcluster', 'starcluster.templates', 'starcluster.tests',
-        'starcluster.tests.templates', 'starcluster.plugins',
-        'starcluster.balancers', 'starcluster.balancers.sge'],
-    package_dir = {'starcluster':'starcluster'},
-    scripts=['bin/starcluster',],
-
-    install_requires=[
-        "paramiko>=1.7.6",
-        "boto>=2.0b1",
-    ],
-
-    zip_safe = True,
-
+    name='StarCluster',
+    version='0.9999',
+    package_dir={'starcluster': 'starcluster'},
+    packages=find_packages(src),
+    scripts=['bin/starcluster'],
+    install_requires=install_requires,
+    zip_safe=True,
+    download_url='http://web.mit.edu/starcluster',
+    license='LGPL3',
     author='Justin Riley',
     author_email='justin.t.riley@gmail.com',
     url="http://web.mit.edu/starcluster",
     description="StarCluster is a utility for creating and managing computing clusters hosted on Amazon's Elastic Compute Cloud (EC2).",
-    long_description = """
-    StarCluster is a utility for creating and managing computing clusters hosted on 
-    Amazon's Elastic Compute Cloud (EC2). StarCluster utilizes Amazon's EC2 web service 
+    long_description="""
+    StarCluster is a utility for creating and managing computing clusters hosted on
+    Amazon's Elastic Compute Cloud (EC2). StarCluster utilizes Amazon's EC2 web service
     to create and destroy clusters of Linux virtual machines on demand.
 
-    To get started, the user creates a simple configuration file with their AWS account 
-    details and a few cluster preferences (e.g. number of machines, machine type, ssh 
-    keypairs, etc). After creating the configuration file and running StarCluster's 
-    "start" command, a cluster of Linux machines configured with the Sun Grid Engine 
-    queuing system, an NFS-shared /home directory, and OpenMPI with password-less ssh is 
-    created and ready to go out-of-the-box. Running StarCluster's "stop" command will 
-    shutdown the cluster and stop paying for service. This allows the user to only pay 
+    To get started, the user creates a simple configuration file with their AWS account
+    details and a few cluster preferences (e.g. number of machines, machine type, ssh
+    keypairs, etc). After creating the configuration file and running StarCluster's
+    "start" command, a cluster of Linux machines configured with the Sun Grid Engine
+    queuing system, an NFS-shared /home directory, and OpenMPI with password-less ssh is
+    created and ready to go out-of-the-box. Running StarCluster's "stop" command will
+    shutdown the cluster and stop paying for service. This allows the user to only pay
     for what they use.
 
-    StarCluster can also utilize Amazon's Elastic Block Storage (EBS) volumes to provide 
-    persistent data storage for a cluster. EBS volumes allow you to store large amounts 
-    of data in the Amazon cloud and are also easy to back-up and replicate in the cloud. 
-    StarCluster will mount and NFS-share any volumes specified in the config. StarCluster's 
-    "createvolume" command provides the ability to automatically create, format, and 
+    StarCluster can also utilize Amazon's Elastic Block Storage (EBS) volumes to provide
+    persistent data storage for a cluster. EBS volumes allow you to store large amounts
+    of data in the Amazon cloud and are also easy to back-up and replicate in the cloud.
+    StarCluster will mount and NFS-share any volumes specified in the config. StarCluster's
+    "createvolume" command provides the ability to automatically create, format, and
     partition new EBS volumes for use with StarCluster.
 
-    StarCluster provides a Ubuntu-based Amazon Machine Image (AMI) in 32bit and 64bit 
-    architectures. The AMI contains an optimized NumPy/SciPy/Atlas/Blas/Lapack 
+    StarCluster provides a Ubuntu-based Amazon Machine Image (AMI) in 32bit and 64bit
+    architectures. The AMI contains an optimized NumPy/SciPy/Atlas/Blas/Lapack
     installation compiled for the larger Amazon EC2 instance types. The AMI also comes
-    with Sun Grid Engine (SGE) and OpenMPI compiled with SGE support. The public AMI 
+    with Sun Grid Engine (SGE) and OpenMPI compiled with SGE support. The public AMI
     can easily be customized by launching a single instance of the public AMI,
-    installing additional software on the instance, and then using StarCluster's 
-    "createimage" command to completely automate the process of creating a new AMI from 
+    installing additional software on the instance, and then using StarCluster's
+    "createimage" command to completely automate the process of creating a new AMI from
     an EC2 instance.
     """,
-
-    download_url='http://web.mit.edu/starcluster',
-    license='LGPL3',
-
     classifiers=[
         'Environment :: Console',
         'Development Status :: 4 - Beta',
@@ -72,5 +76,4 @@ setup(
         'Topic :: System :: Distributed Computing',
         'Topic :: System :: Clustering',
     ],
-
 )

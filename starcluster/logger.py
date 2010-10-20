@@ -2,32 +2,46 @@
 """
 StarCluster logging module
 """
+import os
 import types
 import logging
 import logging.handlers
-from logging import INFO, DEBUG, WARN, ERROR, FATAL
 
 from starcluster import static
 
+INFO = logging.INFO
+DEBUG = logging.DEBUG
+WARN = logging.WARN
+ERROR = logging.ERROR
+FATAL = logging.FATAL
+
 INFO_NO_NEWLINE = logging.INFO + 1
+INFO_FORMAT = ">>> %(message)s\n"
+INFO_FORMAT_NONL = ">>> %(message)s"
+DEFAULT_FORMAT = "%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n"
+DEFAULT_FORMAT_NONL = "%(filename)s:%(lineno)d - %(levelname)s - %(message)s"
+DEFAULT_FORMAT_NONL_PID = ("PID: %s " % str(os.getpid())) + DEFAULT_FORMAT_NONL
+
 
 class ConsoleLogger(logging.StreamHandler):
 
-    formatters = {  logging.INFO: logging.Formatter(">>> %(message)s\n"),
-                    INFO_NO_NEWLINE: logging.Formatter(">>> %(message)s"),
-                    logging.DEBUG: logging.Formatter("%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n"),
-                    logging.WARN: logging.Formatter("%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n"),
-                    logging.CRITICAL: logging.Formatter("%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n"),
-                    logging.ERROR: logging.Formatter("%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n")}
+    formatters = {
+        logging.INFO: logging.Formatter(INFO_FORMAT),
+        INFO_NO_NEWLINE: logging.Formatter(INFO_FORMAT_NONL),
+        logging.DEBUG: logging.Formatter(DEFAULT_FORMAT),
+        logging.WARN: logging.Formatter(DEFAULT_FORMAT),
+        logging.CRITICAL: logging.Formatter(DEFAULT_FORMAT),
+        logging.ERROR: logging.Formatter(DEFAULT_FORMAT),
+    }
 
-    def format(self,record):
+    def format(self, record):
         return self.formatters[record.levelno].format(record)
 
     def emit(self, record):
         try:
             msg = self.format(record)
             fs = "%s"
-            if not hasattr(types, "UnicodeType"): #if no unicode support...
+            if not hasattr(types, "UnicodeType"):  # if no unicode support...
                 self.stream.write(fs % msg)
             else:
                 try:
@@ -43,7 +57,7 @@ class ConsoleLogger(logging.StreamHandler):
 log = logging.getLogger('starcluster')
 log.setLevel(logging.DEBUG)
 
-formatter = logging.Formatter("%(filename)s:%(lineno)d - %(levelname)s - %(message)s")
+formatter = logging.Formatter(DEFAULT_FORMAT_NONL_PID)
 
 rfh = logging.handlers.RotatingFileHandler(static.DEBUG_FILE,
                                            maxBytes=1048576,

@@ -166,9 +166,3 @@ VOLUMES = %(c3_vols)s
 EXTENDS=%(c4_extends)s
 PERMISSIONS=%(c4_permissions)s
 """
-
-missing_required_template= """
-[aws info]
-AWS_ACCESS_KEY_ID = %(aws_access_key_id)s
-AWS_USER_ID= %(aws_user_id)s
-"""

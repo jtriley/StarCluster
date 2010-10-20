@@ -56,28 +56,95 @@ AWS credentials. The following settings are required
     ec2_cert = /path/to/your/ec2_cert.pem
     ec2_private_key = /path/to/your/ec2_pk.pem
 
+Amazon EC2 Regions
+------------------
+StarCluster uses the us-east-1 EC2 region by default. If you wish to use a different EC2 region you will need to specify the following
+additional settings in your **[aws info]** section:
+
+.. code-block:: ini
+
+    [aws info]
+    ....
+    aws_region_name = eu-west-1
+    aws_region_host = ec2.eu-west-1.amazonaws.com
+
+Here *aws_region_name* is the name of the region you wish to use and *aws_region_host* is the region-specific EC2 endpoint host. Below is
+a table of EC2 region-specific endpoints:
+
+=====================  ==================================
+aws_region_name        aws_region_host                   
+=====================  ==================================
+us-east-1              ec2.us-east-1.amazonaws.com       
+us-west-1              ec2.us-west-1.amazonaws.com       
+eu-west-1              ec2.eu-west-1.amazonaws.com       
+ap-southeast-1         ec2.ap-southeast-1.amazonaws.com  
+=====================  ==================================
+
+.. _list: http://developer.amazonwebservices.com/connect/entry.jspa?externalID=3912 
+
+The above table is only for convenience. You will likely want to check the official list_ from Amazon instead.
+
+Amazon S3 Region-Specific Endpoints
+-----------------------------------
+StarCluster uses s3.amazonaws.com as the S3 endpoint by default. If you'd like to switch S3 endpoints you can do so by specifying an 
+additional *aws_s3_host* setting in your **[aws info]** section:
+
+.. code-block:: ini
+
+    [aws info]
+    ....
+    aws_region_name = us-west-1
+    aws_region_name = ec2.us-west-1.amazonaws.com
+    aws_s3_host = s3-us-west-1.amazonaws.com
+
+.. _amazon: http://developer.amazonwebservices.com/connect/entry.jspa?externalID=3912
+
+Below is a table of S3 region-specific endpoints:
+
+================  =================================
+Region            aws_s3_host                      
+================  =================================
+us-east-1         s3.amazonaws.com                 
+us-west-1         s3-us-west-1.amazonaws.com       
+eu-west-1         s3-eu-west-1.amazonaws.com       
+ap-southeast-1    s3-ap-southeast-1.amazonaws.com  
+================  =================================
+
+**NOTE**: Switching S3 endpoints is usually not necessary. From amazon_: Switching to a region-specific S3 endpoint is completely optional. 
+The main advantage of doing so is to reduce the temporary latency you might experience immediately after creating a bucket in a specific region.
+This temporary latency typically lasts less than one hour.
+
 Amazon EC2 Keypairs
 -------------------
 In addition to supplying your **[aws info]** you must also define at least one **[keypair]** section that
-represents one of your keypairs on Amazon EC2. You can also define a new **[keypair]** section for each Amazon EC2
-keypair you want to use with StarCluster. 
+represents one of your keypairs on Amazon EC2. Amazon EC2 keypairs are used by StarCluster to connect and configure your 
+instances.
 
-As an example, suppose we have two keypairs on Amazon EC2 that we wish to use with StarCluster called "mykeypair1" 
-and "mykeypair2".  To configure StarCluster for these keypairs we define a **[keypair]** section for each of them 
-in the configuration file:
+You should define a new **[keypair]** section for each Amazon EC2 keypair you wish to use with StarCluster.  
+As an example, suppose we have two keypairs on Amazon EC2 that we wish to use with StarCluster named "mykeypair1" 
+and "mykeypair2" on Amazon. 
+
+**NOTE**: If you do not know the name of your keypair(s), use StarCluster's *listkeypairs* command or the *ec2-describe-keypairs* 
+command in the EC2 command line tools. The **[keypair]** section name *must* match the name of the keypair on Amazon EC2.
+
+To configure StarCluster for these keypairs we define a **[keypair]** section for each of them in the configuration file:
 
 .. code-block:: ini
 
     [keypair mykeypair1]
-    # this is the path to your openssh private key for mykeypair1
+    # this is the path to your openssh private key for mykeypair4
     key_location=/path/to/your/mykeypair1.rsa
 
-    [keypair mykeypair2]
+    [keypair mykeypair3]
     # this is the path to your openssh private key for mykeypair2
     key_location=/path/to/your/mykeypair2.rsa
 
 These keypair sections can now be referenced in a *cluster templates*' **keyname** setting as we'll show below in an
 example *cluster template*.
+
+**NOTE**: In order for StarCluster to interact with **any** instances you have on EC2, the keypair used to launch those instances 
+**must** be defined in the config. You can check what keypairs were used to launch an instance using StarCluster's *listinstances* 
+command or the *ec2-describe-instances* command from the ec2 command-line tools.
 
 Defining Cluster Templates
 --------------------------
@@ -109,15 +176,19 @@ template* has been defined, you can launch multiple StarClusters from it. Below 
     # The base i386 StarCluster AMI is ami-0330d16a
     # The base x86_64 StarCluster AMI is ami-0f30d166
     master_image_id = ami-0330d16a
-    # instance type for master node
+
+    # instance type for master node. 
+    # defaults to NODE_INSTANCE_TYPE if not specified
     master_instance_type = m1.small
 
-    # AMI for worker nodes. Also used for the master node if MASTER_IMAGE_ID is not specified
+    # AMI for worker nodes. 
+    # Also used for the master node if MASTER_IMAGE_ID is not specified
     # The base i386 StarCluster AMI is ami-0330d16a
     # The base x86_64 StarCluster AMI is ami-0f30d166
     node_image_id = ami-0330d16a
 
-    # instance type
+    # instance type for worker nodes. Also used for the master node if 
+    # MASTER_INSTANCE_TYPE is not specified
     node_instance_type = m1.small
 
     # availability zone
@@ -206,21 +277,22 @@ myvoldata1 and myvoldata2 from the above example in a *cluster template* called 
 .. code-block:: ini
 
     [cluster smallcluster]
-    ...
+    #...
     volumes = myvoldata1, myvoldata2
-    ...
+    #...
 
 Now any time a cluster is started using the *smallcluster* template, myvoldata1 will be mounted to /home on the master, myvoldata2 will
 be mounted to /scratch on the master, and both /home and /scratch will be NFS shared to the rest of the cluster nodes. 
 
 Amazon Security Group Permissions
 ---------------------------------
-Each node in the cluster is assigned to a common security group when starting a cluster. This group is created by StarCluster and has  
-a name of the form "@sc-<cluster_tag>" where *<cluster_tag>* is the name you provided to the "start" command.
+When starting a cluster each node is added to a common security group. This security group is created by StarCluster and has  
+a name of the form "@sc-*<cluster_tag>*" where *<cluster_tag>* is the name you provided to the "start" command.
 
-By default, StarCluster adds a security group permission to this group to allow port 22 (openssh). If you want to specify additional security 
-group permissions you can do so in the config by creating a **[permission]** section. Here's an example that opens port 80 to the world for the 
-*smallcluster* template:
+By default, StarCluster adds a permission to this security group that allows access to port 22 (openssh) from all IP addresses. This is needed
+so that StarCluster can connect to the instances and configure them properly. If you want to specify additional security group permissions to be 
+set after starting your cluster you can do so in the config by creating one or more **[permission]** sections. These sections can then be specified
+in one or more cluster templates. Here's an example that opens port 80 (web server) to the world for the *smallcluster* template:
 
 .. code-block:: ini
 
@@ -235,13 +307,19 @@ group permissions you can do so in the config by creating a **[permission]** sec
     to_port = 21
     cidr_ip = 66.249.90.104/32
 
-    [cluster smallcluster]
-    ...
-    permissions = www, ftp
+    [permission myrange]
+    # open all ports in the range 8000-9000 to the world
+    from_port = 8000
+    to_port = 9000
 
-Permissions specify an IP range to open to a given network range (cidr_ip). In the above example, we created a permission section called *www* that 
-opens port 80 to the "world" by setting the from_port and to_port both to be 80. By default, the network range is set to 0.0.0.0/0 which represents any 
-ip address (ie the "world"). You can restrict the ip addresses that the rule applies to by specifying the proper cidr_ip setting. In the above example, 
+    [cluster smallcluster]
+    #...
+    permissions = www, ftp, myrange
+    #...
+
+A permission section specifies a port range to open to a given network range (cidr_ip). By default, the network range is set to 0.0.0.0/0 which represents any 
+ip address (ie the "world"). In the above example, we created a permission section called *www* that opens port 80 to the "world" by setting the from_port 
+and to_port both to be 80.  You can restrict the ip addresses that the rule applies to by specifying the proper cidr_ip setting. In the above example, 
 the *ftp* permission specifies that only 66.249.90.104 ip address can access port 21 on the cluster nodes. 
 
 StarCluster Plugins
