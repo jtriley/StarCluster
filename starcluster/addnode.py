@@ -4,7 +4,7 @@ import os
 import time
 
 from starcluster import spinner
-from starcluster.templates.sgeprofile import sgeprofile_template
+from starcluster.templates import sge
 from starcluster.logger import log, INFO_NO_NEWLINE
 
 
@@ -40,7 +40,7 @@ def add_to_sge(master, node):
     # generate /etc/profile.d/sge.sh
     sge_profile = node.ssh.remote_file("/etc/profile.d/sge.sh")
     arch = node.ssh.execute("/opt/sge6/util/arch")[0]
-    print >> sge_profile, sgeprofile_template % {'arch': arch}
+    print >> sge_profile, sge.sgeprofile_template % {'arch': arch}
     sge_profile.close()
     master.ssh.execute('source /etc/profile && qconf -ah %s' %
                        node.private_dns_name)

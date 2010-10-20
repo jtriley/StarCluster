@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-from starcluster.balancers import sge
-
 
 class LoadBalancer(object):
     def __init__(self):
@@ -13,6 +11,7 @@ class LoadBalancer(object):
 if __name__ == "__main__":
     from starcluster import config
     from starcluster import cluster
+    from starcluster.balancers import sge
     cfg = config.StarClusterConfig()
     ec2 = cfg.get_easy_ec2()
     cm = cluster.ClusterManager(cfg, ec2)
