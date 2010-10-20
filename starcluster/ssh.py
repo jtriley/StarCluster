@@ -286,7 +286,7 @@ class SSHClient(object):
         key_by_uid=True will use the integer uid as the returned dictionary's
         keys instead of the user's login name
         """
-        etc_passwd = self.remote_file('/etc/passwd','r')
+        etc_passwd = self.remote_file('/etc/passwd', 'r')
         users = [l.strip().split(':') for l in etc_passwd.readlines()]
         etc_passwd.close()
         user_map = {}

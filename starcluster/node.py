@@ -2,6 +2,7 @@
 import os
 import time
 import socket
+from datetime import datetime
 
 from starcluster import ssh
 from starcluster import utils
@@ -147,6 +148,18 @@ class Node(object):
         return self.instance.launch_time
 
     @property
+    def local_launch_time(self):
+        ltime = utils.iso_to_localtime_tuple(self.launch_time)
+        return time.strftime("%Y-%m-%d %H:%M:%S", ltime.timetuple())
+
+    @property
+    def uptime(self):
+        ltime = utils.iso_to_localtime_tuple(self.launch_time)
+        now = datetime.now()
+        delta = now - ltime
+        return time.strftime("%H:%M:%S", time.gmtime(delta.seconds))
+
+    @property
     def ami_launch_index(self):
         return int(self.instance.ami_launch_index)
 
@@ -258,6 +271,9 @@ class Node(object):
     def is_ebs_backed(self):
         return self.instance.root_device_type == "ebs"
 
+    def is_cluster_compute(self):
+        return self.instance.instance_type in static.CLUSTER_SETTINGS
+
     def is_spot(self):
         return self.spot_id is not None
 
@@ -310,6 +326,12 @@ class Node(object):
         else:
             self.terminate()
 
+    def reboot(self):
+        """
+        Reboot this instance.
+        """
+        self.instance.reboot()
+
     def is_ssh_up(self):
         timeout = 10.0
         s = socket.socket()
@@ -326,7 +348,8 @@ class Node(object):
             return False
 
     def is_up(self):
-        self.update()
+        if self.update() != 'running':
+            return False
         if not self.is_ssh_up():
             return False
         if self.private_ip_address is None:

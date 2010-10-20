@@ -2,6 +2,7 @@
 from start import CmdStart
 from stop import CmdStop
 from terminate import CmdTerminate
+from restart import CmdRestart
 from sshmaster import CmdSshMaster
 from sshnode import CmdSshNode
 from sshinstance import CmdSshInstance
@@ -34,6 +35,7 @@ all_cmds = [
     CmdStart(),
     CmdStop(),
     CmdTerminate(),
+    CmdRestart(),
     CmdListClusters(),
     CmdSshMaster(),
     CmdSshNode(),

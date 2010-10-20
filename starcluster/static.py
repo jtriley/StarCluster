@@ -36,6 +36,9 @@ VOLUME_GROUP = SECURITY_GROUP_TEMPLATE % VOLUME_GROUP_NAME
 
 IGNORE_GROUPS = [MASTER_GROUP]
 
+INSTANCE_STATES = ['pending', 'running', 'shutting-down',
+                   'terminated', 'stopping', 'stopped']
+
 VOLUME_STATUS = ['creating', 'available', 'in-use',
                  'deleting', 'deleted', 'error']
 VOLUME_ATTACH_STATUS = ['attaching', 'attached', 'detaching', 'detached']

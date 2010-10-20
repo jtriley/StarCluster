@@ -8,6 +8,7 @@ import re
 import time
 import types
 import urlparse
+import calendar
 from datetime import datetime
 
 from starcluster import iptools
@@ -199,6 +200,12 @@ def datetime_tuple_to_iso(tup):
     iso = datetime.strftime(tup, "%Y-%m-%dT%H:%M:%S")
     return iso
 
+
+def iso_to_localtime_tuple(iso):
+    dtup = iso_to_datetime_tuple(iso)
+    secs = calendar.timegm(dtup.timetuple())
+    t = time.mktime(time.localtime(secs))
+    return datetime.fromtimestamp(t)
 
 try:
     import IPython.Shell

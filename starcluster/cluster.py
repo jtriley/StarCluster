@@ -106,6 +106,13 @@ class ClusterManager(managers.Manager):
             cluster_name = static.SECURITY_GROUP_TEMPLATE % cluster_name
         return cluster_name
 
+    def restart_cluster(self, cluster_name):
+        """
+        Reboots and reconfigures cluster_name
+        """
+        cl = self.get_cluster(cluster_name)
+        cl.restart_cluster()
+
     def stop_cluster(self, cluster_name):
         """
         Stops cluster_name if it's an EBS cluster, otherwise terminates the
@@ -162,7 +169,6 @@ class ClusterManager(managers.Manager):
         else:
             cluster_groups = [self.get_cluster_security_group(g) for g \
                               in cluster_groups]
-
         for scg in cluster_groups:
             tag = self.get_tag_from_sg(scg.name)
             cl = self.get_cluster(tag, load_plugins=False)
@@ -175,7 +181,9 @@ class ClusterManager(managers.Manager):
                 n = nodes[0]
             except IndexError:
                 n = None
-            print 'Launch time: %s' % getattr(n, 'launch_time', 'N/A')
+            if n.state in ['pending', 'running']:
+                print 'Launch time: %s' % getattr(n, 'local_launch_time', 'N/A')
+                print 'Uptime: %s' % getattr(n, 'uptime', 'N/A')
             print 'Zone: %s' % getattr(n, 'placement', 'N/A')
             print 'Keypair: %s' % getattr(n, 'key_name', 'N/A')
             print 'EBS volumes:'
@@ -425,30 +433,29 @@ class Cluster(object):
         num_running = len(self.nodes)
         if num_running != self.cluster_size:
             raise exception.ClusterValidationError(
-                "Number of pending/running instances (%s) != %s" % \
+                "Number of existing instances (%s) != cluster_size (%s)" % \
                 (num_running, self.cluster_size))
         mtype = self.master_node.instance_type
         mastertype = self.master_instance_type or self.node_instance_type
         if mtype != mastertype:
             raise exception.ClusterValidationError(
-                "The running master node's instance type (%s) != %s" % \
+                "The existing master node's instance type (%s) != %s" % \
                 (mtype, mastertype))
         masterimage = self.master_image_id or self.node_image_id
         mimage = self.master_node.image_id
         if mimage != masterimage:
             raise exception.ClusterValidationError(
-                "The running master node's image id (%s) != %s" % \
+                "The existing master node's image id (%s) != %s" % \
                 (mimage, masterimage))
         mkey = self.master_node.key_name
         if mkey != self.keyname:
             raise exception.ClusterValidationError(
-                "The running master's keypair (%s) != %s" % \
+                "The existing master's keypair (%s) != %s" % \
                 (mkey, self.keyname))
         try:
             nodes = self.nodes[1:]
         except IndexError:
-            raise exception.ClusterValidationError(
-                "Cluster has no running instances")
+            return
         mazone = self.master_node.placement
         id_start = 0
         for itype in self.node_instance_types:
@@ -622,28 +629,19 @@ class Cluster(object):
                 return node
 
     def _nodes_in_states(self, states):
-        nodes = []
-        for node in self.nodes:
-            if node.state in states:
-                nodes.append(node)
-        return nodes
+        return filter(lambda x: x.state in states, self.nodes)
 
     @property
     def running_nodes(self):
         return self._nodes_in_states(['running'])
 
     @property
-    def stopped_or_running_nodes(self):
-        return self._nodes_in_states(['running', 'stopped'])
-
-    @property
-    def not_terminated_nodes(self):
-        return self._nodes_in_states(['running', 'stopped', 'shutting-down',
-                                      'stopping'])
-
-    @property
     def stopped_nodes(self):
-        return self._nodes_in_states(['stopped'])
+        return self._nodes_in_states(['stopping', 'stopped'])
+
+    @property
+    def terminated_nodes(self):
+        return self._nodes_in_states(['shutting-down', 'terminated'])
 
     @property
     def spot_requests(self):
@@ -841,17 +839,20 @@ class Cluster(object):
         """
         Returns true if any instances are a cluster compute type
         """
-        lmap = self._get_launch_map()
-        for (type, image) in lmap:
-            if type in static.CLUSTER_COMPUTE_TYPES:
+        for node in self.nodes:
+            if node.is_cluster_compute():
                 return True
+        else:
+            lmap = self._get_launch_map()
+            for (type, image) in lmap:
+                if type in static.CLUSTER_COMPUTE_TYPES:
+                    return True
         return False
 
     def is_cluster_up(self):
         """
-        Check whether there are cluster_size nodes running,
-        that ssh (port 22) is up on all nodes, and that each node
-        has an internal ip address associated with it
+        Check whether there are cluster_size nodes running and
+        that ssh (port 22) is up on all nodes
         """
         nodes = self.running_nodes
         if len(nodes) != self.cluster_size:
@@ -863,19 +864,18 @@ class Cluster(object):
 
     def is_cluster_stopped(self):
         """
-        Check whether there are zero nodes running
-        associated with the cluster
+        Check whether all nodes are in the 'stopped' state
         """
-        nodes = self.stopped_nodes
-        return len(nodes) == self.cluster_size
+        return len(self.stopped_nodes) == self.cluster_size
 
     def is_cluster_terminated(self):
         """
-        Check whether there are zero nodes running
-        associated with the cluster
+        Check whether all nodes are in a 'terminated' state
         """
-        nodes = self.not_terminated_nodes
-        return len(nodes) == 0
+        result = (len(self.terminated_nodes) == self.cluster_size)
+        if not result:
+            result = (len(self.nodes) == 0)
+        return result
 
     def attach_volumes_to_master(self):
         """
@@ -910,6 +910,24 @@ class Cluster(object):
         """
         if self.master_node:
             self.master_node.detach_external_volumes()
+
+    def restart_cluster(self):
+        """
+        Reboot all instances
+        """
+        nodes = self.nodes
+        if not nodes:
+            raise exception.ClusterValidationError("No running nodes found")
+        log.info("Rebooting cluster...")
+        for node in nodes:
+            node.reboot()
+        sleep = 30
+        log.info("Sleeping for %d secs..." % sleep)
+        time.sleep(sleep)
+        log.info("Waiting for cluster to come back up...")
+        while not self.is_cluster_up():
+            time.sleep(10)
+        self.start(create=False, validate_running=True)
 
     def stop_cluster(self):
         """
@@ -1270,6 +1288,9 @@ class Cluster(object):
             vol_id = v.get('volume_id')
             vol = self.ec2.get_volume(vol_id)
             if vol.status != 'available':
+                if self.master_node:
+                    if vol.attach_data.instance_id == self.master_node.id:
+                        continue
                 msg = "volume %s is not available (status: %s)" % (vol_id,
                                                                    vol.status)
                 raise exception.ClusterValidationError(msg)
