@@ -86,8 +86,7 @@ class EasyEC2(EasyAWS):
         self._regions = None
 
     def __repr__(self):
-        return '<EasyEC2: %s (%s)>' % (self.conn.region.name,
-                                       self.conn.region.endpoint)
+        return '<EasyEC2: %s (%s)>' % (self.region.name, self.region.endpoint)
 
     def __check_for_auth_failure(self, e):
         if e.error_code in ["AuthFailure", "SignatureDoesNotMatch"]:
@@ -103,6 +102,13 @@ class EasyEC2(EasyAWS):
         self._kwargs['region'] = region
         self.reload()
         return self
+
+    @property
+    def region(self):
+        """
+        Returns the current EC2 region used by this EasyEC2 object
+        """
+        return self.conn.region
 
     @property
     def regions(self):

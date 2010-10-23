@@ -59,7 +59,8 @@ class CmdCreateVolume(CmdBase):
                         key_location = kl
         if not keypair:
             raise exception.ConfigError(
-                "no keypairs in region %s defined in cfg" % self.gopts.REGION)
+                "no keypairs in region %s defined in cfg" % \
+                self.ec2.region.name)
         if not key_location:
             raise exception.ConfigError(
                 "cannot determine key_location for keypair %s" % keypair)
