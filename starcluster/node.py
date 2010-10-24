@@ -155,9 +155,9 @@ class Node(object):
     @property
     def uptime(self):
         ltime = utils.iso_to_localtime_tuple(self.launch_time)
-        now = datetime.now()
+        now = datetime.now().replace(microsecond=0)
         delta = now - ltime
-        return time.strftime("%H:%M:%S", time.gmtime(delta.seconds))
+        return str(delta)
 
     @property
     def ami_launch_index(self):
