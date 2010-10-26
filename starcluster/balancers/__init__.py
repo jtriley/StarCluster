@@ -2,21 +2,11 @@
 
 
 class LoadBalancer(object):
+    """
+    Base class for all load balancers
+    """
     def __init__(self):
         pass
 
-    def run(self):
+    def run(self, cluster):
         pass
-
-if __name__ == "__main__":
-    from starcluster import config
-    from starcluster import cluster
-    from starcluster.balancers import sge
-    cfg = config.StarClusterConfig()
-    ec2 = cfg.get_easy_ec2()
-    cm = cluster.ClusterManager(cfg, ec2)
-    cl = cm.get_cluster('mycluster')
-    b = sge.SGELoadBalancer()
-    b.get_stats(cl)
-    #balancer = LoadBalancer(cl)
-    #balancer.run()

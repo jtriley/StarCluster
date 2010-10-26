@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from starcluster import exception
 from starcluster.balancers import sge
 
 from completers import ClusterCompleter
@@ -45,9 +46,11 @@ class CmdLoadBalance(ClusterCompleter):
                           help="Minimum number of nodes in cluster")
 
     def execute(self, args):
+        if not self.cfg.globals.enable_experimental:
+            raise exception.ExperimentalFeature("The loadbalance command")
         if len(args) != 1:
             self.parser.error("please specify a <cluster_tag>")
         cluster_tag = args[0]
-        lb = sge.SGELoadBalancer(cluster_tag, self.cfg,
-                                 **self.specified_options_dict)
-        lb.run()
+        cluster = self.cm.get_cluster(cluster_tag)
+        lb = sge.SGELoadBalancer(**self.specified_options_dict)
+        lb.run(cluster)
