@@ -17,7 +17,7 @@ class CmdRestart(ClusterCompleter):
     nodes to come back up, and then reconfigures the cluster without losing
     any data on the node's local disk
     """
-    names = ['restart']
+    names = ['restart', 'reboot']
 
     tag = None
 

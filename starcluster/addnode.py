@@ -13,10 +13,7 @@ def create_user(cluster, node):
                                                   cluster.cluster_user))
     uid = s.st_uid
     gid = s.st_gid
-    nconn = node.ssh
-    nconn.execute('groupadd -o -g %s %s' % (gid, cluster.cluster_user))
-    nconn.execute('useradd -o -u %s -g %s -m -s `which %s` %s' %
-                  (uid, gid, cluster.cluster_shell, cluster.cluster_user))
+    node.add_user(cluster.cluster_user, uid, gid, cluster.cluster_shell)
 
 
 def setup_passwordless_ssh(cluster, node):
@@ -120,7 +117,6 @@ def next_node_num(cluster):
 
 
 def add_nodes(cluster, num_nodes):
-    cluster.load_receipt()
     current_num_nodes = len([i for i in cluster.cluster_group.instances() \
                              if i.state in ['pending', 'running']])
     next_node_id = next_node_num(cluster)

@@ -25,7 +25,7 @@ class ClusterManager(managers.Manager):
     Manager class for Cluster objects
     """
     def __repr__(self):
-        return "<ClusterManager: %s>" % self.ec2.conn.region.name
+        return "<ClusterManager: %s>" % self.ec2.region.name
 
     def get_cluster(self, cluster_name, load_plugins=True):
         """
