@@ -12,24 +12,26 @@ from starcluster.utils import AttributeDict
 
 from starcluster.logger import log
 
+DEBUG_CONFIG = False
 
-def get_easy_s3():
+
+def get_easy_s3(config_file=None, cache=False):
     """
     Factory for EasyS3 class that attempts to load AWS credentials from
     the StarCluster config file. Returns an EasyS3 object if
     successful.
     """
-    cfg = StarClusterConfig().load()
+    cfg = get_config(config_file, cache)
     return cfg.get_easy_s3()
 
 
-def get_easy_ec2():
+def get_easy_ec2(config_file=None, cache=False):
     """
     Factory for EasyEC2 class that attempts to load AWS credentials from
     the StarCluster config file. Returns an EasyEC2 object if
     successful.
     """
-    cfg = StarClusterConfig().load()
+    cfg = get_config(config_file, cache)
     return cfg.get_easy_ec2()
 
 
@@ -237,9 +239,10 @@ class StarClusterConfig(object):
         section_conf = store
         for setting in settings:
             default = settings[setting][2]
-            if section_conf.get(setting, None) is None:
-                log.debug('%s setting not specified. Defaulting to %s' %
-                          (setting, default))
+            if section_conf.get(setting) is None:
+                if DEBUG_CONFIG:
+                    log.debug('%s setting not specified. Defaulting to %s' % \
+                              (setting, default))
                 section_conf[setting] = default
 
     def _load_extends_settings(self, section_name, store):
@@ -257,7 +260,8 @@ class StarClusterConfig(object):
         extends = section.get('extends')
         if extends is None:
             return
-        log.debug('%s extends %s' % (section_name, extends))
+        if DEBUG_CONFIG:
+            log.debug('%s extends %s' % (section_name, extends))
         extensions = [section]
         while True:
             extends = section.get('extends', None)
@@ -301,7 +305,6 @@ class StarClusterConfig(object):
         vols = AttributeDict()
         cluster_section['volumes'] = vols
         for volume in volumes:
-            #if not self.vols.has_key(volume):
             if not volume in self.vols:
                 raise exception.ConfigError(
                     "volume '%s' not defined in config" % volume)
@@ -316,7 +319,6 @@ class StarClusterConfig(object):
         plugs = []
         cluster_section['plugins'] = plugs
         for plugin in plugins:
-            #if self.plugins.has_key(plugin):
             if plugin in self.plugins:
                 p = self.plugins.get(plugin)
                 p['__name__'] = p['__name__'].split()[-1]
@@ -333,10 +335,8 @@ class StarClusterConfig(object):
         perms = AttributeDict()
         cluster_section['permissions'] = perms
         for perm in permissions:
-            #if self.permissions.has_key(perm):
             if perm in self.permissions:
                 p = self.permissions.get(perm)
-                #if p.has_key('protocol') and
                 p['__name__'] = p['__name__'].split()[-1]
                 perms[perm] = p
             else:
@@ -371,7 +371,6 @@ class StarClusterConfig(object):
             itype = type_spec[0]
             itype_image = None
             itype_num = 1
-            #if not static.INSTANCE_TYPES.has_key(itype):
             if not itype in static.INSTANCE_TYPES:
                 raise exception.ConfigError(
                     ("invalid type specified (%s) in node_instance_type " + \
@@ -516,10 +515,8 @@ class StarClusterConfig(object):
         """
         awscreds = {}
         for key in static.AWS_SETTINGS:
-            #if os.environ.has_key(key.upper()):
             if key.upper() in os.environ:
                 awscreds[key] = os.environ.get(key.upper())
-            #elif os.environ.has_key(key):
             elif key in os.environ:
                 awscreds[key] = os.environ.get(key)
         return awscreds

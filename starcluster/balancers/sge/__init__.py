@@ -5,8 +5,6 @@ import xml.dom.minidom
 
 from starcluster import utils
 from starcluster import exception
-from starcluster.addnode import add_nodes
-from starcluster.removenode import remove_node
 from starcluster.balancers import LoadBalancer
 from starcluster.logger import log
 
@@ -507,7 +505,7 @@ class SGELoadBalancer(LoadBalancer):
             need_to_add = min(self.add_nodes_per_iteration, need_to_add)
             log.info("*** ADDING %d NODES." % need_to_add)
             try:
-                add_nodes(self._cluster, need_to_add)
+                self._cluster.add_nodes(need_to_add)
             except Exception, e:
                 log.error("Failed to add new host.")
                 log.error("Exception Type: %s, Message: %s" % \
@@ -554,7 +552,7 @@ class SGELoadBalancer(LoadBalancer):
                         log.info("***KILLING NODE: %s (%s)." % \
                                  (n.id, n.dns_name))
                         try:
-                            remove_node(n, self._cluster)
+                            self._cluster.remove_node(n)
                         except Exception, e:
                             log.error("Failed to terminate the host.")
                             log.error("Exception Type: %s, Message: %s" % \

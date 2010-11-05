@@ -456,6 +456,7 @@ class EasyEC2(EasyAWS):
                 ami = instance.image_id or 'N/A'
                 instance_type = instance.instance_type or 'N/A'
                 keypair = instance.key_name or 'N/A'
+                uptime = utils.get_elapsed_time(instance.launch_time) or 'N/A'
                 print "id: %s" % id
                 print "dns_name: %s" % dns_name
                 print "private_dns_name: %s" % private_dns_name
@@ -467,6 +468,7 @@ class EasyEC2(EasyAWS):
                 print "type: %s" % instance_type
                 print "groups: %s" % groups
                 print "keypair: %s" % keypair
+                print "uptime: %s" % uptime
                 print
         if not instances:
             log.info("No instances found")

@@ -157,10 +157,7 @@ class Node(object):
 
     @property
     def uptime(self):
-        ltime = utils.iso_to_localtime_tuple(self.launch_time)
-        now = datetime.now()
-        delta = now - ltime
-        return time.strftime("%H:%M:%S", time.gmtime(delta.seconds))
+        return utils.get_elapsed_time(self.launch_time)
 
     @property
     def ami_launch_index(self):
@@ -333,25 +330,48 @@ class Node(object):
         auth_keys.close()
         return key
 
+    def _get_network_names_for_nodes(self, nodes):
+        hostnames = []
+        for name in self.network_names.values():
+            hostnames.append(name)
+        for node in nodes:
+            for name in node.network_names.values():
+                if name not in hostnames:
+                    hostnames.append(name)
+        return hostnames
+
     def add_to_known_hosts(self, username, nodes):
         """
         Use ssh-keyscan to populate user's known_hosts file with pub keys from
         hosts in nodes list (ssh-keyscan rocks!)
+
+        username - name of the user to add to known hosts for
+        nodes - the nodes to add to the user's known hosts file
+
+        NOTE: this node's network names will also be added to the known_hosts
+        file
         """
         user = self.getpwnam(username)
         known_hosts_file = posixpath.join(user.pw_dir, '.ssh', 'known_hosts')
-        hostnames = []
-        for name in self.network_names.values():
-            if name not in hostnames:
-                hostnames.append(name)
-        if self.ssh.isfile(known_hosts_file):
-            regex = '|'.join(hostnames)
-            self.ssh.remove_lines_from_file(known_hosts_file, regex)
+        self.remove_from_known_hosts(username, nodes)
+        hostnames = self._get_network_names_for_nodes(nodes)
         output = self.ssh.execute('ssh-keyscan %s' % ' '.join(hostnames))
         khosts = self.ssh.remote_file(known_hosts_file, 'a')
         khosts.write('\n'.join(output))
         khosts.chown(user.pw_uid, user.pw_gid)
         khosts.close()
+
+    def remove_from_known_hosts(self, username, nodes):
+        """
+        Remove all network names for nodes from username's known_hosts file
+        on this Node
+        """
+        user = self.getpwnam(username)
+        known_hosts_file = posixpath.join(user.pw_dir, '.ssh', 'known_hosts')
+        hostnames = self._get_network_names_for_nodes(nodes)
+        if self.ssh.isfile(known_hosts_file):
+            regex = '|'.join(hostnames)
+            self.ssh.remove_lines_from_file(known_hosts_file, regex)
 
     def enable_passwordless_ssh(self, username, nodes):
         """
@@ -381,6 +401,8 @@ class Node(object):
         """
         if not dest:
             dest = remote_file
+        if self.id == node.id and remote_file == dest:
+            raise IOError("src and destination are the same: %s" % remote_file)
         rf = self.ssh.remote_file(remote_file, 'r')
         contents = rf.read()
         sts = rf.stat()
@@ -422,6 +444,19 @@ class Node(object):
                 etc_exports.write(' '.join([path, node.private_dns_name + \
                                             nfs_export_settings + '\n']))
         etc_exports.close()
+        self.ssh.execute('exportfs -a')
+
+    def stop_exporting_fs_to_nodes(self, nodes):
+        """
+        Removes nodes from this node's /etc/exportfs
+
+        nodes - list of nodes to stop
+
+        Example:
+        $ node.remove_export_fs_to_nodes(nodes=[node1,node2])
+        """
+        regex = '|'.join(map(lambda x: x.private_dns_name, nodes))
+        self.ssh.remove_lines_from_file('/etc/exports', regex)
         self.ssh.execute('exportfs -a')
 
     def start_nfs_server(self):
@@ -478,12 +513,22 @@ class Node(object):
         self.ssh.execute('mount %s' % path)
 
     def add_to_etc_hosts(self, nodes):
-        aliases = map(lambda x: x.alias, nodes)
-        self.ssh.remove_lines_from_file('/etc/hosts', '|'.join(aliases))
+        """
+        Adds all names for node in nodes arg to this node's /etc/hosts file
+        """
+        self.remove_from_etc_hosts(nodes)
         host_file = self.ssh.remote_file('/etc/hosts', 'a')
         for node in nodes:
             print >> host_file, node.get_hosts_entry()
         host_file.close()
+
+    def remove_from_etc_hosts(self, nodes):
+        """
+        Remove all network names for node in nodes arg from this node's
+        /etc/hosts file
+        """
+        aliases = map(lambda x: x.alias, nodes)
+        self.ssh.remove_lines_from_file('/etc/hosts', '|'.join(aliases))
 
     def set_hostname(self, hostname=None):
         """
@@ -550,6 +595,12 @@ class Node(object):
     @property
     def spot_id(self):
         return self.instance.spot_instance_request_id
+
+    def get_spot_request(self):
+        spot = self.ec2.get_all_spot_requests(
+            filters={'spot-instance-request-id': self.spot_id})
+        if spot:
+            return spot[0]
 
     def is_master(self):
         return self.alias == "master"
@@ -626,15 +677,17 @@ class Node(object):
         s = socket.socket()
         s.settimeout(timeout)
         try:
+            log.debug('checking port 22 on host: %s' % self.dns_name)
             s.connect((self.dns_name, 22))
             s.close()
             return True
         except socket.timeout:
-            log.debug(
-                "connecting to port 22 on timed out after % seconds" % timeout)
+            log.debug(("connecting to port 22 on %s timed out after " + \
+                       "%s seconds") % (self.dns_name, timeout))
         except socket.error:
             log.debug("ssh not up for %s" % self.dns_name)
-            return False
+        s.close()
+        return False
 
     def is_up(self):
         if self.update() != 'running':
