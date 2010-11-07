@@ -617,19 +617,24 @@ class Cluster(object):
                    'instance-state-name': states}
         nodes = self.ec2.get_all_instances(filters=filters)
         existing_nodes = dict(map(lambda x: (x.id, x), self._nodes))
+        log.debug('existing nodes: %s' % existing_nodes)
         for node in nodes:
             if node.id in existing_nodes:
+                log.debug('updating existing node %s in self._nodes' % node.id)
                 enode = existing_nodes.get(node.id)
                 enode.key_location = self.key_location
                 enode.instance = node
             else:
+                log.debug('adding node %s to self._nodes list' % node.id)
                 n = Node(node, self.key_location)
                 if n.is_master():
                     self._master = n
                     self._nodes.insert(0, n)
                 else:
                     self._nodes.append(n)
+        self._nodes = filter(lambda n: n.state in states, self._nodes)
         self._nodes.sort(key=lambda n: n.alias)
+        log.debug('returning self._nodes = %s' % self._nodes)
         return self._nodes
 
     def get_node_by_dns_name(self, dns_name):
@@ -1089,8 +1094,8 @@ class Cluster(object):
                 spot.cancel()
         log.info("Removing %s security group" % self._security_group)
         self.cluster_group.delete()
-        if self.is_cluster_compute():
-            pg = self.placement_group
+        pg = self.ec2.get_placement_group_or_none(self._security_group)
+        if pg:
             log.info("Removing %s placement group" % pg.name)
             pg.delete()
 
@@ -1197,6 +1202,9 @@ class Cluster(object):
                 args.insert(0, node)
             log.info("Running plugin %s" % plugin_name)
             func(*args)
+        except NotImplementedError:
+            log.debug("method %s not implemented by plugin %s" % (method_name,
+                                                                  plugin_name))
         except Exception:
             log.error("Error occured while running plugin '%s':" % plugin_name)
             import traceback

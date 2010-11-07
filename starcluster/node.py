@@ -5,7 +5,6 @@ import time
 import stat
 import socket
 import posixpath
-from datetime import datetime
 
 from starcluster import ssh
 from starcluster import utils

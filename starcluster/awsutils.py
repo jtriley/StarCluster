@@ -227,7 +227,6 @@ class EasyEC2(EasyAWS):
             pg = self.conn.get_all_placement_groups(groupnames=[name])[0]
             return pg
         except boto.exception.EC2ResponseError, e:
-            print e
             self.__check_for_auth_failure(e)
         except IndexError:
             pass
