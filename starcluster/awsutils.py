@@ -233,7 +233,6 @@ class EasyEC2(EasyAWS):
             pg = self.conn.get_all_placement_groups(groupnames=[name])[0]
             return pg
         except boto.exception.EC2ResponseError, e:
-            print e
             self.__check_for_auth_failure(e)
         except IndexError:
             pass
@@ -462,6 +461,7 @@ class EasyEC2(EasyAWS):
                 ami = instance.image_id or 'N/A'
                 instance_type = instance.instance_type or 'N/A'
                 keypair = instance.key_name or 'N/A'
+                uptime = utils.get_elapsed_time(instance.launch_time) or 'N/A'
                 print "id: %s" % id
                 print "dns_name: %s" % dns_name
                 print "private_dns_name: %s" % private_dns_name
@@ -473,6 +473,7 @@ class EasyEC2(EasyAWS):
                 print "type: %s" % instance_type
                 print "groups: %s" % groups
                 print "keypair: %s" % keypair
+                print "uptime: %s" % uptime
                 print
         if not instances:
             log.info("No instances found")
@@ -886,7 +887,8 @@ class EasyEC2(EasyAWS):
         Raises exception.VolumeDoesNotExist if unsuccessful
         """
         try:
-            return self.conn.get_all_volumes(volume_ids=[volume_id])[0]
+            return self.conn.get_all_volumes(
+                filters={'volume-id': volume_id})[0]
         except boto.exception.EC2ResponseError, e:
             self.__check_for_auth_failure(e)
             raise exception.VolumeDoesNotExist(volume_id)
@@ -904,7 +906,7 @@ class EasyEC2(EasyAWS):
 
     def get_snapshot(self, snapshot_id):
         """
-        Returns EBS snapshot object representing volume_id.
+        Returns EBS snapshot object representing snapshot_id.
         Raises exception.SnapshotDoesNotExist if unsuccessful
         """
         try:

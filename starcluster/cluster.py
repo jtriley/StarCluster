@@ -25,7 +25,7 @@ class ClusterManager(managers.Manager):
     Manager class for Cluster objects
     """
     def __repr__(self):
-        return "<ClusterManager: %s>" % self.ec2.conn.region.name
+        return "<ClusterManager: %s>" % self.ec2.region.name
 
     def get_cluster(self, cluster_name, load_plugins=True):
         """
@@ -105,6 +105,21 @@ class ClusterManager(managers.Manager):
         if not cluster_name.startswith(static.SECURITY_GROUP_PREFIX):
             cluster_name = static.SECURITY_GROUP_TEMPLATE % cluster_name
         return cluster_name
+
+    def add_node(self, cluster_name, alias=None):
+        cl = self.get_cluster(cluster_name)
+        cl.add_node(alias)
+
+    def add_nodes(self, cluster_name, num_nodes, aliases=None):
+        cl = self.get_cluster(cluster_name)
+        cl.add_nodes(num_nodes, aliases=aliases)
+
+    def remove_node(self, cluster_name, alias):
+        cl = self.get_cluster(cluster_name)
+        n = cl.get_node_by_alias(alias)
+        if not n:
+            raise exception.InstanceDoesNotExist(alias, label='node')
+        cl.remove_node(n)
 
     def restart_cluster(self, cluster_name):
         """
@@ -292,7 +307,7 @@ class Cluster(object):
         self.__protocols = static.PROTOCOLS
         self._master_reservation = None
         self._node_reservation = None
-        self._nodes = None
+        self._nodes = []
         self._master = None
         self._zone = None
         self._plugins = plugins
@@ -597,24 +612,29 @@ class Cluster(object):
 
     @property
     def nodes(self):
-        if not self._nodes or len(self._nodes) != self.cluster_size:
-            states = ['pending', 'running', 'stopping', 'stopped']
-            filters = {'group-id': self._security_group,
-                       'instance-state-name': states}
-            nodes = self.ec2.get_all_instances(filters=filters)
-            self._nodes = []
-            for node in nodes:
+        states = ['pending', 'running', 'stopping', 'stopped']
+        filters = {'group-id': self._security_group,
+                   'instance-state-name': states}
+        nodes = self.ec2.get_all_instances(filters=filters)
+        existing_nodes = dict(map(lambda x: (x.id, x), self._nodes))
+        log.debug('existing nodes: %s' % existing_nodes)
+        for node in nodes:
+            if node.id in existing_nodes:
+                log.debug('updating existing node %s in self._nodes' % node.id)
+                enode = existing_nodes.get(node.id)
+                enode.key_location = self.key_location
+                enode.instance = node
+            else:
+                log.debug('adding node %s to self._nodes list' % node.id)
                 n = Node(node, self.key_location)
                 if n.is_master():
                     self._master = n
                     self._nodes.insert(0, n)
                 else:
                     self._nodes.append(n)
-            self._nodes.sort(key=lambda n: n.alias)
-        else:
-            for node in self._nodes:
-                log.debug('refreshing instance %s' % node.id)
-                node.update()
+        self._nodes = filter(lambda n: n.state in states, self._nodes)
+        self._nodes.sort(key=lambda n: n.alias)
+        log.debug('returning self._nodes = %s' % self._nodes)
         return self._nodes
 
     def get_node_by_dns_name(self, dns_name):
@@ -642,10 +662,6 @@ class Cluster(object):
     @property
     def stopped_nodes(self):
         return self._nodes_in_states(['stopping', 'stopped'])
-
-    @property
-    def terminated_nodes(self):
-        return self._nodes_in_states(['shutting-down', 'terminated'])
 
     @property
     def spot_requests(self):
@@ -699,6 +715,106 @@ class Cluster(object):
             user_data=alias,
             placement_group=placement_group)
 
+    def _get_next_node_num(self):
+        nodes = self._nodes_in_states(['pending', 'running'])
+        nodes = filter(lambda x: not x.is_master(), nodes)
+        highest = 0
+        for n in nodes:
+            try:
+                highest = max(highest, int(n.alias[4:8]))
+            except ValueError:
+                pass
+        next = highest + 1
+        log.debug("Highest node number is %d. choosing %d." % \
+                  (highest, next))
+        return next
+
+    def add_node(self, alias=None):
+        """
+        Add a single node to this cluster
+        """
+        aliases = None
+        if alias:
+            aliases = [alias]
+        self.add_nodes(1, aliases=aliases)
+
+    def add_nodes(self, num_nodes, aliases=None):
+        """
+        Add new nodes to this cluster
+
+        aliases - list of aliases to assign to new nodes (len must equal
+        num_nodes)
+        """
+        running_pending = self._nodes_in_states(['pending', 'running'])
+        current_num_nodes = len(running_pending)
+        aliases = aliases or []
+        if not aliases:
+            next_node_id = self._get_next_node_num()
+            for i in range(next_node_id, next_node_id + num_nodes):
+                alias = 'node%.3d' % i
+                aliases.append(alias)
+        assert len(aliases) == num_nodes
+        if "master" in aliases:
+            raise exception.ClusterValidationError(
+                "worker nodes cannot have master as an alias")
+        for node in running_pending:
+            if node.alias in aliases:
+                raise exception.ClusterValidationError(
+                    "node with alias %s already exists" % node.alias)
+        log.debug("Adding node(s): %s" % aliases)
+        if self.spot_bid:
+            for alias in aliases:
+                log.info("Launching node: %s" % alias)
+                print self.create_node(alias)[0]
+        else:
+            user_data = '|'.join(aliases)
+            log.info("Launching node(s): %s" % ', '.join(aliases))
+            print self.create_node(user_data,
+                                   image_id=self.node_image_id,
+                                   instance_type=self.node_instance_type,
+                                   count=len(aliases))
+        self.cluster_size = current_num_nodes + num_nodes
+        s = Spinner()
+        log.log(INFO_NO_NEWLINE, "Waiting for node(s) to come up...")
+        s.start()
+        while not self.is_cluster_up(enforce_size=True):
+            time.sleep(30)
+        s.stop()
+        default_plugin = clustersetup.DefaultClusterSetup()
+        for alias in aliases:
+            node = self.get_node_by_alias(alias)
+            default_plugin.on_add_node(
+                node, self.nodes, self.master_node,
+                self.cluster_user, self.cluster_shell,
+                self.volumes)
+            self.run_plugins(method_name="on_add_node", node=node)
+
+    def remove_node(self, node):
+        """
+        Remove a single node from this cluster
+        """
+        return self.remove_nodes([node])
+
+    def remove_nodes(self, nodes):
+        """
+        Remove a list of nodes from this cluster
+        """
+        default_plugin = clustersetup.DefaultClusterSetup()
+        for node in nodes:
+            if node.is_master():
+                raise exception.InvalidOperation("cannot remove master node")
+            self.run_plugins(method_name="on_remove_node",
+                             node=node, reverse=True)
+            default_plugin.on_remove_node(
+                node, self.nodes, self.master_node,
+                self.cluster_user, self.cluster_shell,
+                self.volumes)
+            if node.spot_id:
+                log.info("Cancelling spot request %s" % node.spot_id)
+                node.get_spot_request().cancel()
+            node.terminate()
+            self.cluster_size -= 1
+
     def _get_launch_map(self):
         """
         Groups all node-aliases that have similar instance types/image ids
@@ -723,7 +839,7 @@ class Cluster(object):
                 lmap[(type, image_id)] = []
             for id in range(id_start, id_start + count):
                 alias = 'node%.3d' % id
-                log.debug("Adding node: %s (ami: %s, type: %s)..." % \
+                log.debug("Launch map: %s (ami: %s, type: %s)..." % \
                         (alias, image_id, type))
                 lmap[(type, image_id)].append(alias)
                 id_start += 1
@@ -733,7 +849,7 @@ class Cluster(object):
             lmap[(ntype, nimage)] = []
         for id in range(id_start, self.cluster_size):
             alias = 'node%.3d' % id
-            log.debug("Adding node: %s (ami: %s, type: %s)..." % \
+            log.debug("Launch map: %s (ami: %s, type: %s)..." % \
                     (alias, nimage, ntype))
             lmap[(ntype, nimage)].append(alias)
         return lmap
@@ -825,6 +941,8 @@ class Cluster(object):
         Launches all EC2 instances based on this cluster's settings.
         """
         log.info("Launching a %d-node cluster..." % self.cluster_size)
+        mtype = self.master_instance_type or self.node_instance_type
+        self.master_instance_type = mtype
         if self.spot_bid:
             self._create_spot_cluster()
         else:
@@ -842,24 +960,32 @@ class Cluster(object):
     def is_cluster_compute(self):
         """
         Returns true if any instances are a cluster compute type
+
+        If no instances are currently running, this method checks the
+        original settings used to launch this cluster and returns true
+        if any of the instance type settings specified cluster compute
+        instance types
         """
         for node in self.nodes:
             if node.is_cluster_compute():
                 return True
-        else:
-            lmap = self._get_launch_map()
-            for (type, image) in lmap:
-                if type in static.CLUSTER_COMPUTE_TYPES:
-                    return True
+        lmap = self._get_launch_map()
+        for (type, image) in lmap:
+            if type in static.CLUSTER_COMPUTE_TYPES:
+                return True
         return False
 
-    def is_cluster_up(self):
+    def is_cluster_up(self, enforce_size=False):
         """
-        Check whether there are cluster_size nodes running and
-        that ssh (port 22) is up on all nodes
+        Check that all nodes are 'running' and that ssh (port 22)
+        is up on all nodes
+
+        enforce_size - check that there are self.cluster_size running nodes
         """
         nodes = self.running_nodes
-        if len(nodes) != self.cluster_size:
+        if not nodes:
+            return False
+        if enforce_size and len(nodes) != self.cluster_size:
             return False
         for node in nodes:
             if not node.is_up():
@@ -876,10 +1002,7 @@ class Cluster(object):
         """
         Check whether all nodes are in a 'terminated' state
         """
-        result = (len(self.terminated_nodes) == self.cluster_size)
-        if not result:
-            result = (len(self.nodes) == 0)
-        return result
+        return len(self.nodes) == 0
 
     def attach_volumes_to_master(self):
         """
@@ -917,21 +1040,19 @@ class Cluster(object):
 
     def restart_cluster(self):
         """
-        Reboot all instances
+        Reboot all instances and reconfigure the cluster
         """
         nodes = self.nodes
         if not nodes:
             raise exception.ClusterValidationError("No running nodes found")
         log.info("Rebooting cluster...")
+        self.run_plugins(method_name="on_restart", reverse=True)
         for node in nodes:
             node.reboot()
-        sleep = 30
+        sleep = 20
         log.info("Sleeping for %d secs..." % sleep)
         time.sleep(sleep)
-        log.info("Waiting for cluster to come back up...")
-        while not self.is_cluster_up():
-            time.sleep(10)
-        self.start(create=False, validate_running=True)
+        self._setup_cluster(enforce_size=False)
 
     def stop_cluster(self):
         """
@@ -942,6 +1063,7 @@ class Cluster(object):
         If a node is a spot instance, it will be terminated. Spot
         instances can not be 'stopped', they must be terminated.
         """
+        self.run_plugins(method_name="on_shutdown", reverse=True)
         if self.volumes:
             self.detach_volumes()
         for node in self.nodes:
@@ -961,6 +1083,7 @@ class Cluster(object):
         cluster's placement group (if any), and removing this cluster's
         security group.
         """
+        self.run_plugins(method_name="on_shutdown", reverse=True)
         if self.volumes:
             self.detach_volumes()
         for node in self.nodes:
@@ -971,8 +1094,8 @@ class Cluster(object):
                 spot.cancel()
         log.info("Removing %s security group" % self._security_group)
         self.cluster_group.delete()
-        if self.is_cluster_compute():
-            pg = self.placement_group
+        pg = self.ec2.get_placement_group_or_none(self._security_group)
+        if pg:
             log.info("Removing %s placement group" % pg.name)
             pg.delete()
 
@@ -999,8 +1122,6 @@ class Cluster(object):
         """
         log.info("Starting cluster...")
         if create:
-            mtype = self.master_instance_type or self.node_instance_type
-            self.master_instance_type = mtype
             self.create_cluster()
         else:
             for node in self.stopped_nodes:
@@ -1008,21 +1129,7 @@ class Cluster(object):
                 node.start()
         if create_only:
             return
-        s = Spinner()
-        log.log(INFO_NO_NEWLINE, "Waiting for cluster to start...")
-        s.start()
-        while not self.is_cluster_up():
-            time.sleep(30)
-        s.stop()
-        log.info("The master node is %s" % self.master_node.dns_name)
-        if self.volumes:
-            self.attach_volumes_to_master()
-        log.info("Setting up the cluster...")
-        clustersetup.DefaultClusterSetup().run(
-            self.nodes, self.master_node,
-            self.cluster_user, self.cluster_shell,
-            self.volumes)
-        self.run_plugins()
+        self._setup_cluster()
         log.info(user_msgs.cluster_started_msg % {
             'master': self.master_node.dns_name,
             'user': self.cluster_user,
@@ -1030,7 +1137,33 @@ class Cluster(object):
             'tag': self.cluster_tag,
         })
 
-    def run_plugins(self, plugins=None):
+    def _setup_cluster(self, enforce_size=True):
+        """
+        This method waits for all nodes to come up and then runs the default
+        StarCluster setup routines followed by any additional plugin setup
+        routines
+
+        enforce_size - wait until there are self.cluster_size up-and-running
+        nodes before attempting to setup the cluster
+        """
+        s = Spinner()
+        log.log(INFO_NO_NEWLINE, "Waiting for cluster to come up...")
+        s.start()
+        while not self.is_cluster_up(enforce_size):
+            time.sleep(30)
+        s.stop()
+        log.info("The master node is %s" % self.master_node.dns_name)
+        log.info("Setting up the cluster...")
+        if self.volumes:
+            self.attach_volumes_to_master()
+        clustersetup.DefaultClusterSetup().run(
+            self.nodes, self.master_node,
+            self.cluster_user, self.cluster_shell,
+            self.volumes)
+        self.run_plugins()
+
+    def run_plugins(self, plugins=None, method_name="run", node=None,
+                    reverse=False):
         """
         Run all plugins specified in this Cluster object's self.plugins list
         Uses plugins list instead of self.plugins if specified.
@@ -1039,21 +1172,39 @@ class Cluster(object):
         second element is the plugin object (a subclass of ClusterSetup)
         """
         plugs = plugins or self.plugins
+        if reverse:
+            plugs = plugs[:]
+            plugs.reverse()
         for plug in plugs:
             name, plugin = plug
-            self.run_plugin(plugin, name)
+            self.run_plugin(plugin, name, method_name=method_name, node=node)
 
-    def run_plugin(self, plugin, name=''):
+    def run_plugin(self, plugin, name='', method_name='run', node=None):
         """
         Run a StarCluster plugin.
-        plugin is an instance of the plugin's class
-        name is the user-friendly label for the plugin
+
+        plugin - an instance of the plugin's class
+        name - a user-friendly label for the plugin
+        method_name - the method to run within the plugin (default: "run")
+        node - optional node to pass as first argument to plugin method (used
+        for on_add_node/on_remove_node)
         """
         plugin_name = name or str(plugin)
         try:
+            func = getattr(plugin, method_name, None)
+            if not func:
+                log.warn("Plugin %s has no %s method...skipping" % \
+                         (plugin_name, method_name))
+                return
+            args = [self.nodes, self.master_node, self.cluster_user,
+                    self.cluster_shell, self.volumes]
+            if node:
+                args.insert(0, node)
             log.info("Running plugin %s" % plugin_name)
-            plugin.run(self.nodes, self.master_node, self.cluster_user,
-                       self.cluster_shell, self.volumes)
+            func(*args)
+        except NotImplementedError:
+            log.debug("method %s not implemented by plugin %s" % (method_name,
+                                                                  plugin_name))
         except Exception:
             log.error("Error occured while running plugin '%s':" % plugin_name)
             import traceback

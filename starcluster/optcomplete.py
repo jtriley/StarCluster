@@ -100,7 +100,7 @@ from optparse import OptionParser
 debugfn = '/tmp/completion-debug.log'  # for debugging only
 
 
-class AllCompleter:
+class AllCompleter(object):
 
     """Completes by listing all possible files in current directory."""
 
@@ -108,7 +108,7 @@ class AllCompleter:
         return os.listdir(pwd)
 
 
-class NoneCompleter:
+class NoneCompleter(object):
 
     """Generates empty completion list."""
 
@@ -116,7 +116,7 @@ class NoneCompleter:
         return []
 
 
-class DirCompleter:
+class DirCompleter(object):
 
     """Completes by listing subdirectories only."""
 
@@ -124,7 +124,7 @@ class DirCompleter:
         return filter(os.path.isdir, os.listdir(pwd))
 
 
-class RegexCompleter:
+class RegexCompleter(object):
 
     """Completes by filtering all possible files with the given list of
     regexps."""
@@ -158,7 +158,7 @@ class RegexCompleter:
         return ofiles
 
 
-class ListCompleter:
+class ListCompleter(object):
 
     """Completes by filtering using a fixed list of strings."""
 
@@ -429,7 +429,7 @@ def guess_first_nonoption(gparser, subcmds_map):
     return value  # can be None, indicates no command chosen.
 
 
-class CmdComplete:
+class CmdComplete(object):
 
     """Simple default base class implementation for a subcommand that supports
     command completion.  This class is assuming that there might be a method

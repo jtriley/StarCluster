@@ -16,9 +16,11 @@ if (maj, min) == (2, 4):
 
 src = os.path.realpath(os.path.dirname(__file__))
 
+from starcluster import __version__
+
 setup(
     name='StarCluster',
-    version='0.9999',
+    version=__version__,
     package_dir={'starcluster': 'starcluster'},
     packages=find_packages(src),
     scripts=['bin/starcluster'],

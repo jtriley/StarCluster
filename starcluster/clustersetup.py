@@ -3,10 +3,7 @@
 """
 clustersetup.py
 """
-
-import os
-import shutil
-import tempfile
+import re
 import posixpath
 
 from starcluster.templates import sge
@@ -16,12 +13,45 @@ from starcluster.logger import log
 class ClusterSetup(object):
     """
     ClusterSetup Interface
+
+    This is the base class for all StarCluster plugins. A plugin should
+    implement at least one if not all of these methods.
     """
     def __init__(self, *args, **kwargs):
         pass
 
+    def on_add_node(self, node, nodes, master, user, user_shell, volumes):
+        """
+        This methods gets executed after a node has been added to the cluster
+        """
+        raise NotImplementedError('on_add_node method not implemented')
+
+    def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
+        """
+        This method gets executed before a node is about to be removed from the
+        cluster
+        """
+        raise NotImplementedError('on_remove_node method not implemented')
+
+    def on_restart(self, nodes, master, user, user_shell, volumes):
+        """
+        This method gets executed before restart the cluster
+        """
+        raise NotImplementedError('on_restart method not implemented')
+
+    def on_shutdown(self, nodes, master, user, user_shell, volumes):
+        """
+        This method gets executed before shutting down the cluster
+        """
+        raise NotImplementedError('on_shutdown method not implemented')
+
     def run(self, nodes, master, user, user_shell, volumes):
-        """ Start cluster setup routines """
+        """
+        Run this plugin's setup routines
+
+        This method gets executed after the default cluster setup routines have
+        been performed
+        """
         raise NotImplementedError('run method not implemented')
 
 
@@ -36,13 +66,22 @@ class DefaultClusterSetup(ClusterSetup):
         self._user_shell = None
         self._volumes = None
 
-    def _setup_hostnames(self):
+    @property
+    def nodes(self):
+        return filter(lambda x: not x.is_master(), self._nodes)
+
+    @property
+    def running_nodes(self):
+        return filter(lambda x: x.state in ['running'], self._nodes)
+
+    def _setup_hostnames(self, nodes=None):
         """
         Set each node's hostname to their alias.
         """
+        nodes = nodes or self._nodes
         log.info("Configuring hostnames...")
-        for node in self._nodes:
-            node.set_hostname_to_alias()
+        for node in nodes:
+            node.set_hostname()
 
     def _setup_cluster_user(self):
         """
@@ -59,7 +98,7 @@ class DefaultClusterSetup(ClusterSetup):
         home_folder = '/home/%s' % self._user
         first_uid = 1000
         uid, gid = first_uid, first_uid
-        umap = mconn.get_user_map(key_by_uid=True)
+        umap = self._master.get_user_map(key_by_uid=True)
         if mconn.path_exists(home_folder):
             # get /home/user's owner/group uid and create
             # user with that uid/gid
@@ -82,30 +121,38 @@ class DefaultClusterSetup(ClusterSetup):
                 # make sure the newly selected uid/gid is >= 1000
                 uid = max(uid, first_uid)
                 gid = max(gid, first_uid)
-            # search /etc/fstab and make sure newly selected uid
-            # is not already an account in /etc/passwd
+            # make sure newly selected uid is not already in /etc/passwd
             while umap.get(uid):
                 uid += 1
                 gid += 1
         log.info("Creating cluster user: %s (uid: %d, gid: %d)" % (self._user,
                                                                    uid, gid))
-        existing_user = umap.get(uid)
-        for node in self._nodes:
-            nconn = node.ssh
-            if existing_user:
-                name = existing_user.pw_name
-                nconn.execute('userdel %s' % name, ignore_exit_status=True)
-                nconn.execute('groupdel %s' % name, ignore_exit_status=True)
-            nconn.execute('userdel %s' % self._user, ignore_exit_status=True)
-            nconn.execute('groupdel %s' % self._user, ignore_exit_status=True)
-            nconn.execute('groupadd -o -g %s %s' % (gid, self._user))
-            nconn.execute('useradd -o -u %s -g %s -m -s `which %s` %s' %
-                          (uid, gid, self._user_shell, self._user))
+        self._add_user_to_nodes(uid, gid, self._nodes)
 
-    def _setup_scratch(self):
+    def _add_user_to_nodes(self, uid, gid, nodes=None):
+        nodes = nodes or self._nodes
+        for node in nodes:
+            existing_user = node.getpwuid(uid)
+            if existing_user:
+                username = existing_user.pw_name
+                if username != self._user:
+                    msg = ("user %s exists on %s with same uid/gid as "
+                           "cluster user %s...removing user %s")
+                    log.debug(
+                        msg % (username, node.alias, self._user, username))
+                    node.remove_user(username)
+                    node.add_user(self._user, uid, gid, self._user_shell)
+                log.debug("user %s exists on node %s, no action" % \
+                          (self._user, node.alias))
+            else:
+                log.debug("user %s does not exist, creating..." % self._user)
+                node.add_user(self._user, uid, gid, self._user_shell)
+
+    def _setup_scratch(self, nodes=None):
         """ Configure scratch space on all StarCluster nodes """
         log.info("Configuring scratch space for user: %s" % self._user)
-        for node in self._nodes:
+        nodes = nodes or self._nodes
+        for node in nodes:
             nconn = node.ssh
             user_scratch = '/mnt/%s' % self._user
             if not nconn.path_exists(user_scratch):
@@ -118,107 +165,30 @@ class DefaultClusterSetup(ClusterSetup):
             if not nconn.path_exists(posixpath.join(scratch, self._user)):
                 nconn.execute('ln -s %s %s' % (user_scratch, scratch))
 
-    def _setup_etc_hosts(self):
+    def _setup_etc_hosts(self, nodes=None):
         """ Configure /etc/hosts on all StarCluster nodes"""
         log.info("Configuring /etc/hosts on each node")
-        for node in self._nodes:
-            conn = node.ssh
-            host_file = conn.remote_file('/etc/hosts')
-            print >> host_file, "# Do not remove the following line or " + \
-                    "programs that require network functionality will fail"
-            print >> host_file, "127.0.0.1 localhost.localdomain localhost"
-            for node in self._nodes:
-                print >> host_file, node.get_hosts_entry()
-            host_file.close()
+        nodes = nodes or self._nodes
+        for node in nodes:
+            node.add_to_etc_hosts(nodes)
 
-    def _setup_passwordless_ssh(self):
+    def _setup_passwordless_ssh(self, nodes=None):
         """
         Properly configure passwordless ssh for CLUSTER_USER on all
         StarCluster nodes
         """
         log.info("Configuring passwordless ssh for root")
-        mconn = self._master.ssh
-        # create local ssh key for root and copy to local tempdir
-        # remove any old keys first
-        mconn.execute('rm /root/.ssh/id_rsa*', ignore_exit_status=True)
-        mconn.execute('ssh-keygen -q -t rsa -f /root/.ssh/id_rsa -P ""')
-        tempdir = tempfile.mkdtemp(prefix="starcluster-")
-        temprsa = os.path.join(tempdir, 'id_rsa')
-        temprsa_pub = os.path.join(tempdir, 'id_rsa.pub')
-        tempknown_hosts = os.path.join(tempdir, 'known_hosts')
-        mconn.get('/root/.ssh/id_rsa', temprsa)
-        mconn.get('/root/.ssh/id_rsa.pub', temprsa_pub)
-
-        # copy newly generated id_rsa for root to each node
-        for node in self._nodes:
-            conn = node.ssh
-            conn.put(temprsa, '/root/.ssh/id_rsa')
-            conn.put(temprsa_pub, '/root/.ssh/id_rsa.pub')
-            conn.execute('chmod 400 /root/.ssh/id_rsa*')
-            conn.execute(
-                'cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys')
-
-        # Now that root's passwordless ssh is setup:
-        # 1. Make initial connections to all nodes to skip host key checking
-        #    on first use.
-        # 2. This populates /root/.ssh/known_hosts which is copied to
-        #    CLUSTER_USER's ~/.ssh directory below
-        for node in self._nodes:
-            for name in node.network_names.values():
-                mconn.execute(
-                    'ssh -o "StrictHostKeyChecking=no" %s hostname' % name)
-
-        # Fetch the newly generated known_hosts file and distribute it to rest
-        # of nodes in /root/.ssh
-        mconn.get('/root/.ssh/known_hosts', tempknown_hosts)
-        for node in self._nodes:
-            conn = node.ssh.put(tempknown_hosts, '/root/.ssh/known_hosts')
-
-        # no longer need the temp directory after copying over newly
-        # generated keys and known_hosts. leave for now to debug
-        shutil.rmtree(tempdir)
-
-        log.info("Configuring passwordless ssh for user: %s" % self._user)
-        # only needed on master, nfs takes care of the rest
-        mconn.execute('mkdir -p /home/%s/.ssh' % self._user)
-        priv_key = "/home/%s/.ssh/id_rsa" % self._user
-        pub_key = priv_key + '.pub'
-        # check to see if both key files exist (ie private and public keys)
-        pkfiles_list = [priv_key, pub_key]
-        pkfiles_exist = [mconn.path_exists(file) for file in pkfiles_list]
-        has_all_pkfiles = (pkfiles_exist.count(True) == len(pkfiles_list))
-        pkfiles = zip(pkfiles_list, pkfiles_exist)
-
-        if not has_all_pkfiles:
-            # this handles the case of only id_rsa or id_rsa.pub existing
-            # (ie not both for whatever reason)
-            # in this case we want to remove whichever exists by itself
-            # and generate new local rsa keys
-            for file, exists in pkfiles:
-                log.debug(('Checking for orphaned private key file: %s | ' + \
-                          'exists = %s') % (file, exists))
-                if exists:
-                    log.debug('Removing orphaned private key file: %s' % file)
-                    mconn.execute('rm %s' % file)
-            log.info("Generating local RSA ssh keys for user: %s" % self._user)
-            mconn.execute(
-                'ssh-keygen -q -t rsa -f /home/%s/.ssh/id_rsa -P ""' % \
-                self._user)
-        else:
-            # existing rsa key with matching pub key exists
-            # no need to regenerate
-            log.info("Using existing RSA ssh keys found for user: %s" %
-                     self._user)
-
-        mconn.execute('cp /root/.ssh/authorized_keys /home/%s/.ssh/' %
-                      self._user)
-        mconn.execute('cp /root/.ssh/known_hosts /home/%s/.ssh/' % self._user)
-        mconn.execute('chown -R %(user)s:%(user)s /home/%(user)s/.ssh' %
-                      {'user': self._user})
-        mconn.execute('chmod 400 /home/%s/.ssh/id_rsa*' % self._user)
-        mconn.execute(('cat /home/%(user)s/.ssh/id_rsa.pub >> '
-                       '/home/%(user)s/.ssh/authorized_keys') %
-                      {'user': self._user})
+        master = self._master
+        nodes = nodes or self.nodes
+        master.generate_key_for_user('root', auth_new_key=True,
+                                     auth_conn_key=True)
+        master.enable_passwordless_ssh('root', nodes)
+        # generate public/private keys, authorized_keys, and known_hosts files
+        # for cluster_user once on master node...NFS takes care of the rest
+        log.info("Configuring passwordless ssh for %s" % self._user)
+        master.generate_key_for_user(self._user, auth_new_key=True,
+                                     auth_conn_key=True)
+        master.add_to_known_hosts(self._user, nodes)
 
     def _setup_ebs_volumes(self):
         """
@@ -244,7 +214,7 @@ class DefaultClusterSetup(ClusterSetup):
                              "attaching the EBS volume to the master node")
                     continue
                 if not mconn.path_exists(volume_partition):
-                    log.warn("Cannot find partition %s on volume %s" %
+                    log.warn("Cannot find partition %s on volume %s" % \
                              (volume_partition, vol_id))
                     log.warn("Not mounting %s on %s" % (vol_id,
                                                         mount_path))
@@ -252,75 +222,66 @@ class DefaultClusterSetup(ClusterSetup):
                              "been partitioned or that the partition" + \
                              "specified does not exist on the volume")
                     continue
-                mconn.remove_lines_from_file('/etc/fstab', mount_path)
-                master_fstab = mconn.remote_file('/etc/fstab', mode='a')
-                print >> master_fstab, "%s %s auto noauto,defaults 0 0 " % \
-                (volume_partition, mount_path)
-                master_fstab.close()
-                if not mconn.path_exists(mount_path):
-                    mconn.makedirs(mount_path)
-                mconn.execute('mount %s' % mount_path)
+                mount_map = self._master.get_mount_map()
+                dev = mount_map.get(volume_partition)
+                if dev:
+                    path, fstype, options = dev
+                    if path != mount_path:
+                        log.error("volume %s is mounted on %s, not on %s" % \
+                                  (vol_id, path, mount_path))
+                    else:
+                        log.info(
+                            "volume %s already mounted on %s...skipping" % \
+                            (vol_id, mount_path))
+                    continue
+                self._master.mount_device(volume_partition, mount_path)
 
-    def _setup_nfs(self):
-        """ Share /home and /opt/sge6 via nfs to all nodes"""
-        log.info("Configuring NFS...")
+    def _get_nfs_export_paths(self):
+        export_paths = ['/home', '/opt/sge6']
+        for vol in self._volumes:
+            vol = self._volumes[vol]
+            mount_path = vol.get('mount_path')
+            if not mount_path in export_paths:
+                export_paths.append(mount_path)
+        return export_paths
 
+    def _mount_nfs_shares(self, nodes):
+        # setup /etc/fstab and mount each nfs share on each node
         master = self._master
-        mconn = master.ssh
+        export_paths = self._get_nfs_export_paths()
+        for node in nodes:
+            mount_map = node.get_mount_map()
+            mount_paths = []
+            for path in export_paths:
+                network_device = "%s:%s" % (master.private_dns_name, path)
+                if network_device in mount_map:
+                    mount_path, type, options = mount_map.get(network_device)
+                    log.debug(('nfs share %s already mounted to %s on ' + \
+                               'node %s, skipping...') % \
+                              (network_device, mount_path, node.alias))
+                else:
+                    mount_paths.append(path)
+            node.mount_nfs_shares(master, mount_paths)
 
-        # copy fresh sge installation files to /opt/sge6 and
-        # make CLUSTER_USER the owner
-        mconn.execute('rm -rf /opt/sge6')
-        mconn.execute('cp -r /opt/sge6-fresh /opt/sge6')
-        mconn.execute('chown -R %(user)s:%(user)s /opt/sge6' % \
-                      {'user': self._user})
-
+    def _setup_nfs(self, nodes=None, start_server=True):
+        """
+        Share /home, /opt/sge6, and all EBS mount paths via NFS to all nodes
+        """
+        nodes = nodes or self._nodes
+        log.info("Configuring NFS...")
+        master = self._master
+        if not master.ssh.isdir('/opt/sge6'):
+            # copy fresh sge installation files to /opt/sge6
+            master.ssh.execute('cp -r /opt/sge6-fresh /opt/sge6')
+            master.ssh.execute('chown -R %(user)s:%(user)s /opt/sge6' % \
+                               {'user': self._user})
         # setup /etc/exports and start nfsd on master node
-        nfs_export_settings = "(async,no_root_squash,no_subtree_check,rw)"
-        etc_exports = mconn.remote_file('/etc/exports')
-        for node in self._nodes:
-            if not node.is_master():
-                etc_exports.write('/home ' + node.private_dns_name + \
-                                  nfs_export_settings + '\n')
-                etc_exports.write('/opt/sge6 ' + node.private_dns_name + \
-                                  nfs_export_settings + '\n')
-                for vol in self._volumes:
-                    vol = self._volumes[vol]
-                    mount_path = vol.get('mount_path')
-                    if not mount_path in ['/home', '/opt/sge6']:
-                        etc_exports.write(mount_path + ' ' + \
-                                          node.private_dns_name + \
-                                          nfs_export_settings + '\n')
-        etc_exports.close()
-        mconn.execute('/etc/init.d/portmap start')
-        mconn.execute('mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs/',
-                      ignore_exit_status=True)
-        mconn.execute('/etc/init.d/nfs start')
-        mconn.execute('/usr/sbin/exportfs -r')
-        # fix for xterm/mpi printing to stdout
-        mconn.execute('mount -t devpts none /dev/pts', ignore_exit_status=True)
-
-        # setup /etc/fstab and mount /home and /opt/sge6 on each node
-        mount_paths = ['/home', '/opt/sge6']
-        mount_paths.extend([self._volumes[vol].get('mount_path') for vol in \
-                            self._volumes])
-        for node in self._nodes:
-            if node.is_master():
-                continue
-            nconn = node.ssh
-            nconn.execute('/etc/init.d/portmap start')
-            ## fix for xterm
-            nconn.execute('mount -t devpts none /dev/pts',
-                          ignore_exit_status=True)
-            nconn.remove_lines_from_file('/etc/fstab', '|'.join(mount_paths))
-            nfstab = nconn.remote_file('/etc/fstab', 'a')
-            for path in mount_paths:
-                nfstab.write('%s:%s %s nfs user,rw,exec,noauto 0 0\n' %
-                             (master.private_dns_name, path, path))
-                if not nconn.path_exists(path):
-                    nconn.makedirs(path)
-                nconn.execute('mount %s' % path)
-            nfstab.close()
+        nodes = self.nodes
+        export_paths = self._get_nfs_export_paths()
+        if start_server:
+            master.start_nfs_server()
+        master.export_fs_to_nodes(nodes, export_paths)
+        self._mount_nfs_shares(nodes)
 
     def _setup_sge(self):
         """
@@ -328,58 +289,51 @@ class DefaultClusterSetup(ClusterSetup):
         environment on StarCluster
         """
         log.info("Installing Sun Grid Engine...")
-
         # generate /etc/profile.d/sge.sh for each node
         for node in self._nodes:
             conn = node.ssh
+            conn.execute('pkill -9 sge', ignore_exit_status=True)
             conn.execute('rm /etc/init.d/sge*', ignore_exit_status=True)
             sge_profile = conn.remote_file("/etc/profile.d/sge.sh")
             arch = conn.execute("/opt/sge6/util/arch")[0]
-
             print >> sge_profile, sge.sgeprofile_template % {'arch': arch}
             sge_profile.close()
-
         # setup sge auto install file
         master = self._master
+        default_cell = '/opt/sge6/default'
+        if master.ssh.isdir(default_cell):
+            log.info("Removing previous SGE installation...")
+            master.ssh.execute('rm -rf %s' % default_cell)
         mconn = master.ssh
-
         admin_list = ''
         for node in self._nodes:
             admin_list = admin_list + " " + node.private_dns_name
-
         exec_list = admin_list
         submit_list = admin_list
         ec2_sge_conf = mconn.remote_file("/opt/sge6/ec2_sge.conf")
-
-        # todo: add sge section to config values for some of the below
+        # TODO: add sge section to config values for some of the below
         print >> ec2_sge_conf, sge.sgeinstall_template % \
                 (admin_list, exec_list, submit_list)
         ec2_sge_conf.close()
-
         # installs sge in /opt/sge6 and starts qmaster/schedd on master node
         mconn.execute('cd /opt/sge6 && TERM=rxvt ./inst_sge -m -x -auto ' + \
                       './ec2_sge.conf', silent=True, only_printable=True)
-
         # set all.q shell to bash
         mconn.execute('source /etc/profile && ' + \
                       'qconf -mattr queue shell "/bin/bash" all.q')
-
         # create sge parallel environment
         # first iterate through each machine and count the number of processors
         num_processors = 0
         for node in self._nodes:
             num_processors += node.num_processors
-
         parallel_environment = mconn.remote_file("/tmp/pe.txt")
         print >> parallel_environment, sge.sge_pe_template % num_processors
         parallel_environment.close()
         mconn.execute("source /etc/profile && qconf -Ap %s" % \
                       parallel_environment.name)
-
         mconn.execute(
             'source /etc/profile && qconf -mattr queue pe_list "orte" all.q')
-
-        #todo cleanup /tmp/pe.txt
+        # TODO: cleanup /tmp/pe.txt
         log.info("Done Configuring Sun Grid Engine")
 
     def run(self, nodes, master, user, user_shell, volumes):
@@ -397,3 +351,114 @@ class DefaultClusterSetup(ClusterSetup):
         self._setup_nfs()
         self._setup_passwordless_ssh()
         self._setup_sge()
+
+    def _remove_from_etc_hosts(self, node):
+        nodes = filter(lambda x: x.id != node.id, self.running_nodes)
+        for n in nodes:
+            n.remove_from_etc_hosts([node])
+
+    def _remove_nfs_exports(self, node):
+        self._master.stop_exporting_fs_to_nodes([node])
+
+    def _remove_from_known_hosts(self, node):
+        nodes = filter(lambda x: x.id != node.id, self.running_nodes)
+        for n in nodes:
+            n.remove_from_known_hosts('root', [node])
+            n.remove_from_known_hosts(self._user, [node])
+
+    def _remove_from_sge(self, node):
+        master = self._master
+        master.ssh.execute(
+            'source /etc/profile && qconf -shgrp @allhosts > /tmp/allhosts')
+        hgrp_file = master.ssh.remote_file('/tmp/allhosts', 'r')
+        contents = hgrp_file.read().splitlines()
+        hgrp_file.close()
+        c = []
+        for line in contents:
+            line = line.replace(node.private_dns_name, '')
+            c.append(line)
+        hgrp_file = master.ssh.remote_file('/tmp/allhosts_new', 'w')
+        hgrp_file.writelines('\n'.join(c))
+        hgrp_file.close()
+        master.ssh.execute(
+            'source /etc/profile && qconf -Mhgrp /tmp/allhosts_new')
+        master.ssh.execute(
+            'source /etc/profile && qconf -sq all.q > /tmp/allq')
+        allq_file = master.ssh.remote_file('/tmp/allq', 'r')
+        contents = allq_file.read()
+        allq_file.close()
+        c = [l.strip() for l in contents.splitlines()]
+        s = []
+        allq = []
+        for l in c:
+            if l.startswith('slots') or l.startswith('['):
+                s.append(l)
+            else:
+                allq.append(l)
+        regex = re.compile(r"\[%s=\d+\],?" % node.private_dns_name)
+        slots = []
+        for line in s:
+            line = line.replace('\\', '')
+            slots.append(regex.sub('', line))
+        allq.append(''.join(slots))
+        f = master.ssh.remote_file('/tmp/allq_new', 'w')
+        allq[-1] = allq[-1].strip()
+        if allq[-1].endswith(','):
+            allq[-1] = allq[-1][:-1]
+        f.write('\n'.join(allq))
+        f.close()
+        master.ssh.execute('source /etc/profile && qconf -Mq /tmp/allq_new')
+        master.ssh.execute(
+            'source /etc/profile && qconf -de %s' % node.private_dns_name)
+        master.ssh.execute(
+            'source /etc/profile && qconf -dconf %s' % node.private_dns_name)
+
+    def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
+        self._nodes = nodes
+        self._master = master
+        self._user = user
+        self._user_shell = user_shell
+        self._volumes = volumes
+        log.info("Removing node %s (%s)..." % (node.alias, node.id))
+        log.info("Removing %s from SGE" % node.alias)
+        self._remove_from_sge(node)
+        log.info("Removing %s from known_hosts files" % node.alias)
+        self._remove_from_known_hosts(node)
+        log.info("Removing %s from /etc/hosts" % node.alias)
+        self._remove_from_etc_hosts(node)
+        log.info("Removing %s from NFS" % node.alias)
+        self._remove_nfs_exports(node)
+
+    def _create_user(self, node):
+        user = self._master.getpwnam(self._user)
+        uid, gid = user.pw_uid, user.pw_gid
+        self._add_user_to_nodes(uid, gid, nodes=[node])
+
+    def _add_to_sge(self, node):
+        # generate /etc/profile.d/sge.sh
+        log.info("Adding %s to SGE" % node.alias)
+        master = self._master
+        sge_profile = node.ssh.remote_file("/etc/profile.d/sge.sh")
+        arch = node.ssh.execute("/opt/sge6/util/arch")[0]
+        print >> sge_profile, sge.sgeprofile_template % {'arch': arch}
+        sge_profile.close()
+        master.ssh.execute('source /etc/profile && qconf -ah %s' % \
+                           node.private_dns_name)
+        master.ssh.execute('source /etc/profile && qconf -as %s' % \
+                           node.private_dns_name)
+        node.ssh.execute(('cd /opt/sge6 && TERM=rxvt ./inst_sge ' + \
+                          '-x -noremote -auto ./ec2_sge.conf'))
+
+    def on_add_node(self, node, nodes, master, user, user_shell, volumes):
+        self._nodes = nodes
+        self._master = master
+        self._user = user
+        self._user_shell = user_shell
+        self._volumes = volumes
+        self._setup_hostnames(nodes=[node])
+        self._setup_etc_hosts(nodes)
+        self._setup_nfs(nodes=[node], start_server=False)
+        self._create_user(node)
+        self._setup_scratch(nodes=[node])
+        self._setup_passwordless_ssh(nodes=[node])
+        self._add_to_sge(node)

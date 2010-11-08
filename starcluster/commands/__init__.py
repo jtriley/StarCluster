@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 from start import CmdStart
+from addnode import CmdAddNode
+from removenode import CmdRemoveNode
 from stop import CmdStop
 from terminate import CmdTerminate
 from restart import CmdRestart
@@ -26,6 +28,7 @@ from listvolumes import CmdListVolumes
 from listpublic import CmdListPublic
 from runplugin import CmdRunPlugin
 from spothistory import CmdSpotHistory
+from loadbalance import CmdLoadBalance
 from shell import CmdShell
 from createkey import CmdCreateKey
 from removekey import CmdRemoveKey
@@ -39,6 +42,9 @@ all_cmds = [
     CmdListClusters(),
     CmdSshMaster(),
     CmdSshNode(),
+    CmdAddNode(),
+    CmdRemoveNode(),
+    CmdLoadBalance(),
     CmdSshInstance(),
     CmdListInstances(),
     CmdListImages(),

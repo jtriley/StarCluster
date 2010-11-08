@@ -8,7 +8,6 @@ modified by justin riley (justin.t.riley@gmail.com)
 
 import os
 import re
-import pwd
 import stat
 import string
 import tempfile
@@ -49,6 +48,7 @@ class SSHClient(object):
         self._timeout = timeout
         self._sftp_live = False
         self._sftp = None
+        self._pkey = None
         if not username:
             username = os.environ['LOGNAME']
 
@@ -81,11 +81,12 @@ class SSHClient(object):
             elif private_key.endswith('dsa') or private_key.count('dsa'):
                 pkey = self._load_dsa_key(private_key, private_key_pass)
             else:
-                log.warn("specified key does not end in either rsa or dsa" + \
+                log.debug("specified key does not end in either rsa or dsa" + \
                          ", trying both")
                 pkey = self._load_rsa_key(private_key, private_key_pass)
                 if pkey is None:
                     pkey = self._load_dsa_key(private_key, private_key_pass)
+            self._pkey = pkey
             try:
                 self._transport.connect(username=username, pkey=pkey)
             except paramiko.AuthenticationException:
@@ -116,7 +117,7 @@ class SSHClient(object):
         try:
             rsa_key = paramiko.RSAKey.from_private_key_file(private_key_file,
                                                             private_key_pass)
-            log.info("Using private key %s (rsa)" % private_key)
+            log.debug("Using private key %s (rsa)" % private_key)
             return rsa_key
         except paramiko.SSHException:
             log.error('invalid rsa key or password specified')
@@ -137,9 +138,25 @@ class SSHClient(object):
             self._sftp = paramiko.SFTPClient.from_transport(self._transport)
             self._sftp_live = True
 
+    def generate_rsa_key(self):
+        return paramiko.RSAKey.generate(2048)
+
+    def get_public_key(self, key):
+        return ' '.join([key.get_name(), key.get_base64()])
+
+    def load_remote_rsa_key(self, remote_filename):
+        """
+        Returns paramiko.RSAKey object for an RSA key located on the remote
+        machine
+        """
+        rfile = self.remote_file(remote_filename, 'r')
+        key = paramiko.RSAKey(file_obj=rfile)
+        rfile.close()
+        return key
+
     def makedirs(self, path, mode=0755):
         """
-        Same os os.makedirs - makes a new directory and automatically creates
+        Same as os.makedirs - makes a new directory and automatically creates
         all parent directories if they do not exist.
 
         mode specifies unix permissions to apply to the new dir
@@ -147,7 +164,7 @@ class SSHClient(object):
         head, tail = posixpath.split(path)
         if not tail:
             head, tail = posixpath.split(head)
-        if head and tail and not posixpath.exists(head):
+        if head and tail and not self.path_exists(head):
             try:
                 self.makedirs(head, mode)
             except OSError, e:
@@ -187,7 +204,7 @@ class SSHClient(object):
         f = self.remote_file(remote_file, 'r')
         flines = f.readlines()
         f.close()
-        if not regex:
+        if regex is None:
             return flines
         r = re.compile(regex)
         lines = []
@@ -200,13 +217,23 @@ class SSHClient(object):
         return lines
 
     def remove_lines_from_file(self, remote_file, regex):
+        """
+        Removes lines matching regex from remote_file
+        """
+        if regex in [None, '']:
+            log.debug('no regex supplied...returning')
+            return
         lines = self.get_remote_file_lines(remote_file, regex, matching=False)
+        log.debug("new %s after removing regex (%s) matches:\n%s" % \
+                  (remote_file, regex, ''.join(lines)))
         f = self.remote_file(remote_file)
         f.writelines(lines)
         f.close()
 
     def remote_file(self, file, mode='w'):
-        """Returns a remote file descriptor"""
+        """
+        Returns a remote file descriptor
+        """
         self._sftp_connect()
         rfile = self._sftp.open(file, mode)
         rfile.name = file
@@ -223,6 +250,22 @@ class SSHClient(object):
             return True
         except IOError:
             return False
+
+    def chown(self, uid, gid, remote_file):
+        """
+        Apply permissions (mode) to remote_file
+        """
+        f = self.remote_file(remote_file, 'r')
+        f.chown(uid, gid, remote_file)
+        f.close()
+
+    def chmod(self, mode, remote_file):
+        """
+        Apply permissions (mode) to remote_file
+        """
+        f = self.remote_file(remote_file, 'r')
+        f.chmod(mode)
+        f.close()
 
     def ls(self, path):
         """
@@ -278,47 +321,6 @@ class SSHClient(object):
         self._sftp_connect()
         self._sftp.put(localpath, remotepath)
 
-    def get_user_map(self, key_by_uid=False):
-        """
-        Returns dictionary where keys are usernames and values are
-        pwd.struct_passwd objects from the standard pwd module
-
-        key_by_uid=True will use the integer uid as the returned dictionary's
-        keys instead of the user's login name
-        """
-        etc_passwd = self.remote_file('/etc/passwd', 'r')
-        users = [l.strip().split(':') for l in etc_passwd.readlines()]
-        etc_passwd.close()
-        user_map = {}
-        for user in users:
-            name, passwd, uid, gid, gecos, home, shell = user
-            uid = int(uid)
-            gid = int(gid)
-            key = name
-            if key_by_uid:
-                key = uid
-            user_map[key] = pwd.struct_passwd([name, passwd, uid, gid,
-                                               gecos, home, shell])
-        return user_map
-
-    def getpwuid(self, uid):
-        """
-        Remote version of the getpwuid method in the standard pwd module
-
-        returns a pwd.struct_passwd
-        """
-        umap = self.get_user_map(key_by_uid=True)
-        return umap.get(uid)
-
-    def getpwnam(self, username):
-        """
-        Remote version of the getpwnam method in the standard pwd module
-
-        returns a pwd.struct_passwd
-        """
-        umap = self.get_user_map()
-        return umap.get(username)
-
     def execute_async(self, command):
         """
         Executes a remote command without blocking
@@ -332,7 +334,7 @@ class SSHClient(object):
         channel.exec_command(command)
 
     def execute(self, command, silent=True, only_printable=False,
-                ignore_exit_status=False):
+                ignore_exit_status=False, log_output=True):
         """
         Execute a remote command and return stdout/stderr
 
@@ -362,7 +364,6 @@ class SSHClient(object):
                 if line != '':
                     output.append(line)
                     print line,
-
             for line in stderr.readlines():
                 output.append(line)
                 print line
@@ -373,9 +374,9 @@ class SSHClient(object):
                 log.error("command '%s' failed with status %d" % (command,
                                                                   exit_status))
             else:
-                log.debug("command '%s' failed with status %d" % (command,
-                                                                  exit_status))
-        if silent:
+                log.debug("command %s failed with status %d" % (command,
+                                                                exit_status))
+        if log_output:
             for line in output:
                 log.debug(line.strip())
         return output

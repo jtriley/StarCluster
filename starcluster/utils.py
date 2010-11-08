@@ -201,6 +201,13 @@ def datetime_tuple_to_iso(tup):
     return iso
 
 
+def get_elapsed_time(past_time):
+    ptime = iso_to_localtime_tuple(past_time)
+    now = datetime.now()
+    delta = now - ptime
+    return time.strftime("%H:%M:%S", time.gmtime(delta.seconds))
+
+
 def iso_to_localtime_tuple(iso):
     dtup = iso_to_datetime_tuple(iso)
     secs = calendar.timegm(dtup.timetuple())
