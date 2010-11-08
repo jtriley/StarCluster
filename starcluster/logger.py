@@ -2,7 +2,6 @@
 """
 StarCluster logging module
 """
-import os
 import types
 import logging
 import logging.handlers
@@ -20,7 +19,7 @@ INFO_FORMAT = ">>> %(message)s\n"
 INFO_FORMAT_NONL = ">>> %(message)s"
 DEFAULT_FORMAT = "%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n"
 DEFAULT_FORMAT_NONL = "%(filename)s:%(lineno)d - %(levelname)s - %(message)s"
-DEFAULT_FORMAT_NONL_PID = ("PID: %s " % str(os.getpid())) + DEFAULT_FORMAT_NONL
+DEFAULT_FORMAT_NONL_PID = ("PID: %s " % str(static.PID)) + DEFAULT_FORMAT_NONL
 
 
 class ConsoleLogger(logging.StreamHandler):
@@ -80,3 +79,39 @@ log.addHandler(console)
         #syslog_handler.setFormatter(formatter)
         #syslog_handler.setLevel(logging.DEBUG)
         #log.addHandler(syslog_handler)
+
+
+def _configure_paramiko_logging():
+    """
+    Configure paramiko to log to a file for debug
+    """
+    l = logging.getLogger("paramiko")
+    l.setLevel(logging.DEBUG)
+    lh = logging.handlers.RotatingFileHandler(static.SSH_DEBUG_FILE,
+                                               maxBytes=1048576,
+                                               backupCount=2)
+    lh.setLevel(logging.DEBUG)
+    format = (('PID: %s ' % str(static.PID)) + \
+              '%(levelname)-.3s [%(asctime)s.%(msecs)03d] ' + \
+              'thr=%(_threadid)-3d %(name)s: %(message)s')
+    date_format = '%Y%m%d-%H:%M:%S'
+    lh.setFormatter(logging.Formatter(format, date_format))
+    l.addHandler(lh)
+
+
+def _configure_boto_logging():
+    """
+    Configure boto to log to a file for debug
+    """
+    l = logging.getLogger("boto")
+    l.setLevel(logging.DEBUG)
+    lh = logging.handlers.RotatingFileHandler(static.AWS_DEBUG_FILE,
+                                               maxBytes=1048576,
+                                               backupCount=2)
+    lh.setLevel(logging.DEBUG)
+    format = (('PID: %s ' % str(static.PID)) + \
+              '%(levelname)-.3s [%(asctime)s.%(msecs)03d] ' + \
+              '%(name)s: %(message)s')
+    date_format = '%Y%m%d-%H:%M:%S'
+    lh.setFormatter(logging.Formatter(format, date_format))
+    l.addHandler(lh)

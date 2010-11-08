@@ -10,7 +10,6 @@ import os
 import re
 import stat
 import string
-import tempfile
 import paramiko
 import posixpath
 
@@ -51,11 +50,6 @@ class SSHClient(object):
         self._pkey = None
         if not username:
             username = os.environ['LOGNAME']
-
-        # Log to a temporary file.
-        templog = tempfile.mkstemp('.txt', 'ssh-')[1]
-        paramiko.util.log_to_file(templog)
-
         # Begin the SSH transport.
         self._transport_live = False
         try:
@@ -66,15 +60,9 @@ class SSHClient(object):
             raise exception.SSHConnectionError(host, port)
         self._transport_live = True
         # Authenticate the transport.
-        if password:
-            # Using Password.
-            try:
-                self._transport.connect(username=username, password=password)
-            except paramiko.AuthenticationException:
-                raise exception.SSHAuthException(username, host)
-        elif private_key:
+        pkey = None
+        if private_key:
             # Use Private Key.
-            pkey = None
             log.debug('private key specified')
             if private_key.endswith('rsa') or private_key.count('rsa'):
                 pkey = self._load_rsa_key(private_key, private_key_pass)
@@ -82,20 +70,23 @@ class SSHClient(object):
                 pkey = self._load_dsa_key(private_key, private_key_pass)
             else:
                 log.debug("specified key does not end in either rsa or dsa" + \
-                         ", trying both")
+                          ", trying both")
                 pkey = self._load_rsa_key(private_key, private_key_pass)
                 if pkey is None:
                     pkey = self._load_dsa_key(private_key, private_key_pass)
             self._pkey = pkey
-            try:
-                self._transport.connect(username=username, pkey=pkey)
-            except paramiko.AuthenticationException:
-                raise exception.SSHAuthException(username, host)
-            except paramiko.SSHException, e:
-                msg = e.args[0]
-                raise exception.SSHError(msg)
-        else:
+        elif not password:
             raise exception.SSHNoCredentialsError()
+        try:
+            self._transport.connect(username=username, pkey=pkey,
+                                    password=password)
+        except paramiko.AuthenticationException:
+            raise exception.SSHAuthException(username, host)
+        except paramiko.SSHException, e:
+            msg = e.args[0]
+            raise exception.SSHError(msg)
+        except EOFError:
+            raise exception.SSHError(str(e))
 
     def _get_socket(self, hostname, port):
         for (family, socktype, proto, canonname, sockaddr) in \

@@ -3,7 +3,6 @@ import os
 import pwd
 import time
 import stat
-import socket
 import posixpath
 
 from starcluster import ssh
@@ -678,21 +677,10 @@ class Node(object):
         self.instance.reboot()
 
     def is_ssh_up(self):
-        timeout = 10.0
-        s = socket.socket()
-        s.settimeout(timeout)
         try:
-            log.debug('checking port 22 on host: %s' % self.dns_name)
-            s.connect((self.dns_name, 22))
-            s.close()
-            return True
-        except socket.timeout:
-            log.debug(("connecting to port 22 on %s timed out after " + \
-                       "%s seconds") % (self.dns_name, timeout))
-        except socket.error:
-            log.debug("ssh not up for %s" % self.dns_name)
-        s.close()
-        return False
+            return self.ssh is not None
+        except exception.SSHError:
+            return False
 
     def is_up(self):
         if self.update() != 'running':

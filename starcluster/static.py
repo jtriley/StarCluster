@@ -6,6 +6,7 @@ import os
 import getpass
 import tempfile
 
+PID = os.getpid()
 TMP_DIR = tempfile.gettempdir()
 CURRENT_USER = 'unknown_user'
 try:
@@ -14,6 +15,8 @@ except:
     pass
 SSH_TEMPLATE = 'ssh -i %s %s@%s'
 DEBUG_FILE = os.path.join(TMP_DIR, 'starcluster-debug-%s.log' % CURRENT_USER)
+SSH_DEBUG_FILE = os.path.join(TMP_DIR, 'starcluster-ssh-%s.log' % CURRENT_USER)
+AWS_DEBUG_FILE = os.path.join(TMP_DIR, 'starcluster-aws-%s.log' % CURRENT_USER)
 
 STARCLUSTER_CFG_DIR = os.path.join(os.path.expanduser('~'), '.starcluster')
 STARCLUSTER_CFG_FILE = os.path.join(STARCLUSTER_CFG_DIR, 'config')
