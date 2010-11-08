@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import time
 import datetime
+import traceback
 import xml.dom.minidom
 
 from starcluster import utils
@@ -102,16 +103,6 @@ class SGEStats(object):
         Tue Jul 13 16:24:03 2010
         """
         return datetime.datetime.strptime(qacct, "%a %b %d %H:%M:%S %Y")
-
-    def get_remote_time(self):
-        """
-        this function remotely executes 'date' on the master node
-        and returns a datetime object with the master's time
-        instead of fetching it from local machine, maybe inaccurate.
-        """
-        cl = self._cluster
-        str = '\n'.join(cl.master_node.ssh.execute('date'))
-        return datetime.datetime.strptime(str, "%a %b %d %H:%M:%S UTC %Y")
 
     def parse_qacct(self, string, dtnow):
         """
@@ -345,9 +336,19 @@ class SGELoadBalancer(LoadBalancer):
         self.allow_master_kill = False
         if self.longest_allowed_queue_time < 300:
             log.warn("wait_time should be >= 300 seconds " + \
-                     "(it takes ~5 minutes to launch a new EC2 node)")
+                     "(it takes ~5 min to launch a new EC2 node)")
         #for key in self.__dict__.keys():
             #log.info("bal: %s => %s." % (key, self.__dict__[key]))
+
+    def get_remote_time(self):
+        """
+        this function remotely executes 'date' on the master node
+        and returns a datetime object with the master's time
+        instead of fetching it from local machine, maybe inaccurate.
+        """
+        cl = self._cluster
+        str = '\n'.join(cl.master_node.ssh.execute('date'))
+        return datetime.datetime.strptime(str, "%a %b %d %H:%M:%S UTC %Y")
 
     def get_qatime(self, now):
         """
@@ -435,7 +436,7 @@ class SGELoadBalancer(LoadBalancer):
         if not cluster.is_cluster_up():
             raise exception.ClusterNotRunning(cluster.cluster_tag)
         while(self._keep_polling):
-            if not self.are_nodes_up(self._cluster):
+            if not cluster.is_cluster_up():
                 log.info("Entire cluster is not up, nodes added/removed. " + \
                          "No Action.")
                 time.sleep(self.polling_interval)
@@ -506,10 +507,9 @@ class SGELoadBalancer(LoadBalancer):
             log.info("*** ADDING %d NODES." % need_to_add)
             try:
                 self._cluster.add_nodes(need_to_add)
-            except Exception, e:
+            except Exception:
                 log.error("Failed to add new host.")
-                log.error("Exception Type: %s, Message: %s" % \
-                    (type(e), e))
+                log.debug(traceback.format_exc())
                 return -1
             self.__last_cluster_mod_time = datetime.datetime.utcnow()
             log.info("Done adding nodes.")
@@ -553,10 +553,9 @@ class SGELoadBalancer(LoadBalancer):
                                  (n.id, n.dns_name))
                         try:
                             self._cluster.remove_node(n)
-                        except Exception, e:
+                        except Exception:
                             log.error("Failed to terminate the host.")
-                            log.error("Exception Type: %s, Message: %s" % \
-                                      (type(e), e))
+                            log.debug(traceback.format_exc())
                             return -1
                         #successfully removed node
                         self.__last_cluster_mod_time = \
@@ -607,14 +606,3 @@ class SGELoadBalancer(LoadBalancer):
         now = self.get_remote_time()
         timedelta = now - dt
         return timedelta.seconds / 60
-
-    def are_nodes_up(self, cl):
-        """
-        Check whether the nodes in the cluster are all running and
-        that ssh (port 22) is up on all nodes
-        """
-        nodes = cl.nodes
-        for node in nodes:
-            if not node.is_up():
-                return False
-        return True

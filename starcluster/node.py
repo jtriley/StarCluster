@@ -90,7 +90,7 @@ class Node(object):
                 # TODO: raise exception about old version
                 raise exception.BaseException(
                     "instance %s has no alias" % alias)
-            return alias
+            self._alias = alias
         return self._alias
 
     @property
@@ -160,7 +160,13 @@ class Node(object):
 
     @property
     def ami_launch_index(self):
-        return int(self.instance.ami_launch_index)
+        try:
+            return int(self.instance.ami_launch_index)
+        except TypeError:
+            log.error("instance %s (state: %s) has no ami_launch_index" % \
+                      (self.id, self.state))
+            log.error("returning 0 as ami_launch_index...")
+            return 0
 
     @property
     def key_name(self):

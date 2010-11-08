@@ -225,7 +225,7 @@ class SSHClient(object):
             return
         lines = self.get_remote_file_lines(remote_file, regex, matching=False)
         log.debug("new %s after removing regex (%s) matches:\n%s" % \
-                  (remote_file, regex, '\n'.join(lines)))
+                  (remote_file, regex, ''.join(lines)))
         f = self.remote_file(remote_file)
         f.writelines(lines)
         f.close()
