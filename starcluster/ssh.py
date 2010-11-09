@@ -8,13 +8,12 @@ modified by justin riley (justin.t.riley@gmail.com)
 
 import os
 import re
+import sys
 import stat
 import string
+import socket
 import paramiko
 import posixpath
-
-import socket
-import sys
 
 # windows does not have termios...
 try:
@@ -85,7 +84,11 @@ class SSHClient(object):
         except paramiko.SSHException, e:
             msg = e.args[0]
             raise exception.SSHError(msg)
+        except socket.error:
+            raise exception.SSHConnectionError(host, port)
         except EOFError:
+            raise exception.SSHConnectionError(host, port)
+        except Exception, e:
             raise exception.SSHError(str(e))
 
     def _get_socket(self, hostname, port):

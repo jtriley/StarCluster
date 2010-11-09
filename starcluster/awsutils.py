@@ -961,6 +961,9 @@ class EasyEC2(EasyAWS):
                 if snapshots:
                     snap_list = ' '.join([snap.id for snap in snapshots])
                     print 'snapshots: %s' % snap_list
+                if vol.create_time:
+                    lt = utils.iso_to_localtime_tuple(vol.create_time)
+                print "create_time: %s" % lt
                 print
         print 'Total: %s' % len(vols)
 
