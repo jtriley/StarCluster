@@ -100,7 +100,7 @@ KEY_SETTINGS = {
 EBS_VOLUME_SETTINGS = {
     'volume_id': (str, True, None, None),
     'device': (str, False, None, None),
-    'partition': (int, False, 1, None),
+    'partition': (int, False, None, None),
     'mount_path': (str, True, None, None),
 }
 

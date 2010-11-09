@@ -195,46 +195,57 @@ class DefaultClusterSetup(ClusterSetup):
         Mount EBS volumes, if specified in ~/.starcluster/config to /home
         """
         # setup /etc/fstab on master to use block device if specified
+        master = self._master
+        devs = master.ssh.ls('/dev')
         for vol in self._volumes:
             vol = self._volumes[vol]
             vol_id = vol.get("volume_id")
+            mount_path = vol.get('mount_path')
             device = vol.get("device")
             volume_partition = vol.get('partition')
-            mount_path = vol.get('mount_path')
-            if vol_id and volume_partition and mount_path:
-                log.info("Mounting EBS volume %s on %s..." % (vol_id,
-                                                              mount_path))
-                mconn = self._master.ssh
-                if not mconn.path_exists(device):
-                    log.warn("Cannot find device %s for volume %s" % (device,
-                                                                      vol))
-                    log.warn("Not mounting %s on %s" % (vol_id,
-                                                        mount_path))
-                    log.warn("This usually means there was a problem" + \
-                             "attaching the EBS volume to the master node")
+            if not (vol_id and device and mount_path):
+                log.error("missing required settings for vol %s" % vol)
+                continue
+            if not master.ssh.path_exists(device):
+                log.warn("Cannot find device %s for volume %s" % (device, vol))
+                log.warn("Not mounting %s on %s" % (vol_id, mount_path))
+                log.warn("This usually means there was a problem" + \
+                         "attaching the EBS volume to the master node")
+                continue
+            if not volume_partition:
+                partitions = filter(lambda x: x.startswith(device), devs)
+                if len(partitions) == 1:
+                    volume_partition = device
+                elif len(partitions) == 2:
+                    volume_partition = device + '1'
+                else:
+                    log.error(
+                        "volume has more than one partition, must specify" + \
+                        "a partition to use in the config")
                     continue
-                if not mconn.path_exists(volume_partition):
-                    log.warn("Cannot find partition %s on volume %s" % \
-                             (volume_partition, vol_id))
-                    log.warn("Not mounting %s on %s" % (vol_id,
-                                                        mount_path))
-                    log.warn("This either means that the volume has not " + \
-                             "been partitioned or that the partition" + \
-                             "specified does not exist on the volume")
-                    continue
-                mount_map = self._master.get_mount_map()
-                dev = mount_map.get(volume_partition)
-                if dev:
-                    path, fstype, options = dev
-                    if path != mount_path:
-                        log.error("volume %s is mounted on %s, not on %s" % \
-                                  (vol_id, path, mount_path))
-                    else:
-                        log.info(
-                            "volume %s already mounted on %s...skipping" % \
-                            (vol_id, mount_path))
-                    continue
-                self._master.mount_device(volume_partition, mount_path)
+            elif not master.ssh.path_exists(volume_partition):
+                log.warn("Cannot find partition %s on volume %s" % \
+                         (volume_partition, vol_id))
+                log.warn("Not mounting %s on %s" % (vol_id,
+                                                    mount_path))
+                log.warn("This either means that the volume has not " + \
+                         "been partitioned or that the partition" + \
+                         "specified does not exist on the volume")
+                continue
+            log.info("Mounting EBS volume %s on %s..." % (vol_id, mount_path))
+            mount_map = self._master.get_mount_map()
+            dev = mount_map.get(volume_partition)
+            if dev:
+                path, fstype, options = dev
+                if path != mount_path:
+                    log.error("volume %s is mounted on %s, not on %s" % \
+                              (vol_id, path, mount_path))
+                else:
+                    log.info(
+                        "volume %s already mounted on %s...skipping" % \
+                        (vol_id, mount_path))
+                continue
+            self._master.mount_device(volume_partition, mount_path)
 
     def _get_nfs_export_paths(self):
         export_paths = ['/home', '/opt/sge6']

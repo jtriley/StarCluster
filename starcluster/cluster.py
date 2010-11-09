@@ -376,11 +376,12 @@ class Cluster(object):
             v = volumes[volname] = utils.AttributeDict()
             v.update(vol)
             v['device'] = device
-            part = vol.get('partition', 1)
-            partition = device + str(part)
-            if not utils.is_valid_partition(partition):
-                raise exception.InvalidPartition(part)
-            v['partition'] = partition
+            part = vol.get('partition')
+            if part:
+                partition = device + str(part)
+                if not utils.is_valid_partition(partition):
+                    raise exception.InvalidPartition(part)
+                v['partition'] = partition
         return volumes
 
     def load_plugins(self, plugins):
@@ -1501,15 +1502,13 @@ class Cluster(object):
             if not utils.is_valid_device(device):
                 raise exception.ClusterValidationError(
                     "Invalid DEVICE value for volume %s" % vol_name)
-            if not partition:
-                raise exception.ClusterValidationError(
-                    'Missing PARTITION setting for volume %s' % vol_name)
-            if not utils.is_valid_partition(partition):
-                raise exception.ClusterValidationError(
-                    "Invalid PARTITION value for volume %s" % vol_name)
-            if not partition.startswith(device):
-                raise exception.ClusterValidationError(
-                    "Volume PARTITION must start with %s" % device)
+            if partition:
+                if not utils.is_valid_partition(partition):
+                    raise exception.ClusterValidationError(
+                        "Invalid PARTITION value for volume %s" % vol_name)
+                if not partition.startswith(device):
+                    raise exception.ClusterValidationError(
+                        "Volume PARTITION must start with %s" % device)
             if not mount_path:
                 raise exception.ClusterValidationError(
                     'Missing MOUNT_PATH setting for volume %s' % vol_name)
