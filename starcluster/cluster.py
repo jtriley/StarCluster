@@ -45,11 +45,11 @@ class ClusterManager(managers.Manager):
         except exception.SecurityGroupDoesNotExist:
             raise exception.ClusterDoesNotExist(cluster_name)
 
-    def get_default_cluster_template(self, tag):
+    def get_default_cluster_template(self):
         """
         Returns name of the default cluster template defined in the config
         """
-        return self.cfg.get_default_cluster_template(tag)
+        return self.cfg.get_default_cluster_template()
 
     def get_cluster_template(self, template_name, tag_name=None):
         """

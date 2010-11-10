@@ -150,7 +150,7 @@ class CmdStart(ClusterCompleter):
         else:
             template = self.opts.cluster_template
             if not template:
-                template = self.cm.get_default_cluster_template(tag)
+                template = self.cm.get_default_cluster_template()
                 log.info("Using default cluster template: %s" % template)
             scluster = self.cm.get_cluster_template(template, tag)
         scluster.update(self.specified_options_dict)
