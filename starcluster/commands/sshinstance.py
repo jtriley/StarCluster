@@ -5,7 +5,7 @@ from completers import InstanceCompleter
 
 class CmdSshInstance(InstanceCompleter):
     """
-    sshintance [options] <instance-id>
+    sshinstance [options] <instance-id>
 
     SSH to an EC2 instance
 
@@ -27,7 +27,5 @@ class CmdSshInstance(InstanceCompleter):
         if not args:
             self.parser.error(
                 "please specify an instance id or dns name to connect to")
-        for arg in args:
-            # user specified dns name or instance id
-            instance = args[0]
+        for instance in args:
             self.nm.ssh_to_node(instance, user=self.opts.user)
