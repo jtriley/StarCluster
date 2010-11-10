@@ -635,12 +635,13 @@ class EasyEC2(EasyAWS):
         Create instance-store (S3) image from running instance
         """
         icreator = image.S3ImageCreator(self, instance_id, key_location,
-                                         aws_user_id, ec2_cert,
-                                         ec2_private_key, bucket,
-                                         image_name=image_name,
-                                         description=None,
-                                         kernel_id=None, ramdisk_id=None,
-                                         remove_image_files=False)
+                                        aws_user_id, ec2_cert,
+                                        ec2_private_key, bucket,
+                                        image_name=image_name,
+                                        description=description,
+                                        kernel_id=kernel_id,
+                                        ramdisk_id=ramdisk_id,
+                                        remove_image_files=remove_image_files)
         #return icreator.create_image()
         return icreator
 
