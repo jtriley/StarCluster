@@ -93,8 +93,7 @@ class SGEStats(object):
                  (start, fin, gran, sz_range))
         num_jobs = (fin - start) / gran
         log.debug("This job expands to %d tasks." % num_jobs)
-        for n in range(0, num_jobs):
-            self.jobs.append(hash)
+        self.jobs.extend([hash] * num_jobs)
 
     def qacct_to_datetime_tuple(self, qacct):
         """

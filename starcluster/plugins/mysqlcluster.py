@@ -28,7 +28,7 @@ DataDir=%(data_dir)s
 BackupDataDir=%(backup_data_dir)s
 '''
 
-my_cnf = \
+MY_CNF = \
 '''
 #
 # The MySQL database server configuration file.
@@ -293,7 +293,7 @@ class MysqlCluster(ClusterSetup):
         return ndb_mgmd
 
     def generate_my_cnf(self):
-        return my_cnf % {'mgm_ip': self.mgm_ip}
+        return MY_CNF % {'mgm_ip': self.mgm_ip}
 
     def generate_mysqldump_crontab(self, path):
         crontab = (

@@ -285,7 +285,7 @@ class StarClusterConfig(object):
             transform.update(extension)
         store[section_name] = transform
 
-    def _load_keypairs(self, section_name, store):
+    def _load_keypairs(self, store):
         cluster_section = store
         keyname = cluster_section.get('keyname')
         if not keyname:
@@ -297,7 +297,7 @@ class StarClusterConfig(object):
         cluster_section['keyname'] = keyname
         cluster_section['key_location'] = keypair.get('key_location')
 
-    def _load_volumes(self, section_name, store):
+    def _load_volumes(self, store):
         cluster_section = store
         volumes = cluster_section.get('volumes')
         if not volumes or isinstance(volumes, AttributeDict):
@@ -311,7 +311,7 @@ class StarClusterConfig(object):
             vol = self.vols.get(volume)
             vols[volume] = vol
 
-    def _load_plugins(self, section_name, store):
+    def _load_plugins(self, store):
         cluster_section = store
         plugins = cluster_section.get('plugins')
         if not plugins or isinstance(plugins[0], AttributeDict):
@@ -327,7 +327,7 @@ class StarClusterConfig(object):
                 raise exception.ConfigError(
                     "plugin '%s' not defined in config" % plugin)
 
-    def _load_permissions(self, section_name, store):
+    def _load_permissions(self, store):
         cluster_section = store
         permissions = cluster_section.get('permissions')
         if not permissions or isinstance(permissions, AttributeDict):
@@ -343,7 +343,7 @@ class StarClusterConfig(object):
                 raise exception.ConfigError(
                     "permission '%s' not defined in config" % perm)
 
-    def _load_instance_types(self, section_name, store):
+    def _load_instance_types(self, store):
         cluster_section = store
         instance_types = cluster_section.get('node_instance_type')
         if isinstance(instance_types, basestring):
@@ -429,8 +429,7 @@ class StarClusterConfig(object):
         return [s for s in self.config.sections() if
                 s.startswith(section_prefix)]
 
-    def _load_sections(self, section_prefix, section_settings,
-                       load_extends=False):
+    def _load_sections(self, section_prefix, section_settings):
         """
         Loads all sections starting with section_prefix and returns a
         dictionary containing the name and dictionary of settings for each
@@ -475,11 +474,11 @@ class StarClusterConfig(object):
             name = self._get_section_name(cluster)
             self._load_extends_settings(name, cluster_store)
             self._load_defaults(self.cluster_settings, cluster_store[name])
-            self._load_keypairs(name, cluster_store[name])
-            self._load_volumes(name, cluster_store[name])
-            self._load_plugins(name, cluster_store[name])
-            self._load_permissions(name, cluster_store[name])
-            self._load_instance_types(name, cluster_store[name])
+            self._load_keypairs(cluster_store[name])
+            self._load_volumes(cluster_store[name])
+            self._load_plugins(cluster_store[name])
+            self._load_permissions(cluster_store[name])
+            self._load_instance_types(cluster_store[name])
             self._check_required(cluster, self.cluster_settings,
                                cluster_store[name])
         return cluster_store
@@ -557,7 +556,7 @@ class StarClusterConfig(object):
         except KeyError:
             raise exception.ClusterTemplateDoesNotExist(template_name)
 
-    def get_default_cluster_template(self, tag_name=None):
+    def get_default_cluster_template(self):
         """
         Returns the cluster template with "DEFAULT=True" in the config
         If more than one found, raises MultipleDefaultTemplates exception.

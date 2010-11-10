@@ -190,9 +190,9 @@ class VolumeCreator(object):
         self._validate_zone(zone)
         self._validate_device(device)
 
-    def is_valid(self, size, zone, device, image):
+    def is_valid(self, size, zone, device):
         try:
-            self.validate(size, zone, device, image)
+            self.validate(size, zone, device)
             return True
         except exception.ValidationError, e:
             log.error(e.msg)

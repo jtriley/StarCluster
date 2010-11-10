@@ -51,7 +51,7 @@ class SSHAuthException(SSHError):
 
 
 class SSHNoCredentialsError(SSHError):
-    def __init__(self, *args):
+    def __init__(self):
         self.msg = "No password or key specified"
 
 
@@ -102,11 +102,6 @@ class VolumeDoesNotExist(AWSError):
 class SnapshotDoesNotExist(AWSError):
     def __init__(self, snap_id):
         self.msg = "snapshot %s does not exist" % snap_id
-
-
-class RegionDoesNotExist(AWSError):
-    def __init__(self, region):
-        self.msg = "region %s does not exist" % region
 
 
 class BucketDoesNotExist(AWSError):
@@ -207,7 +202,7 @@ class NoDefaultTemplateFound(ConfigError):
 
 
 class ConfigNotFound(ConfigError):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args):
         self.msg = args[0]
         self.cfg = args[1]
         self.template = config.copy_paste_template

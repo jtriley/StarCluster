@@ -24,7 +24,7 @@ class StarClusterTest(unittest.TestCase):
         tmp_file = tempfile.NamedTemporaryFile()
         tmp_file.write(contents)
         tmp_file.flush()
-        cfg = StarClusterConfig(tmp_file.name, cache=True).load()
+        cfg = StarClusterConfig(tmp_file.name, cache=cache).load()
         return cfg
 
     def get_custom_config(self, **kwargs):

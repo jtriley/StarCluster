@@ -238,11 +238,11 @@ class DefaultClusterSetup(ClusterSetup):
             if dev:
                 path, fstype, options = dev
                 if path != mount_path:
-                    log.error("volume %s is mounted on %s, not on %s" % \
+                    log.error("Volume %s is mounted on %s, not on %s" % \
                               (vol_id, path, mount_path))
                 else:
                     log.info(
-                        "volume %s already mounted on %s...skipping" % \
+                        "Volume %s already mounted on %s...skipping" % \
                         (vol_id, mount_path))
                 continue
             self._master.mount_device(volume_partition, mount_path)
