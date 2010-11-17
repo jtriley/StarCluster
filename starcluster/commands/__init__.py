@@ -12,6 +12,7 @@ from listclusters import CmdListClusters
 from createimage import CmdCreateImage
 from downloadimage import CmdDownloadImage
 from createvolume import CmdCreateVolume
+from resizevolume import CmdResizeVolume
 from listkeypairs import CmdListKeyPairs
 from listzones import CmdListZones
 from listregions import CmdListRegions
@@ -57,6 +58,7 @@ all_cmds = [
     CmdDownloadImage(),
     CmdListVolumes(),
     CmdCreateVolume(),
+    CmdResizeVolume(),
     CmdRemoveVolume(),
     CmdListSpots(),
     CmdSpotHistory(),

@@ -5,6 +5,7 @@ EC2/S3 Utility Classes
 
 import os
 import re
+import time
 import base64
 import string
 import tempfile
@@ -569,8 +570,8 @@ class EasyEC2(EasyAWS):
             return (osversion, rc)
         self.list_images(imgs, sort_key=sc_public_sort, reverse=True)
 
-    def create_volume(self, size, zone):
-        return self.conn.create_volume(size, zone)
+    def create_volume(self, size, zone, snapshot_id=None):
+        return self.conn.create_volume(size, zone, snapshot_id)
 
     def remove_volume(self, volume_id):
         vol = self.get_volume(volume_id)
@@ -896,6 +897,31 @@ class EasyEC2(EasyAWS):
         except IndexError:
             raise exception.VolumeDoesNotExist(volume_id)
 
+    def wait_for_snapshot(self, snapshot, refresh_interval=30):
+        snap = snapshot
+        log.info("Waiting for snapshot to complete: %s" % snap.id)
+        widgets = ['%s: ' % snap.id, '',
+                   progressbar.Bar(marker=progressbar.RotatingMarker()),
+                   '', progressbar.Percentage(), ' ', progressbar.ETA()]
+        pbar = progressbar.ProgressBar(widgets=widgets, maxval=100).start()
+        while snap.status != 'completed':
+            try:
+                progress = int(snap.update().replace('%', ''))
+                pbar.update(progress)
+            except ValueError:
+                time.sleep(5)
+                continue
+            time.sleep(refresh_interval)
+        pbar.finish()
+
+    def create_snapshot(self, vol, description=None, wait_for_snapshot=False,
+                        refresh_interval=30):
+        log.info("Creating snapshot of volume: %s" % vol.id)
+        snap = vol.create_snapshot(description)
+        if wait_for_snapshot:
+            self.wait_for_snapshot(snap, refresh_interval)
+        return snap
+
     def get_snapshots(self):
         """
         Returns a list of all EBS volume snapshots for this account
@@ -937,7 +963,9 @@ class EasyEC2(EasyAWS):
         filters = {}
         if status:
             filters['status'] = status
-        elif not show_deleted:
+        elif show_deleted:
+            filters['status'] = ['deleting', 'deleted']
+        else:
             filters['status'] = ['creating', 'available', 'in-use', 'error']
         if attach_status:
             filters['attachment.status'] = attach_status

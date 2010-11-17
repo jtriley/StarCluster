@@ -30,7 +30,8 @@ class VolumeCreator(object):
     def __init__(self, ec2_conn, keypair=None, key_location=None,
                  host_instance=None, device='/dev/sdz',
                  image_id=static.BASE_AMI_32, instance_type="m1.small",
-                 shutdown_instance=False, mkfs_cmd='mkfs.ext3'):
+                 shutdown_instance=False, mkfs_cmd='mkfs.ext3',
+                 resizefs_cmd='resize2fs'):
         self._ec2 = ec2_conn
         self._keypair = keypair
         self._key_location = key_location
@@ -44,6 +45,7 @@ class VolumeCreator(object):
         self._shutdown = shutdown_instance
         self._security_group = None
         self._mkfs_cmd = mkfs_cmd
+        self._resizefs_cmd = resizefs_cmd
         self._alias_tmpl = "volumecreator-%s"
 
     def __repr__(self):
@@ -113,8 +115,13 @@ class VolumeCreator(object):
         s.stop()
         return self._instance
 
-    def _create_volume(self, size, zone):
-        vol = self._ec2.create_volume(size, zone)
+    def _create_volume(self, size, zone, snapshot_id=None):
+        msg = "Creating %sGB volume in zone %s" % (size, zone)
+        if snapshot_id:
+            msg += " from snapshot %s" % snapshot_id
+        log.info(msg)
+        vol = self._ec2.create_volume(size, zone, snapshot_id)
+        log.info("New volume id: %s" % vol.id)
         while vol.status != 'available':
             time.sleep(5)
             vol.update()
@@ -129,8 +136,9 @@ class VolumeCreator(object):
                 self._device = dev
                 return self._device
 
-    def _attach_volume(self, instance_id, device):
-        vol = self._volume
+    def _attach_volume(self, vol, instance_id, device):
+        log.info("Attaching volume %s to instance %s..." % (vol.id,
+                                                            instance_id))
         vol.attach(instance_id, device)
         while True:
             vol.update()
@@ -203,6 +211,7 @@ class VolumeCreator(object):
                                    silent=False)
 
     def _format_volume(self):
+        log.info("Formatting volume...")
         self._instance.ssh.execute('%s -F %s' % (self._mkfs_cmd, self._device),
                                    silent=False)
 
@@ -224,6 +233,21 @@ class VolumeCreator(object):
                      "terminate %(g)s' to remove the '%(g)s' group" % \
                      {'g': static.VOLUME_GROUP_NAME})
 
+    def shutdown(self):
+        vol = self._volume
+        host = self._instance
+        if self._shutdown:
+            log.info("Detaching volume %s from instance %s" % \
+                     (vol.id, host.id))
+            vol.detach()
+            log.info("Terminating host instance %s" % host.id)
+            host.terminate()
+        else:
+            log.info("Leaving volume attached to host instance %s" % \
+                     host.id)
+            log.info("Not terminating host instance %s" % \
+                     host.id)
+
     @print_timing("Creating volume")
     def create(self, volume_size, volume_zone):
         try:
@@ -231,25 +255,10 @@ class VolumeCreator(object):
             instance = self._request_instance(volume_zone)
             self._validate_required_progs([self._mkfs_cmd.split()[0]])
             self._determine_device()
-            log.info("Creating %sGB volume in zone %s..." % (volume_size,
-                                                             volume_zone))
             vol = self._create_volume(volume_size, volume_zone)
-            log.info("New volume id: %s" % vol.id)
-            log.info("Attaching volume to instance %s..." % instance.id)
-            self._attach_volume(instance.id, self._device)
-            log.info("Formatting volume...")
+            self._attach_volume(self._volume, instance.id, self._device)
             self._format_volume()
-            if self._shutdown:
-                log.info("Detaching volume %s from instance %s" % \
-                         (vol.id, self._instance.id))
-                vol.detach()
-                log.info("Terminating host instance %s" % self._instance.id)
-                self._instance.terminate()
-            else:
-                log.info("Leaving volume attached to host instance %s" % \
-                         self._instance.id)
-                log.info("Not terminating host instance %s" % \
-                         self._instance.id)
+            self.shutdown()
             self._warn_about_volume_hosts()
             return vol.id
         except Exception:
@@ -260,5 +269,51 @@ class VolumeCreator(object):
                 self._volume.detach(force=True)
                 time.sleep(5)
                 self._volume.delete()
+            self._warn_about_volume_hosts()
+            raise
+
+    def _validate_resize(self, vol, size):
+        self._validate_size(size)
+        if vol.size > size:
+            log.warn("You are attempting to shrink an EBS volume. " + \
+                     "Data loss may occur")
+
+    def resize(self, vol, size):
+        """
+        Resize EBS volume
+
+        vol - boto volume object
+        size - new volume sze
+        """
+        try:
+            self._validate_device(self._device)
+            self._validate_resize(vol, size)
+            snap = self._ec2.create_snapshot(vol)
+            host = self._request_instance(vol.zone)
+            self._validate_required_progs([self._resizefs_cmd.split()[0]])
+            self._determine_device()
+            self._ec2.wait_for_snapshot(snap)
+            new_vol = self._create_volume(size, vol.zone, snap.id)
+            self._attach_volume(new_vol, host.id, self._device)
+            devs = filter(lambda x: x.startswith(self._device),
+                          host.ssh.ls('/dev'))
+            device = self._device
+            if len(devs) == 1:
+                log.info("No partitions, resizing entire device")
+            elif len(devs) == 2:
+                log.info("One partition found, resizing partition...")
+                self._partition_volume()
+                device += '1'
+            else:
+                raise exception.InvalidOperation(
+                    "EBS volume %s has more than 1 partition. "
+                    "You must resize this volume manually" % vol.id)
+            host.ssh.execute(' '.join([self._resizefs_cmd, device]))
+            log.info("Removing generated snapshot %s" % snap.id)
+            snap.delete()
+            self.shutdown()
+            self._warn_about_volume_hosts()
+            return new_vol.id
+        except Exception:
             self._warn_about_volume_hosts()
             raise

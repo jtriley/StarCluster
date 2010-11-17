@@ -6,7 +6,6 @@ import string
 from starcluster import ssh
 from starcluster import exception
 from starcluster import utils
-from starcluster import progressbar
 from starcluster.utils import print_timing
 from starcluster.logger import log
 
@@ -254,22 +253,9 @@ class EBSImageCreator(ImageCreator):
         vol.detach()
         while vol.update() != 'available':
             time.sleep(5)
-        log.info("Creating snapshot of new volume: %s" % vol.id)
-        snap = vol.create_snapshot(self.snapshot_description)
-        log.info("Waiting for snapshot to finish: %s" % snap.id)
-        widgets = ['%s: ' % snap.id, '',
-                   progressbar.Bar(marker=progressbar.RotatingMarker()),
-                   '', progressbar.Percentage(), ' ', progressbar.ETA()]
-        pbar = progressbar.ProgressBar(widgets=widgets, maxval=100).start()
-        while snap.status != 'completed':
-            try:
-                progress = int(snap.update().replace('%', ''))
-                pbar.update(progress)
-            except ValueError:
-                time.sleep(5)
-                continue
-            time.sleep(30)
-        pbar.finish()
+        snap = self.ec2.create_snapshot(vol,
+                                        description=self.snapshot_description,
+                                        wait_for_snapshot=True)
         log.info("New snapshot created: %s" % snap.id)
         bmap = self.ec2.create_root_block_device_map(snap.id,
                                                      add_ephemeral_drives=True)
