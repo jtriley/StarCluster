@@ -11,7 +11,7 @@ class CmdShell(CmdBase):
     """
     shell
 
-    Load interactive IPython shell for starcluster development
+    Load an interactive IPython shell configured for starcluster development
 
     The following objects are automatically available at the prompt:
 

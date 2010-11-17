@@ -58,7 +58,11 @@ class StarClusterCLI(object):
         print self.get_description()
 
         # Build map of name -> command and docstring.
-        gparser.usage += '\n\nAvailable Actions\n'
+        cmds_header = 'Available Commands:'
+        gparser.usage += '\n\n%s\n' % cmds_header
+        gparser.usage += '%s\n' % ('-' * len(cmds_header))
+        gparser.usage += "NOTE: Pass --help to any command for a list of its "
+        gparser.usage += 'options and detailed usage information\n\n'
         for sc in subcmds:
             helptxt = sc.__doc__.splitlines()[3].strip()
             gparser.usage += '- %s: %s\n' % (', '.join(sc.names),
@@ -118,7 +122,7 @@ class StarClusterCLI(object):
                            static.STARCLUSTER_CFG_FILE)
         gparser.add_option("-r", "--region", dest="REGION", action="store",
                            help="specify a region to use instead of the " + \
-                           " default (us-east-1)")
+                           "default (us-east-1)")
         return gparser
 
     def main(self):

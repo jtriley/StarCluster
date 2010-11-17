@@ -11,8 +11,8 @@ class CmdRemoveVolume(VolumeCompleter):
 
     Delete one or more EBS volumes
 
-    WARNING: This command will *permanently* remove an EBS volume.
-    Please be careful!
+    WARNING: This command will *PERMANENTLY* remove an EBS volume.
+    Please use caution!
 
     Example:
 
