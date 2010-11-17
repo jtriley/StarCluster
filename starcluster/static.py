@@ -8,6 +8,8 @@ import tempfile
 
 PID = os.getpid()
 TMP_DIR = tempfile.gettempdir()
+if os.path.exists("/tmp"):
+    TMP_DIR = "/tmp"
 CURRENT_USER = 'unknown_user'
 try:
     CURRENT_USER = getpass.getuser()
@@ -26,8 +28,8 @@ STARCLUSTER_RECEIPT_FILE = os.path.join(STARCLUSTER_RECEIPT_DIR, "receipt.pkl")
 STARCLUSTER_OWNER_ID = 342652561657
 
 # StarCluster BASE AMIs (i386/x86_64)
-BASE_AMI_32 = "ami-d1c42db8"
-BASE_AMI_64 = "ami-a5c42dcc"
+BASE_AMI_32 = "ami-8cf913e5"
+BASE_AMI_64 = "ami-0af31963"
 
 SECURITY_GROUP_PREFIX = "@sc"
 SECURITY_GROUP_TEMPLATE = '-'.join([SECURITY_GROUP_PREFIX, "%s"])
@@ -47,20 +49,28 @@ VOLUME_STATUS = ['creating', 'available', 'in-use',
 VOLUME_ATTACH_STATUS = ['attaching', 'attached', 'detaching', 'detached']
 
 INSTANCE_TYPES = {
-    'm1.small': 'i386',
-    'm1.large': 'x86_64',
-    'm1.xlarge': 'x86_64',
-    'c1.medium': 'i386',
-    'c1.xlarge': 'x86_64',
-    'm2.xlarge': 'x86_64',
-    'm2.2xlarge': 'x86_64',
-    'm2.4xlarge': 'x86_64',
-    'cc1.4xlarge': 'x86_64',
+    't1.micro': ['i386', 'x86_64'],
+    'm1.small': ['i386'],
+    'm1.large': ['x86_64'],
+    'm1.xlarge': ['x86_64'],
+    'c1.medium': ['i386'],
+    'c1.xlarge': ['x86_64'],
+    'm2.xlarge': ['x86_64'],
+    'm2.2xlarge': ['x86_64'],
+    'm2.4xlarge': ['x86_64'],
+    'cc1.4xlarge': ['x86_64'],
+    'cg1.4xlarge': ['x86_64'],
 }
+
+MICRO_INSTANCE_TYPES = ['t1.micro']
 
 CLUSTER_COMPUTE_TYPES = ['cc1.4xlarge']
 
-SPOT_TYPES = [t for t in INSTANCE_TYPES if t not in CLUSTER_COMPUTE_TYPES]
+CLUSTER_GPU_TYPES = ['cg1.4xlarge']
+
+CLUSTER_TYPES = CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES
+
+SPOT_TYPES = [t for t in INSTANCE_TYPES if t not in CLUSTER_TYPES]
 
 PROTOCOLS = ['tcp', 'udp', 'icmp']
 

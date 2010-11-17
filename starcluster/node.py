@@ -616,7 +616,13 @@ class Node(object):
         return self.instance.root_device_type == "ebs"
 
     def is_cluster_compute(self):
-        return self.instance.instance_type in static.CLUSTER_SETTINGS
+        return self.instance.instance_type in static.CLUSTER_COMPUTE_TYPES
+
+    def is_gpu_compute(self):
+        return self.instance.instance_type in static.CLUSTER_GPU_TYPES
+
+    def is_cluster_type(self):
+        return self.instance_type.instance_type in static.CLUSTER_TYPES
 
     def is_spot(self):
         return self.spot_id is not None

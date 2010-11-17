@@ -354,7 +354,7 @@ class StarClusterConfig(object):
         choices_string = ', '.join(static.INSTANCE_TYPES.keys())
         try:
             default_instance_type = instance_types[-1]
-            if not default_instance_type in static.INSTANCE_TYPES.keys():
+            if not default_instance_type in static.INSTANCE_TYPES:
                 raise exception.ConfigError(
                     ("invalid node_instance_type specified: '%s'\n" +
                      "must be one of: %s") %

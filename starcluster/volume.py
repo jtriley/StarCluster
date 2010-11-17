@@ -158,11 +158,11 @@ class VolumeCreator(object):
                 'instance_type must be one of: %s' % choices)
         itype_platform = static.INSTANCE_TYPES.get(itype)
         img_platform = img.architecture
-        if itype_platform != img_platform:
+        if itype_platform not in img_platform:
             error_msg = "instance_type %(itype)s is for an " + \
                           "%(iplat)s platform while image_id " + \
                           "%(img)s is an %(imgplat)s platform"
-            error_dict = {'itype': itype, 'iplat': itype_platform,
+            error_dict = {'itype': itype, 'iplat': ', '.join(itype_platform),
                           'img': img.id, 'imgplat': img_platform}
             raise exception.ValidationError(error_msg % error_dict)
 

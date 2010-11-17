@@ -702,7 +702,7 @@ class Cluster(object):
         settings
         """
         cluster_sg = self.cluster_group.name
-        if instance_type in static.CLUSTER_COMPUTE_TYPES:
+        if instance_type in static.CLUSTER_TYPES:
             placement_group = self.placement_group.name
         return self._run_instances(self.spot_bid,
             image_id=image_id or self.node_image_id,
@@ -871,7 +871,7 @@ class Cluster(object):
         Launches cluster using flat-rate instances. This method attempts to
         minimize the number of launch requests by grouping nodes of the same
         type/ami and launching each group simulatenously within a single launch
-        request. This is especially important for cluster compute instances
+        request. This is especially important for Cluster Compute instances
         given that Amazon *highly* recommends requesting all CCI in a single
         launch request.
         """
@@ -960,11 +960,11 @@ class Cluster(object):
 
     def is_cluster_compute(self):
         """
-        Returns true if any instances are a cluster compute type
+        Returns true if any instances are a Cluster Compute type
 
         If no instances are currently running, this method checks the
         original settings used to launch this cluster and returns true
-        if any of the instance type settings specified cluster compute
+        if any of the instance type settings specified Cluster Compute
         instance types
         """
         for node in self.nodes:
@@ -1034,10 +1034,10 @@ class Cluster(object):
 
     def detach_volumes(self):
         """
-        Detach all volumes from the master node
+        Detach all volumes from all nodes
         """
-        if self.master_node:
-            self.master_node.detach_external_volumes()
+        for node in self.nodes:
+            node.detach_external_volumes()
 
     def restart_cluster(self):
         """
@@ -1341,20 +1341,20 @@ class Cluster(object):
                                                    image_id)
         image_platform = image.architecture
         image_is_hvm = (image.virtualizationType == "hvm")
-        if image_is_hvm and not instance_type in static.CLUSTER_COMPUTE_TYPES:
-            cctypes_list = ', '.join(static.CLUSTER_COMPUTE_TYPES)
+        if image_is_hvm and not instance_type in static.CLUSTER_TYPES:
+            cctypes_list = ', '.join(static.CLUSTER_TYPES)
             raise exception.ClusterValidationError(
-                ("Image '%s' is a cluster compute image (HVM) and cannot " + \
-                 "be used with instance type '%s'\nThe instance type " + \
-                 "for a cluster compute image (HVM) must be one of: %s") % \
+                "Image '%s' is a Cluster Compute/GPU image (HVM) and cannot "
+                "be used with instance type '%s'\nThe instance type "
+                "for a Cluster Compute/GPU image (HVM) must be one of: %s" % \
                 (image_id, instance_type, cctypes_list))
-        instance_platform = self.__instance_types[instance_type]
-        if instance_platform != image_platform:
+        instance_platforms = self.__instance_types[instance_type]
+        if image_platform not in instance_platforms:
             error_msg = "Instance type %(instance_type)s is for an " + \
-                          "%(instance_platform)s platform while " + \
-                          "%(image_id)s is an %(image_platform)s platform"
+                        "%(instance_platform)s platform while " + \
+                        "%(image_id)s is an %(image_platform)s platform"
             error_dict = {'instance_type': instance_type,
-                          'instance_platform': instance_platform,
+                          'instance_platform': ', '.join(instance_platforms),
                           'image_id': image_id,
                           'image_platform': image_platform}
             raise exception.ClusterValidationError(error_msg % error_dict)
@@ -1422,17 +1422,17 @@ class Cluster(object):
     def _validate_cluster_compute(self):
         lmap = self._get_launch_map()
         for (type, image) in lmap:
-            if type in static.CLUSTER_COMPUTE_TYPES:
+            if type in static.CLUSTER_TYPES:
                 if self.spot_bid:
                     raise exception.ClusterValidationError((
-                        'Cluster compute instance type %s ' +
+                        'Cluster Compute/GPU instance type %s ' +
                         'cannot be used with spot instances') % type)
                 img = self.ec2.get_image(image)
                 if img.virtualizationType != 'hvm':
                     raise exception.ClusterValidationError((
-                        'Cluster compute instance type %s ' +
+                        'Cluster Compute/GPU instance type %s ' +
                         'can only be used with HVM images.\n' +
-                        'Image %s is *not* an HVM image.') % (type, image))
+                        'Image %s is NOT an HVM image.') % (type, image))
 
     def _validate_ebs_aws_settings(self):
         """
