@@ -11,7 +11,7 @@ install_requires = [
 maj, min, micro, rel, serial = sys.version_info
 if (maj, min) == (2, 4):
     # boto needs hashlib module which is not in py2.4
-    # this hack should be in boto instead (file a bug)
+    # TODO: this is fixed in boto's github, remove when released
     install_requires.append("hashlib")
 
 src = os.path.realpath(os.path.dirname(__file__))

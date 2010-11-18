@@ -1003,7 +1003,10 @@ class Cluster(object):
         """
         Check whether all nodes are in a 'terminated' state
         """
-        return len(self.nodes) == 0
+        states = filter(lambda x: x != 'terminated', static.INSTANCE_STATES)
+        filters = {'instance-state-name': states}
+        insts = self.ec2.get_all_instances(filters=filters)
+        return len(insts) == 0
 
     def attach_volumes_to_master(self):
         """
@@ -1046,8 +1049,8 @@ class Cluster(object):
         nodes = self.nodes
         if not nodes:
             raise exception.ClusterValidationError("No running nodes found")
-        log.info("Rebooting cluster...")
         self.run_plugins(method_name="on_restart", reverse=True)
+        log.info("Rebooting cluster...")
         for node in nodes:
             node.reboot()
         sleep = 20
@@ -1097,6 +1100,12 @@ class Cluster(object):
         self.cluster_group.delete()
         pg = self.ec2.get_placement_group_or_none(self._security_group)
         if pg:
+            log.log(INFO_NO_NEWLINE, "Waiting for cluster to terminate...")
+            s = Spinner()
+            s.start()
+            while not self.is_cluster_terminated():
+                time.sleep(5)
+            s.stop()
             log.info("Removing %s placement group" % pg.name)
             pg.delete()
 
