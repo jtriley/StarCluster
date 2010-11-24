@@ -18,7 +18,7 @@ class ImageCreator(object):
 
     easy_ec2 must be an awsutils.EasyEC2 object
 
-    instance_id is the identified of the instance to be imaged
+    instance_id is the id of the instance to be imaged
 
     key_location must point to the private key file corresponding to the
     keypair used to launch instance_id

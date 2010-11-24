@@ -631,7 +631,7 @@ class EasyEC2(EasyAWS):
     def create_s3_image(self, instance_id, key_location, aws_user_id,
                         ec2_cert, ec2_private_key, bucket, image_name="image",
                         description=None, kernel_id=None, ramdisk_id=None,
-                        remove_image_files=False):
+                        remove_image_files=False, **kwargs):
         """
         Create instance-store (S3) image from running instance
         """

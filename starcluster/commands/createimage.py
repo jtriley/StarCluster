@@ -34,18 +34,21 @@ class CmdCreateImage(InstanceCompleter):
 
     def addopts(self, parser):
         parser.add_option(
-            "-c", "--confirm", dest="confirm",
-            action="store_true", default=False,
-            help="Do not warn about re-imaging StarCluster instances")
-        parser.add_option(
-            "-r", "--remove-image-files", dest="remove_image_files",
-            action="store_true", default=False,
-            help="Remove generated image files on the " + \
-            "instance after registering")
-        parser.add_option(
             "-d", "--description", dest="description", action="store",
-            type="string", default=time.strftime("%Y%m%d%H%M"),
+            type="string",
+            default="Image created @ %s" % time.strftime("%Y%m%d%H%M"),
             help="short description of this AMI")
+        parser.add_option(
+            "-D", "--snapshot-description", dest="snapshot_description",
+            action="store", type="string",
+            default="Snapshot created @ %s" % time.strftime("%Y%m%d%H%M"),
+            help="short description for new EBS snapshot (for EBS AMIs)")
+        parser.add_option(
+            "-e", "--ebs", dest="create_ebs_image", action="store_true",
+            default=False, help="create an EBS-backed AMI")
+        parser.add_option(
+            "-s", "--s3", dest="create_s3_image", action="store_true",
+            default=False, help="create an instance-store (S3) AMI")
         parser.add_option(
             "-k", "--kernel-id", dest="kernel_id", action="store",
             type="string", default=None,
@@ -54,6 +57,11 @@ class CmdCreateImage(InstanceCompleter):
             "-R", "--ramdisk-id", dest="ramdisk_id", action="store",
             type="string", default=None,
             help="ramdisk id for the new AMI")
+        parser.add_option(
+            "-r", "--remove-image-files", dest="remove_image_files",
+            action="store_true", default=False,
+            help="Remove generated image files on the " + \
+            "instance after registering (for S3 AMIs)")
 
     def cancel_command(self, signum, frame):
         raise exception.CancelledCreateImage(self.bucket, self.image_name)
@@ -62,42 +70,31 @@ class CmdCreateImage(InstanceCompleter):
         if len(args) != 3:
             self.parser.error(
                 'you must specify an instance-id, image name, and bucket')
+        if self.opts.create_ebs_image and self.opts.create_s3_image:
+            self.parser.error(
+                'options --ebs and --s3 are mutually exclusive')
         instanceid, image_name, bucket = args
         self.bucket = bucket
         self.image_name = image_name
-        cfg = self.cfg
         i = self.ec2.get_instance(instanceid)
-        if not self.opts.confirm:
-            for group in i.groups:
-                if group.id.startswith(static.SECURITY_GROUP_PREFIX):
-                    log.warn("Instance %s is a StarCluster instance" % i.id)
-                    print
-                    log.warn(
-                        "Creating an image from a StarCluster instance can " +
-                        "lead to problems when attempting to use the " +
-                        "resulting image with StarCluster later on")
-                    print
-                    log.warn(
-                        "The recommended way to re-image a StarCluster AMI " +
-                        "is to launch a single instance using either " +
-                        "ElasticFox, the EC2 command line tools, or the AWS" +
-                        "management console. Then login to the instance, " +
-                        "modify it, and use this command to create a new " +
-                        "AMI from it.")
-                    print
-                    resp = raw_input("Continue anyway (y/n)? ")
-                    if resp not in ['y', 'Y', 'yes']:
-                        log.info("Aborting...")
-                        sys.exit(1)
-                    break
-        key_location = cfg.get_key(i.key_name).get('key_location')
-        aws_user_id = cfg.aws.get('aws_user_id')
-        ec2_cert = cfg.aws.get('ec2_cert')
-        ec2_private_key = cfg.aws.get('ec2_private_key')
+        is_ebs_backed = (i.root_device_type == "ebs")
+        key_location = self.cfg.get_key(i.key_name).get('key_location')
+        aws_user_id = self.cfg.aws.get('aws_user_id')
+        ec2_cert = self.cfg.aws.get('ec2_cert')
+        ec2_private_key = self.cfg.aws.get('ec2_private_key')
+        create_ebs = self.opts.create_ebs_image or \
+                (not self.opts.create_s3_image and is_ebs_backed)
+        create_s3 = self.opts.create_s3_image or \
+                (not self.opts.create_ebs_image and not is_ebs_backed)
         self.catch_ctrl_c()
-        ami_id = self.ec2.create_s3_image(instanceid, key_location,
-                                          aws_user_id, ec2_cert,
-                                          ec2_private_key, bucket,
-                                          image_name=image_name,
-                                          **self.specified_options_dict)
+        if create_ebs:
+            ami_id = self.ec2.create_ebs_image(instanceid, key_location,
+                                               image_name,
+                                               **self.specified_options_dict)
+        elif create_s3:
+            ami_id = self.ec2.create_s3_image(instanceid, key_location,
+                                              aws_user_id, ec2_cert,
+                                              ec2_private_key, bucket,
+                                              image_name=image_name,
+                                              **self.specified_options_dict)
         log.info("Your new AMI id is: %s" % ami_id)
