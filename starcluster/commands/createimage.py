@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 
-import sys
 import time
 
-from starcluster import static
 from starcluster import exception
 from starcluster.logger import log
 

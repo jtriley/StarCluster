@@ -38,7 +38,7 @@ class EasyAWS(object):
 
         kwargs are passed to the connection_authenticator's constructor
         """
-        self.aws_access_key = aws_access_key_id
+        self.aws_access_key_id = aws_access_key_id
         self.aws_secret_access_key = aws_secret_access_key
         self.connection_authenticator = connection_authenticator
         self._conn = None
@@ -54,7 +54,7 @@ class EasyAWS(object):
             log.debug('creating self._conn w/ connection_authenticator ' +
                       'kwargs = %s' % self._kwargs)
             self._conn = self.connection_authenticator(
-                self.aws_access_key, self.aws_secret_access_key,
+                self.aws_access_key_id, self.aws_secret_access_key,
                 **self._kwargs)
         return self._conn
 
@@ -598,7 +598,7 @@ class EasyEC2(EasyAWS):
             kwargs.update(self._kwargs)
             kwargs.update(dict(region=region))
             conn = self.connection_authenticator(
-                self.aws_access_key, self.aws_secret_access_key, **kwargs)
+                self.aws_access_key_id, self.aws_secret_access_key, **kwargs)
         for zone in conn.get_all_zones():
             print 'name: ', zone.name
             print 'region: ', zone.region.name
@@ -643,8 +643,7 @@ class EasyEC2(EasyAWS):
                                         kernel_id=kernel_id,
                                         ramdisk_id=ramdisk_id,
                                         remove_image_files=remove_image_files)
-        #return icreator.create_image()
-        return icreator
+        return icreator.create_image()
 
     def create_ebs_image(self, instance_id, key_location, name,
                          description=None, snapshot_description=None,
