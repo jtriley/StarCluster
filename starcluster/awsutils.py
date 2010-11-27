@@ -658,8 +658,7 @@ class EasyEC2(EasyAWS):
                                          kernel_id=kernel_id,
                                          ramdisk_id=ramdisk_id,
                                          **kwargs)
-        #return icreator.create_image()
-        return icreator
+        return icreator.create_image()
 
     def get_image(self, image_id):
         """
