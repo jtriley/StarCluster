@@ -172,11 +172,11 @@ class StarClusterCLI(object):
             print
             log.error("Oops! Looks like you've found a bug in StarCluster")
             log.error("Debug file written to: %s" % static.DEBUG_FILE)
+            log.error("Look for lines starting with PID: %s" % static.PID)
             log.error(
                 "Please submit this file, minus any private information,")
             log.error("to starcluster@mit.edu")
             sys.exit(1)
-
 
 def main():
     StarClusterCLI().main()
