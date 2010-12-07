@@ -57,6 +57,7 @@ class SGEVisualizer(object):
         list = []
         file = open(self.filepath, 'r')
         for line in file:
+            line = line.rstrip()
             parts = line.split(',')
             a = [datetime.strptime(parts[0], '%Y-%m-%d %H:%M:%S.%f'),
                  int(parts[1]), int(parts[2]), int(parts[3]), int(parts[4]),
@@ -65,7 +66,7 @@ class SGEVisualizer(object):
         file.close()
         names = ['dt', 'hosts', 'running_jobs', 'queued_jobs',
                  'slots', 'avg_duration', 'avg_wait', 'avg_load']
-        self.records = np.rec.fromrecords(list, ','.join(names))
+        self.records = np.rec.fromrecords(list,names=','.join(names))
 
     def graph(self, yaxis, title):
         if self.records == None:
