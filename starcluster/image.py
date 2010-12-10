@@ -4,10 +4,11 @@ import time
 import string
 
 from starcluster import ssh
-from starcluster import exception
 from starcluster import utils
+from starcluster import exception
+from starcluster.spinner import Spinner
 from starcluster.utils import print_timing
-from starcluster.logger import log
+from starcluster.logger import log, INFO_NO_NEWLINE
 
 
 class ImageCreator(object):
@@ -201,17 +202,27 @@ class EBSImageCreator(ImageCreator):
         self.name = name
         self.description = description
         self.snapshot_description = snapshot_description or description
-        self.base_img = self.ec2.get_image(self.host.image_id)
-        self.kernel_id = kernel_id or self.base_img.kernel_id
-        self.ramdisk_id = ramdisk_id or self.base_img.ramdisk_id
 
-    def create(self, size):
+    @print_timing
+    def create_image(self, size=15):
         host = self.host
         host_ssh = self.host_ssh
         self.clean_private_data()
         if self.host.root_device_type == "ebs":
+            log.info("Creating EBS image...")
             imgid = self.ec2.create_image(host.id, self.name,
                                           self.description)
+            s = Spinner()
+            log.log(INFO_NO_NEWLINE,
+                    "Waiting for AMI %s to become available..." % imgid)
+            s.start()
+            img = self.ec2.get_image(imgid)
+            while img.update() == "pending":
+                time.sleep(15)
+            s.stop()
+            if img.update() == "failed":
+                raise exception.AWSError(
+                    "EBS image creation failed for AMI %s" % imgid)
             return imgid
         log.info("Creating new EBS-backed image from instance-store instance")
         log.info("Creating new root volume...")
