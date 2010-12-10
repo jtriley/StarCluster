@@ -1004,7 +1004,8 @@ class Cluster(object):
         Check whether all nodes are in a 'terminated' state
         """
         states = filter(lambda x: x != 'terminated', static.INSTANCE_STATES)
-        filters = {'instance-state-name': states}
+        filters = {'group-id': self._cluster_group,
+                   'instance-state-name': states}
         insts = self.ec2.get_all_instances(filters=filters)
         return len(insts) == 0
 
