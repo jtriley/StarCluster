@@ -567,7 +567,8 @@ class Node(object):
         attached_vols.update(self.block_device_mapping)
         if self.is_ebs_backed():
             # exclude the root device from the list
-            attached_vols.pop(self.root_device_name)
+            if self.root_device_name in attached_vols:
+                attached_vols.pop(self.root_device_name)
         return attached_vols
 
     def detach_external_volumes(self):
