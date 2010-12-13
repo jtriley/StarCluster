@@ -13,6 +13,13 @@ class SGEVisualizer(object):
     filepath = '/tmp/starcluster-sge-stats.csv'
     pngpath = '/home/rajat/Dropbox/Public/sc/'
 
+    def __init__(self, cluster_tag=None):
+        self.cluster_tag = cluster_tag
+        log.debug("Initialized visualizer for cluster %s." % self.cluster_tag)
+        if len(cluster_tag) > 0:
+            self.filepath = '/tmp/starcluster-' + self.cluster_tag +\
+            '-sge-stats.csv'
+
     def add(self, x, y):
         return float(x) + float(y)
 
