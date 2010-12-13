@@ -121,8 +121,7 @@ class StarClusterCLI(object):
                            help="use alternate config file (default: %s)" % \
                            static.STARCLUSTER_CFG_FILE)
         gparser.add_option("-r", "--region", dest="REGION", action="store",
-                           help="specify a region to use instead of the " + \
-                           "default (us-east-1)")
+                           help="specify a region to use (default: us-east-1)")
         return gparser
 
     def main(self):
@@ -177,6 +176,7 @@ class StarClusterCLI(object):
                 "Please submit this file, minus any private information,")
             log.error("to starcluster@mit.edu")
             sys.exit(1)
+
 
 def main():
     StarClusterCLI().main()
