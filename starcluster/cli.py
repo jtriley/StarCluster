@@ -18,10 +18,11 @@ from boto.exception import BotoServerError, EC2ResponseError, S3ResponseError
 
 from starcluster import config
 from starcluster import static
+from starcluster import logger
 from starcluster import exception
 from starcluster import optcomplete
 from starcluster.commands import all_cmds
-from starcluster.logger import log, console, DEBUG
+from starcluster.logger import log, console
 
 from starcluster import __version__
 
@@ -82,7 +83,7 @@ class StarClusterCLI(object):
 
         # set debug level if specified
         if gopts.DEBUG:
-            console.setLevel(DEBUG)
+            console.setLevel(logger.DEBUG)
         # load StarClusterConfig into global options
         try:
             cfg = config.StarClusterConfig(gopts.CONFIG)
@@ -179,6 +180,7 @@ class StarClusterCLI(object):
 
 
 def main():
+    logger.configure_sc_logging()
     StarClusterCLI().main()
 
 if __name__ == '__main__':

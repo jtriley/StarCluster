@@ -2,6 +2,7 @@
 """
 StarCluster logging module
 """
+import os
 import types
 import logging
 import logging.handlers
@@ -53,35 +54,50 @@ class ConsoleLogger(logging.StreamHandler):
         except:
             self.handleError(record)
 
+
+class NullHandler(logging.Handler):
+    def emit(self, record):
+        pass
+
 log = logging.getLogger('starcluster')
-log.setLevel(logging.DEBUG)
-
-formatter = logging.Formatter(DEFAULT_FORMAT_NONL_PID)
-
-rfh = logging.handlers.RotatingFileHandler(static.DEBUG_FILE,
-                                           maxBytes=1048576,
-                                           backupCount=2)
-rfh.setLevel(logging.DEBUG)
-rfh.setFormatter(formatter)
-log.addHandler(rfh)
+log.addHandler(NullHandler())
 
 console = ConsoleLogger()
-console.setLevel(logging.INFO)
-log.addHandler(console)
-
-#import platform
-#if platform.system() == "Linux":
-    #import os
-    #log_device = '/dev/log'
-    #if os.path.exists(log_device):
-        #log.debug("Logging to %s" % log_device)
-        #syslog_handler = logging.handlers.SysLogHandler(address=log_device)
-        #syslog_handler.setFormatter(formatter)
-        #syslog_handler.setLevel(logging.DEBUG)
-        #log.addHandler(syslog_handler)
 
 
-def _configure_paramiko_logging():
+def configure_sc_logging(use_syslog=False):
+    """
+    Configure logging for StarCluster *application* code
+
+    By default StarCluster's logger has no formatters and a NullHandler so that
+    other developers using StarCluster as a library can configure logging as
+    they see fit. This method is used in StarCluster's application code (ie the
+    'starcluster' command) to toggle StarCluster's application specific
+    formatters/handlers
+
+    use_syslog - enable logging all messages to syslog. currently only works if
+    /dev/log exists on the system (standard for most Linux distros)
+    """
+    log.setLevel(logging.DEBUG)
+    formatter = logging.Formatter(DEFAULT_FORMAT_NONL_PID)
+    rfh = logging.handlers.RotatingFileHandler(static.DEBUG_FILE,
+                                               maxBytes=1048576,
+                                               backupCount=2)
+    rfh.setLevel(logging.DEBUG)
+    rfh.setFormatter(formatter)
+    log.addHandler(rfh)
+    console.setLevel(logging.INFO)
+    log.addHandler(console)
+    syslog_device = '/dev/log'
+    if use_syslog and os.path.exists(syslog_device):
+        log.debug("Logging to %s" % syslog_device)
+        syslog_handler = logging.handlers.SysLogHandler(address=syslog_device)
+        syslog_handler.setFormatter(formatter)
+        syslog_handler.setLevel(logging.DEBUG)
+        log.addHandler(syslog_handler)
+
+
+def configure_paramiko_logging():
     """
     Configure paramiko to log to a file for debug
     """
@@ -99,7 +115,7 @@ def _configure_paramiko_logging():
     l.addHandler(lh)
 
 
-def _configure_boto_logging():
+def configure_boto_logging():
     """
     Configure boto to log to a file for debug
     """
