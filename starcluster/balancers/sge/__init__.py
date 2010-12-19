@@ -14,10 +14,11 @@ class SGEStats(object):
     """
     SunGridEngine stats parser
     """
-    jobstat_cachesize = 500
+    jobstat_cachesize = 200
     hosts = []
     jobs = []
-    jobstats = jobstat_cachesize*[None]
+    jobstats = jobstat_cachesize * [None]
+    max_job_id = 0
     _default_fields = ["JB_job_number", "state", "JB_submission_time",
                        "queue_name", "slots", "tasks"]
 
@@ -135,6 +136,7 @@ class SGEStats(object):
                         end = self.qacct_to_datetime_tuple(l[13:len(l)])
             if l.find('==========') != -1:
                 if qd != None:
+                    self.max_job_id = job_id
                     hash = {'queued': qd, 'start': start, 'end': end}
                     self.jobstats[job_id % self.jobstat_cachesize] = hash
                 qd = None
@@ -148,11 +150,10 @@ class SGEStats(object):
 
     def is_jobstats_empty(self):
         """
-        TODO: Fix this function. It should keep a seperate counter. it 
-        counts None entries here.
+        This function will return True if half of the queue is empty, False if
+        there are enough entries in it.
         """
-        js_size = len(self.jobstats)
-        if js_size < self.jobstat_cachesize * 0.5:
+        if self.max_job_id < (self.jobstat_cachesize * 0.3):
             return True
         return False
 
@@ -374,13 +375,13 @@ class SGELoadBalancer(LoadBalancer):
         limit the data set qacct returns.
         """
         if self.stat.is_jobstats_empty():
-            log.info("The jobstats cache is rather empty. Pulling full job history.")
-            temp_lookback_window = self.lookback_window *60 *60
+            log.info("Jobstats cache is not full. Pulling full job history.")
+            temp_lookback_window = self.lookback_window * 60 * 60
         else:
             temp_lookback_window = self.polling_interval
         log.debug("getting past %d seconds worth of job history." %
                   temp_lookback_window)
-        now = now - datetime.timedelta(seconds=temp_lookback_window+1)
+        now = now - datetime.timedelta(seconds=temp_lookback_window + 1)
         str = now.strftime("%Y%m%d%H%M")
         return str
 
@@ -526,7 +527,7 @@ class SGELoadBalancer(LoadBalancer):
         if need_to_add > 0:
             need_to_add = min(self.add_nodes_per_iteration, need_to_add)
             log.info("*** ADDING %d NODES at %s." % (need_to_add,
-                                                     str(datetime.datetime.utcnow())))
+                                         str(datetime.datetime.utcnow())))
             try:
                 self._cluster.add_nodes(need_to_add)
             except Exception:
