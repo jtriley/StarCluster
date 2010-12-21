@@ -38,8 +38,19 @@ class CmdStart(ClusterCompleter):
 
     tag = None
 
+    def _positive_int(self, option, opt_str, value, parser):
+        if value <= 0:
+            parser.error("option %s must be a positive integer" % opt_str)
+        setattr(parser.values, option.dest, value)
+
     def addopts(self, parser):
         cfg = config.StarClusterConfig().load()
+        templates = cfg.get_cluster_names().keys()
+        opt = parser.add_option("-c", "--cluster-template", action="store",
+                                dest="cluster_template", choices=templates,
+                                default=None,
+                                help="cluster template to use " + \
+                                "from the config file")
         parser.add_option("-x", "--no-create", dest="no_create",
                           action="store_true", default=False,
                           help="Do not launch new EC2 instances when " + \
@@ -52,20 +63,22 @@ class CmdStart(ClusterCompleter):
                           action="store_true", default=False,
                           help="Only validate cluster settings, do " + \
                           "not start a cluster")
+        parser.add_option("-V", "--no-validate", dest="validate",
+                          action="store_false", default=True,
+                          help="Do not validate cluster settings")
         parser.add_option("-l", "--login-master", dest="login_master",
                           action="store_true", default=False,
                           help="ssh to ec2 cluster master node after launch")
+        parser.add_option("-r", "--refresh-interval", dest="refresh_interval",
+                          type="int", action="callback", default=None,
+                          callback=self._positive_int,
+                          help="Refresh interval when waiting for cluster " + \
+                          "nodes to come up (default: 30)")
         parser.add_option("-b", "--bid", dest="spot_bid", action="store",
                           type="float", default=None,
                           help="Requests spot instances instead of flat " + \
                           "rate instances. Uses SPOT_BID as max bid for " + \
                           "the request.")
-        templates = cfg.get_cluster_names().keys()
-        opt = parser.add_option("-c", "--cluster-template", action="store",
-                                dest="cluster_template", choices=templates,
-                                default=None,
-                                help="cluster template to use " + \
-                                "from the config file")
         if optcomplete:
             opt.completer = optcomplete.ListCompleter(opt.choices)
         parser.add_option("-d", "--description", dest="cluster_description",
@@ -74,7 +87,8 @@ class CmdStart(ClusterCompleter):
                           time.strftime("%Y%m%d%H%M"),
                           help="brief description of cluster")
         parser.add_option("-s", "--cluster-size", dest="cluster_size",
-                          action="store", type="int", default=None,
+                          action="callback", type="int", default=None,
+                          callback=self._positive_int,
                           help="number of ec2 instances to launch")
         parser.add_option("-u", "--cluster-user", dest="cluster_user",
                           action="store", type="string", default=None,
@@ -129,6 +143,7 @@ class CmdStart(ClusterCompleter):
         create = not self.opts.no_create
         create_only = self.opts.create_only
         cluster_exists = self.cm.get_cluster_or_none(tag)
+        validate = self.opts.validate
         validate_running = self.opts.no_create
         validate_only = self.opts.validate_only
         if cluster_exists and create:
@@ -154,16 +169,19 @@ class CmdStart(ClusterCompleter):
                 log.info("Using default cluster template: %s" % template)
             scluster = self.cm.get_cluster_template(template, tag)
         scluster.update(self.specified_options_dict)
-        try:
-            scluster._validate(validate_running=validate_running)
-            if validate_only:
-                return
-        except exception.ClusterValidationError:
-            if not cluster_exists:
-                log.error(
-                    'settings for cluster template "%s" are not valid:' % \
-                    template)
-            raise
+        if not self.opts.refresh_interval:
+            scluster.refresh_interval = self.cfg.globals.get("refresh_interval")
+        if validate:
+            try:
+                scluster._validate(validate_running=validate_running)
+            except exception.ClusterValidationError:
+                if not cluster_exists:
+                    log.error(
+                        'settings for cluster template "%s" are not valid:' % \
+                        template)
+                raise
+        if validate_only:
+            return
         if self.opts.spot_bid is not None:
             cmd = ' '.join(sys.argv[1:])
             cmd = cmd.replace('--no-create', '').replace('-x', '')
