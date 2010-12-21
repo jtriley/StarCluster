@@ -12,6 +12,7 @@ from starcluster import static
 from starcluster import iptools
 from starcluster import managers
 from starcluster import exception
+from starcluster import progressbar
 from starcluster import clustersetup
 from starcluster.node import Node
 from starcluster.spinner import Spinner
@@ -274,6 +275,7 @@ class Cluster(object):
             volumes=[],
             plugins=[],
             permissions=[],
+            refresh_interval=30,
             **kwargs):
 
         now = time.strftime("%Y%m%d%H%M")
@@ -300,11 +302,13 @@ class Cluster(object):
         self.volumes = self.load_volumes(volumes)
         self.plugins = self.load_plugins(plugins)
         self.permissions = permissions
+        self.refresh_interval = refresh_interval
 
         self.__instance_types = static.INSTANCE_TYPES
         self.__cluster_settings = static.CLUSTER_SETTINGS
         self.__available_shells = static.AVAILABLE_SHELLS
         self.__protocols = static.PROTOCOLS
+        self._progress_bar = None
         self._master_reservation = None
         self._node_reservation = None
         self._nodes = []
@@ -775,12 +779,8 @@ class Cluster(object):
                                    instance_type=self.node_instance_type,
                                    count=len(aliases))
         self.cluster_size = current_num_nodes + num_nodes
-        s = Spinner()
-        log.log(INFO_NO_NEWLINE, "Waiting for node(s) to come up...")
-        s.start()
-        while not self.is_cluster_up(enforce_size=True):
-            time.sleep(30)
-        s.stop()
+        self.wait_for_cluster(enforce_size=True,
+                              msg="Waiting for node(s) to come up...")
         default_plugin = clustersetup.DefaultClusterSetup()
         for alias in aliases:
             node = self.get_node_by_alias(alias)
@@ -976,22 +976,55 @@ class Cluster(object):
                 return True
         return False
 
-    def is_cluster_up(self, enforce_size=False):
+    def is_cluster_up(self, enforce_size=False, update_progress=False):
         """
-        Check that all nodes are 'running' and that ssh (port 22)
-        is up on all nodes
+        Check that all nodes are 'running' and that ssh is up on all nodes
 
         enforce_size - check that there are self.cluster_size running nodes
+        update_progress - compute progress and display progress bar
         """
+        is_up = True
         nodes = self.running_nodes
-        if not nodes:
-            return False
-        if enforce_size and len(nodes) != self.cluster_size:
-            return False
-        for node in nodes:
-            if not node.is_up():
-                return False
-        return True
+        if update_progress and self.progress_bar.finished:
+            self.progress_bar.finished = False
+        if not nodes or (enforce_size and len(nodes) != self.cluster_size):
+            if update_progress:
+                self.progress_bar.widgets[0] = 'Running Instances: '
+                self.progress_bar.update(len(nodes))
+            is_up = False
+        else:
+            nodes_up = 0
+            for node in nodes:
+                if not node.is_up():
+                    is_up = False
+                    if not update_progress:
+                        break
+                else:
+                    nodes_up += 1
+            if update_progress:
+                self.progress_bar.widgets[0] = 'Active SSH Daemons: '
+                self.progress_bar.update(nodes_up)
+        return is_up
+
+    @property
+    def progress_bar(self):
+        if not self._progress_bar:
+            widgets = [self.cluster_tag, progressbar.Fraction(), ' ',
+                       progressbar.Bar(marker=progressbar.RotatingMarker()),
+                       ' ', ' ', ' ', ' ']
+            pbar = progressbar.ProgressBar(widgets=widgets,
+                                           maxval=self.cluster_size,
+                                           force_update=True)
+            self._progress_bar = pbar
+        self._progress_bar.maxval = self.cluster_size
+        return self._progress_bar
+
+    def wait_for_cluster(self, enforce_size=True,
+                         msg="Waiting for cluster to come up..."):
+        interval = self.refresh_interval
+        log.info("%s %s" % (msg, "(check every %d secs)" % interval))
+        while not self.is_cluster_up(enforce_size, update_progress=True):
+            time.sleep(interval)
 
     def is_cluster_stopped(self):
         """
@@ -1157,12 +1190,7 @@ class Cluster(object):
         enforce_size - wait until there are self.cluster_size up-and-running
         nodes before attempting to setup the cluster
         """
-        s = Spinner()
-        log.log(INFO_NO_NEWLINE, "Waiting for cluster to come up...")
-        s.start()
-        while not self.is_cluster_up(enforce_size):
-            time.sleep(30)
-        s.stop()
+        self.wait_for_cluster(enforce_size)
         log.info("The master node is %s" % self.master_node.dns_name)
         log.info("Setting up the cluster...")
         if self.volumes:
