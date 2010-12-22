@@ -63,7 +63,7 @@ class CmdStart(ClusterCompleter):
                           action="store_true", default=False,
                           help="Only validate cluster settings, do " + \
                           "not start a cluster")
-        parser.add_option("-V", "--no-validate", dest="validate",
+        parser.add_option("-V", "--skip-validation", dest="validate",
                           action="store_false", default=True,
                           help="Do not validate cluster settings")
         parser.add_option("-l", "--login-master", dest="login_master",
@@ -170,7 +170,8 @@ class CmdStart(ClusterCompleter):
             scluster = self.cm.get_cluster_template(template, tag)
         scluster.update(self.specified_options_dict)
         if not self.opts.refresh_interval:
-            scluster.refresh_interval = self.cfg.globals.get("refresh_interval")
+            interval = self.cfg.globals.get("refresh_interval")
+            scluster.refresh_interval = interval
         if validate:
             try:
                 scluster._validate(validate_running=validate_running)
@@ -180,6 +181,8 @@ class CmdStart(ClusterCompleter):
                         'settings for cluster template "%s" are not valid:' % \
                         template)
                 raise
+        else:
+            log.warn("SKIPPING VALIDATION - USE AT YOUR OWN RISK")
         if validate_only:
             return
         if self.opts.spot_bid is not None:
