@@ -21,7 +21,7 @@
 
 """Text progressbar library for python.
 
-This library provides a text mode progressbar. This is tipically used
+This library provides a text mode progressbar. This is typically used
 to display the progress of a long running operation, providing a
 visual clue that processing is underway.
 
@@ -289,6 +289,16 @@ class ProgressBar(object):
         if self.force_update:
             return True
         return int(self.percentage()) != int(self.prev_percentage)
+
+    def reset(self):
+        if not self.finished and self.start_time:
+            self.finish()
+        self.finished = False
+        self.currval = 0
+        self.start_time = None
+        self.seconds_elapsed = None
+        self.prev_percentage = None
+        return self
 
     def update(self, value):
         "Updates the progress bar to a new value."
