@@ -14,12 +14,11 @@ import boto
 import boto.ec2
 import boto.s3.connection
 
-from starcluster import static
+from starcluster import image
 from starcluster import utils
+from starcluster import static
 from starcluster import exception
 from starcluster import progressbar
-from starcluster import image
-#from starcluster import volume
 from starcluster.utils import print_timing
 from starcluster.logger import log
 
@@ -961,10 +960,10 @@ class EasyEC2(EasyAWS):
         filters = {}
         if status:
             filters['status'] = status
-        elif show_deleted:
-            filters['status'] = ['deleting', 'deleted']
         else:
             filters['status'] = ['creating', 'available', 'in-use', 'error']
+            if show_deleted:
+                filters['status'] += ['deleting', 'deleted']
         if attach_status:
             filters['attachment.status'] = attach_status
         if volume_id:
