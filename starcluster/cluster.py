@@ -976,42 +976,28 @@ class Cluster(object):
                 return True
         return False
 
-    def is_cluster_up(self, enforce_size=False, update_progress=False):
+    def is_cluster_up(self, enforce_size=False):
         """
         Check that all nodes are 'running' and that ssh is up on all nodes
 
-        enforce_size - check that there are self.cluster_size running nodes
-        update_progress - compute progress and display progress bar
+        enforce_size - check that there are self.cluster_size running nodes.
+        if false this will *only* check ssh is active on all the existing
+        running instances
         """
-        is_up = True
         nodes = self.running_nodes
-        if update_progress and self.progress_bar.finished:
-            self.progress_bar.finished = False
         if not nodes or (enforce_size and len(nodes) != self.cluster_size):
-            if update_progress:
-                self.progress_bar.widgets[0] = 'Running Instances: '
-                self.progress_bar.update(len(nodes))
-            is_up = False
-        else:
-            nodes_up = 0
-            for node in nodes:
-                if not node.is_up():
-                    is_up = False
-                    if not update_progress:
-                        break
-                else:
-                    nodes_up += 1
-            if update_progress:
-                self.progress_bar.widgets[0] = 'Active SSH Daemons: '
-                self.progress_bar.update(nodes_up)
-        return is_up
+            return False
+        for node in nodes:
+            if not node.is_up():
+                return False
+        return True
 
     @property
     def progress_bar(self):
         if not self._progress_bar:
             widgets = [self.cluster_tag, progressbar.Fraction(), ' ',
                        progressbar.Bar(marker=progressbar.RotatingMarker()),
-                       ' ', ' ', ' ', ' ']
+                       ' ', progressbar.Percentage(), ' ', ' ']
             pbar = progressbar.ProgressBar(widgets=widgets,
                                            maxval=self.cluster_size,
                                            force_update=True)
@@ -1021,10 +1007,44 @@ class Cluster(object):
 
     def wait_for_cluster(self, enforce_size=True,
                          msg="Waiting for cluster to come up..."):
+        """
+        Wait for cluster to come up and display progress bar. Waits for all
+        instances to be in a 'running' state and for all SSH daemons to come up
+        (just like self.is_cluster_up)
+
+        enforce_size - check that there are self.cluster_size running nodes.
+        if false this will *only* check ssh is active on all the existing
+        running instances
+
+        msg - custom message to print out before waiting on the cluster
+        """
         interval = self.refresh_interval
-        log.info("%s %s" % (msg, "(check every %d secs)" % interval))
-        while not self.is_cluster_up(enforce_size, update_progress=True):
-            time.sleep(interval)
+        log.info("%s %s" % (msg, "(checking every %d secs)" % interval))
+        pbar = self.progress_bar.reset()
+        pbar.widgets[0] = ' Running Instances: '
+        pbar.update(0)
+        while not pbar.finished:
+            nodes = self.running_nodes
+            if not enforce_size:
+                pbar.maxval = len(nodes)
+            pbar.update(len(nodes))
+            if not pbar.finished:
+                time.sleep(interval)
+        pbar.reset()
+        pbar.widgets[0] = 'Active SSH Daemons: '
+        pbar.update(0)
+        while not pbar.finished:
+            nodes_up = 0
+            nodes = self.running_nodes
+            if not enforce_size:
+                pbar.maxval = len(nodes)
+            for node in nodes:
+                if node.is_up():
+                    nodes_up += 1
+            pbar.update(nodes_up)
+            if not pbar.finished:
+                time.sleep(interval)
+        pbar.finish()
 
     def is_cluster_stopped(self):
         """
