@@ -646,7 +646,8 @@ class EasyEC2(EasyAWS):
 
     def create_ebs_image(self, instance_id, key_location, name,
                          description=None, snapshot_description=None,
-                         kernel_id=None, ramdisk_id=None, **kwargs):
+                         kernel_id=None, ramdisk_id=None, vol_size=15,
+                         **kwargs):
         """
         Create EBS-backed image from running instance
         """
@@ -657,7 +658,7 @@ class EasyEC2(EasyAWS):
                                          kernel_id=kernel_id,
                                          ramdisk_id=ramdisk_id,
                                          **kwargs)
-        return icreator.create_image()
+        return icreator.create_image(size=vol_size)
 
     def get_image(self, image_id):
         """
