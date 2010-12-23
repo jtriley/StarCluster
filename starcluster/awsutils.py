@@ -511,7 +511,7 @@ class EasyEC2(EasyAWS):
             template = "[%d] %s %s %s"
             if img.virtualizationType == 'hvm':
                 template += ' (HVM-EBS)'
-            if img.root_device_type == 'ebs':
+            elif img.root_device_type == 'ebs':
                 template += ' (EBS)'
             print template % (counter, img.id, img.region.name, name)
             counter += 1
