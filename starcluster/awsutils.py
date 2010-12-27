@@ -180,17 +180,24 @@ class EasyEC2(EasyAWS):
             sg.authorize(src_group=self.get_group_or_none(name))
         return sg
 
-    def get_group_or_none(self, name):
+    def get_all_security_groups(self, groupnames=[]):
         """
         Returns group with name if it exists otherwise returns None
         """
         try:
-            sg = self.conn.get_all_security_groups(groupnames=[name])[0]
-            return sg
+            return self.conn.get_all_security_groups(groupnames=groupnames)
         except boto.exception.EC2ResponseError, e:
             self.__check_for_auth_failure(e)
         except IndexError, e:
             pass
+
+    def get_group_or_none(self, name):
+        """
+        Returns group with name if it exists otherwise returns None
+        """
+        sgs = self.get_all_security_groups(groupnames=[name])
+        if sgs:
+            return sgs[0]
 
     def get_or_create_group(self, name, description, auth_ssh=True,
                             auth_group_traffic=False):

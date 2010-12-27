@@ -147,5 +147,5 @@ CLUSTER_SETTINGS = {
     'volumes': (list, False, [], None),
     'plugins': (list, False, [], None),
     'permissions': (list, False, [], None),
-    'disable_queue': (bool, False, False , None),
+    'disable_queue': (bool, False, False, None),
 }
