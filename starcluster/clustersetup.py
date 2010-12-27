@@ -59,12 +59,13 @@ class DefaultClusterSetup(ClusterSetup):
     """
     Default ClusterSetup implementation for StarCluster
     """
-    def __init__(self):
+    def __init__(self, disable_queue=False):
         self._nodes = None
         self._master = None
         self._user = None
         self._user_shell = None
         self._volumes = None
+        self._disable_queue = disable_queue
 
     @property
     def nodes(self):
@@ -248,7 +249,9 @@ class DefaultClusterSetup(ClusterSetup):
             self._master.mount_device(volume_partition, mount_path)
 
     def _get_nfs_export_paths(self):
-        export_paths = ['/home', '/opt/sge6']
+        export_paths = ['/home']
+        if not self._disable_queue:
+            export_paths.append('/opt/sge6')
         for vol in self._volumes:
             vol = self._volumes[vol]
             mount_path = vol.get('mount_path')
@@ -281,7 +284,7 @@ class DefaultClusterSetup(ClusterSetup):
         nodes = nodes or self._nodes
         log.info("Configuring NFS...")
         master = self._master
-        if not master.ssh.isdir('/opt/sge6'):
+        if not self._disable_queue and not master.ssh.isdir('/opt/sge6'):
             # copy fresh sge installation files to /opt/sge6
             master.ssh.execute('cp -r /opt/sge6-fresh /opt/sge6')
             master.ssh.execute('chown -R %(user)s:%(user)s /opt/sge6' % \
@@ -361,7 +364,8 @@ class DefaultClusterSetup(ClusterSetup):
         self._setup_etc_hosts()
         self._setup_nfs()
         self._setup_passwordless_ssh()
-        self._setup_sge()
+        if not self._disable_queue:
+            self._setup_sge()
 
     def _remove_from_etc_hosts(self, node):
         nodes = filter(lambda x: x.id != node.id, self.running_nodes)
@@ -431,8 +435,9 @@ class DefaultClusterSetup(ClusterSetup):
         self._user_shell = user_shell
         self._volumes = volumes
         log.info("Removing node %s (%s)..." % (node.alias, node.id))
-        log.info("Removing %s from SGE" % node.alias)
-        self._remove_from_sge(node)
+        if not self._disable_queue:
+            log.info("Removing %s from SGE" % node.alias)
+            self._remove_from_sge(node)
         log.info("Removing %s from known_hosts files" % node.alias)
         self._remove_from_known_hosts(node)
         log.info("Removing %s from /etc/hosts" % node.alias)
@@ -472,4 +477,5 @@ class DefaultClusterSetup(ClusterSetup):
         self._create_user(node)
         self._setup_scratch(nodes=[node])
         self._setup_passwordless_ssh(nodes=[node])
-        self._add_to_sge(node)
+        if not self._disable_queue:
+            self._add_to_sge(node)

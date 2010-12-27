@@ -69,6 +69,9 @@ class CmdStart(ClusterCompleter):
         parser.add_option("-l", "--login-master", dest="login_master",
                           action="store_true", default=False,
                           help="ssh to ec2 cluster master node after launch")
+        parser.add_option("-q", "--disable-queue", dest="disable_queue",
+                          action="store_true", default=None,
+                          help="Do not configure a queueing system (SGE)")
         parser.add_option("-r", "--refresh-interval", dest="refresh_interval",
                           type="int", action="callback", default=None,
                           callback=self._positive_int,
