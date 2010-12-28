@@ -816,7 +816,8 @@ class Cluster(object):
                 log.info("Cancelling spot request %s" % node.spot_id)
                 node.get_spot_request().cancel()
             node.terminate()
-            self.cluster_size -= 1
+        running_pending = self._nodes_in_states(['pending', 'running'])
+        self.cluster_size = len(running_pending)
 
     def _get_launch_map(self):
         """
