@@ -944,6 +944,8 @@ class Cluster(object):
         for id in range(1, self.cluster_size):
             alias = 'node%.3d' % id
             (ntype, nimage) = self._get_type_and_image_id(alias)
+            log.info("Launching %s (ami: %s, type: %s)" % \
+                     (alias, nimage, ntype))
             node_response = self.create_node(alias,
                                              image_id=nimage,
                                              instance_type=ntype,
