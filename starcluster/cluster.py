@@ -1034,6 +1034,18 @@ class Cluster(object):
         interval = self.refresh_interval
         log.info("%s %s" % (msg, "(checking every %d secs)" % interval))
         pbar = self.progress_bar.reset()
+        spots = self.spot_requests
+        if spots:
+            pbar.widgets[0] = '     Spot Requests: '
+            pbar.maxval = len(spots)
+            pbar.update(0)
+            while not pbar.finished:
+                active_spots = filter(lambda x: x.state == "active", spots)
+                pbar.update(len(active_spots))
+                if not pbar.finished:
+                    spots = self.spot_requests
+                    time.sleep(interval)
+        pbar.reset()
         pbar.widgets[0] = ' Running Instances: '
         pbar.update(0)
         while not pbar.finished:
