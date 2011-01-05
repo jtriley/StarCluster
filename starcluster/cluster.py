@@ -185,8 +185,11 @@ class ClusterManager(managers.Manager):
             if not cluster_groups:
                 log.info("No clusters found...")
         else:
-            cluster_groups = [self.get_cluster_security_group(g) for g \
-                              in cluster_groups]
+            try:
+                cluster_groups = [self.get_cluster_security_group(g) for g \
+                                  in cluster_groups]
+            except exception.SecurityGroupDoesNotExist:
+                raise exception.ClusterDoesNotExist(g)
         for scg in cluster_groups:
             tag = self.get_tag_from_sg(scg.name)
             cl = self.get_cluster(tag, load_plugins=False)
