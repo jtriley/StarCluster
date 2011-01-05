@@ -223,7 +223,7 @@ class ConfigNotFound(ConfigError):
         print '[1] Show the StarCluster config template'
         print '[2] Write config template to %s' % self.cfg
         print '[q] Quit'
-        resp = raw_input('\nPlase enter your selection: ')
+        resp = raw_input('\nPlease enter your selection: ')
         if resp == '1':
             print self.template
         elif resp == '2':
