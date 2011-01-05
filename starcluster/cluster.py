@@ -2,8 +2,10 @@
 import os
 import re
 import time
+import zlib
 import string
 import pprint
+import base64
 import inspect
 import cPickle
 
@@ -544,7 +546,8 @@ class Cluster(object):
         description field.
         """
         try:
-            pkl_data = self.cluster_group.description
+            compressed_data = base64.b64decode(self.cluster_group.description)
+            pkl_data = zlib.decompress(compressed_data)
             cluster_settings = cPickle.loads(str(pkl_data)).__dict__
             for key in cluster_settings:
                 if hasattr(self, key):
@@ -552,6 +555,9 @@ class Cluster(object):
             if load_plugins:
                 self.plugins = self.load_plugins(self._plugins)
             return True
+        except zlib.error:
+            # TODO raise exception
+            return False
         except (cPickle.PickleError, ValueError, EOFError):
             # TODO raise exception about old version
             return False
@@ -584,8 +590,9 @@ class Cluster(object):
     @property
     def cluster_group(self):
         if self._cluster_group is None:
+            description = base64.b64encode(zlib.compress(cPickle.dumps(self)))
             sg = self.ec2.get_or_create_group(self._security_group,
-                                              cPickle.dumps(self),
+                                              description,
                                               auth_ssh=True,
                                               auth_group_traffic=True)
             for p in self.permissions:
