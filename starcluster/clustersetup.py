@@ -318,6 +318,7 @@ class DefaultClusterSetup(ClusterSetup):
         if master.ssh.isdir(default_cell):
             log.info("Removing previous SGE installation...")
             master.ssh.execute('rm -rf %s' % default_cell)
+            master.ssh.execute('exportfs -fr')
         mconn = master.ssh
         admin_list = ''
         for node in self._nodes:
@@ -347,8 +348,6 @@ class DefaultClusterSetup(ClusterSetup):
                       parallel_environment.name)
         mconn.execute(
             'source /etc/profile && qconf -mattr queue pe_list "orte" all.q')
-        # TODO: cleanup /tmp/pe.txt
-        log.info("Done Configuring Sun Grid Engine")
 
     def run(self, nodes, master, user, user_shell, volumes):
         """Start cluster configuration"""
