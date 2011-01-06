@@ -203,15 +203,18 @@ class ClusterManager(managers.Manager):
             except IndexError:
                 n = None
             state = getattr(n, 'state', None)
+            ltime = 'N/A'
+            uptime = 'N/A'
             if state in ['pending', 'running']:
-                print 'Launch time: %s' % \
-                        getattr(n, 'local_launch_time', 'N/A')
-                print 'Uptime: %s' % getattr(n, 'uptime', 'N/A')
+                ltime = getattr(n, 'local_launch_time', 'N/A')
+                uptime = getattr(n, 'uptime', 'N/A')
+            print 'Launch time: %s' % ltime
+            print 'Uptime: %s' % uptime
             print 'Zone: %s' % getattr(n, 'placement', 'N/A')
             print 'Keypair: %s' % getattr(n, 'key_name', 'N/A')
-            print 'EBS volumes:'
             ebs_nodes = [n for n in nodes if n.attached_vols]
             if ebs_nodes:
+                print 'EBS volumes:'
                 for node in ebs_nodes:
                     devices = node.attached_vols
                     node_id = node.alias or node.id
@@ -222,18 +225,9 @@ class ClusterManager(managers.Manager):
                         print '    %s on %s:%s (status: %s)' % \
                                 (vol_id, node_id, dev, status)
             else:
-                print '    No EBS volumes attached...'
-            print 'Spot requests:'
-            if cl.spot_bid:
-                for spot in cl.spot_requests:
-                    lspec = spot.launch_specification
-                    template = "    %s (ami: %s, type: %s, bid: $%.2f)"
-                    print template % (spot.id, lspec.image_id,
-                                      lspec.instance_type, spot.price)
-            else:
-                print '    No spot requests found...'
-            print 'Cluster nodes:'
+                print 'EBS volumes: N/A'
             if nodes:
+                print 'Cluster nodes:'
                 for node in nodes:
                     spot = node.spot_id or ''
                     if spot:
@@ -241,8 +235,9 @@ class ClusterManager(managers.Manager):
                     print "    %7s %s %s %s %s" % (node.alias, node.state,
                                                    node.id, node.dns_name,
                                                    spot)
+                print 'Total nodes: %d' % len(nodes)
             else:
-                print '    No pending/running nodes found...'
+                print 'Cluster nodes: N/A'
             print
 
     def run_plugin(self, plugin_name, cluster_tag):
