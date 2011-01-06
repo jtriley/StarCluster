@@ -763,7 +763,6 @@ class Cluster(object):
         num_nodes)
         """
         running_pending = self._nodes_in_states(['pending', 'running'])
-        current_num_nodes = len(running_pending)
         aliases = aliases or []
         if not aliases:
             next_node_id = self._get_next_node_num()
@@ -790,9 +789,7 @@ class Cluster(object):
                                    image_id=self.node_image_id,
                                    instance_type=self.node_instance_type,
                                    count=len(aliases))
-        self.cluster_size = current_num_nodes + num_nodes
-        self.wait_for_cluster(enforce_size=True,
-                              msg="Waiting for node(s) to come up...")
+        self.wait_for_cluster(msg="Waiting for node(s) to come up...")
         default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue)
         for alias in aliases:
             node = self.get_node_by_alias(alias)
@@ -826,8 +823,6 @@ class Cluster(object):
                 log.info("Cancelling spot request %s" % node.spot_id)
                 node.get_spot_request().cancel()
             node.terminate()
-        running_pending = self._nodes_in_states(['pending', 'running'])
-        self.cluster_size = len(running_pending)
 
     def _get_launch_map(self):
         """
@@ -991,16 +986,18 @@ class Cluster(object):
                 return True
         return False
 
-    def is_cluster_up(self, enforce_size=False):
+    def is_cluster_up(self):
         """
         Check that all nodes are 'running' and that ssh is up on all nodes
-
-        enforce_size - check that there are self.cluster_size running nodes.
-        if false this will *only* check ssh is active on all the existing
-        running instances
+        This method will return False if any spot requests are in an 'open'
+        state.
         """
-        nodes = self.running_nodes
-        if not nodes or (enforce_size and len(nodes) != self.cluster_size):
+        spots = self.spot_requests
+        active_spots = filter(lambda x: x.state == 'active', spots)
+        if len(spots) != len(active_spots):
+            return False
+        nodes = self.nodes
+        if not nodes:
             return False
         for node in nodes:
             if not node.is_up():
@@ -1010,67 +1007,61 @@ class Cluster(object):
     @property
     def progress_bar(self):
         if not self._progress_bar:
-            widgets = [self.cluster_tag, progressbar.Fraction(), ' ',
+            widgets = ['', progressbar.Fraction(), ' ',
                        progressbar.Bar(marker=progressbar.RotatingMarker()),
                        ' ', progressbar.Percentage(), ' ', ' ']
             pbar = progressbar.ProgressBar(widgets=widgets,
                                            maxval=self.cluster_size,
                                            force_update=True)
             self._progress_bar = pbar
-        self._progress_bar.maxval = self.cluster_size
         return self._progress_bar
 
-    def wait_for_cluster(self, enforce_size=True,
-                         msg="Waiting for cluster to come up..."):
+    def wait_for_cluster(self, msg="Waiting for cluster to come up..."):
         """
         Wait for cluster to come up and display progress bar. Waits for all
-        instances to be in a 'running' state and for all SSH daemons to come up
-        (just like self.is_cluster_up)
-
-        enforce_size - check that there are self.cluster_size running nodes.
-        if false this will *only* check ssh is active on all the existing
-        running instances
+        spot requests to become 'active', all instances to be in a 'running'
+        state, and for all SSH daemons to come up.
 
         msg - custom message to print out before waiting on the cluster
         """
         interval = self.refresh_interval
-        log.info("%s %s" % (msg, "(checking every %d secs)" % interval))
+        log.info("%s %s" % (msg, "(updating every %ds)" % interval))
         pbar = self.progress_bar.reset()
         spots = self.spot_requests
         if spots:
-            pbar.widgets[0] = '     Spot Requests: '
+            log.info('Waiting for open spot requests to become active...')
             pbar.maxval = len(spots)
             pbar.update(0)
             while not pbar.finished:
                 active_spots = filter(lambda x: x.state == "active", spots)
+                pbar.maxval = len(spots)
                 pbar.update(len(active_spots))
                 if not pbar.finished:
-                    spots = self.spot_requests
                     time.sleep(interval)
-        pbar.reset()
-        pbar.widgets[0] = ' Running Instances: '
+                    spots = self.spot_requests
+            pbar.reset()
+        nodes = self.nodes
+        log.info("Waiting for all nodes to be in a 'running' state...")
+        pbar.maxval = len(nodes)
         pbar.update(0)
         while not pbar.finished:
-            nodes = self.running_nodes
-            if not enforce_size:
-                pbar.maxval = len(nodes)
-            pbar.update(len(nodes))
+            running_nodes = filter(lambda x: x.state == "running", nodes)
+            pbar.maxval = len(nodes)
+            pbar.update(len(running_nodes))
             if not pbar.finished:
                 time.sleep(interval)
+                nodes = self.nodes
         pbar.reset()
-        pbar.widgets[0] = 'Active SSH Daemons: '
+        log.info("Waiting for SSH to come up on all nodes...")
+        pbar.maxval = len(nodes)
         pbar.update(0)
         while not pbar.finished:
-            nodes_up = 0
-            nodes = self.running_nodes
-            if not enforce_size:
-                pbar.maxval = len(nodes)
-            for node in nodes:
-                if node.is_up():
-                    nodes_up += 1
-            pbar.update(nodes_up)
+            active_nodes = filter(lambda n: n.is_up(), nodes)
+            pbar.maxval = len(nodes)
+            pbar.update(len(active_nodes))
             if not pbar.finished:
                 time.sleep(interval)
+                nodes = self.nodes
         pbar.finish()
 
     def is_cluster_stopped(self):
@@ -1137,7 +1128,7 @@ class Cluster(object):
         sleep = 20
         log.info("Sleeping for %d secs..." % sleep)
         time.sleep(sleep)
-        self._setup_cluster(enforce_size=False)
+        self._setup_cluster()
 
     def stop_cluster(self):
         """
@@ -1228,16 +1219,13 @@ class Cluster(object):
             'tag': self.cluster_tag,
         })
 
-    def _setup_cluster(self, enforce_size=True):
+    def _setup_cluster(self):
         """
         This method waits for all nodes to come up and then runs the default
         StarCluster setup routines followed by any additional plugin setup
         routines
-
-        enforce_size - wait until there are self.cluster_size up-and-running
-        nodes before attempting to setup the cluster
         """
-        self.wait_for_cluster(enforce_size)
+        self.wait_for_cluster()
         log.info("The master node is %s" % self.master_node.dns_name)
         log.info("Setting up the cluster...")
         if self.volumes:
