@@ -38,11 +38,6 @@ class CmdStart(ClusterCompleter):
 
     tag = None
 
-    def _positive_int(self, option, opt_str, value, parser):
-        if value <= 0:
-            parser.error("option %s must be a positive integer" % opt_str)
-        setattr(parser.values, option.dest, value)
-
     def addopts(self, parser):
         cfg = config.StarClusterConfig().load()
         templates = cfg.get_cluster_names().keys()
