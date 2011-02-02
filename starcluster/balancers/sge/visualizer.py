@@ -13,7 +13,7 @@ from starcluster.logger import log
 class SGEVisualizer(object):
     stat = None
     filepath = os.path.join(static.TMP_DIR, 'starcluster-sge-stats.csv')
-    pngpath = '/home/rajat/Dropbox/Public/sc/'
+    pngpath = '/Users/rbanerjee/Dropbox/Public/sc/'
 
     def __init__(self, cluster_tag=None):
         self.cluster_tag = cluster_tag
