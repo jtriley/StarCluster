@@ -13,6 +13,8 @@ config_template = """
 DEFAULT_TEMPLATE=smallcluster
 # enable experimental features for this release
 ENABLE_EXPERIMENTAL=False
+# number of seconds to wait when polling instances (default: 30s)
+#REFRESH_INTERVAL=15
 
 [aws info]
 # This is the AWS credentials section.
@@ -65,6 +67,10 @@ NODE_IMAGE_ID = %(x86_ami)s
 # instance type for all cluster nodes
 # (options: %(instance_types)s)
 NODE_INSTANCE_TYPE = m1.small
+
+# Uncomment to disable installing/configuring a queueing system on the
+# cluster (SGE)
+#DISABLE_QUEUE=True
 
 # Uncomment to specify a different instance type for the master node (OPTIONAL)
 # (defaults to NODE_INSTANCE_TYPE if not specified)

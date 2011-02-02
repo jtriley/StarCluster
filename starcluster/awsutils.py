@@ -14,12 +14,11 @@ import boto
 import boto.ec2
 import boto.s3.connection
 
-from starcluster import static
+from starcluster import image
 from starcluster import utils
+from starcluster import static
 from starcluster import exception
 from starcluster import progressbar
-from starcluster import image
-#from starcluster import volume
 from starcluster.utils import print_timing
 from starcluster.logger import log
 
@@ -181,17 +180,24 @@ class EasyEC2(EasyAWS):
             sg.authorize(src_group=self.get_group_or_none(name))
         return sg
 
-    def get_group_or_none(self, name):
+    def get_all_security_groups(self, groupnames=[]):
         """
         Returns group with name if it exists otherwise returns None
         """
         try:
-            sg = self.conn.get_all_security_groups(groupnames=[name])[0]
-            return sg
+            return self.conn.get_all_security_groups(groupnames=groupnames)
         except boto.exception.EC2ResponseError, e:
             self.__check_for_auth_failure(e)
         except IndexError, e:
             pass
+
+    def get_group_or_none(self, name):
+        """
+        Returns group with name if it exists otherwise returns None
+        """
+        sgs = self.get_all_security_groups(groupnames=[name])
+        if sgs:
+            return sgs[0]
 
     def get_or_create_group(self, name, description, auth_ssh=True,
                             auth_group_traffic=False):
@@ -512,7 +518,7 @@ class EasyEC2(EasyAWS):
             template = "[%d] %s %s %s"
             if img.virtualizationType == 'hvm':
                 template += ' (HVM-EBS)'
-            if img.root_device_type == 'ebs':
+            elif img.root_device_type == 'ebs':
                 template += ' (EBS)'
             print template % (counter, img.id, img.region.name, name)
             counter += 1
@@ -647,7 +653,8 @@ class EasyEC2(EasyAWS):
 
     def create_ebs_image(self, instance_id, key_location, name,
                          description=None, snapshot_description=None,
-                         kernel_id=None, ramdisk_id=None, **kwargs):
+                         kernel_id=None, ramdisk_id=None, vol_size=15,
+                         **kwargs):
         """
         Create EBS-backed image from running instance
         """
@@ -658,7 +665,7 @@ class EasyEC2(EasyAWS):
                                          kernel_id=kernel_id,
                                          ramdisk_id=ramdisk_id,
                                          **kwargs)
-        return icreator.create_image()
+        return icreator.create_image(size=vol_size)
 
     def get_image(self, image_id):
         """
@@ -961,10 +968,10 @@ class EasyEC2(EasyAWS):
         filters = {}
         if status:
             filters['status'] = status
-        elif show_deleted:
-            filters['status'] = ['deleting', 'deleted']
         else:
             filters['status'] = ['creating', 'available', 'in-use', 'error']
+            if show_deleted:
+                filters['status'] += ['deleting', 'deleted']
         if attach_status:
             filters['attachment.status'] = attach_status
         if volume_id:

@@ -219,7 +219,7 @@ try:
     ipy_shell = IPython.Shell.IPShellEmbed(argv=[])
 except ImportError:
 
-    def ipy_shell():
+    def ipy_shell(local_ns=None):
         log.error("Unable to load IPython.")
         log.error("Please check that IPython is installed and working.")
         log.error("If not, you can install it via: easy_install ipython")

@@ -2,8 +2,10 @@
 import os
 import re
 import time
+import zlib
 import string
 import pprint
+import base64
 import inspect
 import cPickle
 
@@ -12,6 +14,7 @@ from starcluster import static
 from starcluster import iptools
 from starcluster import managers
 from starcluster import exception
+from starcluster import progressbar
 from starcluster import clustersetup
 from starcluster.node import Node
 from starcluster.spinner import Spinner
@@ -182,8 +185,11 @@ class ClusterManager(managers.Manager):
             if not cluster_groups:
                 log.info("No clusters found...")
         else:
-            cluster_groups = [self.get_cluster_security_group(g) for g \
-                              in cluster_groups]
+            try:
+                cluster_groups = [self.get_cluster_security_group(g) for g \
+                                  in cluster_groups]
+            except exception.SecurityGroupDoesNotExist:
+                raise exception.ClusterDoesNotExist(g)
         for scg in cluster_groups:
             tag = self.get_tag_from_sg(scg.name)
             cl = self.get_cluster(tag, load_plugins=False)
@@ -197,15 +203,18 @@ class ClusterManager(managers.Manager):
             except IndexError:
                 n = None
             state = getattr(n, 'state', None)
+            ltime = 'N/A'
+            uptime = 'N/A'
             if state in ['pending', 'running']:
-                print 'Launch time: %s' % \
-                        getattr(n, 'local_launch_time', 'N/A')
-                print 'Uptime: %s' % getattr(n, 'uptime', 'N/A')
+                ltime = getattr(n, 'local_launch_time', 'N/A')
+                uptime = getattr(n, 'uptime', 'N/A')
+            print 'Launch time: %s' % ltime
+            print 'Uptime: %s' % uptime
             print 'Zone: %s' % getattr(n, 'placement', 'N/A')
             print 'Keypair: %s' % getattr(n, 'key_name', 'N/A')
-            print 'EBS volumes:'
             ebs_nodes = [n for n in nodes if n.attached_vols]
             if ebs_nodes:
+                print 'EBS volumes:'
                 for node in ebs_nodes:
                     devices = node.attached_vols
                     node_id = node.alias or node.id
@@ -216,18 +225,9 @@ class ClusterManager(managers.Manager):
                         print '    %s on %s:%s (status: %s)' % \
                                 (vol_id, node_id, dev, status)
             else:
-                print '    No EBS volumes attached...'
-            print 'Spot requests:'
-            if cl.spot_bid:
-                for spot in cl.spot_requests:
-                    lspec = spot.launch_specification
-                    template = "    %s (ami: %s, type: %s, bid: $%.2f)"
-                    print template % (spot.id, lspec.image_id,
-                                      lspec.instance_type, spot.price)
-            else:
-                print '    No spot requests found...'
-            print 'Cluster nodes:'
+                print 'EBS volumes: N/A'
             if nodes:
+                print 'Cluster nodes:'
                 for node in nodes:
                     spot = node.spot_id or ''
                     if spot:
@@ -235,8 +235,9 @@ class ClusterManager(managers.Manager):
                     print "    %7s %s %s %s %s" % (node.alias, node.state,
                                                    node.id, node.dns_name,
                                                    spot)
+                print 'Total nodes: %d' % len(nodes)
             else:
-                print '    No pending/running nodes found...'
+                print 'Cluster nodes: N/A'
             print
 
     def run_plugin(self, plugin_name, cluster_tag):
@@ -274,6 +275,8 @@ class Cluster(object):
             volumes=[],
             plugins=[],
             permissions=[],
+            refresh_interval=30,
+            disable_queue=False,
             **kwargs):
 
         now = time.strftime("%Y%m%d%H%M")
@@ -300,11 +303,14 @@ class Cluster(object):
         self.volumes = self.load_volumes(volumes)
         self.plugins = self.load_plugins(plugins)
         self.permissions = permissions
+        self.refresh_interval = refresh_interval
+        self.disable_queue = disable_queue
 
         self.__instance_types = static.INSTANCE_TYPES
         self.__cluster_settings = static.CLUSTER_SETTINGS
         self.__available_shells = static.AVAILABLE_SHELLS
         self.__protocols = static.PROTOCOLS
+        self._progress_bar = None
         self._master_reservation = None
         self._node_reservation = None
         self._nodes = []
@@ -538,7 +544,8 @@ class Cluster(object):
         description field.
         """
         try:
-            pkl_data = self.cluster_group.description
+            compressed_data = base64.b64decode(self.cluster_group.description)
+            pkl_data = zlib.decompress(compressed_data)
             cluster_settings = cPickle.loads(str(pkl_data)).__dict__
             for key in cluster_settings:
                 if hasattr(self, key):
@@ -546,6 +553,9 @@ class Cluster(object):
             if load_plugins:
                 self.plugins = self.load_plugins(self._plugins)
             return True
+        except zlib.error:
+            # TODO raise exception
+            return False
         except (cPickle.PickleError, ValueError, EOFError):
             # TODO raise exception about old version
             return False
@@ -578,8 +588,9 @@ class Cluster(object):
     @property
     def cluster_group(self):
         if self._cluster_group is None:
+            description = base64.b64encode(zlib.compress(cPickle.dumps(self)))
             sg = self.ec2.get_or_create_group(self._security_group,
-                                              cPickle.dumps(self),
+                                              description,
                                               auth_ssh=True,
                                               auth_group_traffic=True)
             for p in self.permissions:
@@ -747,7 +758,6 @@ class Cluster(object):
         num_nodes)
         """
         running_pending = self._nodes_in_states(['pending', 'running'])
-        current_num_nodes = len(running_pending)
         aliases = aliases or []
         if not aliases:
             next_node_id = self._get_next_node_num()
@@ -774,14 +784,8 @@ class Cluster(object):
                                    image_id=self.node_image_id,
                                    instance_type=self.node_instance_type,
                                    count=len(aliases))
-        self.cluster_size = current_num_nodes + num_nodes
-        s = Spinner()
-        log.log(INFO_NO_NEWLINE, "Waiting for node(s) to come up...")
-        s.start()
-        while not self.is_cluster_up(enforce_size=True):
-            time.sleep(30)
-        s.stop()
-        default_plugin = clustersetup.DefaultClusterSetup()
+        self.wait_for_cluster(msg="Waiting for node(s) to come up...")
+        default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue)
         for alias in aliases:
             node = self.get_node_by_alias(alias)
             default_plugin.on_add_node(
@@ -800,7 +804,7 @@ class Cluster(object):
         """
         Remove a list of nodes from this cluster
         """
-        default_plugin = clustersetup.DefaultClusterSetup()
+        default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue)
         for node in nodes:
             if node.is_master():
                 raise exception.InvalidOperation("cannot remove master node")
@@ -814,7 +818,6 @@ class Cluster(object):
                 log.info("Cancelling spot request %s" % node.spot_id)
                 node.get_spot_request().cancel()
             node.terminate()
-            self.cluster_size -= 1
 
     def _get_launch_map(self):
         """
@@ -931,6 +934,8 @@ class Cluster(object):
         for id in range(1, self.cluster_size):
             alias = 'node%.3d' % id
             (ntype, nimage) = self._get_type_and_image_id(alias)
+            log.info("Launching %s (ami: %s, type: %s)" % \
+                     (alias, nimage, ntype))
             node_response = self.create_node(alias,
                                              image_id=nimage,
                                              instance_type=ntype,
@@ -976,22 +981,83 @@ class Cluster(object):
                 return True
         return False
 
-    def is_cluster_up(self, enforce_size=False):
+    def is_cluster_up(self):
         """
-        Check that all nodes are 'running' and that ssh (port 22)
-        is up on all nodes
-
-        enforce_size - check that there are self.cluster_size running nodes
+        Check that all nodes are 'running' and that ssh is up on all nodes
+        This method will return False if any spot requests are in an 'open'
+        state.
         """
-        nodes = self.running_nodes
-        if not nodes:
+        spots = self.spot_requests
+        active_spots = filter(lambda x: x.state == 'active', spots)
+        if len(spots) != len(active_spots):
             return False
-        if enforce_size and len(nodes) != self.cluster_size:
+        nodes = self.nodes
+        if not nodes:
             return False
         for node in nodes:
             if not node.is_up():
                 return False
         return True
+
+    @property
+    def progress_bar(self):
+        if not self._progress_bar:
+            widgets = ['', progressbar.Fraction(), ' ',
+                       progressbar.Bar(marker=progressbar.RotatingMarker()),
+                       ' ', progressbar.Percentage(), ' ', ' ']
+            pbar = progressbar.ProgressBar(widgets=widgets,
+                                           maxval=self.cluster_size,
+                                           force_update=True)
+            self._progress_bar = pbar
+        return self._progress_bar
+
+    def wait_for_cluster(self, msg="Waiting for cluster to come up..."):
+        """
+        Wait for cluster to come up and display progress bar. Waits for all
+        spot requests to become 'active', all instances to be in a 'running'
+        state, and for all SSH daemons to come up.
+
+        msg - custom message to print out before waiting on the cluster
+        """
+        interval = self.refresh_interval
+        log.info("%s %s" % (msg, "(updating every %ds)" % interval))
+        pbar = self.progress_bar.reset()
+        spots = self.spot_requests
+        if spots:
+            log.info('Waiting for open spot requests to become active...')
+            pbar.maxval = len(spots)
+            pbar.update(0)
+            while not pbar.finished:
+                active_spots = filter(lambda x: x.state == "active", spots)
+                pbar.maxval = len(spots)
+                pbar.update(len(active_spots))
+                if not pbar.finished:
+                    time.sleep(interval)
+                    spots = self.spot_requests
+            pbar.reset()
+        nodes = self.nodes
+        log.info("Waiting for all nodes to be in a 'running' state...")
+        pbar.maxval = len(nodes)
+        pbar.update(0)
+        while not pbar.finished:
+            running_nodes = filter(lambda x: x.state == "running", nodes)
+            pbar.maxval = len(nodes)
+            pbar.update(len(running_nodes))
+            if not pbar.finished:
+                time.sleep(interval)
+                nodes = self.nodes
+        pbar.reset()
+        log.info("Waiting for SSH to come up on all nodes...")
+        pbar.maxval = len(nodes)
+        pbar.update(0)
+        while not pbar.finished:
+            active_nodes = filter(lambda n: n.is_up(), nodes)
+            pbar.maxval = len(nodes)
+            pbar.update(len(active_nodes))
+            if not pbar.finished:
+                time.sleep(interval)
+                nodes = self.nodes
+        pbar.finish()
 
     def is_cluster_stopped(self):
         """
@@ -1004,7 +1070,7 @@ class Cluster(object):
         Check whether all nodes are in a 'terminated' state
         """
         states = filter(lambda x: x != 'terminated', static.INSTANCE_STATES)
-        filters = {'group-id': self._cluster_group,
+        filters = {'group-id': self._security_group,
                    'instance-state-name': states}
         insts = self.ec2.get_all_instances(filters=filters)
         return len(insts) == 0
@@ -1057,7 +1123,7 @@ class Cluster(object):
         sleep = 20
         log.info("Sleeping for %d secs..." % sleep)
         time.sleep(sleep)
-        self._setup_cluster(enforce_size=False)
+        self._setup_cluster()
 
     def stop_cluster(self):
         """
@@ -1148,26 +1214,18 @@ class Cluster(object):
             'tag': self.cluster_tag,
         })
 
-    def _setup_cluster(self, enforce_size=True):
+    def _setup_cluster(self):
         """
         This method waits for all nodes to come up and then runs the default
         StarCluster setup routines followed by any additional plugin setup
         routines
-
-        enforce_size - wait until there are self.cluster_size up-and-running
-        nodes before attempting to setup the cluster
         """
-        s = Spinner()
-        log.log(INFO_NO_NEWLINE, "Waiting for cluster to come up...")
-        s.start()
-        while not self.is_cluster_up(enforce_size):
-            time.sleep(30)
-        s.stop()
+        self.wait_for_cluster()
         log.info("The master node is %s" % self.master_node.dns_name)
         log.info("Setting up the cluster...")
         if self.volumes:
             self.attach_volumes_to_master()
-        clustersetup.DefaultClusterSetup().run(
+        clustersetup.DefaultClusterSetup(self.disable_queue).run(
             self.nodes, self.master_node,
             self.cluster_user, self.cluster_shell,
             self.volumes)

@@ -21,7 +21,7 @@
 
 """Text progressbar library for python.
 
-This library provides a text mode progressbar. This is tipically used
+This library provides a text mode progressbar. This is typically used
 to display the progress of a long running operation, providing a
 visual clue that processing is underway.
 
@@ -157,6 +157,12 @@ class Percentage(ProgressBarWidget):
         return '%3d%%' % pbar.percentage()
 
 
+class Fraction(ProgressBarWidget):
+    "Just the fraction done."
+    def update(self, pbar):
+        return "%d/%d" % (pbar.currval, pbar.maxval)
+
+
 class Bar(ProgressBarWidgetHFill):
     "The bar of progress. It will strech to fill the line."
     def __init__(self, marker='#', left='|', right='|'):
@@ -223,7 +229,7 @@ class ProgressBar(object):
     - percentage(): percentage of the progress (this is a method)
     """
     def __init__(self, maxval=100, widgets=default_widgets, term_width=None,
-                 fd=sys.stderr):
+                 fd=sys.stderr, force_update=False):
         assert maxval > 0
         self.maxval = maxval
         self.widgets = widgets
@@ -244,6 +250,7 @@ class ProgressBar(object):
         self.prev_percentage = -1
         self.start_time = None
         self.seconds_elapsed = 0
+        self.force_update = force_update
 
     def handle_resize(self, signum, frame):
         h, w = array('h', ioctl(self.fd, termios.TIOCGWINSZ, '\0' * 8))[:2]
@@ -279,7 +286,19 @@ class ProgressBar(object):
         return ''.join(self._format_widgets()).ljust(self.term_width)
 
     def _need_update(self):
+        if self.force_update:
+            return True
         return int(self.percentage()) != int(self.prev_percentage)
+
+    def reset(self):
+        if not self.finished and self.start_time:
+            self.finish()
+        self.finished = False
+        self.currval = 0
+        self.start_time = None
+        self.seconds_elapsed = None
+        self.prev_percentage = None
+        return self
 
     def update(self, value):
         "Updates the progress bar to a new value."
@@ -317,60 +336,85 @@ class ProgressBar(object):
         if self.signal_set:
             signal.signal(signal.SIGWINCH, signal.SIG_DFL)
 
-if __name__ == '__main__':
 
-    def example1():
-        widgets = ['Test: ', Percentage(), ' ', Bar(marker=RotatingMarker()),
-                   ' ', ETA(), ' ', FileTransferSpeed()]
-        pbar = ProgressBar(widgets=widgets, maxval=10000000).start()
-        for i in range(1000000):
-            # do something
-            pbar.update(10 * i + 1)
-        pbar.finish()
-        print
+def example1():
+    widgets = ['Test: ', Percentage(), ' ', Bar(marker=RotatingMarker()),
+               ' ', ETA(), ' ', FileTransferSpeed()]
+    pbar = ProgressBar(widgets=widgets, maxval=10000000).start()
+    for i in range(1000000):
+        # do something
+        pbar.update(10 * i + 1)
+    pbar.finish()
+    return pbar
 
-    def example2():
-        class CrazyFileTransferSpeed(FileTransferSpeed):
-            "It's bigger between 45 and 80 percent"
-            def update(self, pbar):
-                if 45 < pbar.percentage() < 80:
-                    return 'Bigger Now ' + FileTransferSpeed.update(self, pbar)
-                else:
-                    return FileTransferSpeed.update(self, pbar)
 
-        widgets = [CrazyFileTransferSpeed(), ' <<<',
-                   Bar(), '>>> ', Percentage(), ' ', ETA()]
-        pbar = ProgressBar(widgets=widgets, maxval=10000000)
-        # maybe do something
-        pbar.start()
-        for i in range(2000000):
-            # do something
-            pbar.update(5 * i + 1)
-        pbar.finish()
-        print
+def example2():
+    class CrazyFileTransferSpeed(FileTransferSpeed):
+        "It's bigger between 45 and 80 percent"
+        def update(self, pbar):
+            if 45 < pbar.percentage() < 80:
+                return 'Bigger Now ' + FileTransferSpeed.update(self, pbar)
+            else:
+                return FileTransferSpeed.update(self, pbar)
 
-    def example3():
-        widgets = [Bar('>'), ' ', ETA(), ' ', ReverseBar('<')]
-        pbar = ProgressBar(widgets=widgets, maxval=10000000).start()
-        for i in range(1000000):
-            # do something
-            pbar.update(10 * i + 1)
-        pbar.finish()
-        print
+    widgets = [CrazyFileTransferSpeed(), ' <<<',
+               Bar(), '>>> ', Percentage(), ' ', ETA()]
+    pbar = ProgressBar(widgets=widgets, maxval=10000000)
+    # maybe do something
+    pbar.start()
+    for i in range(2000000):
+        # do something
+        pbar.update(5 * i + 1)
+    pbar.finish()
+    return pbar
 
-    def example4():
-        widgets = ['Test: ', Percentage(), ' ',
-                   Bar(marker='0', left='[', right=']'),
-                   ' ', ETA(), ' ', FileTransferSpeed()]
-        pbar = ProgressBar(widgets=widgets, maxval=500)
-        pbar.start()
-        for i in range(100, 500 + 1, 50):
-            time.sleep(0.2)
-            pbar.update(i)
-        pbar.finish()
-        print
 
+def example3():
+    widgets = [Bar('>'), ' ', ETA(), ' ', ReverseBar('<')]
+    pbar = ProgressBar(widgets=widgets, maxval=10000000).start()
+    for i in range(1000000):
+        # do something
+        pbar.update(10 * i + 1)
+    pbar.finish()
+    return pbar
+
+
+def example4():
+    widgets = ['Test: ', Percentage(), ' ',
+               Bar(marker='0', left='[', right=']'),
+               ' ', ETA(), ' ', FileTransferSpeed()]
+    pbar = ProgressBar(widgets=widgets, maxval=500)
+    pbar.start()
+    for i in range(100, 500 + 1, 50):
+        time.sleep(0.2)
+        pbar.update(i)
+    pbar.finish()
+    return pbar
+
+
+def example5():
+    widgets = ['Test: ', Fraction(), ' ', Bar(marker=RotatingMarker()),
+               ' ', ETA(), ' ', FileTransferSpeed()]
+    pbar = ProgressBar(widgets=widgets, maxval=10, force_update=True).start()
+    for i in range(1, 11):
+        # do something
+        time.sleep(0.5)
+        pbar.update(i)
+    pbar.finish()
+    return pbar
+
+
+def main():
     example1()
+    print
     example2()
+    print
     example3()
+    print
     example4()
+    print
+    example5()
+    print
+
+if __name__ == '__main__':
+    main()

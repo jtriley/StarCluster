@@ -10,6 +10,7 @@ from sshnode import CmdSshNode
 from sshinstance import CmdSshInstance
 from listclusters import CmdListClusters
 from createimage import CmdCreateImage
+from ebsimage import CmdEbsImage
 from downloadimage import CmdDownloadImage
 from createvolume import CmdCreateVolume
 from resizevolume import CmdResizeVolume
@@ -48,26 +49,27 @@ all_cmds = [
     CmdLoadBalance(),
     CmdSshInstance(),
     CmdListInstances(),
+    CmdListSpots(),
     CmdListImages(),
     CmdListPublic(),
     CmdListKeyPairs(),
     CmdCreateKey(),
     CmdRemoveKey(),
     CmdCreateImage(),
-    CmdRemoveImage(),
+    CmdEbsImage(),
+    CmdShowImage(),
     CmdDownloadImage(),
-    CmdListVolumes(),
+    CmdRemoveImage(),
     CmdCreateVolume(),
+    CmdListVolumes(),
     CmdResizeVolume(),
     CmdRemoveVolume(),
-    CmdListSpots(),
     CmdSpotHistory(),
     CmdShowConsole(),
     CmdListRegions(),
     CmdListZones(),
     CmdListBuckets(),
     CmdShowBucket(),
-    CmdShowImage(),
     CmdRunPlugin(),
     CmdShell(),
     CmdHelp(),

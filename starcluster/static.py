@@ -86,6 +86,7 @@ GLOBAL_SETTINGS = {
     # setting, type, required?, default, options
     'default_template': (str, False, None, None),
     'enable_experimental': (bool, False, False, None),
+    'refresh_interval': (int, False, 30, None),
 }
 
 AWS_SETTINGS = {
@@ -146,4 +147,5 @@ CLUSTER_SETTINGS = {
     'volumes': (list, False, [], None),
     'plugins': (list, False, [], None),
     'permissions': (list, False, [], None),
+    'disable_queue': (bool, False, False, None),
 }

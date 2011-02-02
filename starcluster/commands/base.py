@@ -157,3 +157,8 @@ class CmdBase(optcomplete.CmdComplete):
             sys.stdout.flush()
             time.sleep(1)
         print
+
+    def _positive_int(self, option, opt_str, value, parser):
+        if value <= 0:
+            parser.error("option %s must be a positive integer" % opt_str)
+        setattr(parser.values, option.dest, value)

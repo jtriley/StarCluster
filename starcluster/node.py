@@ -66,6 +66,7 @@ class Node(object):
         self.key_location = key_location
         self.user = user
         self._alias = alias
+        self._groups = None
         self._ssh = None
         self._num_procs = None
         self._memory = None
@@ -91,6 +92,18 @@ class Node(object):
                     "instance %s has no alias" % alias)
             self._alias = alias
         return self._alias
+
+    @property
+    def groups(self):
+        if not self._groups:
+            groups = map(lambda x: x.id, self.instance.groups)
+            self._groups = self.ec2.get_all_security_groups(groupnames=groups)
+        return self._groups
+
+    @property
+    def cluster_groups(self):
+        sg_prefix = static.SECURITY_GROUP_PREFIX
+        return filter(lambda x: x.name.startswith(sg_prefix), self.groups)
 
     @property
     def num_processors(self):
