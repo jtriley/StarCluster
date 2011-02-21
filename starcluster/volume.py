@@ -158,7 +158,7 @@ class VolumeCreator(object):
                 'instance_type must be one of: %s' % choices)
         itype_platform = static.INSTANCE_TYPES.get(itype)
         img_platform = img.architecture
-        if itype_platform not in img_platform:
+        if img_platform not in itype_platform:
             error_msg = "instance_type %(itype)s is for an " + \
                           "%(iplat)s platform while image_id " + \
                           "%(img)s is an %(imgplat)s platform"
