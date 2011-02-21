@@ -190,8 +190,8 @@ class SGEStats(object):
         """
         slots = 0
         for h in self.hosts:
-	    if h['num_proc'] == '-':
-		h['num_proc'] = 0
+            if h['num_proc'] == '-':
+                h['num_proc'] = 0
 
             slots = slots + int(h['num_proc'])
         return slots
@@ -203,10 +203,10 @@ class SGEStats(object):
         for example, if you have m1.large and m1.small in the same cluster
         """
         total = self.count_total_slots()
-	if self.hosts[0][u'num_proc'] == '-':
-	    self.hosts[0][u'num_proc'] = 0
+        if self.hosts[0][u'num_proc'] == '-':
+            self.hosts[0][u'num_proc'] = 0
         single = int(self.hosts[0][u'num_proc'])
-	if (total != (single * len(self.hosts))):
+        if (total != (single * len(self.hosts))):
             log.error("ERROR: Number of slots not consistent across cluster")
             return -1
         return single
@@ -290,8 +290,8 @@ class SGEStats(object):
         """
         loads = []
         for h in self.hosts:
-	    if h['load_avg'] == '-':
-		h['load_avg'] = 0
+            if h['load_avg'] == '-':
+                h['load_avg'] = 0
             loads.append(h['load_avg'])
         return loads
 
