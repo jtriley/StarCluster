@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os
+import os, os.path
 import urllib
 import ConfigParser
 
@@ -295,7 +295,7 @@ class StarClusterConfig(object):
             raise exception.ConfigError(
                 "keypair '%s' not defined in config" % keyname)
         cluster_section['keyname'] = keyname
-        cluster_section['key_location'] = keypair.get('key_location')
+        cluster_section['key_location'] = keypair.get('key_location') and os.path.expanduser(keypair.get('key_location'))
 
     def _load_volumes(self, store):
         cluster_section = store
