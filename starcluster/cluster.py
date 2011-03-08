@@ -11,13 +11,13 @@ import cPickle
 
 from starcluster import utils
 from starcluster import static
+from starcluster import spinner
 from starcluster import iptools
 from starcluster import managers
 from starcluster import exception
 from starcluster import progressbar
 from starcluster import clustersetup
 from starcluster.node import Node
-from starcluster.spinner import Spinner
 from starcluster.utils import print_timing
 from starcluster.templates import user_msgs
 from starcluster.logger import log, INFO_NO_NEWLINE
@@ -999,6 +999,20 @@ class Cluster(object):
                 return False
         return True
 
+    def get_spinner(self, msg):
+        """
+        Logs a status msg, starts a spinner, and returns the spinner object.
+        This is useful for long running processes:
+
+            s = self.get_spinner("Long running process running...")
+            (do something)
+            s.stop()
+        """
+        s = spinner.Spinner()
+        log.log(INFO_NO_NEWLINE, msg)
+        s.start()
+        return s
+
     @property
     def progress_bar(self):
         if not self._progress_bar:
@@ -1036,6 +1050,12 @@ class Cluster(object):
                     spots = self.spot_requests
             pbar.reset()
         nodes = self.nodes
+        if len(nodes) == 0:
+            s = self.get_spinner("Waiting for instances to activate...")
+            while len(nodes) == 0:
+                time.sleep(interval)
+                nodes = self.nodes
+            s.stop()
         log.info("Waiting for all nodes to be in a 'running' state...")
         pbar.maxval = len(nodes)
         pbar.update(0)
@@ -1167,9 +1187,7 @@ class Cluster(object):
         self.cluster_group.delete()
         pg = self.ec2.get_placement_group_or_none(self._security_group)
         if pg:
-            log.log(INFO_NO_NEWLINE, "Waiting for cluster to terminate...")
-            s = Spinner()
-            s.start()
+            s = self.get_spinner("Waiting for cluster to terminate...")
             while not self.is_cluster_terminated():
                 time.sleep(5)
             s.stop()
