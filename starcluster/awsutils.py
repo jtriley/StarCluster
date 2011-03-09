@@ -983,6 +983,7 @@ class EasyEC2(EasyAWS):
         if snapshot_id:
             filters['snapshot-id'] = snapshot_id
         vols = self.get_volumes(filters=filters)
+        vols.sort(key=lambda x: x.create_time)
         if vols:
             for vol in vols:
                 print "volume_id: %s" % vol.id
