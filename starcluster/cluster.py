@@ -1426,7 +1426,7 @@ class Cluster(object):
             raise exception.ClusterValidationError('Image %s does not exist' %
                                                    image_id)
         image_platform = image.architecture
-        image_is_hvm = (image.virtualizationType == "hvm")
+        image_is_hvm = (image.virtualization_type == "hvm")
         if image_is_hvm and not instance_type in static.CLUSTER_TYPES:
             cctypes_list = ', '.join(static.CLUSTER_TYPES)
             raise exception.ClusterValidationError(
@@ -1514,7 +1514,7 @@ class Cluster(object):
                         'Cluster Compute/GPU instance type %s ' +
                         'cannot be used with spot instances') % type)
                 img = self.ec2.get_image(image)
-                if img.virtualizationType != 'hvm':
+                if img.virtualization_type != 'hvm':
                     raise exception.ClusterValidationError((
                         'Cluster Compute/GPU instance type %s ' +
                         'can only be used with HVM images.\n' +

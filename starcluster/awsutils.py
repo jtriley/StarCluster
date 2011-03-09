@@ -516,7 +516,7 @@ class EasyEC2(EasyAWS):
         for img in imgs:
             name = self.get_image_name(img)
             template = "[%d] %s %s %s"
-            if img.virtualizationType == 'hvm':
+            if img.virtualization_type == 'hvm':
                 template += ' (HVM-EBS)'
             elif img.root_device_type == 'ebs':
                 template += ' (EBS)'
