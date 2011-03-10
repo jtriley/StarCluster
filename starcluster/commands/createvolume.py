@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import os
 
+from starcluster import node
 from starcluster import volume
 from starcluster import static
 from starcluster import exception
@@ -26,7 +27,7 @@ class CmdCreateVolume(CmdBase):
         parser.add_option(
             "-H", "--host-instance", dest="host_instance",
             action="store", type="string", default=None,
-            help="Use existing instance as volume host rather than " + \
+            help="Use specified instance as volume host rather than " + \
             "launching a new host")
         parser.add_option(
             "-s", "--shutdown-volume-host", dest="shutdown_instance",
@@ -82,6 +83,14 @@ class CmdCreateVolume(CmdBase):
                 "key_location '%s' is not a file." % key_location)
         return (keypair, key_location)
 
+    def _validate_instance(self, instance, zone):
+        if instance.state not in ['pending', 'running']:
+            raise exception.InstanceNotRunning(instance.id)
+        if instance.placement != zone:
+            raise exception.ValidationError(
+                "specified host instance %s is not in zone %s" %
+                (instance.id, zone))
+
     def execute(self, args):
         if len(args) != 2:
             self.parser.error(
@@ -91,8 +100,12 @@ class CmdCreateVolume(CmdBase):
         host_instance = None
         if self.opts.host_instance:
             host_instance = self.ec2.get_instance(self.opts.host_instance)
+            self._validate_instance(host_instance, zone)
             key = host_instance.key_name
         keypair, key_location = self._load_keypair(key)
+        if host_instance:
+            host_instance = node.Node(host_instance, key_location,
+                                      alias="volumecreator_host")
         kwargs = self.specified_options_dict
         kwargs.update(dict(keypair=keypair, key_location=key_location,
                            host_instance=host_instance))

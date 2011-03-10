@@ -1,18 +1,16 @@
 #!/usr/bin/env python
 import time
 import string
-import cPickle
 
 from starcluster import static
 from starcluster import utils
 from starcluster import exception
-from starcluster.node import Node
-from starcluster.spinner import Spinner
+from starcluster import cluster
 from starcluster.utils import print_timing
-from starcluster.logger import log, INFO_NO_NEWLINE
+from starcluster.logger import log
 
 
-class VolumeCreator(object):
+class VolumeCreator(cluster.Cluster):
     """
     Handles creating, partitioning, and formatting a new EBS volume.
     By default this class will format the entire drive (without partitioning)
@@ -32,10 +30,6 @@ class VolumeCreator(object):
                  image_id=static.BASE_AMI_32, instance_type="m1.small",
                  shutdown_instance=False, mkfs_cmd='mkfs.ext3',
                  resizefs_cmd='resize2fs'):
-        self._ec2 = ec2_conn
-        self._keypair = keypair
-        self._key_location = key_location
-        self._resv = None
         self._instance = host_instance
         self._volume = None
         self._device = device or '/dev/sdz'
@@ -43,10 +37,15 @@ class VolumeCreator(object):
         self._image_id = image_id or static.BASE_AMI_32
         self._instance_type = instance_type or 'm1.small'
         self._shutdown = shutdown_instance
-        self._security_group = None
         self._mkfs_cmd = mkfs_cmd
         self._resizefs_cmd = resizefs_cmd
         self._alias_tmpl = "volumecreator-%s"
+        super(VolumeCreator, self).__init__(
+            ec2_conn=ec2_conn, keyname=keypair, key_location=key_location,
+            cluster_tag=static.VOLUME_GROUP_NAME, cluster_size=1,
+            cluster_user="sgeadmin", cluster_shell="bash",
+            node_image_id=self._image_id,
+            node_instance_type=self._instance_type)
 
     def __repr__(self):
         return "<VolumeCreator: %s>" % self._mkfs_cmd
@@ -54,65 +53,41 @@ class VolumeCreator(object):
     def __getstate__(self):
         return {}
 
-    @property
-    def security_group(self):
-        if not self._security_group:
-            sg = self._ec2.get_or_create_group(static.VOLUME_GROUP,
-                                               cPickle.dumps(self),
-                                               auth_ssh=True)
-            self._security_group = sg
-        return self._security_group
-
     def _get_existing_instance(self, zone):
         """
         Returns any existing instance in the @sc-volumecreator group that's
         located in zone
         """
-        alias = self._alias_tmpl % zone
-        sg = self._ec2.get_group_or_none(static.VOLUME_GROUP)
-        if not sg:
-            return
-        for i in sg.instances():
-            if i.state in ['pending', 'running'] and i.placement == zone:
+        active_states = ['pending', 'running']
+        ids = dict(map(lambda x: (x.id, x), self.nodes))
+        if self._instance and not self._instance.id in ids:
+            ids[self._instance.id] = self._instance
+        for node in ids.values():
+            if node.state in active_states and node.placement == zone:
                 log.info("Using existing instance %s in group %s" % \
-                         (i.id, sg.name))
-                return Node(i, self._key_location, alias)
+                         (node.id, self.cluster_group.name))
+                return node
 
     def _request_instance(self, zone):
-        alias = self._alias_tmpl % zone
-        if self._instance:
-            i = self._instance
-            if i.state not in ['pending', 'running']:
-                raise exception.InstanceNotRunning(i.id)
-            if i.placement != zone:
-                raise exception.ValidationError(
-                    "specified host instance %s is not in zone %s" %
-                    (i.id, zone))
-            self._instance = Node(i, self._key_location, alias)
-        else:
-            self._instance = self._get_existing_instance(zone)
+        self._instance = self._get_existing_instance(zone)
         if not self._instance:
+            alias = self._alias_tmpl % zone
             self._validate_image_and_type(self._image_id, self._instance_type)
             log.info(
                 "No instance in group %s for zone %s, launching one now." % \
-                (self.security_group.name, zone))
-            self._resv = self._ec2.run_instances(
-                image_id=self._image_id,
+                (self.cluster_group.name, zone))
+            self._resv = self.create_node(
+                alias, image_id=self._image_id,
                 instance_type=self._instance_type,
-                min_count=1, max_count=1,
-                security_groups=[self.security_group.name],
-                key_name=self._keypair,
-                placement=zone,
-                user_data=alias)
-            instance = self._resv.instances[0]
-            self._instance = Node(instance, self._key_location, alias)
-        s = Spinner()
-        log.log(INFO_NO_NEWLINE,
-                 "Waiting for instance %s to come up..." % self._instance.id)
-        s.start()
-        while not self._instance.is_up():
-            time.sleep(15)
-        s.stop()
+                count=1, zone=zone)
+            self.wait_for_cluster(msg="Waiting for volume host to come up...")
+            self._instance = self.get_node_by_alias(alias)
+        else:
+            s = self.get_spinner("Waiting for instance %s to come up..." % \
+                                 self._instance.id)
+            while not self._instance.is_up():
+                time.sleep(self.refresh_interval)
+            s.stop()
         return self._instance
 
     def _create_volume(self, size, zone, snapshot_id=None):
@@ -120,11 +95,13 @@ class VolumeCreator(object):
         if snapshot_id:
             msg += " from snapshot %s" % snapshot_id
         log.info(msg)
-        vol = self._ec2.create_volume(size, zone, snapshot_id)
+        vol = self.ec2.create_volume(size, zone, snapshot_id)
         log.info("New volume id: %s" % vol.id)
+        s = self.get_spinner("Waiting for new volume to become 'available'...")
         while vol.status != 'available':
             time.sleep(5)
             vol.update()
+        s.stop()
         self._volume = vol
         return self._volume
 
@@ -137,18 +114,19 @@ class VolumeCreator(object):
                 return self._device
 
     def _attach_volume(self, vol, instance_id, device):
-        log.info("Attaching volume %s to instance %s..." % (vol.id,
-                                                            instance_id))
+        s = self.get_spinner("Attaching volume %s to instance %s..." % \
+                             (vol.id, instance_id))
         vol.attach(instance_id, device)
         while True:
             vol.update()
             if vol.attachment_state() == 'attached':
                 break
             time.sleep(5)
+        s.stop()
         return self._volume
 
     def _validate_image_and_type(self, image, itype):
-        img = self._ec2.get_image_or_none(image)
+        img = self.ec2.get_image_or_none(image)
         if not img:
             raise exception.ValidationError(
                 'image %s does not exist' % image)
@@ -167,7 +145,7 @@ class VolumeCreator(object):
             raise exception.ValidationError(error_msg % error_dict)
 
     def _validate_zone(self, zone):
-        z = self._ec2.get_zone(zone)
+        z = self.ec2.get_zone_or_none(zone)
         if not z:
             raise exception.ValidationError(
                 'zone %s does not exist' % zone)
@@ -216,9 +194,7 @@ class VolumeCreator(object):
                                    silent=False)
 
     def _warn_about_volume_hosts(self):
-        sg = self._ec2.get_group_or_none(static.VOLUME_GROUP)
-        if not sg:
-            return
+        sg = self.cluster_group
         vol_hosts = filter(lambda x: x.state in ['running', 'pending'],
                            sg.instances())
         vol_hosts = map(lambda x: x.id, vol_hosts)
@@ -236,15 +212,12 @@ class VolumeCreator(object):
     def shutdown(self):
         vol = self._volume
         host = self._instance
+        log.info("Detaching volume %s from instance %s" % (vol.id, host.id))
+        vol.detach()
         if self._shutdown:
-            log.info("Detaching volume %s from instance %s" % \
-                     (vol.id, host.id))
-            vol.detach()
             log.info("Terminating host instance %s" % host.id)
             host.terminate()
         else:
-            log.info("Leaving volume attached to host instance %s" % \
-                     host.id)
             log.info("Not terminating host instance %s" % \
                      host.id)
 
@@ -288,11 +261,11 @@ class VolumeCreator(object):
         try:
             self._validate_device(self._device)
             self._validate_resize(vol, size)
-            snap = self._ec2.create_snapshot(vol)
+            snap = self.ec2.create_snapshot(vol)
             host = self._request_instance(vol.zone)
             self._validate_required_progs([self._resizefs_cmd.split()[0]])
             self._determine_device()
-            self._ec2.wait_for_snapshot(snap)
+            self.ec2.wait_for_snapshot(snap)
             new_vol = self._create_volume(size, vol.zone, snap.id)
             self._attach_volume(new_vol, host.id, self._device)
             devs = filter(lambda x: x.startswith(self._device),

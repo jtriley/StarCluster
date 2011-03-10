@@ -104,8 +104,8 @@ def configure_paramiko_logging():
     l = logging.getLogger("paramiko")
     l.setLevel(logging.DEBUG)
     lh = logging.handlers.RotatingFileHandler(static.SSH_DEBUG_FILE,
-                                               maxBytes=1048576,
-                                               backupCount=2)
+                                              maxBytes=1048576,
+                                              backupCount=2)
     lh.setLevel(logging.DEBUG)
     format = (('PID: %s ' % str(static.PID)) + \
               '%(levelname)-.3s [%(asctime)s.%(msecs)03d] ' + \
@@ -122,8 +122,8 @@ def configure_boto_logging():
     l = logging.getLogger("boto")
     l.setLevel(logging.DEBUG)
     lh = logging.handlers.RotatingFileHandler(static.AWS_DEBUG_FILE,
-                                               maxBytes=1048576,
-                                               backupCount=2)
+                                              maxBytes=1048576,
+                                              backupCount=2)
     lh.setLevel(logging.DEBUG)
     format = (('PID: %s ' % str(static.PID)) + \
               '%(levelname)-.3s [%(asctime)s.%(msecs)03d] ' + \

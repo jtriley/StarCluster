@@ -369,7 +369,7 @@ class CancelledCreateVolume(BaseException):
     def __init__(self):
         self.msg = "Request to create volume was cancelled"
         self.msg += "\n\nPlease be aware that the volume host instance"
-        self.msg += "may still be running. "
+        self.msg += " may still be running. "
         self.msg += "\n\nTo destroy this instance please run:"
         self.msg += "\n\n   $ starcluster terminate %s" % \
                 static.VOLUME_GROUP_NAME
