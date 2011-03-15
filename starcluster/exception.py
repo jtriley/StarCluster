@@ -90,8 +90,8 @@ class KeyPairDoesNotExist(AWSError):
 
 
 class ZoneDoesNotExist(AWSError):
-    def __init__(self, zone):
-        self.msg = "zone %s does not exist" % zone
+    def __init__(self, zone, region):
+        self.msg = "zone %s does not exist in region %s" % (zone, region)
 
 
 class VolumeDoesNotExist(AWSError):

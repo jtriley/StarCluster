@@ -620,9 +620,9 @@ class EasyEC2(EasyAWS):
             return self.conn.get_all_zones(zones=[zone])[0]
         except boto.exception.EC2ResponseError, e:
             self.__check_for_auth_failure(e)
-            raise exception.ZoneDoesNotExist(zone)
+            raise exception.ZoneDoesNotExist(zone, self.region.name)
         except IndexError:
-            raise exception.ZoneDoesNotExist(zone)
+            raise exception.ZoneDoesNotExist(zone, self.region.name)
 
     def get_zone_or_none(self, zone):
         """
@@ -631,7 +631,7 @@ class EasyEC2(EasyAWS):
         """
         try:
             return self.get_zone(zone)
-        except:
+        except exception.ZoneDoesNotExist:
             pass
 
     def create_s3_image(self, instance_id, key_location, aws_user_id,
@@ -927,12 +927,15 @@ class EasyEC2(EasyAWS):
             self.wait_for_snapshot(snap, refresh_interval)
         return snap
 
-    def get_snapshots(self):
+    def get_snapshots(self, volume_ids=[]):
         """
         Returns a list of all EBS volume snapshots for this account
         """
+        filters = {}
+        if volume_ids:
+            filters['volume-id'] = volume_ids
         try:
-            return self.conn.get_all_snapshots(owner='self')
+            return self.conn.get_all_snapshots(owner='self', filters=filters)
         except boto.exception.EC2ResponseError, e:
             self.__check_for_auth_failure(e)
 
@@ -992,7 +995,7 @@ class EasyEC2(EasyAWS):
                 print "availability_zone: %s" % vol.zone
                 if vol.snapshot_id:
                     print "snapshot_id: %s" % vol.snapshot_id
-                snapshots = vol.snapshots()
+                snapshots = self.get_snapshots(volume_ids=[vol.id])
                 if snapshots:
                     snap_list = ' '.join([snap.id for snap in snapshots])
                     print 'snapshots: %s' % snap_list
