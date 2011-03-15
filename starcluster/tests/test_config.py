@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os, os.path
+import os
 import copy
 import tempfile
 
@@ -113,10 +113,6 @@ class TestStarClusterConfig(tests.StarClusterTest):
         assert 'c2' in self.config.clusters
         assert 'c3' in self.config.clusters
 
-    def test_cluster_key_location_expanded(self):
-        c1 = self.config.clusters.get('c1')
-        assert c1['key_location'] == os.path.expanduser('~/.path/to/k1_rsa')
-
     def test_extends(self):
         c1 = self.config.clusters.get('c1')
         c2 = self.config.clusters.get('c2')
@@ -194,9 +190,13 @@ class TestStarClusterConfig(tests.StarClusterTest):
         k1 = kpairs.get('k1')
         k2 = kpairs.get('k2')
         k3 = kpairs.get('k3')
-        assert k1 and k1['key_location'] == '~/.path/to/k1_rsa'
-        assert k2 and k2['key_location'] == '/path/to/k2_rsa'
-        assert k3 and k3['key_location'] == '/path/to/k3_rsa'
+        dcfg = tests.templates.config.default_config
+        k1_location = os.path.expanduser(dcfg['k1_location'])
+        k2_location = dcfg['k2_location']
+        k3_location = dcfg['k3_location']
+        assert k1 and k1['key_location'] == k1_location
+        assert k2 and k2['key_location'] == k2_location
+        assert k3 and k3['key_location'] == k3_location
 
     def test_keypair_not_defined(self):
         try:

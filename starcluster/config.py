@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os, os.path
+import os
 import urllib
 import ConfigParser
 
@@ -200,7 +200,7 @@ class StarClusterConfig(object):
         section_conf = store
         for setting in settings:
             requirements = settings[setting]
-            func, required, default, options = requirements
+            func, required, default, options, callback = requirements
             func = self.type_validators.get(func)
             value = func(self.config, section_name, setting)
             if value is not None:
@@ -209,6 +209,8 @@ class StarClusterConfig(object):
                         '"%s" setting in section "%s" must be one of: %s' %
                         (setting, section_name,
                          ', '.join([str(o) for o in options])))
+                if callback:
+                    value = callback(value)
                 section_conf[setting] = value
 
     def _check_required(self, section_name, settings, store):
@@ -295,7 +297,7 @@ class StarClusterConfig(object):
             raise exception.ConfigError(
                 "keypair '%s' not defined in config" % keyname)
         cluster_section['keyname'] = keyname
-        cluster_section['key_location'] = keypair.get('key_location') and os.path.expanduser(keypair.get('key_location'))
+        cluster_section['key_location'] = keypair.get('key_location')
 
     def _load_volumes(self, store):
         cluster_section = store

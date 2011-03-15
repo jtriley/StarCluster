@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os, os.path
+import os
 import re
 import time
 import zlib
@@ -41,7 +41,7 @@ class ClusterManager(managers.Manager):
             cl.load_receipt(load_plugins=load_plugins)
             try:
                 key_location = self.cfg.get_key(cl.keyname).get('key_location')
-                cl.key_location = key_location and os.path.expanduser(key_location)
+                cl.key_location = key_location
             except (exception.KeyNotFound, Exception):
                 pass
             return cl
@@ -299,7 +299,7 @@ class Cluster(object):
         self.node_instance_types = node_instance_types
         self.availability_zone = availability_zone
         self.keyname = keyname
-        self.key_location = (key_location and os.path.expanduser(key_location))
+        self.key_location = key_location
         self.volumes = self.load_volumes(volumes)
         self.plugins = self.load_plugins(plugins)
         self.permissions = permissions
