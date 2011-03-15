@@ -28,15 +28,16 @@ class VolumeCreator(cluster.Cluster):
     def __init__(self, ec2_conn, keypair=None, key_location=None,
                  host_instance=None, device='/dev/sdz',
                  image_id=static.BASE_AMI_32, instance_type="m1.small",
-                 shutdown_instance=False, mkfs_cmd='mkfs.ext3',
-                 resizefs_cmd='resize2fs'):
-        self._instance = host_instance
+                 shutdown_instance=False, detach_vol=False,
+                 mkfs_cmd='mkfs.ext3', resizefs_cmd='resize2fs', **kwargs):
+        self._host_instance = host_instance
+        self._instance = None
         self._volume = None
         self._device = device or '/dev/sdz'
-        self._node = None
         self._image_id = image_id or static.BASE_AMI_32
         self._instance_type = instance_type or 'm1.small'
         self._shutdown = shutdown_instance
+        self._detach_vol = detach_vol
         self._mkfs_cmd = mkfs_cmd
         self._resizefs_cmd = resizefs_cmd
         self._alias_tmpl = "volumecreator-%s"
@@ -50,19 +51,17 @@ class VolumeCreator(cluster.Cluster):
     def __repr__(self):
         return "<VolumeCreator: %s>" % self._mkfs_cmd
 
-    def __getstate__(self):
-        return {}
-
     def _get_existing_instance(self, zone):
         """
         Returns any existing instance in the @sc-volumecreator group that's
-        located in zone
+        located in zone.
         """
         active_states = ['pending', 'running']
-        ids = dict(map(lambda x: (x.id, x), self.nodes))
-        if self._instance and not self._instance.id in ids:
-            ids[self._instance.id] = self._instance
-        for node in ids.values():
+        i = self._host_instance
+        if i and self._validate_host_instance(i, zone):
+            log.info("Using specified host instance %s" % i.id)
+            return i
+        for node in self.nodes:
             if node.state in active_states and node.placement == zone:
                 log.info("Using existing instance %s in group %s" % \
                          (node.id, self.cluster_group.name))
@@ -125,6 +124,15 @@ class VolumeCreator(cluster.Cluster):
         s.stop()
         return self._volume
 
+    def _validate_host_instance(self, instance, zone):
+        if instance.state not in ['pending', 'running']:
+            raise exception.InstanceNotRunning(instance.id)
+        if instance.placement != zone:
+            raise exception.ValidationError(
+                "specified host instance %s is not in zone %s" %
+                (instance.id, zone))
+        return True
+
     def _validate_image_and_type(self, image, itype):
         img = self.ec2.get_image_or_none(image)
         if not img:
@@ -145,10 +153,7 @@ class VolumeCreator(cluster.Cluster):
             raise exception.ValidationError(error_msg % error_dict)
 
     def _validate_zone(self, zone):
-        z = self.ec2.get_zone_or_none(zone)
-        if not z:
-            raise exception.ValidationError(
-                'zone %s does not exist' % zone)
+        z = self.ec2.get_zone(zone)
         if z.state != 'available':
             log.warn('zone %s is not available at this time' % zone)
         return True
@@ -180,7 +185,7 @@ class VolumeCreator(cluster.Cluster):
         try:
             self.validate(size, zone, device)
             return True
-        except exception.ValidationError, e:
+        except exception.BaseException, e:
             log.error(e.msg)
             return False
 
@@ -194,7 +199,9 @@ class VolumeCreator(cluster.Cluster):
                                    silent=False)
 
     def _warn_about_volume_hosts(self):
-        sg = self.cluster_group
+        sg = self.ec2.get_group_or_none(static.VOLUME_GROUP)
+        if not sg:
+            return
         vol_hosts = filter(lambda x: x.state in ['running', 'pending'],
                            sg.instances())
         vol_hosts = map(lambda x: x.id, vol_hosts)
@@ -212,8 +219,13 @@ class VolumeCreator(cluster.Cluster):
     def shutdown(self):
         vol = self._volume
         host = self._instance
-        log.info("Detaching volume %s from instance %s" % (vol.id, host.id))
-        vol.detach()
+        if self._detach_vol:
+            log.info("Detaching volume %s from instance %s" % \
+                     (vol.id, host.id))
+            vol.detach()
+        else:
+            log.info("Leaving volume %s attached to instance %s" % \
+                     (vol.id, host.id))
         if self._shutdown:
             log.info("Terminating host instance %s" % host.id)
             host.terminate()
@@ -251,28 +263,34 @@ class VolumeCreator(cluster.Cluster):
             log.warn("You are attempting to shrink an EBS volume. " + \
                      "Data loss may occur")
 
-    def resize(self, vol, size):
+    def resize(self, vol, size, dest_zone=None):
         """
         Resize EBS volume
 
         vol - boto volume object
         size - new volume sze
+        dest_zone - zone to create the new resized volume in. this must be
+        within the original volume's region otherwise a manual copy (rsync)
+        is required. this is currently not implemented.
         """
         try:
             self._validate_device(self._device)
             self._validate_resize(vol, size)
-            snap = self.ec2.create_snapshot(vol)
-            host = self._request_instance(vol.zone)
+            zone = vol.zone
+            if dest_zone:
+                self._validate_zone(dest_zone)
+                zone = dest_zone
+            host = self._request_instance(zone)
             self._validate_required_progs([self._resizefs_cmd.split()[0]])
             self._determine_device()
-            self.ec2.wait_for_snapshot(snap)
-            new_vol = self._create_volume(size, vol.zone, snap.id)
+            snap = self.ec2.create_snapshot(vol, wait_for_snapshot=True)
+            new_vol = self._create_volume(size, zone, snap.id)
             self._attach_volume(new_vol, host.id, self._device)
             devs = filter(lambda x: x.startswith(self._device),
                           host.ssh.ls('/dev'))
             device = self._device
             if len(devs) == 1:
-                log.info("No partitions, resizing entire device")
+                log.info("No partitions found, resizing entire device")
             elif len(devs) == 2:
                 log.info("One partition found, resizing partition...")
                 self._partition_volume()

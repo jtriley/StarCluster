@@ -30,9 +30,13 @@ class CmdCreateVolume(CmdBase):
             help="Use specified instance as volume host rather than " + \
             "launching a new host")
         parser.add_option(
+            "-d", "--detach-volume", dest="detach_vol",
+            action="store_true", default=False,
+            help="Detach new volume from host instance after creation")
+        parser.add_option(
             "-s", "--shutdown-volume-host", dest="shutdown_instance",
-            action="store_false", default=False,
-            help="Shutdown volume host instance after creating volume")
+            action="store_true", default=False,
+            help="Shutdown host instance after creating new volume")
         parser.add_option(
             "-m", "--mkfs-cmd", dest="mkfs_cmd",
             action="store", type="string", default="mkfs.ext3",
@@ -46,7 +50,7 @@ class CmdCreateVolume(CmdBase):
             "-I", "--instance-type", dest="instance_type",
             action="store", type="choice", default="m1.small",
             choices=static.INSTANCE_TYPES.keys(),
-            help="The instance type to use when launching volume" + \
+            help="The instance type to use when launching volume " + \
             "host instance")
 
     def cancel_command(self, signum, frame):
@@ -65,12 +69,12 @@ class CmdCreateVolume(CmdBase):
                     keypair = kp.name
                     kl = self.cfg.get_key(kp.name).get('key_location', '')
                     if os.path.exists(kl) and os.path.isfile(kl):
-                        self.log.info('Using keypair %s' % keypair)
+                        self.log.info('Using keypair: %s' % keypair)
                         key_location = kl
                         break
         if not keypair:
             raise exception.ConfigError(
-                "no keypairs in region %s defined in cfg" % \
+                "no keypairs in region %s defined in config" % \
                 self.ec2.region.name)
         if not key_location:
             raise exception.ConfigError(
@@ -83,24 +87,27 @@ class CmdCreateVolume(CmdBase):
                 "key_location '%s' is not a file." % key_location)
         return (keypair, key_location)
 
-    def _validate_instance(self, instance, zone):
-        if instance.state not in ['pending', 'running']:
-            raise exception.InstanceNotRunning(instance.id)
-        if instance.placement != zone:
-            raise exception.ValidationError(
-                "specified host instance %s is not in zone %s" %
-                (instance.id, zone))
+    def _get_size_arg(self, size):
+        errmsg = "size argument must be an integer >= 1"
+        try:
+            size = int(size)
+            if size <= 0:
+                self.parser.error(errmsg)
+            return size
+        except ValueError:
+            self.parser.error(errmsg)
 
     def execute(self, args):
         if len(args) != 2:
             self.parser.error(
                 "you must specify a size (in GB) and an availability zone")
         size, zone = args
+        size = self._get_size_arg(size)
+        zone = self.ec2.get_zone(zone).name
         key = self.opts.keypair
         host_instance = None
         if self.opts.host_instance:
             host_instance = self.ec2.get_instance(self.opts.host_instance)
-            self._validate_instance(host_instance, zone)
             key = host_instance.key_name
         keypair, key_location = self._load_keypair(key)
         if host_instance:
@@ -110,6 +117,8 @@ class CmdCreateVolume(CmdBase):
         kwargs.update(dict(keypair=keypair, key_location=key_location,
                            host_instance=host_instance))
         vc = volume.VolumeCreator(self.ec2, **kwargs)
+        if host_instance:
+            vc._validate_host_instance(host_instance, zone)
         self.catch_ctrl_c()
         volid = vc.create(size, zone)
         if volid:
