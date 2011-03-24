@@ -105,7 +105,8 @@ class S3ImageCreator(ImageCreator):
 
     @print_timing
     def create_image(self):
-        # first remove any image files from a previous run
+        log.info("Creating bucket %s" % self.bucket)
+        self.ec2.s3.create_bucket(self.bucket)
         log.info("Checking for EC2 API tools...")
         self.host_ssh.check_required(['ec2-upload-bundle', 'ec2-bundle-vol'])
         self._remove_image_files()
@@ -113,7 +114,6 @@ class S3ImageCreator(ImageCreator):
         self._upload_image()
         ami_id = self._register_image()
         if self.remove_image_files:
-            # remove image files from this run if user says to
             self._remove_image_files()
         return ami_id
 
@@ -138,7 +138,7 @@ class S3ImageCreator(ImageCreator):
         config_dict = self.config_dict
         self._transfer_pem_files()
         self.clean_private_data()
-        log.info('Creating the bundled image:')
+        log.info('Creating the bundled image: (please be patient)')
         conn.execute('ec2-bundle-vol -d /mnt -k /mnt/%(private_key)s \
 -c /mnt/%(cert)s -p %(prefix)s -u %(userid)s -r %(arch)s -e /root/.ssh' % \
                      config_dict,
@@ -147,7 +147,7 @@ class S3ImageCreator(ImageCreator):
 
     @print_timing
     def _upload_image(self):
-        log.info('Uploading bundled image:')
+        log.info('Uploading bundled image: (please be patient)')
         conn = self.host_ssh
         config_dict = self.config_dict
         conn.execute('ec2-upload-bundle -b %(bucket)s \
@@ -202,31 +202,51 @@ class EBSImageCreator(ImageCreator):
         self.name = name
         self.description = description
         self.snapshot_description = snapshot_description or description
+        self._snap = None
+        self._vol = None
 
     @print_timing
     def create_image(self, size=15):
-        host = self.host
-        host_ssh = self.host_ssh
-        self.clean_private_data()
-        if self.host.root_device_type == "ebs":
-            log.info("Creating EBS image...")
-            imgid = self.ec2.create_image(host.id, self.name,
-                                          self.description)
-            s = Spinner()
-            log.log(INFO_NO_NEWLINE,
-                    "Waiting for AMI %s to become available..." % imgid)
-            s.start()
-            img = self.ec2.get_image(imgid)
-            while img.update() == "pending":
-                time.sleep(15)
-            s.stop()
+        try:
+            self.clean_private_data()
+            if self.host.root_device_type == "ebs":
+                return self._create_image_from_ebs(size)
+            return self._create_image_from_instance_store(size)
+        except:
+            log.error("Error occured while creating image")
+            if self._snap:
+                log.error("Removing generated snapshot '%s'" % self._snap)
+                self._snap.delete()
+            if self._vol:
+                log.error("Removing generated volume '%s'" % self._vol.id)
+                self._vol.detach(force=True)
+                self._vol.delete()
+            raise
+
+
+    def _create_image_from_ebs(self, size=15):
+        log.info("Creating EBS image...")
+        imgid = self.ec2.create_image(self.host.id, self.name,
+                                      self.description)
+        log.log(INFO_NO_NEWLINE,
+                "Waiting for AMI %s to become available..." % imgid)
+        img = self.ec2.get_image(imgid)
+        s = Spinner()
+        s.start()
+        while img.state == "pending":
+            time.sleep(15)
             if img.update() == "failed":
                 raise exception.AWSError(
                     "EBS image creation failed for AMI %s" % imgid)
-            return imgid
+        s.stop()
+        return imgid
+
+    def _create_image_from_instance_store(self, size=15):
+        host = self.host
+        host_ssh = self.host_ssh
         log.info("Creating new EBS-backed image from instance-store instance")
         log.info("Creating new root volume...")
-        vol = self.ec2.create_volume(size, host.placement)
+        vol = self._vol = self.ec2.create_volume(size, host.placement)
         log.info("Created new volume: %s" % vol.id)
         while vol.update() != 'available':
             time.sleep(5)
@@ -256,7 +276,7 @@ class EBSImageCreator(ImageCreator):
         fstab.close()
         log.info("Syncing root filesystem to new volume (%s)" % vol.id)
         host_ssh.execute(
-            'rsync -avx --exclude %(mpt)s --exclude /root/.ssh / %(mpt)s' % \
+            'rsync -avx --exclude %(mpt)s --exclude /root/.ssh / %(mpt)s' %
             {'mpt': mount_point})
         log.info("Unmounting %s from %s" % (dev, mount_point))
         host_ssh.execute('umount %s' % mount_point)
@@ -264,10 +284,14 @@ class EBSImageCreator(ImageCreator):
         vol.detach()
         while vol.update() != 'available':
             time.sleep(5)
-        snap = self.ec2.create_snapshot(vol,
-                                        description=self.snapshot_description,
-                                        wait_for_snapshot=True)
+        sdesc = self.snapshot_description
+        snap = self._snap = self.ec2.create_snapshot(vol,
+                                                     description=sdesc,
+                                                     wait_for_snapshot=True)
         log.info("New snapshot created: %s" % snap.id)
+        log.info("Removing generated volume %s" % vol.id)
+        vol.delete()
+        log.info("Creating root block device map using snapshot %s" % snap.id)
         bmap = self.ec2.create_root_block_device_map(snap.id,
                                                      add_ephemeral_drives=True)
         log.info("Registering new image...")

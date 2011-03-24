@@ -1085,6 +1085,20 @@ class EasyS3(EasyAWS):
         if e.error_code == "InvalidAccessKeyId":
             raise e
 
+    def create_bucket(self, bucket_name):
+        """
+        Create a new bucket on S3. bucket_name must be unique, the bucket
+        namespace is shared by all AWS users
+        """
+        bucket_name = bucket_name.split('/')[0]
+        try:
+            return self.conn.create_bucket(bucket_name)
+        except boto.exception.S3CreateError, e:
+            self.__check_for_auth_failure(e)
+            if e.error_code == "BucketAlreadyExists":
+                raise exception.BucketAlreadyExists(bucket_name)
+            raise
+
     def bucket_exists(self, bucket_name):
         """
         Check if bucket_name exists on S3
