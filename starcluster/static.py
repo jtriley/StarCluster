@@ -134,6 +134,7 @@ PERMISSION_SETTINGS = {
 }
 
 CLUSTER_SETTINGS = {
+    'spot_bid': (float, False, None, None, None),
     'cluster_size': (int, True, None, None, None),
     'cluster_user': (str, False, 'sgeadmin', None, None),
     'cluster_shell': (str, False, 'bash', AVAILABLE_SHELLS.keys(), None),
