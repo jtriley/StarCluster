@@ -223,7 +223,6 @@ class EBSImageCreator(ImageCreator):
                 self._vol.delete()
             raise
 
-
     def _create_image_from_ebs(self, size=15):
         log.info("Creating EBS image...")
         imgid = self.ec2.create_image(self.host.id, self.name,
