@@ -183,7 +183,7 @@ class CmdStart(ClusterCompleter):
             log.warn("SKIPPING VALIDATION - USE AT YOUR OWN RISK")
         if validate_only:
             return
-        if self.opts.spot_bid is not None:
+        if self.opts.spot_bid is not None and not self.opts.no_create:
             cmd = ' '.join(sys.argv[1:])
             cmd = cmd.replace('--no-create', '').replace('-x', '')
             cmd += ' --no-create'
