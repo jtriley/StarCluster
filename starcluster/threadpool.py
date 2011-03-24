@@ -9,6 +9,7 @@ import traceback
 import workerpool
 
 from starcluster import exception
+from starcluster import progressbar
 from starcluster.logger import log
 
 
@@ -64,9 +65,22 @@ class ThreadPool(workerpool.WorkerPool):
                  disable_threads=False):
         self.disable_threads = disable_threads
         self._exception_queue = Queue.Queue()
+        self._progress_bar = None
         if self.disable_threads:
             size = 0
         workerpool.WorkerPool.__init__(self, size, maxjobs, worker_factory)
+
+    @property
+    def progress_bar(self):
+        if not self._progress_bar:
+            widgets = ['', progressbar.Fraction(), ' ',
+                       progressbar.Bar(marker=progressbar.RotatingMarker()),
+                       ' ', progressbar.Percentage(), ' ', ' ']
+            pbar = progressbar.ProgressBar(widgets=widgets,
+                                           maxval=1,
+                                           force_update=True)
+            self._progress_bar = pbar
+        return self._progress_bar
 
     def simple_job(self, method, args=[], jobid=None):
         job = SimpleJob(method, args, jobid)
@@ -79,9 +93,15 @@ class ThreadPool(workerpool.WorkerPool):
         self._exception_queue.put(e)
 
     def wait(self):
+        pbar = self.progress_bar.reset()
+        pbar.maxval = self.unfinished_tasks
         while self.unfinished_tasks != 0:
+            finished = pbar.maxval - self.unfinished_tasks
+            pbar.update(finished)
             log.debug("unfinished_tasks = %d" % self.unfinished_tasks)
             time.sleep(1)
+        if pbar.maxval != 0:
+            pbar.finish()
         self.join()
         if self._exception_queue.qsize() > 0:
             raise exception.ThreadPoolException(

@@ -283,6 +283,7 @@ class Cluster(object):
             permissions=[],
             refresh_interval=30,
             disable_queue=False,
+            disable_threads=False,
             **kwargs):
 
         now = time.strftime("%Y%m%d%H%M")
@@ -311,6 +312,7 @@ class Cluster(object):
         self.permissions = permissions
         self.refresh_interval = refresh_interval
         self.disable_queue = disable_queue
+        self.disable_threads = disable_threads
 
         self.__instance_types = static.INSTANCE_TYPES
         self.__cluster_settings = static.CLUSTER_SETTINGS
@@ -769,7 +771,8 @@ class Cluster(object):
         log.info("Launching node(s): %s" % ', '.join(aliases))
         print self.create_nodes(aliases, count=len(aliases))
         self.wait_for_cluster(msg="Waiting for node(s) to come up...")
-        default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue)
+        default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue,
+                                                          self.disable_threads)
         for alias in aliases:
             node = self.get_node_by_alias(alias)
             default_plugin.on_add_node(
@@ -788,7 +791,8 @@ class Cluster(object):
         """
         Remove a list of nodes from this cluster
         """
-        default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue)
+        default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue,
+                                                          self.disable_threads)
         for node in nodes:
             if node.is_master():
                 raise exception.InvalidOperation("cannot remove master node")
@@ -1191,7 +1195,8 @@ class Cluster(object):
         log.info("Setting up the cluster...")
         if self.volumes:
             self.attach_volumes_to_master()
-        default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue)
+        default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue,
+                                                          self.disable_threads)
         default_plugin.run(self.nodes, self.master_node, self.cluster_user,
                            self.cluster_shell, self.volumes)
         self.run_plugins()

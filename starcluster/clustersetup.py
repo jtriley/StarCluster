@@ -6,6 +6,8 @@ clustersetup.py
 import re
 import posixpath
 
+from starcluster import threadpool
+from starcluster.utils import print_timing
 from starcluster.templates import sge
 from starcluster.logger import log
 
@@ -59,13 +61,24 @@ class DefaultClusterSetup(ClusterSetup):
     """
     Default ClusterSetup implementation for StarCluster
     """
-    def __init__(self, disable_queue=False):
+    def __init__(self, disable_queue=False, disable_threads=False,
+                 num_threads=20):
         self._nodes = None
         self._master = None
         self._user = None
         self._user_shell = None
         self._volumes = None
         self._disable_queue = disable_queue
+        self._disable_threads = disable_threads
+        self._num_threads = num_threads
+        self._pool = None
+
+    @property
+    def pool(self):
+        if not self._pool:
+            self._pool = threadpool.get_thread_pool(self._num_threads,
+                                                    self._disable_threads)
+        return self._pool
 
     @property
     def nodes(self):
@@ -82,7 +95,8 @@ class DefaultClusterSetup(ClusterSetup):
         nodes = nodes or self._nodes
         log.info("Configuring hostnames...")
         for node in nodes:
-            node.set_hostname()
+            self.pool.simple_job(node.set_hostname, (), jobid=node.alias)
+        self.pool.wait()
 
     def _setup_cluster_user(self):
         """
@@ -130,24 +144,29 @@ class DefaultClusterSetup(ClusterSetup):
                                                                    uid, gid))
         self._add_user_to_nodes(uid, gid, self._nodes)
 
+    def _add_user_to_node(self, uid, gid, node):
+        existing_user = node.getpwuid(uid)
+        if existing_user:
+            username = existing_user.pw_name
+            if username != self._user:
+                msg = ("user %s exists on %s with same uid/gid as "
+                       "cluster user %s...removing user %s")
+                log.debug(
+                    msg % (username, node.alias, self._user, username))
+                node.remove_user(username)
+                node.add_user(self._user, uid, gid, self._user_shell)
+            log.debug("user %s exists on node %s, no action" % \
+                      (self._user, node.alias))
+        else:
+            log.debug("user %s does not exist, creating..." % self._user)
+            node.add_user(self._user, uid, gid, self._user_shell)
+
     def _add_user_to_nodes(self, uid, gid, nodes=None):
         nodes = nodes or self._nodes
         for node in nodes:
-            existing_user = node.getpwuid(uid)
-            if existing_user:
-                username = existing_user.pw_name
-                if username != self._user:
-                    msg = ("user %s exists on %s with same uid/gid as "
-                           "cluster user %s...removing user %s")
-                    log.debug(
-                        msg % (username, node.alias, self._user, username))
-                    node.remove_user(username)
-                    node.add_user(self._user, uid, gid, self._user_shell)
-                log.debug("user %s exists on node %s, no action" % \
-                          (self._user, node.alias))
-            else:
-                log.debug("user %s does not exist, creating..." % self._user)
-                node.add_user(self._user, uid, gid, self._user_shell)
+            self.pool.simple_job(self._add_user_to_node, (uid, gid, node),
+                                 jobid=node.alias)
+        self.pool.wait()
 
     def _setup_scratch(self, nodes=None):
         """ Configure scratch space on all StarCluster nodes """
@@ -171,11 +190,14 @@ class DefaultClusterSetup(ClusterSetup):
         log.info("Configuring /etc/hosts on each node")
         nodes = nodes or self._nodes
         for node in nodes:
-            node.add_to_etc_hosts(nodes)
+            log.info("Configuring /etc/hosts for node %s" % node.id)
+            self.pool.simple_job(node.add_to_etc_hosts, (nodes, ),
+                                 jobid=node.alias)
+        self.pool.wait()
 
     def _setup_passwordless_ssh(self, nodes=None):
         """
-        Properly configure passwordless ssh for CLUSTER_USER on all
+        Properly configure passwordless ssh for root and CLUSTER_USER on all
         StarCluster nodes
         """
         log.info("Configuring passwordless ssh for root")
@@ -267,7 +289,7 @@ class DefaultClusterSetup(ClusterSetup):
             mount_map = node.get_mount_map()
             mount_paths = []
             for path in export_paths:
-                network_device = "%s:%s" % (master.private_dns_name, path)
+                network_device = "%s:%s" % (master.alias, path)
                 if network_device in mount_map:
                     mount_path, type, options = mount_map.get(network_device)
                     log.debug(('nfs share %s already mounted to %s on ' + \
@@ -275,13 +297,16 @@ class DefaultClusterSetup(ClusterSetup):
                               (network_device, mount_path, node.alias))
                 else:
                     mount_paths.append(path)
-            node.mount_nfs_shares(master, mount_paths)
+            log.info("Mounting shares for node %s" % node.alias)
+            self.pool.simple_job(node.mount_nfs_shares, (master, mount_paths),
+                                 jobid=node.alias)
+        self.pool.wait()
 
+    @print_timing
     def _setup_nfs(self, nodes=None, start_server=True):
         """
         Share /home, /opt/sge6, and all EBS mount paths via NFS to all nodes
         """
-        nodes = nodes or self._nodes
         log.info("Configuring NFS...")
         master = self._master
         if not self._disable_queue and not master.ssh.isdir('/opt/sge6'):
@@ -290,7 +315,7 @@ class DefaultClusterSetup(ClusterSetup):
             master.ssh.execute('chown -R %(user)s:%(user)s /opt/sge6' % \
                                {'user': self._user})
         # setup /etc/exports and start nfsd on master node
-        nodes = self.nodes
+        nodes = nodes or self.nodes
         export_paths = self._get_nfs_export_paths()
         if start_server:
             master.start_nfs_server()
@@ -302,7 +327,6 @@ class DefaultClusterSetup(ClusterSetup):
         Install Sun Grid Engine with a default parallel
         environment on StarCluster
         """
-        log.info("Installing Sun Grid Engine...")
         # generate /etc/profile.d/sge.sh for each node
         for node in self._nodes:
             conn = node.ssh
@@ -320,9 +344,7 @@ class DefaultClusterSetup(ClusterSetup):
             master.ssh.execute('rm -rf %s' % default_cell)
             master.ssh.execute('exportfs -fr')
         mconn = master.ssh
-        admin_list = ''
-        for node in self._nodes:
-            admin_list = admin_list + " " + node.private_dns_name
+        admin_list = ' '.join(map(lambda n: n.alias, self._nodes))
         exec_list = admin_list
         submit_list = admin_list
         ec2_sge_conf = mconn.remote_file("/opt/sge6/ec2_sge.conf")
@@ -331,11 +353,21 @@ class DefaultClusterSetup(ClusterSetup):
                 (admin_list, exec_list, submit_list)
         ec2_sge_conf.close()
         # installs sge in /opt/sge6 and starts qmaster/schedd on master node
-        mconn.execute('cd /opt/sge6 && TERM=rxvt ./inst_sge -m -x -auto ' + \
-                      './ec2_sge.conf', silent=True, only_printable=True)
+        log.info("Installing Sun Grid Engine...")
+        mconn.execute('cd /opt/sge6 && TERM=rxvt ./inst_sge -m -x  ' + \
+                      '-noremote -auto ./ec2_sge.conf',
+                      silent=True, only_printable=True)
         # set all.q shell to bash
         mconn.execute('source /etc/profile && ' + \
                       'qconf -mattr queue shell "/bin/bash" all.q')
+        for node in self.nodes:
+            master.ssh.execute('source /etc/profile && qconf -ah %s' %
+                               node.alias)
+            master.ssh.execute('source /etc/profile && qconf -as %s' %
+                               node.alias)
+            self.pool.simple_job(self._add_to_sge, (node,), jobid=node.alias)
+        self.pool.wait()
+
         # create sge parallel environment
         # first iterate through each machine and count the number of processors
         num_processors = 0
@@ -389,7 +421,7 @@ class DefaultClusterSetup(ClusterSetup):
         hgrp_file.close()
         c = []
         for line in contents:
-            line = line.replace(node.private_dns_name, '')
+            line = line.replace(node.alias, '')
             c.append(line)
         hgrp_file = master.ssh.remote_file('/tmp/allhosts_new', 'w')
         hgrp_file.writelines('\n'.join(c))
@@ -409,7 +441,7 @@ class DefaultClusterSetup(ClusterSetup):
                 s.append(l)
             else:
                 allq.append(l)
-        regex = re.compile(r"\[%s=\d+\],?" % node.private_dns_name)
+        regex = re.compile(r"\[%s=\d+\],?" % node.alias)
         slots = []
         for line in s:
             line = line.replace('\\', '')
@@ -423,9 +455,9 @@ class DefaultClusterSetup(ClusterSetup):
         f.close()
         master.ssh.execute('source /etc/profile && qconf -Mq /tmp/allq_new')
         master.ssh.execute(
-            'source /etc/profile && qconf -de %s' % node.private_dns_name)
+            'source /etc/profile && qconf -de %s' % node.alias)
         master.ssh.execute(
-            'source /etc/profile && qconf -dconf %s' % node.private_dns_name)
+            'source /etc/profile && qconf -dconf %s' % node.alias)
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
@@ -451,16 +483,15 @@ class DefaultClusterSetup(ClusterSetup):
 
     def _add_to_sge(self, node):
         # generate /etc/profile.d/sge.sh
-        log.info("Adding %s to SGE" % node.alias)
         master = self._master
         sge_profile = node.ssh.remote_file("/etc/profile.d/sge.sh")
         arch = node.ssh.execute("/opt/sge6/util/arch")[0]
         print >> sge_profile, sge.sgeprofile_template % {'arch': arch}
         sge_profile.close()
         master.ssh.execute('source /etc/profile && qconf -ah %s' % \
-                           node.private_dns_name)
+                           node.alias)
         master.ssh.execute('source /etc/profile && qconf -as %s' % \
-                           node.private_dns_name)
+                           node.alias)
         node.ssh.execute(('cd /opt/sge6 && TERM=rxvt ./inst_sge ' + \
                           '-x -noremote -auto ./ec2_sge.conf'))
 
@@ -477,4 +508,5 @@ class DefaultClusterSetup(ClusterSetup):
         self._setup_scratch(nodes=[node])
         self._setup_passwordless_ssh(nodes=[node])
         if not self._disable_queue:
+            log.info("Adding %s to SGE" % node.alias)
             self._add_to_sge(node)
