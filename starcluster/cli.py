@@ -19,9 +19,9 @@ from boto.exception import BotoServerError, EC2ResponseError, S3ResponseError
 from starcluster import config
 from starcluster import static
 from starcluster import logger
+from starcluster import commands
 from starcluster import exception
 from starcluster import optcomplete
-from starcluster.commands import all_cmds
 from starcluster.logger import log, console
 
 from starcluster import __version__
@@ -129,7 +129,7 @@ class StarClusterCLI(object):
         # Create global options parser.
         self.gparser = gparser = self.create_global_parser()
         # Declare subcommands.
-        subcmds = all_cmds
+        subcmds = commands.all_cmds
         # subcommand completions
         scmap = {}
         for sc in subcmds:

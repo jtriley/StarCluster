@@ -9,7 +9,7 @@ from sshmaster import CmdSshMaster
 from sshnode import CmdSshNode
 from sshinstance import CmdSshInstance
 from listclusters import CmdListClusters
-from createimage import CmdCreateImage
+from s3image import CmdS3Image
 from ebsimage import CmdEbsImage
 from downloadimage import CmdDownloadImage
 from createvolume import CmdCreateVolume
@@ -55,7 +55,7 @@ all_cmds = [
     CmdListKeyPairs(),
     CmdCreateKey(),
     CmdRemoveKey(),
-    CmdCreateImage(),
+    CmdS3Image(),
     CmdEbsImage(),
     CmdShowImage(),
     CmdDownloadImage(),

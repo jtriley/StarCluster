@@ -381,7 +381,7 @@ class CancelledCreateVolume(BaseException):
 
 class CancelledCreateImage(BaseException):
     def __init__(self, bucket, image_name):
-        self.msg = "Request to createimage was cancelled"
+        self.msg = "Request to create an S3 AMI was cancelled"
         self.msg += "\n\nDepending on how far along the process was before it "
         self.msg += "was cancelled, \nsome intermediate files might still be "
         self.msg += "around in /mnt on the instance."
@@ -391,11 +391,35 @@ class CancelledCreateImage(BaseException):
         self.msg += "\n\n   $ starcluster showbucket %(bucket)s\n\n"
         self.msg += "and looking for files like: "
         self.msg += "'%(iname)s.manifest.xml' or '%(iname)s.part.*'"
-        self.msg += "\nRe-executing the same creatimage command "
+        self.msg += "\nRe-executing the same s3image command "
         self.msg += "should take care of these \nintermediate files and "
         self.msg += "will also automatically override any\npartially uploaded "
         self.msg += "files in S3."
         self.msg = self.msg % {'bucket': bucket, 'iname': image_name}
+
+
+CancelledS3ImageCreation = CancelledCreateImage
+
+
+class CancelledEBSImageCreation(BaseException):
+    def __init__(self, is_ebs_backed, image_name):
+        self.msg = "Request to create EBS image %s was cancelled" % image_name
+        if is_ebs_backed:
+            self.msg += "\n\nDepending on how far along the process was "
+            self.msg += "before it was cancelled, \na snapshot of the image "
+            self.msg += "host's root volume may have been created.\nPlease "
+            self.msg += "inspect the output of:\n\n"
+            self.msg += "   $ starcluster listsnapshots\n\n"
+            self.msg += "and clean up any unwanted snapshots"
+        else:
+            self.msg += "\n\nDepending on how far along the process was "
+            self.msg += "before it was cancelled, \na new volume and a "
+            self.msg += "snapshot of that new volume may have been created.\n"
+            self.msg += "Please inspect the output of:\n\n"
+            self.msg += "   $ starcluster listvolumes\n\n"
+            self.msg += "   and\n\n"
+            self.msg += "   $ starcluster listsnapshots\n\n"
+            self.msg += "and clean up any unwanted volumes or snapshots"
 
 
 class ExperimentalFeature(BaseException):
