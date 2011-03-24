@@ -114,10 +114,16 @@ class ClusterManager(managers.Manager):
         cl.add_node(alias)
 
     def add_nodes(self, cluster_name, num_nodes, aliases=None):
+        """
+        Add one or more nodes to cluster
+        """
         cl = self.get_cluster(cluster_name)
         cl.add_nodes(num_nodes, aliases=aliases)
 
     def remove_node(self, cluster_name, alias):
+        """
+        Remove a single node from a cluster
+        """
         cl = self.get_cluster(cluster_name)
         n = cl.get_node_by_alias(alias)
         if not n:
@@ -628,6 +634,11 @@ class Cluster(object):
         filters = {'group-id': self._security_group,
                    'instance-state-name': states}
         nodes = self.ec2.get_all_instances(filters=filters)
+        # remove any cached nodes not in the current node list from EC2
+        current_ids = map(lambda n: n.id, nodes)
+        remove_nodes = filter(lambda n: n.id not in current_ids, self._nodes)
+        map(lambda n: self._nodes.remove(n), remove_nodes)
+        # update node cache with latest instance data from EC2
         existing_nodes = dict(map(lambda x: (x.id, x), self._nodes))
         log.debug('existing nodes: %s' % existing_nodes)
         for node in nodes:
@@ -644,7 +655,6 @@ class Cluster(object):
                     self._nodes.insert(0, n)
                 else:
                     self._nodes.append(n)
-        self._nodes = filter(lambda n: n.state in states, self._nodes)
         self._nodes.sort(key=lambda n: n.alias)
         log.debug('returning self._nodes = %s' % self._nodes)
         return self._nodes
@@ -681,42 +691,18 @@ class Cluster(object):
                    'state': ['active', 'open']}
         return self.ec2.get_all_spot_requests(filters=filters)
 
-    def _run_instances(self, price=None, image_id=None,
-                       instance_type='m1.small', min_count=1, max_count=1,
-                       count=1, key_name=None, security_groups=None,
-                       launch_group=None, availability_zone_group=None,
-                       placement=None, user_data=None, placement_group=None):
-        """
-        Convenience method for running spot or flat-rate instances
-        """
-        conn = self.ec2
-        if price:
-            return conn.request_spot_instances(
-                price, image_id, instance_type=instance_type,
-                count=count, launch_group=launch_group, key_name=key_name,
-                security_groups=security_groups,
-                availability_zone_group=availability_zone_group,
-                placement=placement, user_data=user_data)
-        else:
-            return conn.run_instances(image_id, instance_type=instance_type,
-                                      min_count=min_count, max_count=max_count,
-                                      key_name=key_name,
-                                      security_groups=security_groups,
-                                      placement=placement,
-                                      user_data=user_data,
-                                      placement_group=placement_group)
-
-    def create_node(self, alias, image_id=None, instance_type=None, count=1,
+    def create_nodes(self, aliases, image_id=None, instance_type=None, count=1,
                     zone=None, placement_group=None):
         """
-        Convenience method for requesting an instance with this cluster's
+        Convenience method for requesting instances with this cluster's
         settings
         """
         cluster_sg = self.cluster_group.name
         if instance_type in static.CLUSTER_TYPES:
             placement_group = self.placement_group.name
-        return self._run_instances(self.spot_bid,
-            image_id=image_id or self.node_image_id,
+        response = self.ec2.request_instances(
+            image_id or self.node_image_id,
+            price=self.spot_bid,
             instance_type=instance_type or self.node_instance_type,
             min_count=count, max_count=count, count=count,
             key_name=self.keyname,
@@ -724,8 +710,15 @@ class Cluster(object):
             availability_zone_group=cluster_sg,
             launch_group=cluster_sg,
             placement=zone or self.zone,
-            user_data=alias,
+            user_data='|'.join(aliases),
             placement_group=placement_group)
+        if self.spot_bid is not None:
+            for spotreq, alias in zip(response, aliases):
+                spotreq.add_tag('alias', alias)
+        else:
+            for inst, alias in zip(response.instances, aliases):
+                inst.add_tag('alias', alias)
+        return response
 
     def _get_next_node_num(self):
         nodes = self._nodes_in_states(['pending', 'running'])
@@ -773,17 +766,8 @@ class Cluster(object):
                 raise exception.ClusterValidationError(
                     "node with alias %s already exists" % node.alias)
         log.debug("Adding node(s): %s" % aliases)
-        if self.spot_bid:
-            for alias in aliases:
-                log.info("Launching node: %s" % alias)
-                print self.create_node(alias)[0]
-        else:
-            user_data = '|'.join(aliases)
-            log.info("Launching node(s): %s" % ', '.join(aliases))
-            print self.create_node(user_data,
-                                   image_id=self.node_image_id,
-                                   instance_type=self.node_instance_type,
-                                   count=len(aliases))
+        log.info("Launching node(s): %s" % ', '.join(aliases))
+        print self.create_nodes(aliases, count=len(aliases))
         self.wait_for_cluster(msg="Waiting for node(s) to come up...")
         default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue)
         for alias in aliases:
@@ -869,15 +853,17 @@ class Cluster(object):
             if alias in lmap.get(key):
                 return key
 
-    def _create_flat_rate_cluster(self):
+    def create_cluster(self):
         """
-        Launches cluster using flat-rate instances. This method attempts to
-        minimize the number of launch requests by grouping nodes of the same
-        type/ami and launching each group simulatenously within a single launch
-        request. This is especially important for Cluster Compute instances
-        given that Amazon *highly* recommends requesting all CCI in a single
-        launch request.
+        Launches all EC2 instances based on this cluster's settings.
+
+        This method attempts to minimize the number of launch requests by
+        grouping nodes of the same type/ami and launching each group
+        simultaneously within a single launch request. This is especially
+        important for Cluster Compute instances given that Amazon *highly*
+        recommends requesting all CCI in a single launch request.
         """
+        log.info("Launching a %d-node cluster..." % self.cluster_size)
         lmap = self._get_launch_map()
         zone = None
         master_map = None
@@ -886,73 +872,34 @@ class Cluster(object):
             aliases = lmap.get((type, image))
             if 'master' in aliases:
                 master_map = (type, image)
-                user_data = '|'.join(aliases)
                 for alias in aliases:
-                    log.info("Launching %s (ami: %s, type: %s)" % \
+                    log.debug("Launching %s (ami: %s, type: %s)" % \
                              (alias, image, type))
-                master_response = self.create_node(user_data,
-                                                   image_id=image,
-                                                   instance_type=type,
-                                                   count=len(aliases))
-                zone = master_response.instances[0].placement
-                print master_response
+                master_response = self.create_nodes(aliases, image_id=image,
+                                                    instance_type=type,
+                                                    count=len(aliases))
+                # Make sure nodes are in same zone as master
+                if self.spot_bid is not None:
+                    launch_spec = master_response[0].launch_specification
+                    zone = launch_spec.placement
+                    for resp in master_response:
+                        print resp
+                else:
+                    zone = master_response.instances[0].placement
+                    print master_response
         lmap.pop(master_map)
         if self.cluster_size <= 1:
             return
         for (type, image) in lmap:
             aliases = lmap.get((type, image))
             for alias in aliases:
-                log.info("Launching %s (ami: %s, type: %s)" % \
-                         (alias, image, type))
-            user_data = '|'.join(aliases)
-            node_response = self.create_node(user_data,
-                                             image_id=image,
-                                             instance_type=type,
-                                             count=len(aliases),
-                                             zone=zone)
-            print node_response
-
-    def _create_spot_cluster(self):
-        """
-        Launches cluster using all spot instances. This method makes a single
-        spot request for each node in the cluster since spot instances
-        *always* have an ami_launch_index of 0. This is needed in order to
-        correctly assign aliases to nodes.
-        """
-        (mtype, mimage) = self._get_type_and_image_id('master')
-        log.info("Launching master node (ami: %s, type: %s)..." % \
-                 (mtype, mimage))
-        master_response = self.create_node('master',
-                                           image_id=mimage,
-                                           instance_type=mtype)
-        print master_response[0]
-        if self.cluster_size <= 1:
-            return
-        # Make sure nodes are in same zone as master
-        launch_spec = master_response[0].launch_specification
-        zone = launch_spec.placement
-        for id in range(1, self.cluster_size):
-            alias = 'node%.3d' % id
-            (ntype, nimage) = self._get_type_and_image_id(alias)
-            log.info("Launching %s (ami: %s, type: %s)" % \
-                     (alias, nimage, ntype))
-            node_response = self.create_node(alias,
-                                             image_id=nimage,
-                                             instance_type=ntype,
-                                             zone=zone)
-            print node_response[0]
-
-    def create_cluster(self):
-        """
-        Launches all EC2 instances based on this cluster's settings.
-        """
-        log.info("Launching a %d-node cluster..." % self.cluster_size)
-        mtype = self.master_instance_type or self.node_instance_type
-        self.master_instance_type = mtype
-        if self.spot_bid:
-            self._create_spot_cluster()
-        else:
-            self._create_flat_rate_cluster()
+                log.debug("Launching %s (ami: %s, type: %s)" % \
+                          (alias, image, type))
+            node_response = self.create_nodes(aliases, image_id=image,
+                                              instance_type=type,
+                                              count=len(aliases), zone=zone)
+            for resp in node_response:
+                print resp
 
     def is_ebs_cluster(self):
         """
@@ -1129,6 +1076,7 @@ class Cluster(object):
         for node in self.nodes:
             node.detach_external_volumes()
 
+    @print_timing('Restarting cluster')
     def restart_cluster(self):
         """
         Reboot all instances and reconfigure the cluster
@@ -1243,10 +1191,9 @@ class Cluster(object):
         log.info("Setting up the cluster...")
         if self.volumes:
             self.attach_volumes_to_master()
-        clustersetup.DefaultClusterSetup(self.disable_queue).run(
-            self.nodes, self.master_node,
-            self.cluster_user, self.cluster_shell,
-            self.volumes)
+        default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue)
+        default_plugin.run(self.nodes, self.master_node, self.cluster_user,
+                           self.cluster_shell, self.volumes)
         self.run_plugins()
 
     def run_plugins(self, plugins=None, method_name="run", node=None,

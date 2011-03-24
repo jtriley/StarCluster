@@ -267,6 +267,29 @@ class EasyEC2(EasyAWS):
             pg = self.create_placement_group(name)
         return pg
 
+    def request_instances(self, image_id, price=None, instance_type='m1.small',
+                          min_count=1, max_count=1, count=1, key_name=None,
+                          security_groups=None, launch_group=None,
+                          availability_zone_group=None, placement=None,
+                          user_data=None, placement_group=None):
+        """
+        Convenience method for running spot or flat-rate instances
+        """
+        if price:
+            return self.request_spot_instances(
+                price, image_id, instance_type=instance_type,
+                count=count, launch_group=launch_group, key_name=key_name,
+                security_groups=security_groups,
+                availability_zone_group=availability_zone_group,
+                placement=placement, user_data=user_data)
+        else:
+            return self.run_instances(
+                image_id, instance_type=instance_type,
+                min_count=min_count, max_count=max_count,
+                key_name=key_name, security_groups=security_groups,
+                placement=placement, user_data=user_data,
+                placement_group=placement_group)
+
     def request_spot_instances(self, price, image_id, instance_type='m1.small',
                                count=1, launch_group=None, key_name=None,
                                availability_zone_group=None,
