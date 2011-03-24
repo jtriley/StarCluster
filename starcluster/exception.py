@@ -442,7 +442,12 @@ class ThreadPoolException(BaseException):
         self.exceptions = exceptions
 
     def print_excs(self):
+        print self.format_excs()
+
+    def format_excs(self):
+        excs = []
         for exception in self.exceptions:
-            e, tb_msg = exception
-            print e
-            print tb_msg
+            e, tb_msg, jobid = exception
+            excs.append('error occured in job (id=%s): %s' % (jobid, str(e)))
+            excs.append(tb_msg)
+        return '\n'.join(excs)

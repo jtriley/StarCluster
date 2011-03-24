@@ -4,6 +4,7 @@ ThreadPool module for StarCluster based on WorkerPool
 """
 import time
 import Queue
+import thread
 import traceback
 import workerpool
 
@@ -32,7 +33,8 @@ class DaemonWorker(workerpool.workers.Worker):
                 pass
             except Exception, e:
                 tb_msg = traceback.format_exc()
-                self.jobs.store_exception([e, tb_msg])
+                jid = job.jobid or str(thread.get_ident())
+                self.jobs.store_exception([e, tb_msg, jid])
             finally:
                 self.jobs.task_done()
 
@@ -42,9 +44,10 @@ def _worker_factory(parent):
 
 
 class SimpleJob(workerpool.jobs.SimpleJob):
-    def __init__(self, method, args=[]):
+    def __init__(self, method, args=[], jobid=None):
         self.method = method
         self.args = args
+        self.jobid = jobid
 
     def run(self):
         if isinstance(self.args, list) or isinstance(self.args, tuple):
@@ -65,8 +68,8 @@ class ThreadPool(workerpool.WorkerPool):
             size = 0
         workerpool.WorkerPool.__init__(self, size, maxjobs, worker_factory)
 
-    def simple_job(self, method, args=[]):
-        job = SimpleJob(method, args)
+    def simple_job(self, method, args=[], jobid=None):
+        job = SimpleJob(method, args, jobid)
         if not self.disable_threads:
             return self.put(job)
         else:
