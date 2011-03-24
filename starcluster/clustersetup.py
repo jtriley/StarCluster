@@ -383,20 +383,23 @@ class DefaultClusterSetup(ClusterSetup):
 
     def run(self, nodes, master, user, user_shell, volumes):
         """Start cluster configuration"""
-        self._nodes = nodes
-        self._master = master
-        self._user = user
-        self._user_shell = user_shell
-        self._volumes = volumes
-        self._setup_hostnames()
-        self._setup_ebs_volumes()
-        self._setup_cluster_user()
-        self._setup_scratch()
-        self._setup_etc_hosts()
-        self._setup_nfs()
-        self._setup_passwordless_ssh()
-        if not self._disable_queue:
-            self._setup_sge()
+        try:
+            self._nodes = nodes
+            self._master = master
+            self._user = user
+            self._user_shell = user_shell
+            self._volumes = volumes
+            self._setup_hostnames()
+            self._setup_ebs_volumes()
+            self._setup_cluster_user()
+            self._setup_scratch()
+            self._setup_etc_hosts()
+            self._setup_nfs()
+            self._setup_passwordless_ssh()
+            if not self._disable_queue:
+                self._setup_sge()
+        finally:
+            self.pool.shutdown()
 
     def _remove_from_etc_hosts(self, node):
         nodes = filter(lambda x: x.id != node.id, self.running_nodes)
