@@ -61,8 +61,9 @@ class ThreadPool(workerpool.WorkerPool):
                  disable_threads=False):
         self.disable_threads = disable_threads
         self._exception_queue = Queue.Queue()
-        if not self.disable_threads:
-            workerpool.WorkerPool.__init__(self, size, maxjobs, worker_factory)
+        if self.disable_threads:
+            size = 0
+        workerpool.WorkerPool.__init__(self, size, maxjobs, worker_factory)
 
     def simple_job(self, method, args=[]):
         job = SimpleJob(method, args)

@@ -6,6 +6,7 @@ __version__ = "0.9999"
 __author__ = "Justin Riley (justin.t.riley@gmail.com)"
 __all__ = [
     "config",
+    "static",
     "cluster",
     "clustersetup",
     "node",
@@ -21,7 +22,7 @@ __all__ = [
     "logger",
     "utils",
     "iptools",
-    "static",
+    "threadpool",
     "templates",
     "exception",
     "tests",
