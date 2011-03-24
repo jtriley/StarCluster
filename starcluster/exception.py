@@ -434,3 +434,15 @@ class ExperimentalFeature(BaseException):
         self.msg += "release. \nIf you wish to test this feature, set "
         self.msg += "ENABLE_EXPERIMENTAL=True \nin the [global] section of the"
         self.msg += " config. \nYou have officially been warned :D"
+
+
+class ThreadPoolException(BaseException):
+    def __init__(self, msg, exceptions):
+        self.msg = msg
+        self.exceptions = exceptions
+
+    def print_excs(self):
+        for exception in self.exceptions:
+            e, tb_msg = exception
+            print e
+            print tb_msg

@@ -2,21 +2,9 @@
 import os
 import sys
 from setuptools import setup, find_packages
-
-install_requires = [
-    "paramiko==1.7.6",
-    "boto==2.0b4",
-]
-
-maj, min, micro, rel, serial = sys.version_info
-if (maj, min) == (2, 4):
-    # boto needs hashlib module which is not in py2.4
-    # TODO: this is fixed in boto's github, remove when released
-    install_requires.append("hashlib")
+from starcluster import __version__
 
 src = os.path.realpath(os.path.dirname(__file__))
-
-from starcluster import __version__
 
 setup(
     name='StarCluster',
@@ -24,7 +12,7 @@ setup(
     package_dir={'starcluster': 'starcluster'},
     packages=find_packages(src),
     scripts=['bin/starcluster'],
-    install_requires=install_requires,
+    install_requires=["paramiko==1.7.6", "boto==2.0b4", "workerpool==0.9.2"],
     zip_safe=True,
     download_url='http://web.mit.edu/starcluster',
     license='LGPL3',
