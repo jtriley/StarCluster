@@ -107,6 +107,10 @@ class ThreadPool(workerpool.WorkerPool):
             raise exception.ThreadPoolException(
                 "An error occured in ThreadPool", self._exception_queue.queue)
 
+    def __del__(self):
+        log.debug('del called in threadpool')
+        self.shutdown()
+        self.join()
 
 def get_thread_pool(size=10, worker_factory=_worker_factory,
                     disable_threads=False):
