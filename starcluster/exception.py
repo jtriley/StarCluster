@@ -104,6 +104,12 @@ class SnapshotDoesNotExist(AWSError):
         self.msg = "snapshot %s does not exist" % snap_id
 
 
+class BucketAlreadyExists(AWSError):
+    def __init__(self, bucket_name):
+        self.msg = "bucket with name '%s' already exists on S3\n" % bucket_name
+        self.msg += "(NOTE: S3's bucket namepsace is shared by all AWS users)"
+
+
 class BucketDoesNotExist(AWSError):
     def __init__(self, bucket_name):
         self.msg = "bucket '%s' does not exist" % bucket_name
