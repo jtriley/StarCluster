@@ -16,7 +16,7 @@ class IPCluster(ClusterSetup):
     def _create_cluster_file(self, master, nodes):
         engines = {}
         for node in nodes:
-            engines[node.private_dns_name] = node.num_processors
+            engines[node.alias] = node.num_processors
         cfile = 'send_furl = True\n'
         cfile += 'engines = %s\n' % engines
         f = master.ssh.remote_file(self.cluster_file, 'w')

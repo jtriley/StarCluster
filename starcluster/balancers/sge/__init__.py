@@ -203,7 +203,7 @@ class SGEStats(object):
         This function returns true if the node is currently working on a task,
         or false if the node is currently idle.
         """
-        nodename = node.private_dns_name
+        nodename = node.alias
         for j in self.jobs:
             if 'queue_name' in j:
                 qn = j['queue_name']
