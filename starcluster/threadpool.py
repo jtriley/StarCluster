@@ -31,7 +31,7 @@ class DaemonWorker(workerpool.workers.Worker):
             try:
                 job.run()
             except workerpool.exceptions.TerminationNotice:
-                pass
+                break
             except Exception, e:
                 tb_msg = traceback.format_exc()
                 jid = job.jobid or str(thread.get_ident())
@@ -92,9 +92,16 @@ class ThreadPool(workerpool.WorkerPool):
     def store_exception(self, e):
         self._exception_queue.put(e)
 
-    def wait(self):
+    def shutdown(self):
+        log.info("Shutting down threads...")
+        workerpool.WorkerPool.shutdown(self)
+        self.wait(numtasks=self.size())
+
+    def wait(self, numtasks=None):
         pbar = self.progress_bar.reset()
         pbar.maxval = self.unfinished_tasks
+        if numtasks is not None:
+            pbar.maxval = max(numtasks, self.unfinished_tasks)
         while self.unfinished_tasks != 0:
             finished = pbar.maxval - self.unfinished_tasks
             pbar.update(finished)
