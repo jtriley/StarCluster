@@ -695,8 +695,8 @@ class Cluster(object):
 
     def create_node(self, alias, image_id=None, instance_type=None, count=1,
                     zone=None, placement_group=None):
-        return self.create_nodes([alias], image_id=None, instance_type=None, count=1,
-                    zone=None, placement_group=None)
+        return self.create_nodes([alias], image_id=None, instance_type=None,
+                                 count=1, zone=None, placement_group=None)
 
     def create_nodes(self, aliases, image_id=None, instance_type=None, count=1,
                     zone=None, placement_group=None):
