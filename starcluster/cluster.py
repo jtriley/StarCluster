@@ -693,6 +693,11 @@ class Cluster(object):
                    'state': ['active', 'open']}
         return self.ec2.get_all_spot_requests(filters=filters)
 
+    def create_node(self, alias, image_id=None, instance_type=None, count=1,
+                    zone=None, placement_group=None):
+        return self.create_nodes([alias], image_id=None, instance_type=None, count=1,
+                    zone=None, placement_group=None)
+
     def create_nodes(self, aliases, image_id=None, instance_type=None, count=1,
                     zone=None, placement_group=None):
         """
