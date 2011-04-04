@@ -85,17 +85,16 @@ class Node(object):
         """
         if not self._alias:
             alias = self.tags.get('alias')
-            if not alias and self.spot_id:
-                filters = {'key': 'alias', 'resource-id': self.spot_id,
-                           'resource-type': 'spot-instances-request'}
-                alias = self.ec2.conn.get_all_tags(filters=filters)
-                if alias:
-                    alias = alias[0].value
-                    self.add_tag('alias', alias)
-                else:
+            if not alias:
+                user_data = self.ec2.get_instance_user_data(self.id)
+                aliases = user_data.split('|')
+                index = self.ami_launch_index
+                alias = aliases[index]
+                if not alias:
                     # TODO: raise exception about old version
                     raise exception.BaseException(
                         "instance %s has no alias" % self.id)
+                self.add_tag('alias', alias)
             self._alias = alias
         return self._alias
 

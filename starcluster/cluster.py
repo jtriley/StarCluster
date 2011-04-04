@@ -693,10 +693,11 @@ class Cluster(object):
                    'state': ['active', 'open']}
         return self.ec2.get_all_spot_requests(filters=filters)
 
-    def create_node(self, alias, image_id=None, instance_type=None, count=1,
-                    zone=None, placement_group=None):
-        return self.create_nodes([alias], image_id=None, instance_type=None,
-                                 count=1, zone=None, placement_group=None)
+    def create_node(self, alias, image_id=None, instance_type=None, zone=None,
+                    placement_group=None):
+        return self.create_nodes([alias], image_id=image_id,
+                                 instance_type=instance_type, count=1,
+                                 zone=zone, placement_group=placement_group)
 
     def create_nodes(self, aliases, image_id=None, instance_type=None, count=1,
                     zone=None, placement_group=None):
@@ -719,12 +720,6 @@ class Cluster(object):
             placement=zone or self.zone,
             user_data='|'.join(aliases),
             placement_group=placement_group)
-        if self.spot_bid is not None:
-            for spotreq, alias in zip(response, aliases):
-                spotreq.add_tag('alias', alias)
-        else:
-            for inst, alias in zip(response.instances, aliases):
-                inst.add_tag('alias', alias)
         return response
 
     def _get_next_node_num(self):
@@ -737,8 +732,7 @@ class Cluster(object):
             except ValueError:
                 pass
         next = highest + 1
-        log.debug("Highest node number is %d. choosing %d." % \
-                  (highest, next))
+        log.debug("Highest node number is %d. choosing %d." % (highest, next))
         return next
 
     def add_node(self, alias=None):
@@ -865,12 +859,23 @@ class Cluster(object):
     def create_cluster(self):
         """
         Launches all EC2 instances based on this cluster's settings.
+        """
+        log.info("Launching a %d-node cluster..." % self.cluster_size)
+        mtype = self.master_instance_type or self.node_instance_type
+        self.master_instance_type = mtype
+        if self.spot_bid:
+            self._create_spot_cluster()
+        else:
+            self._create_flat_rate_cluster()
 
-        This method attempts to minimize the number of launch requests by
-        grouping nodes of the same type/ami and launching each group
-        simultaneously within a single launch request. This is especially
-        important for Cluster Compute instances given that Amazon *highly*
-        recommends requesting all CCI in a single launch request.
+    def _create_flat_rate_cluster(self):
+        """
+        Launches cluster using flat-rate instances. This method attempts to
+        minimize the number of launch requests by grouping nodes of the same
+        type/ami and launching each group simultaneously within a single launch
+        request. This is especially important for Cluster Compute instances
+        given that Amazon *highly* recommends requesting all CCI in a single
+        launch request.
         """
         log.info("Launching a %d-node cluster..." % self.cluster_size)
         lmap = self._get_launch_map()
@@ -887,15 +892,8 @@ class Cluster(object):
                 master_response = self.create_nodes(aliases, image_id=image,
                                                     instance_type=type,
                                                     count=len(aliases))
-                # Make sure nodes are in same zone as master
-                if self.spot_bid is not None:
-                    launch_spec = master_response[0].launch_specification
-                    zone = launch_spec.placement
-                    for resp in master_response:
-                        print resp
-                else:
-                    zone = master_response.instances[0].placement
-                    print master_response
+                zone = master_response.instances[0].placement
+                print master_response
         lmap.pop(master_map)
         if self.cluster_size <= 1:
             return
@@ -907,8 +905,37 @@ class Cluster(object):
             node_response = self.create_nodes(aliases, image_id=image,
                                               instance_type=type,
                                               count=len(aliases), zone=zone)
-            for resp in node_response:
-                print resp
+            print node_response
+
+    def _create_spot_cluster(self):
+        """
+        Launches cluster using all spot instances. This method makes a single
+        spot request for each node in the cluster since spot instances
+        *always* have an ami_launch_index of 0. This is needed in order to
+        correctly assign aliases to nodes.
+        """
+        (mtype, mimage) = self._get_type_and_image_id('master')
+        log.info("Launching master node (ami: %s, type: %s)..." % \
+                 (mtype, mimage))
+        master_response = self.create_node('master',
+                                           image_id=mimage,
+                                           instance_type=mtype)
+        print master_response[0]
+        if self.cluster_size <= 1:
+            return
+        # Make sure nodes are in same zone as master
+        launch_spec = master_response[0].launch_specification
+        zone = launch_spec.placement
+        for id in range(1, self.cluster_size):
+            alias = 'node%.3d' % id
+            (ntype, nimage) = self._get_type_and_image_id(alias)
+            log.info("Launching %s (ami: %s, type: %s)" % \
+                     (alias, nimage, ntype))
+            node_response = self.create_node(alias,
+                                             image_id=nimage,
+                                             instance_type=ntype,
+                                             zone=zone)
+            print node_response[0]
 
     def is_ebs_cluster(self):
         """
@@ -1098,7 +1125,7 @@ class Cluster(object):
         for node in nodes:
             node.reboot()
         sleep = 20
-        log.info("Sleeping for %d secs..." % sleep)
+        log.info("Sleeping for %d seconds..." % sleep)
         time.sleep(sleep)
         self._setup_cluster()
 
@@ -1572,16 +1599,6 @@ class Cluster(object):
                 raise exception.ClusterValidationError(
                     "Can't mount more than one volume on %s" % path)
         return True
-
-    #def _has_all_required_settings(self, settings, object):
-        #has_all_required = True
-        #for opt in settings:
-            #requirements = settings[opt]
-            #name = opt; required = requirements[1];
-            #if required and object.get(name.lower()) is None:
-                #log.warn('Missing required setting %s' % name)
-                #has_all_required = False
-        #return has_all_required
 
     def _has_all_required_settings(self):
         has_all_required = True
