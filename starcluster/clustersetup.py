@@ -96,7 +96,7 @@ class DefaultClusterSetup(ClusterSetup):
         log.info("Configuring hostnames...")
         for node in nodes:
             self.pool.simple_job(node.set_hostname, (), jobid=node.alias)
-        self.pool.wait()
+        self.pool.wait(numtasks=len(nodes))
 
     def _setup_cluster_user(self):
         """
@@ -166,24 +166,29 @@ class DefaultClusterSetup(ClusterSetup):
         for node in nodes:
             self.pool.simple_job(self._add_user_to_node, (uid, gid, node),
                                  jobid=node.alias)
-        self.pool.wait()
+        self.pool.wait(numtasks=len(nodes))
+
+    def _setup_scratch_on_node(self, node):
+        nconn = node.ssh
+        user_scratch = '/mnt/%s' % self._user
+        if not nconn.path_exists(user_scratch):
+            nconn.mkdir(user_scratch)
+        nconn.execute('chown -R %(user)s:%(user)s /mnt/%(user)s' % \
+                      {'user': self._user})
+        scratch = '/scratch'
+        if not nconn.path_exists(scratch):
+            nconn.mkdir(scratch)
+        if not nconn.path_exists(posixpath.join(scratch, self._user)):
+            nconn.execute('ln -s %s %s' % (user_scratch, scratch))
 
     def _setup_scratch(self, nodes=None):
         """ Configure scratch space on all StarCluster nodes """
         log.info("Configuring scratch space for user: %s" % self._user)
         nodes = nodes or self._nodes
         for node in nodes:
-            nconn = node.ssh
-            user_scratch = '/mnt/%s' % self._user
-            if not nconn.path_exists(user_scratch):
-                nconn.mkdir(user_scratch)
-            nconn.execute('chown -R %(user)s:%(user)s /mnt/%(user)s' % \
-                          {'user': self._user})
-            scratch = '/scratch'
-            if not nconn.path_exists(scratch):
-                nconn.mkdir(scratch)
-            if not nconn.path_exists(posixpath.join(scratch, self._user)):
-                nconn.execute('ln -s %s %s' % (user_scratch, scratch))
+            self.pool.simple_job(self._setup_scratch_on_node, (node,),
+                                 jobid=node.alias)
+        self.pool.wait(numtasks=len(nodes))
 
     def _setup_etc_hosts(self, nodes=None):
         """ Configure /etc/hosts on all StarCluster nodes"""
@@ -193,7 +198,7 @@ class DefaultClusterSetup(ClusterSetup):
             log.info("Configuring /etc/hosts for node %s" % node.id)
             self.pool.simple_job(node.add_to_etc_hosts, (nodes, ),
                                  jobid=node.alias)
-        self.pool.wait()
+        self.pool.wait(numtasks=len(nodes))
 
     def _setup_passwordless_ssh(self, nodes=None):
         """
@@ -300,7 +305,7 @@ class DefaultClusterSetup(ClusterSetup):
             log.info("Mounting shares for node %s" % node.alias)
             self.pool.simple_job(node.mount_nfs_shares, (master, mount_paths),
                                  jobid=node.alias)
-        self.pool.wait()
+        self.pool.wait(numtasks=len(nodes))
 
     @print_timing
     def _setup_nfs(self, nodes=None, start_server=True):
@@ -366,7 +371,7 @@ class DefaultClusterSetup(ClusterSetup):
             master.ssh.execute('source /etc/profile && qconf -as %s' %
                                node.alias)
             self.pool.simple_job(self._add_to_sge, (node,), jobid=node.alias)
-        self.pool.wait()
+        self.pool.wait(numtasks=len(self.nodes))
 
         # create sge parallel environment
         # first iterate through each machine and count the number of processors
