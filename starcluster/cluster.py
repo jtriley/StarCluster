@@ -182,7 +182,7 @@ class ClusterManager(managers.Manager):
         if match:
             return match.groups()[0]
 
-    def list_clusters(self, cluster_groups=None):
+    def list_clusters(self, cluster_groups=None, show_ssh_status=False):
         """
         Prints a summary for each active cluster on EC2
         """
@@ -235,12 +235,14 @@ class ClusterManager(managers.Manager):
             if nodes:
                 print 'Cluster nodes:'
                 for node in nodes:
-                    spot = node.spot_id or ''
-                    if spot:
-                        spot = '(spot %s)' % spot
-                    print "    %7s %s %s %s %s" % (node.alias, node.state,
-                                                   node.id, node.dns_name,
-                                                   spot)
+                    nodeline = "    %7s %s %s %s" % (node.alias, node.state,
+                                                        node.id, node.dns_name)
+                    if node.spot_id:
+                        nodeline += ' (spot %s)' % node.spot_id
+                    if show_ssh_status:
+                        ssh_status = {True: 'Up', False: 'Down'}
+                        nodeline += ' (SSH: %s)' % ssh_status[node.is_up()]
+                    print nodeline
                 print 'Total nodes: %d' % len(nodes)
             else:
                 print 'Cluster nodes: N/A'
