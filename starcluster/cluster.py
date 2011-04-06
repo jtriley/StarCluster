@@ -8,6 +8,7 @@ import pprint
 import base64
 import inspect
 import cPickle
+import traceback
 
 from starcluster import utils
 from starcluster import static
@@ -1278,11 +1279,14 @@ class Cluster(object):
         except NotImplementedError:
             log.debug("method %s not implemented by plugin %s" % (method_name,
                                                                   plugin_name))
-        except Exception:
+        except Exception, e:
             log.error("Error occured while running plugin '%s':" % plugin_name)
-            import traceback
-            traceback.print_exc()
-            log.debug(traceback.format_exc())
+            if isinstance(e, exception.ThreadPoolException):
+                e.print_excs()
+                log.debug(e.format_excs())
+            else:
+                traceback.print_exc()
+                log.debug(traceback.format_exc())
 
     def is_running_valid(self):
         """
