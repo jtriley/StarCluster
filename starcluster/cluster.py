@@ -1499,10 +1499,6 @@ class Cluster(object):
         lmap = self._get_launch_map()
         for (type, image) in lmap:
             if type in static.CLUSTER_TYPES:
-                if self.spot_bid:
-                    raise exception.ClusterValidationError((
-                        'Cluster Compute/GPU instance type %s ' +
-                        'cannot be used with spot instances') % type)
                 img = self.ec2.get_image(image)
                 if img.virtualization_type != 'hvm':
                     raise exception.ClusterValidationError((
