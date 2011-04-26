@@ -11,6 +11,25 @@ class CmdLoadBalance(ClusterCompleter):
     loadbalance <cluster_tag>
 
     Start the SGE Load Balancer.
+
+    Example:
+
+        $ starcluster loadbalance mycluster
+
+    This command will endlessly attempt to monitor and load balance 'mycluster'
+    based on the current SGE load. You can also have the load balancer plot the
+    various stats it's monitoring over time using the --plot-stats option:
+
+        $ starcluster loadbalance -p mycluster
+
+    If you just want the stats data and not the plots use the --dump-stats
+    option instead:
+
+        $ starcluster loadbalance -d mycluster
+
+    Run "starcluster loadbalance --help" for more details on the '-p' and '-d'
+    options as well as other options for tuning the SGE load balancer
+    algorithm.
     """
 
     names = ['loadbalance', 'bal']
@@ -21,14 +40,15 @@ class CmdLoadBalance(ClusterCompleter):
                           help="Output stats to a csv file at each iteration")
         parser.add_option("-D", "--dump-stats-file", dest="stats_file",
                           action="store", default=None,
-                          help="File to dump stats to (default:FIXME)")
+                          help="File to dump stats to (default: %s)" %
+                          sge.DEFAULT_STATS_FILE)
         parser.add_option("-p", "--plot-stats", dest="plot_stats",
                           action="store_true", default=False,
                           help="Plot usage stats at each iteration")
         parser.add_option("-P", "--plot-output-dir", dest="plot_output_dir",
                           action="store", default=None,
                           help="Output directory for stats plots "
-                          "(default:FIXME)")
+                          "(default: %s)" % sge.DEFAULT_PLOT_OUTPUT_DIR)
         parser.add_option("-i", "--interval", dest="interval",
                           action="store", type="int", default=None,
                           help="Polling interval for load balancer")
