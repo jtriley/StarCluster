@@ -14,9 +14,11 @@ class SGEStats(object):
     """
     SunGridEngine stats parser
     """
+    jobstat_cachesize = 200
     hosts = []
     jobs = []
-    jobstats = []
+    jobstats = jobstat_cachesize * [None]
+    max_job_id = 0
     _default_fields = ["JB_job_number", "state", "JB_submission_time",
                        "queue_name", "slots", "tasks"]
 
@@ -110,13 +112,16 @@ class SGEStats(object):
         Takes the string to parse, and a datetime object of the remote
         host's current time.
         """
-        self.jobstats = []
+        job_id = None
         qd = None
         start = None
         end = None
+        counter = 0
         lines = string.split('\n')
         for l in lines:
             l = l.strip()
+            if l.find('jobnumber') != -1:
+                job_id = int(l[13:len(l)])
             if l.find('qsub_time') != -1:
                     qd = self.qacct_to_datetime_tuple(l[13:len(l)])
             if l.find('start_time') != -1:
@@ -131,12 +136,26 @@ class SGEStats(object):
                         end = self.qacct_to_datetime_tuple(l[13:len(l)])
             if l.find('==========') != -1:
                 if qd != None:
+                    self.max_job_id = job_id
                     hash = {'queued': qd, 'start': start, 'end': end}
-                    self.jobstats.append(hash)
+                    self.jobstats[job_id % self.jobstat_cachesize] = hash
                 qd = None
                 start = None
                 end = None
+                counter = counter + 1
+        log.debug("added %d new jobs." % counter)
+        log.debug("There are %d items in the jobstats cache." %
+                 len(self.jobstats))
         return self.jobstats
+
+    def is_jobstats_empty(self):
+        """
+        This function will return True if half of the queue is empty, False if
+        there are enough entries in it.
+        """
+        if self.max_job_id < (self.jobstat_cachesize * 0.3):
+            return True
+        return False
 
     def get_running_jobs(self):
         """
@@ -171,6 +190,9 @@ class SGEStats(object):
         """
         slots = 0
         for h in self.hosts:
+	    if h['num_proc'] == '-':
+		h['num_proc'] = 0
+
             slots = slots + int(h['num_proc'])
         return slots
 
@@ -181,8 +203,10 @@ class SGEStats(object):
         for example, if you have m1.large and m1.small in the same cluster
         """
         total = self.count_total_slots()
+	if self.hosts[0][u'num_proc'] == '-':
+	    self.hosts[0][u'num_proc'] = 0
         single = int(self.hosts[0][u'num_proc'])
-        if (total != (single * len(self.hosts))):
+	if (total != (single * len(self.hosts))):
             log.error("ERROR: Number of slots not consistent across cluster")
             return -1
         return single
@@ -228,9 +252,10 @@ class SGEStats(object):
         count = 0
         total_seconds = 0
         for job in self.jobstats:
-            delta = job['end'] - job['start']
-            total_seconds = total_seconds + delta.seconds
-            count = count + 1
+            if job != None:
+                delta = job['end'] - job['start']
+                total_seconds = total_seconds + delta.seconds
+                count = count + 1
         if count == 0:
             return 0
         else:
@@ -240,9 +265,10 @@ class SGEStats(object):
         count = 0
         total_seconds = 0
         for job in self.jobstats:
-            delta = job['start'] - job['queued']
-            total_seconds = total_seconds + delta.seconds
-            count = count + 1
+            if job != None:
+                delta = job['start'] - job['queued']
+                total_seconds = total_seconds + delta.seconds
+                count = count + 1
         if count == 0:
             return 0
         else:
@@ -264,6 +290,8 @@ class SGEStats(object):
         """
         loads = []
         for h in self.hosts:
+	    if h['load_avg'] == '-':
+		h['load_avg'] = 0
             loads.append(h['load_avg'])
         return loads
 
@@ -336,8 +364,6 @@ class SGELoadBalancer(LoadBalancer):
         if self.longest_allowed_queue_time < 300:
             log.warn("wait_time should be >= 300 seconds " + \
                      "(it takes ~5 min to launch a new EC2 node)")
-        #for key in self.__dict__.keys():
-            #log.info("bal: %s => %s." % (key, self.__dict__[key]))
 
     def get_remote_time(self):
         """
@@ -355,10 +381,14 @@ class SGELoadBalancer(LoadBalancer):
         representation of the past few hours, to feed to qacct to
         limit the data set qacct returns.
         """
-        if self.lookback_window > 24 or self.lookback_window < 1:
-            log.warn("Lookback window %d out of range (1-24). Not recommended."
-                     % self.lookback_window)
-        now = now - datetime.timedelta(hours=self.lookback_window)
+        if self.stat.is_jobstats_empty():
+            log.info("Jobstats cache is not full. Pulling full job history.")
+            temp_lookback_window = self.lookback_window * 60 * 60
+        else:
+            temp_lookback_window = self.polling_interval
+        log.debug("getting past %d seconds worth of job history." %
+                  temp_lookback_window)
+        now = now - datetime.timedelta(seconds=temp_lookback_window + 1)
         str = now.strftime("%Y%m%d%H%M")
         return str
 
@@ -419,7 +449,7 @@ class SGELoadBalancer(LoadBalancer):
             #turn the visualizer off, but keep going.
             self._visualizer_on = False
             return
-        visualizer = visualizer.SGEVisualizer()
+        visualizer = visualizer.SGEVisualizer(self._cluster.cluster_tag)
         visualizer.record(self.stat)
         visualizer.read()
         visualizer.graph_all()
@@ -503,7 +533,8 @@ class SGELoadBalancer(LoadBalancer):
                     #need_to_add = 0
         if need_to_add > 0:
             need_to_add = min(self.add_nodes_per_iteration, need_to_add)
-            log.info("*** ADDING %d NODES." % need_to_add)
+            log.info("*** ADDING %d NODES at %s." % (need_to_add,
+                                         str(datetime.datetime.utcnow())))
             try:
                 self._cluster.add_nodes(need_to_add)
             except Exception:
@@ -511,7 +542,8 @@ class SGELoadBalancer(LoadBalancer):
                 log.debug(traceback.format_exc())
                 return -1
             self.__last_cluster_mod_time = datetime.datetime.utcnow()
-            log.info("Done adding nodes.")
+            log.info("Done adding nodes at %s." %
+                     str(datetime.datetime.utcnow()))
         return need_to_add
 
     def _node_alive(self, node_id):

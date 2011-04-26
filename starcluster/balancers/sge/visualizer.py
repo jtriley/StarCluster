@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 """
-StarCluster SunGrinEngine stats parsing module
+StarCluster SunGrinEngine stats visualizer module
 """
 from datetime import datetime
+import os
+from starcluster import static
 import numpy as np
 import matplotlib.pyplot as plt
 from starcluster.logger import log
@@ -10,8 +12,15 @@ from starcluster.logger import log
 
 class SGEVisualizer(object):
     stat = None
-    filepath = '/tmp/starcluster-sge-stats.csv'
-    pngpath = '/home/rajat/Dropbox/Public/sc/'
+    filepath = os.path.join(static.TMP_DIR, 'starcluster-sge-stats.csv')
+    pngpath = '/Users/rbanerjee/Dropbox/Public/sc/'
+
+    def __init__(self, cluster_tag=None):
+        self.cluster_tag = cluster_tag
+        log.debug("Initialized visualizer for cluster %s." % self.cluster_tag)
+        if len(cluster_tag) > 0:
+            self.filepath = os.path.join(static.TMP_DIR,
+                'starcluster-%s-sge-stats.csv' % self.cluster_tag)
 
     def add(self, x, y):
         return float(x) + float(y)
@@ -57,6 +66,7 @@ class SGEVisualizer(object):
         list = []
         file = open(self.filepath, 'r')
         for line in file:
+            line = line.rstrip()
             parts = line.split(',')
             a = [datetime.strptime(parts[0], '%Y-%m-%d %H:%M:%S.%f'),
                  int(parts[1]), int(parts[2]), int(parts[3]), int(parts[4]),
@@ -65,7 +75,7 @@ class SGEVisualizer(object):
         file.close()
         names = ['dt', 'hosts', 'running_jobs', 'queued_jobs',
                  'slots', 'avg_duration', 'avg_wait', 'avg_load']
-        self.records = np.rec.fromrecords(list, ','.join(names))
+        self.records = np.rec.fromrecords(list, names=','.join(names))
 
     def graph(self, yaxis, title):
         if self.records == None:
