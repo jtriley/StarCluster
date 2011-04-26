@@ -394,9 +394,10 @@ class SGELoadBalancer(LoadBalancer):
                  add_pi=1, kill_after=45, stab=180, lookback_win=3,
                  min_nodes=1, allow_master_kill=False, plot_stats=False,
                  plot_output_dir=None, dump_stats=False, stats_file=None):
+        self._cluster = None
         self._keep_polling = True
-        self.__last_cluster_mod_time = datetime.datetime.utcnow()
         self._visualizer = None
+        self.__last_cluster_mod_time = datetime.datetime.utcnow()
         self.stat = None
         self.polling_interval = interval
         self.max_nodes = max_nodes
@@ -525,7 +526,7 @@ class SGELoadBalancer(LoadBalancer):
         self.stat.parse_qstat(qstatxml)
         self.stat.parse_qacct(qacct, now)
 
-    def run(self, cluster=None):
+    def run(self, cluster):
         """
         This function will loop indefinitely, using SGELoadBalancer.get_stats()
         to get the clusters status. It looks at the job queue and tries to
