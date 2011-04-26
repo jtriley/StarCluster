@@ -17,7 +17,6 @@ class SGEVisualizer(object):
     pngpath - directory to dump the stat plots to
     """
     def __init__(self, stats_file, pngpath):
-        log.info("Plotting stats to directory: %s" % pngpath)
         self.pngpath = pngpath
         self.stats_file = stats_file
         self.records = None

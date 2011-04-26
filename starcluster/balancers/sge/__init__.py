@@ -12,9 +12,9 @@ from starcluster.balancers import LoadBalancer
 from starcluster.logger import log
 
 
-DEFAULT_STATS_DIR = os.path.join(static.STARCLUSTER_CFG_DIR, 'sge')
+SGE_STATS_DIR = os.path.join(static.STARCLUSTER_CFG_DIR, 'sge')
+DEFAULT_STATS_DIR = os.path.join(SGE_STATS_DIR, '%s')
 DEFAULT_STATS_FILE = os.path.join(DEFAULT_STATS_DIR, 'sge-stats.csv')
-DEFAULT_PLOT_OUTPUT_DIR = os.path.join(DEFAULT_STATS_DIR, 'plots')
 
 
 class SGEStats(object):
@@ -396,7 +396,7 @@ class SGELoadBalancer(LoadBalancer):
                  plot_output_dir=None, dump_stats=False, stats_file=None):
         self._keep_polling = True
         self.__last_cluster_mod_time = datetime.datetime.utcnow()
-        self._cluster = None
+        self._visualizer = None
         self.stat = None
         self.polling_interval = interval
         self.max_nodes = max_nodes
@@ -410,27 +410,16 @@ class SGELoadBalancer(LoadBalancer):
         if self.longest_allowed_queue_time < 300:
             log.warn("The recommended wait_time should be >= 300 seconds "
                      "(it takes ~5 min to launch a new EC2 node)")
-        if dump_stats and not stats_file or plot_stats and not plot_output_dir:
-            if not os.path.isdir(DEFAULT_STATS_DIR):
-                os.mkdir(DEFAULT_STATS_DIR)
         self.dump_stats = dump_stats
-        self.stats_file = stats_file or DEFAULT_STATS_FILE
-        if dump_stats and stats_file:
-            if os.path.isdir(stats_file):
-                raise exception.BaseException("stats file destination '%s' "
-                                              "is a directory" % stats_file)
-            sfdir = os.path.dirname(os.path.abspath(stats_file))
-            self._validate_dir(sfdir, msg_prefix="stats file destination")
-        if dump_stats:
-            log.info("Writing stats to file: %s" % self.stats_file)
+        self.stats_file = stats_file
         self.plot_stats = plot_stats
-        self.plot_output_dir = plot_output_dir or DEFAULT_PLOT_OUTPUT_DIR
-        if self.plot_stats:
-            if plot_output_dir:
-                self._validate_dir(plot_output_dir,
-                                   msg_prefix="plot output destination")
-            elif not os.path.isdir(DEFAULT_PLOT_OUTPUT_DIR):
-                os.mkdir(DEFAULT_PLOT_OUTPUT_DIR)
+        self.plot_output_dir = plot_output_dir
+        if plot_stats:
+            assert self.visualizer != None
+
+    @property
+    def visualizer(self):
+        if not self._visualizer:
             try:
                 from starcluster.balancers.sge import visualizer
             except ImportError, e:
@@ -442,8 +431,12 @@ class SGELoadBalancer(LoadBalancer):
                 log.error("completes without error")
                 raise exception.BaseException(
                     "Failed to load stats visualizer")
-            self.visualizer = visualizer.SGEVisualizer(self.stats_file,
-                                                       self.plot_output_dir)
+            self._visualizer = visualizer.SGEVisualizer(self.stats_file,
+                                                        self.plot_output_dir)
+        else:
+            self._visualizer.stats_file = self.stats_file
+            self._visualizer.pngpath = self.plot_output_dir
+        return self._visualizer
 
     def _validate_dir(self, dirname, msg_prefix=""):
         if not os.path.isdir(dirname):
@@ -454,6 +447,18 @@ class SGELoadBalancer(LoadBalancer):
                 msg = ' '.join([msg_prefix, msg])
             msg = msg % dirname
             raise exception.BaseException(msg)
+
+    def _mkdir(self, directory, makedirs=False):
+        if not os.path.isdir(directory):
+            if os.path.isfile(directory):
+                raise exception.BaseException("'%s' is a file not a directory")
+            try:
+                if makedirs:
+                    os.makedirs(directory)
+                else:
+                    os.mkdir(directory)
+            except IOError, e:
+                raise exception.BaseException(str(e))
 
     def get_remote_time(self):
         """
@@ -520,16 +525,41 @@ class SGELoadBalancer(LoadBalancer):
         self.stat.parse_qstat(qstatxml)
         self.stat.parse_qacct(qacct, now)
 
-    def run(self, cluster):
+    def run(self, cluster=None):
         """
-        This is a rough looping function. it will loop indefinitely, using
-        SGELoadBalancer.get_stats() to get the clusters status. It will look
-        at the job queue and try to decide whether to add or remove a node.
-        It should later look at job durations. Doesn't yet.
+        This function will loop indefinitely, using SGELoadBalancer.get_stats()
+        to get the clusters status. It looks at the job queue and tries to
+        decide whether to add or remove a node.  It should later look at job
+        durations (currently doesn't)
         """
         self._cluster = cluster
+        use_default_stats_file = self.dump_stats and not self.stats_file
+        use_default_plots_dir = self.plot_stats and not self.plot_output_dir
+        if use_default_stats_file or use_default_plots_dir:
+            self._mkdir(DEFAULT_STATS_DIR % cluster.cluster_tag, makedirs=True)
+        if not self.stats_file:
+            self.stats_file = DEFAULT_STATS_FILE % cluster.cluster_tag
+        if not self.plot_output_dir:
+            self.plot_output_dir = DEFAULT_STATS_DIR % cluster.cluster_tag
         if not cluster.is_cluster_up():
             raise exception.ClusterNotRunning(cluster.cluster_tag)
+        if self.dump_stats:
+            if os.path.isdir(self.stats_file):
+                raise exception.BaseException("stats file destination '%s' is"
+                                              " a directory" % self.stats_file)
+            sfdir = os.path.dirname(os.path.abspath(self.stats_file))
+            self._validate_dir(sfdir, msg_prefix="stats file destination")
+        if self.plot_stats:
+            if os.path.isfile(self.plot_output_dir):
+                raise exception.BaseException("plot output destination '%s' "
+                                              "is a file" %
+                                              self.plot_output_dir)
+            self._validate_dir(self.plot_output_dir,
+                               msg_prefix="plot output destination")
+        if self.dump_stats:
+            log.info("Writing stats to file: %s" % self.stats_file)
+        if self.plot_stats:
+            log.info("Plotting stats to directory: %s" % self.plot_output_dir)
         while(self._keep_polling):
             if not cluster.is_cluster_up():
                 log.info("Entire cluster is not up, nodes added/removed. "
@@ -618,16 +648,6 @@ class SGELoadBalancer(LoadBalancer):
                      str(datetime.datetime.utcnow()))
         return need_to_add
 
-    def _node_alive(self, node_id):
-        """
-        this function iterates through the cluster's list of active nodes,
-        and makes sure that the specified node is there and 'running'
-        """
-        for n in self._cluster.nodes:
-            if n.id == node_id and n.state == 'running':
-                return True
-        return False
-
     def _eval_remove_node(self):
         """
         This function uses the sge stats to decide whether or not to
@@ -647,25 +667,24 @@ class SGELoadBalancer(LoadBalancer):
             if len(self.stat.hosts) > self.min_nodes:
                 log.info("Checking to remove a node...")
                 to_kill = self._find_node_for_removal()
-                if len(to_kill) == 0:
+                if not to_kill:
                     log.info("No nodes can be killed at this time.")
                 #kill the nodes returned
                 for n in to_kill:
-                    if self._node_alive(n.id):
-                        log.info("***KILLING NODE: %s (%s)." %
-                                 (n.id, n.dns_name))
+                    if n.update() == "running":
+                        log.info("***KILLING NODE: %s (%s)." % (n.id,
+                                                                n.dns_name))
                         try:
                             self._cluster.remove_node(n)
                         except Exception:
-                            log.error("Failed to terminate the host.")
+                            log.error("Failed to terminate node %s" % n.alias)
                             log.debug(traceback.format_exc())
                             return -1
                         #successfully removed node
                         now = datetime.datetime.utcnow()
                         self.__last_cluster_mod_time = now
                     else:
-                        log.error("Trying to kill a dead node! id = %s." %
-                                  n.id)
+                        log.error("Trying to kill dead node %s" % n.alias)
             else:
                 log.info("Can't remove a node, already at min (%d)." %
                          self.min_nodes)
@@ -681,8 +700,7 @@ class SGELoadBalancer(LoadBalancer):
         nodes = self._cluster.running_nodes
         to_rem = []
         for node in nodes:
-            if not self.allow_master_kill and \
-                    node.id == self._cluster.master_node.id:
+            if not self.allow_master_kill and node.is_master():
                 log.debug("not removing master node")
                 continue
             is_working = self.stat.is_node_working(node)

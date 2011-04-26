@@ -27,7 +27,7 @@ class CmdLoadBalance(ClusterCompleter):
 
         $ starcluster loadbalance -d mycluster
 
-    Run "starcluster loadbalance --help" for more details on the '-p' and '-d'
+    See "starcluster loadbalance --help" for more details on the '-p' and '-d'
     options as well as other options for tuning the SGE load balancer
     algorithm.
     """
@@ -41,14 +41,15 @@ class CmdLoadBalance(ClusterCompleter):
         parser.add_option("-D", "--dump-stats-file", dest="stats_file",
                           action="store", default=None,
                           help="File to dump stats to (default: %s)" %
-                          sge.DEFAULT_STATS_FILE)
+                          sge.DEFAULT_STATS_FILE % "<cluster_tag>")
         parser.add_option("-p", "--plot-stats", dest="plot_stats",
                           action="store_true", default=False,
                           help="Plot usage stats at each iteration")
         parser.add_option("-P", "--plot-output-dir", dest="plot_output_dir",
                           action="store", default=None,
                           help="Output directory for stats plots "
-                          "(default: %s)" % sge.DEFAULT_PLOT_OUTPUT_DIR)
+                          "(default: %s)" % sge.DEFAULT_STATS_DIR %
+                          "<cluster_tag>")
         parser.add_option("-i", "--interval", dest="interval",
                           action="store", type="int", default=None,
                           help="Polling interval for load balancer")
