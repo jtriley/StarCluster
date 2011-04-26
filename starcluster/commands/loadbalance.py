@@ -16,9 +16,19 @@ class CmdLoadBalance(ClusterCompleter):
     names = ['loadbalance', 'bal']
 
     def addopts(self, parser):
-        parser.add_option("-p", "--plot", dest="plot",
+        parser.add_option("-d", "--dump-stats", dest="dump_stats",
                           action="store_true", default=False,
-                          help="Plot usage data at each iteration")
+                          help="Output stats to a csv file at each iteration")
+        parser.add_option("-D", "--dump-stats-file", dest="stats_file",
+                          action="store", default=None,
+                          help="File to dump stats to (default:FIXME)")
+        parser.add_option("-p", "--plot-stats", dest="plot_stats",
+                          action="store_true", default=False,
+                          help="Plot usage stats at each iteration")
+        parser.add_option("-P", "--plot-output-dir", dest="plot_output_dir",
+                          action="store", default=None,
+                          help="Output directory for stats plots "
+                          "(default:FIXME)")
         parser.add_option("-i", "--interval", dest="interval",
                           action="store", type="int", default=None,
                           help="Polling interval for load balancer")
@@ -27,7 +37,7 @@ class CmdLoadBalance(ClusterCompleter):
                           help="Maximum # of nodes in cluster")
         parser.add_option("-w", "--job_wait_time", dest="wait_time",
                           action="store", type="int", default=None,
-                          help=("Maximum wait time for a job before " + \
+                          help=("Maximum wait time for a job before "
                                 "adding nodes, seconds"))
         parser.add_option("-a", "--add_nodes_per_iter", dest="add_pi",
                           action="store", type="int", default=None,
@@ -44,6 +54,10 @@ class CmdLoadBalance(ClusterCompleter):
         parser.add_option("-n", "--min_nodes", dest="min_nodes",
                           action="store", type="int", default=None,
                           help="Minimum number of nodes in cluster")
+        parser.add_option("-K", "--kill-master", dest="allow_master_kill",
+                          action="store_true", default=None,
+                          help="Allow the master to be killed when "
+                          "the queue is empty (EXPERIMENTAL).")
 
     def execute(self, args):
         if not self.cfg.globals.enable_experimental:
