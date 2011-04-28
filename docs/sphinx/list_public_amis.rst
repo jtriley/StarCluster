@@ -1,10 +1,10 @@
 Listing All Public StarCluster AMIs
 ===================================
 From time to time StarCluster may provide updated AMIs. These AMIs might simply contain new OS versions or could
-fix a bug experienced by StarCluster users. Either way, it's useful to be able to look at the *latest* available 
+fix a bug experienced by StarCluster users. Either way, it's useful to be able to look at the *latest* available
 StarCluster AMIs.
 
-To look at a list of all currently available public StarCluster AMIs, including 32bit and 64bit, run the 
+To look at a list of all currently available public StarCluster AMIs, including 32bit and 64bit, run the
 **listpublic** command:
 
 .. code-block:: none
