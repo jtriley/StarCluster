@@ -1064,10 +1064,14 @@ class EasyEC2(EasyAWS):
             try:
                 import pylab
                 pylab.plot_date(pylab.date2num(dates), prices, linestyle='-')
-                pylab.xlabel('date')
-                pylab.ylabel('price (cents)')
+                pylab.xlabel('Date')
+                pylab.ylabel('Price (US Dollars)')
                 pylab.title('%s Price vs Date (%s - %s)' % (instance_type,
                                                             start, end))
+                xmin, xmax = pylab.xlim()
+                ymin, ymax = pylab.ylim()
+                pylab.xlim([xmin - 1, xmax + 1])
+                pylab.ylim([0, ymax*(1.02)])
                 pylab.grid(True)
                 pylab.show()
             except ImportError, e:
