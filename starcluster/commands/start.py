@@ -136,7 +136,7 @@ class CmdStart(ClusterCompleter):
 
     def execute(self, args):
         if len(args) != 1:
-            self.parser.error("please specify a cluster <cluster_tag>")
+            self.parser.error("please specify a <cluster_tag>")
         tag = self.tag = args[0]
         create = not self.opts.no_create
         create_only = self.opts.create_only
