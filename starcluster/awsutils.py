@@ -1015,6 +1015,8 @@ class EasyEC2(EasyAWS):
                 print "volume_id: %s" % vol.id
                 print "size: %sGB" % vol.size
                 print "status: %s" % vol.status
+                if vol.attachment_state():
+                    print "attachment_status: %s" % vol.attachment_state()
                 print "availability_zone: %s" % vol.zone
                 if vol.snapshot_id:
                     print "snapshot_id: %s" % vol.snapshot_id
