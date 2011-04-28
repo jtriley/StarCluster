@@ -52,22 +52,57 @@ class SSHClient(object):
         self._sftp = None
         self._transport = None
         if private_key:
-            # Use Private Key.
-            log.debug('private key specified')
-            if private_key.endswith('rsa') or private_key.count('rsa'):
-                pkey = self._load_rsa_key(private_key, private_key_pass)
-            elif private_key.endswith('dsa') or private_key.count('dsa'):
-                pkey = self._load_dsa_key(private_key, private_key_pass)
-            else:
-                log.debug("specified key does not end in either rsa or dsa" + \
-                          ", trying both")
-                pkey = self._load_rsa_key(private_key, private_key_pass)
-                if pkey is None:
-                    pkey = self._load_dsa_key(private_key, private_key_pass)
-            self._pkey = pkey
+            self._pkey = self.load_private_key(private_key, private_key_pass)
         elif not password:
             raise exception.SSHNoCredentialsError()
-        assert self.transport is not None
+
+    def load_private_key(self, private_key, private_key_pass=None):
+        # Use Private Key.
+        log.debug('loading private key %s' % private_key)
+        if private_key.endswith('rsa') or private_key.count('rsa'):
+            pkey = self._load_rsa_key(private_key, private_key_pass)
+        elif private_key.endswith('dsa') or private_key.count('dsa'):
+            pkey = self._load_dsa_key(private_key, private_key_pass)
+        else:
+            log.debug("specified key does not end in either rsa or dsa" + \
+                      ", trying both")
+            pkey = self._load_rsa_key(private_key, private_key_pass)
+            if pkey is None:
+                pkey = self._load_dsa_key(private_key, private_key_pass)
+        return pkey
+
+    def connect(self, host=None, username=None, password=None,
+                private_key=None, private_key_pass=None, port=22, timeout=30):
+        host = host or self._host
+        username = username or self._username
+        pkey = self._pkey
+        if private_key:
+            pkey = self.load_private_key(private_key, private_key_pass)
+        log.debug("connecting to host %s on port %d as user %s" % (host, port,
+                                                                   username))
+        try:
+            sock = self._get_socket(host, port)
+            transport = paramiko.Transport(sock)
+            transport.banner_timeout = timeout
+        except socket.error:
+            raise exception.SSHConnectionError(host, port)
+        # Authenticate the transport.
+        try:
+            transport.connect(username=username, pkey=pkey, password=password)
+        except paramiko.AuthenticationException:
+            raise exception.SSHAuthException(username, host)
+        except paramiko.SSHException, e:
+            msg = e.args[0]
+            raise exception.SSHError(msg)
+        except socket.error:
+            raise exception.SSHConnectionError(host, port)
+        except EOFError:
+            raise exception.SSHConnectionError(host, port)
+        except Exception, e:
+            raise exception.SSHError(str(e))
+        self.close()
+        self._transport = transport
+        return self
 
     @property
     def transport(self):
@@ -75,28 +110,8 @@ class SSHClient(object):
         This property attempts to return an active SSH transport
         """
         if not self._transport or not self._transport.is_active():
-            try:
-                sock = self._get_socket(self._host, self._port)
-                self._transport = paramiko.Transport(sock)
-                self._transport.banner_timeout = self._timeout
-            except socket.error:
-                raise exception.SSHConnectionError(self._host, self._port)
-            # Authenticate the transport.
-            try:
-                self._transport.connect(username=self._username,
-                                        pkey=self._pkey,
-                                        password=self._password)
-            except paramiko.AuthenticationException:
-                raise exception.SSHAuthException(self._username, self._host)
-            except paramiko.SSHException, e:
-                msg = e.args[0]
-                raise exception.SSHError(msg)
-            except socket.error:
-                raise exception.SSHConnectionError(self._host, self._port)
-            except EOFError:
-                raise exception.SSHConnectionError(self._host, self._port)
-            except Exception, e:
-                raise exception.SSHError(str(e))
+            self.connect(self._host, self._username, self._password,
+                         port=self._port, timeout=self._timeout)
         return self._transport
 
     def get_server_public_key(self):
