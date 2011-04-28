@@ -445,7 +445,9 @@ class SSHClient(object):
         if self._transport:
             self._transport.close()
 
-    def interactive_shell(self):
+    def interactive_shell(self, user='root'):
+        if user and self.transport.get_username() != user:
+            self.connect(username=user)
         try:
             chan = self.transport.open_session()
             chan.get_pty()
@@ -513,6 +515,9 @@ class SSHClient(object):
 
         writer = threading.Thread(target=writeall, args=(chan,))
         writer.start()
+
+        # needs to be sent to give vim correct size FIX
+        chan.send('eval $(resize)\n')
 
         try:
             while True:

@@ -817,14 +817,16 @@ class Node(object):
                 label = "node '%s'" % self.alias
             raise exception.InstanceNotRunning(self.id, self.state,
                                                label=label)
+        user = user or self.user
         if utils.has_required(['ssh']):
             log.debug("using system's ssh client")
-            user = user or self.user
-            os.system(static.SSH_TEMPLATE % (self.key_location, user,
-                                             self.dns_name))
+            ssh_cmd = static.SSH_TEMPLATE % (self.key_location, user,
+                                             self.dns_name)
+            log.debug("ssh_cmd: %s" % ssh_cmd)
+            os.system(ssh_cmd)
         else:
             log.debug("using pure-python ssh client")
-            self.ssh.interactive_shell()
+            self.ssh.interactive_shell(user=user)
 
     def get_hosts_entry(self):
         """ Returns /etc/hosts entry for this node """
