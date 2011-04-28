@@ -46,8 +46,8 @@ class SSHConnectionError(SSHError):
 class SSHAuthException(SSHError):
     """Raised when an ssh connection fails to authenticate"""
     def __init__(self, user, host):
-        self.msg = "failed to authenticate to host %s as user %s" % (user,
-                                                                     host)
+        self.msg = "failed to authenticate to host %s as user %s" % (host,
+                                                                     user)
 
 
 class SSHNoCredentialsError(SSHError):

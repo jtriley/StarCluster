@@ -1073,7 +1073,7 @@ class EasyEC2(EasyAWS):
                 xmin, xmax = pylab.xlim()
                 ymin, ymax = pylab.ylim()
                 pylab.xlim([xmin - 1, xmax + 1])
-                pylab.ylim([0, ymax*(1.02)])
+                pylab.ylim([0, ymax * (1.02)])
                 pylab.grid(True)
                 pylab.show()
             except ImportError, e:
