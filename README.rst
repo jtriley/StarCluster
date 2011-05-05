@@ -38,9 +38,10 @@ an EC2 instance.
 Dependencies:
 -------------
 * Amazon AWS Account
-* Python 2.4+
-* Boto 1.9b+
-* Paramiko 1.7.6+
+* Python 2.5+
+* Boto 2.0b4
+* Paramiko 1.7.6
+* WorkerPool 0.9.2
 
 Getting Started:
 ----------------
@@ -56,28 +57,49 @@ To install StarCluster manually::
     $ cd starcluster-X.X.X
     $ sudo python setup.py install
 
-To run StarCluster::
+After the software has been installed, the next step is to setup the configuration file: ::
 
     $ starcluster help
     
-This will give you a template to create a configuration file with your EC2 info, preferences, etc.  
-The next step is to customize this file using your favorite text-editor:::
+This will give you a template to use to create a configuration file containing your AWS credentials, 
+cluster settings, etc.  The next step is to customize this file using your favorite text-editor: ::
 
-    $ vi ~/.starclustercfg  
+    $ vi ~/.starcluster/config  
 
-Next we start a cluster tagged "mycluster" using the default cluster template in the config.
-The default_template setting in the [global] section of the config specifies the default cluster template.::
+This file is commented with example "cluster templates". A cluster template defines a set of configuration
+settings used to start a cluster. The example config provides a 'smallcluster' template that is
+ready to go out-of-the-box. Simply fill in your AWS credentials and keypair info and you're ready to go.
+
+Next we start a cluster named "mycluster" using the default cluster template 'smallcluster' in the example config: ::
 
     $ starcluster start mycluster 
 
-After the above command completes you should now have a working cluster. Once you've finished using the 
-cluster and wish to stop paying for it:::
+The *default_template* setting in the [global] section of the config specifies the default cluster template and
+is automatically set to 'smallcluster' in the example config.
+
+After the *start* command completes you should now have a working cluster. You can login to the master node as 
+root by running: ::
+
+    $ starcluster sshmaster mycluster
+
+Once you've finished using the cluster and wish to stop paying for it: ::
 
     $ starcluster stop mycluster 
 
-Have a look at the rest of StarCluster's commands::
+Have a look at the rest of StarCluster's commands: ::
 
-    $ starcluster help
+    $ starcluster --help
+
+Learn more...
+-------------
+Watch an ~8min screencast @ http://web.mit.edu/stardev/cluster
+
+To learn more have a look at the rest of the documentation:
+http://web.mit.edu/stardev/cluster/docs
+
+The docs explain the configuration file in detail, how to create/use EBS volumes with StarCluster, and
+how to use the Sun Grid Engine queueing system to submit jobs on the cluster.
+
 
 Licensing:
 ----------

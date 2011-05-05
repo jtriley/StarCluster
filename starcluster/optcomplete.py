@@ -1,4 +1,4 @@
-#******************************************************************************\
+#*****************************************************************************\
 #* Copyright (c) 2003-2004, Martin Blais
 #* All rights reserved.
 #*
@@ -28,7 +28,7 @@
 #* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 #* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#******************************************************************************\
+#*****************************************************************************\
 
 """Automatic completion for optparse module.
 
@@ -88,39 +88,43 @@ __author__ = "Martin Blais <blais@furius.ca>"
 ##      completion facility (*note Programmable Completion::).
 
 
-import sys, os
-from os.path import *
+import os
+import sys
 import types
 import re
 
-from pprint import pprint, pformat
+from pprint import pformat
 
 from optparse import OptionParser
 
-debugfn = '/tmp/completion-debug.log' # for debugging only
+debugfn = '/tmp/completion-debug.log'  # for debugging only
 
-class AllCompleter:
+
+class AllCompleter(object):
 
     """Completes by listing all possible files in current directory."""
 
     def __call__(self, pwd, line, point, prefix, suffix):
         return os.listdir(pwd)
 
-class NoneCompleter:
+
+class NoneCompleter(object):
 
     """Generates empty completion list."""
 
     def __call__(self, pwd, line, point, prefix, suffix):
         return []
 
-class DirCompleter:
+
+class DirCompleter(object):
 
     """Completes by listing subdirectories only."""
 
     def __call__(self, pwd, line, point, prefix, suffix):
-        return filter(isdir, os.listdir(pwd))
+        return filter(os.path.isdir, os.listdir(pwd))
 
-class RegexCompleter:
+
+class RegexCompleter(object):
 
     """Completes by filtering all possible files with the given list of
     regexps."""
@@ -137,7 +141,7 @@ class RegexCompleter:
             self.regexlist.append(r)
 
     def __call__(self, pwd, line, point, prefix, suffix):
-        dn = dirname(prefix)
+        dn = os.path.dirname(prefix)
         if dn:
             pwd = dn
         files = os.listdir(pwd)
@@ -146,14 +150,15 @@ class RegexCompleter:
             for r in self.regexlist:
                 if r.match(fn):
                     if dn:
-                        fn = join(dn, fn)
+                        fn = os.path.join(dn, fn)
                     ofiles.append(fn)
                     break
-            if self.always_dirs and isdir(fn):
+            if self.always_dirs and os.path.isdir(fn):
                 ofiles.append(fn + '/')
         return ofiles
 
-class ListCompleter:
+
+class ListCompleter(object):
 
     """Completes by filtering using a fixed list of strings."""
 
@@ -162,6 +167,7 @@ class ListCompleter:
 
     def __call__(self, pwd, line, point, prefix, suffix):
         return self.olist
+
 
 def extract_word(line, point):
 
@@ -186,10 +192,11 @@ def extract_word(line, point):
             break
         sufii += 1
 
-    return line[preii : point], line[point : sufii]
+    return line[preii:point], line[point:sufii]
+
 
 def autocomplete(parser,
-                  arg_completer=None, # means use default.
+                  arg_completer=None,  # means use default.
                   opt_completer=None,
                   subcmd_completer=None,
                   subcommands=None):
@@ -217,9 +224,9 @@ def autocomplete(parser,
     value.  This is used to implement completion for subcommand syntax and will
     not be needed in most cases."""
 
-    # If we are not requested for complete, simply return silently, let the code
-    # caller complete. This is the normal path of execution.
-    if not os.environ.has_key('OPTPARSE_AUTO_COMPLETE'):
+    # If we are not requested for complete, simply return silently, let the
+    # code caller complete. This is the normal path of execution.
+    if 'OPTPARSE_AUTO_COMPLETE' not in os.environ:
         return
 
     # Set default completers.
@@ -243,14 +250,13 @@ def autocomplete(parser,
 
     # zsh's bashcompinit does not pass COMP_WORDS, replace with
     # COMP_LINE for now...
-    if not os.environ.has_key('COMP_WORDS'):
+    if not 'COMP_WORDS' in os.environ:
         os.environ['COMP_WORDS'] = os.environ['COMP_LINE']
 
     cwords = os.environ['COMP_WORDS'].split()
     cline = os.environ['COMP_LINE']
     cpoint = int(os.environ['COMP_POINT'])
     cword = int(os.environ['COMP_CWORD'])
-
 
     # If requested, try subcommand syntax to find an options parser for that
     # subcommand.
@@ -273,7 +279,7 @@ def autocomplete(parser,
                 if hasattr(value, 'autocomplete'):
                     return value.autocomplete(subcmd_completer)
                 else:
-                    sys.exit(1) # no completions for that command object
+                    sys.exit(1)  # no completions for that command object
 
     # Extract word enclosed word.
     prefix, suffix = extract_word(cline, cpoint)
@@ -330,16 +336,15 @@ def autocomplete(parser,
         if isinstance(completer, types.StringType) or \
                isinstance(completer, types.ListType) or \
                isinstance(completer, types.TupleType):
-
             completer = RegexCompleter(completer)
-            completions += completer(os.getcwd(), cline, cpoint, prefix, suffix)
-
-
+            completions += completer(os.getcwd(), cline,
+                                     cpoint, prefix, suffix)
         elif isinstance(completer, types.FunctionType) or \
              isinstance(completer, types.LambdaType) or \
              isinstance(completer, types.ClassType) or \
              isinstance(completer, types.ObjectType):
-            completions += completer(os.getcwd(), cline, cpoint, prefix, suffix)
+            completions += completer(os.getcwd(), cline,
+                                     cpoint, prefix, suffix)
 
     # Filter using prefix.
     if prefix:
@@ -369,10 +374,12 @@ def autocomplete(parser,
     # is a run for completions only.)
     sys.exit(1)
 
+
 def error_override(self, msg):
     """Hack to keep OptionParser from writing to sys.stderr when
     calling self.exit from self.error"""
     self.exit(2, msg=None)
+
 
 def guess_first_nonoption(gparser, subcmds_map):
 
@@ -383,11 +390,13 @@ def guess_first_nonoption(gparser, subcmds_map):
 
     import copy
     gparser = copy.deepcopy(gparser)
-    def print_usage_nousage (self, file=None):
+
+    def print_usage_nousage(self, file=None):
         pass
     gparser.print_usage = print_usage_nousage
 
-    prev_interspersed = gparser.allow_interspersed_args # save state to restore
+    # save state to restore
+    prev_interspersed = gparser.allow_interspersed_args
     gparser.disable_interspersed_args()
 
     cwords = os.environ['COMP_WORDS'].split()
@@ -398,7 +407,8 @@ def guess_first_nonoption(gparser, subcmds_map):
         try:
             instancemethod = type(OptionParser.error)
             # hack to keep OptionParser from wrinting to sys.stderr
-            gparser.error = instancemethod(error_override, gparser, OptionParser)
+            gparser.error = instancemethod(error_override,
+                                           gparser, OptionParser)
             gopts, args = gparser.parse_args(cwords[1:])
         except SystemExit:
             return None
@@ -414,18 +424,19 @@ def guess_first_nonoption(gparser, subcmds_map):
         except KeyError:
             pass
 
-    gparser.allow_interspersed_args = prev_interspersed # restore state
+    gparser.allow_interspersed_args = prev_interspersed  # restore state
 
-    return value # can be None, indicates no command chosen.
+    return value  # can be None, indicates no command chosen.
 
-class CmdComplete:
+
+class CmdComplete(object):
 
     """Simple default base class implementation for a subcommand that supports
     command completion.  This class is assuming that there might be a method
     addopts(self, parser) to declare options for this subcommand, and an
     optional completer data member to contain command-specific completion.  Of
-    course, you don't really have to use this, but if you do it is convenient to
-    have it here."""
+    course, you don't really have to use this, but if you do it is convenient
+    to have it here."""
 
     def autocomplete(self, completer):
         import logging

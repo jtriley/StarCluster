@@ -20,6 +20,7 @@ Contents:
    list_public_amis.rst
    shell_completion.rst
    plugins.rst
+   load_balancer.rst
 
 Indices and tables
 ==================
