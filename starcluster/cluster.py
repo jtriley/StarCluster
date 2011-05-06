@@ -31,15 +31,19 @@ class ClusterManager(managers.Manager):
     def __repr__(self):
         return "<ClusterManager: %s>" % self.ec2.region.name
 
-    def get_cluster(self, cluster_name, load_plugins=True):
+    def get_cluster(self, cluster_name, group=None, load_receipt=True,
+                    load_plugins=True):
         """
         Returns a Cluster object representing an active cluster
         """
         try:
             clname = self._get_cluster_name(cluster_name)
-            self.ec2.get_security_group(clname)
-            cl = Cluster(ec2_conn=self.ec2, cluster_tag=cluster_name)
-            cl.load_receipt(load_plugins=load_plugins)
+            if not group:
+                group = self.ec2.get_security_group(clname)
+            cl = Cluster(ec2_conn=self.ec2, cluster_tag=cluster_name,
+                         cluster_group=group)
+            if load_receipt:
+                cl.load_receipt(load_plugins=load_plugins)
             try:
                 key_location = self.cfg.get_key(cl.keyname).get('key_location')
                 cl.key_location = key_location
@@ -199,7 +203,16 @@ class ClusterManager(managers.Manager):
                 raise exception.ClusterDoesNotExist(g)
         for scg in cluster_groups:
             tag = self.get_tag_from_sg(scg.name)
-            cl = self.get_cluster(tag, load_plugins=False)
+            try:
+                cl = self.get_cluster(tag, group=scg, load_plugins=False)
+            except exception.IncompatibleCluster, e:
+                lines = e.msg.splitlines()
+                sep = '*' * 60
+                log.error(sep)
+                for l in lines:
+                    log.error(l)
+                log.error(sep + '\n')
+                continue
             header = '%s (security group: %s)' % (tag, scg.name)
             print '-' * len(header)
             print header
@@ -287,6 +300,7 @@ class Cluster(object):
             refresh_interval=30,
             disable_queue=False,
             disable_threads=False,
+            cluster_group=None,
             **kwargs):
 
         now = time.strftime("%Y%m%d%H%M")
@@ -555,28 +569,32 @@ class Cluster(object):
         description field.
         """
         try:
-            compressed_data = base64.b64decode(self.cluster_group.description)
+            desc = self.cluster_group.description
+            version, b64data = desc.split('-', 1)
+            compressed_data = base64.b64decode(b64data)
             pkl_data = zlib.decompress(compressed_data)
             cluster_settings = cPickle.loads(str(pkl_data)).__dict__
-            for key in cluster_settings:
-                if hasattr(self, key):
-                    setattr(self, key, cluster_settings.get(key))
-            if load_plugins:
-                self.plugins = self.load_plugins(self._plugins)
-            return True
-        except zlib.error:
-            # TODO raise exception
-            return False
-        except (cPickle.PickleError, ValueError, EOFError):
+        except (cPickle.PickleError, zlib.error, ValueError, TypeError,
+                EOFError, IndexError), e:
             # TODO raise exception about old version
-            return False
-        except exception.PluginError, e:
-            log.warn(e)
-            log.warn("An error occured while loading plugins")
-            log.warn("Not running any plugins")
+            raise exception.IncompatibleCluster(self.cluster_group)
         except Exception, e:
             raise exception.ClusterReceiptError(
                 'failed to load cluster receipt: %s' % e)
+        for key in cluster_settings:
+            if hasattr(self, key):
+                setattr(self, key, cluster_settings.get(key))
+        if load_plugins:
+            try:
+                self.plugins = self.load_plugins(self._plugins)
+            except exception.PluginError, e:
+                log.warn(e)
+                log.warn("An error occured while loading plugins")
+                log.warn("Not running any plugins")
+            except Exception, e:
+                raise exception.ClusterReceiptError(
+                    'failed to load cluster receipt: %s' % e)
+        return True
 
     def __getstate__(self):
         cfg = {}
@@ -599,9 +617,10 @@ class Cluster(object):
     @property
     def cluster_group(self):
         if self._cluster_group is None:
-            description = base64.b64encode(zlib.compress(cPickle.dumps(self)))
+            desc = base64.b64encode(zlib.compress(cPickle.dumps(self)))
+            desc = '-'.join([static.VERSION, desc])
             sg = self.ec2.get_or_create_group(self._security_group,
-                                              description,
+                                              desc,
                                               auth_ssh=True,
                                               auth_group_traffic=True)
             for p in self.permissions:
