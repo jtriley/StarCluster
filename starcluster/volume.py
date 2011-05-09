@@ -75,10 +75,9 @@ class VolumeCreator(cluster.Cluster):
             log.info(
                 "No instance in group %s for zone %s, launching one now." % \
                 (self.cluster_group.name, zone))
-            self._resv = self.create_node(
-                alias, image_id=self._image_id,
-                instance_type=self._instance_type,
-                count=1, zone=zone)
+            self._resv = self.create_node(alias, image_id=self._image_id,
+                                          instance_type=self._instance_type,
+                                          zone=zone)
             self.wait_for_cluster(msg="Waiting for volume host to come up...")
             self._instance = self.get_node_by_alias(alias)
         else:

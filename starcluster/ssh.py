@@ -145,7 +145,7 @@ class SSHClient(object):
             log.debug("Using private key %s (rsa)" % private_key)
             return rsa_key
         except paramiko.SSHException:
-            log.error('invalid rsa key or password specified')
+            log.error('invalid rsa key or passphrase specified')
 
     def _load_dsa_key(self, private_key, private_key_pass=None):
         private_key_file = os.path.expanduser(private_key)
@@ -155,7 +155,7 @@ class SSHClient(object):
             log.info("Using private key %s (dsa)" % private_key)
             return dsa_key
         except paramiko.SSHException:
-            log.error('invalid dsa key or password specified')
+            log.error('invalid dsa key or passphrase specified')
 
     @property
     def sftp(self):
