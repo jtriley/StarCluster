@@ -110,16 +110,37 @@ class ClusterManager(managers.Manager):
             cluster_name = static.SECURITY_GROUP_TEMPLATE % cluster_name
         return cluster_name
 
-    def add_node(self, cluster_name, alias=None):
+    def add_node(self, cluster_name, 
+                       alias=None,
+                       image_id=None,
+                       instance_type=None,
+                       zone=None,
+                       placement_group=None,
+                       spot_bid=None):
         cl = self.get_cluster(cluster_name)
-        cl.add_node(alias)
+        return cl.add_node(alias=alias,
+                    image_id=image_id,
+                    instance_type=instance_type,
+                    zone=zone,
+                    placement_group=placement_group,
+                    spot_bid=spot_bid)
 
-    def add_nodes(self, cluster_name, num_nodes, aliases=None):
+    def add_nodes(self, cluster_name, num_nodes, aliases=None,
+                                                 image_id=None,
+                                                 instance_type=None,
+                                                 zone=None,
+                                                 placement_group=None,
+                                                 spot_bid=None):
         """
         Add one or more nodes to cluster
         """
         cl = self.get_cluster(cluster_name)
-        cl.add_nodes(num_nodes, aliases=aliases)
+        return cl.add_nodes(num_nodes, aliases=aliases,
+                                image_id=image_id,
+                                instance_type=instance_type,
+                                zone=zone,
+                                placement_group=placement_group,
+                                spot_bid=spot_bid)
 
     def remove_node(self, cluster_name, alias):
         """
@@ -703,7 +724,7 @@ class Cluster(object):
                                  zone=zone, placement_group=placement_group)
 
     def create_nodes(self, aliases, image_id=None, instance_type=None, count=1,
-                    zone=None, placement_group=None):
+                    zone=None, placement_group=None,spot_bid=None):
         """
         Convenience method for requesting instances with this cluster's
         settings
@@ -713,7 +734,7 @@ class Cluster(object):
             placement_group = self.placement_group.name
         response = self.ec2.request_instances(
             image_id or self.node_image_id,
-            price=self.spot_bid,
+            price=spot_bid or self.spot_bid,
             instance_type=instance_type or self.node_instance_type,
             min_count=count, max_count=count, count=count,
             key_name=self.keyname,
@@ -738,16 +759,34 @@ class Cluster(object):
         log.debug("Highest node number is %d. choosing %d." % (highest, next))
         return next
 
-    def add_node(self, alias=None):
+    def add_node(self, 
+                 alias=None,
+                 image_id=None, 
+                 instance_type=None,
+                 zone=None,
+                 placement_group=None,
+                 spot_bid=None):
         """
         Add a single node to this cluster
         """
         aliases = None
         if alias:
             aliases = [alias]
-        self.add_nodes(1, aliases=aliases)
+        return self.add_nodes(1, aliases=aliases,
+                          image_id=image_id,
+                          instance_type=instance_type,
+                          zone=zone,
+                          placement_group=placement_group,
+                          spot_bid=spot_bid)
 
-    def add_nodes(self, num_nodes, aliases=None):
+    def add_nodes(self, 
+                num_nodes, 
+                aliases=None, 
+                image_id = None,
+                instance_type=None,
+                zone=None,
+                placement_group=None,
+                spot_bid=None):
         """
         Add new nodes to this cluster
 
@@ -771,7 +810,13 @@ class Cluster(object):
                     "node with alias %s already exists" % node.alias)
         log.debug("Adding node(s): %s" % aliases)
         log.info("Launching node(s): %s" % ', '.join(aliases))
-        print self.create_nodes(aliases, count=len(aliases))
+        print self.create_nodes(aliases, 
+                                count=len(aliases),
+                                image_id=image_id,
+                                instance_type=instance_type,
+                                zone=zone,
+                                placement_group=placement_group,
+                                spot_bid=spot_bid)
         self.wait_for_cluster(msg="Waiting for node(s) to come up...")
         default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue,
                                                           self.disable_threads)
@@ -782,6 +827,8 @@ class Cluster(object):
                 self.cluster_user, self.cluster_shell,
                 self.volumes)
             self.run_plugins(method_name="on_add_node", node=node)
+        
+        return aliases
 
     def remove_node(self, node):
         """
