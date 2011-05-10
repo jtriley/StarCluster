@@ -517,10 +517,12 @@ class SGELoadBalancer(LoadBalancer):
           
     def create_host_group(self):
         if self.host_group:
-            sge_utils.create_host_group(self._cluster.master_node,self.host_group)
+            sge_utils.create_host_group(self._cluster.master_node,
+                                                    self.host_group)
   
     def hosts_in_queue(self):
-        return sge_utils.get_hosts(self._cluster.master_node,qname=self.queue_name)    
+        return sge_utils.get_hosts(self._cluster.master_node,
+                                              qname=self.queue_name)    
 
     def add_host_group_to_queue(self):
         master = self._cluster.master_node        
@@ -530,18 +532,22 @@ class SGELoadBalancer(LoadBalancer):
         master = self._cluster.master_node 
         slots = self.slots
         if slots is None:
-            nodes = [self._cluster.get_node_by_alias(alias) for alias in aliases]
+            nodes = [self._cluster.get_node_by_alias(alias) \
+                                                          for alias in aliases]
             slots = dict([(node.alias,get_num_procs(node)) for node in nodes])
-        return sge_utils.add_to_queue_with_slots(master,self.queue_name,aliases,slots=slots)
+        return sge_utils.add_to_queue_with_slots(master,
+                                           self.queue_name,aliases,slots=slots)
 
     def add_to_host_group(self,aliases):    
         master = self._cluster.master_node        
         slots = self.slots
         if slots is None:
-            nodes = [self._cluster.get_node_by_alias(alias) for alias in aliases]
+            nodes = [self._cluster.get_node_by_alias(alias) \
+                                                         for alias in aliases]
             slots = dict([(node.alias,get_num_procs(node)) for node in nodes])
         M1 = sge_utils.add_to_host_group(master,self.host_group,aliases) 
-        M2 = sge_utils.add_slots_to_queue(master,self.queue_name,aliases,slots=slots)
+        M2 = sge_utils.add_slots_to_queue(master,
+                                            self.queue_name,aliases,slots=slots)
         return M1 + M2
         
     def run(self, cluster):
@@ -552,15 +558,17 @@ class SGELoadBalancer(LoadBalancer):
         durations (currently doesn't)
         """
         self._cluster = cluster
+        qname = self.queue_name
         use_default_stats_file = self.dump_stats and not self.stats_file
         use_default_plots_dir = self.plot_stats and not self.plot_output_dir
         if use_default_stats_file or use_default_plots_dir:
-            self._mkdir(DEFAULT_STATS_DIR % (cluster.cluster_tag,self.queue_name),
-                        makedirs=True)
+            self._mkdir(
+                      DEFAULT_STATS_DIR % (cluster.cluster_tag,self.queue_name),
+                      makedirs=True)
         if not self.stats_file:
-            self.stats_file = DEFAULT_STATS_FILE % (cluster.cluster_tag,self.queue_name)
+            self.stats_file = DEFAULT_STATS_FILE % (cluster.cluster_tag,qname)
         if not self.plot_output_dir:
-            self.plot_output_dir = DEFAULT_STATS_DIR % (cluster.cluster_tag,self.queue_name)
+            self.plot_output_dir = DEFAULT_STATS_DIR % (cluster.cluster_tag,qname)
         if not cluster.is_cluster_up():
             raise exception.ClusterNotRunning(cluster.cluster_tag)
         if self.dump_stats:
@@ -669,7 +677,8 @@ class SGELoadBalancer(LoadBalancer):
             log.info("*** ADDING %d NODES at %s." %
                      (need_to_add, str(datetime.datetime.utcnow())))
             try:
-                aliases = self._cluster.add_nodes(need_to_add,image_id=self.image_id,
+                aliases = self._cluster.add_nodes(need_to_add,
+                                        image_id=self.image_id,
                                         instance_type=self.instance_type,
                                         zone=self.zone,spot_bid=self.spot_bid)
                 if self.host_group:

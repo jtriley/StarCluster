@@ -189,7 +189,8 @@ def add_to_queue_with_slots(sge_host,qname,aliases,slots):
         slotdict = dict([(alias,slots) for alias in aliases])
     
     q_pattern = re.compile("([\S]+)([\s]+)(.*)")
-    output = '\n'.join(sge_host.ssh.execute('source /etc/profile && qconf -sq ' + qname,log_output=False))
+    output = '\n'.join(sge_host.ssh.execute(
+                 'source /etc/profile && qconf -sq ' + qname,log_output=False))
     parsed_output = [x.groups() for x in list(q_pattern.finditer(output))]
     slot_pattern = re.compile('\[([\S]+)=[\d]+\]')
 
@@ -203,8 +204,8 @@ def add_to_queue_with_slots(sge_host,qname,aliases,slots):
                 newv = v + ' ' + ' '.join(to_add)
             parsed_output[ind] = (k,_s,newv)
         elif k == 'slots':
-            existing_hosts = [_match.groups()[0] for _match in list(slot_pattern.finditer(v))]
-            to_add = filter(lambda x : x not in existing_hosts,aliases)
+            eh = [_match.groups()[0] for _match in list(slot_pattern.finditer(v))]
+            to_add = filter(lambda x : x not in eh,aliases)
             slotstring = ['[' + _a + '=' + str(slotdict[_a]) + ']' for _a in to_add]
             newv = v + ',' + ','.join(slotstring)
             parsed_output[ind] = (k,_s,newv)                            
@@ -225,14 +226,15 @@ def add_slots_to_queue(sge_host,qname,aliases,slots):
         slotdict = dict([(alias,slots) for alias in aliases])
 
     q_pattern = re.compile("([\S]+)([\s]+)(.*)")
-    output = '\n'.join(sge_host.ssh.execute('source /etc/profile && qconf -sq ' + qname,log_output=False))
+    output = '\n'.join(sge_host.ssh.execute(
+                  'source /etc/profile && qconf -sq ' + qname,log_output=False))
     parsed_output = [x.groups() for x in list(q_pattern.finditer(output))]
     slot_pattern = re.compile('\[([\S]+)=[\d]+\]')
 
     for (ind,(k,_s,v)) in enumerate(parsed_output):
         if k == 'slots':
-            existing_hosts = [_match.groups()[0] for _match in list(slot_pattern.finditer(v))]
-            to_add = filter(lambda x : x not in existing_hosts,aliases)
+            eh = [_match.groups()[0] for _match in list(slot_pattern.finditer(v))]
+            to_add = filter(lambda x : x not in eh,aliases)
             slotstring = ['[' + _a + '=' + str(slotdict[_a]) + ']' for _a in to_add]
             newv = v + ',' + ','.join(slotstring)
             parsed_output[ind] = (k,_s,newv)
@@ -246,7 +248,8 @@ def add_slots_to_queue(sge_host,qname,aliases,slots):
     
     
 def add_to_host_group(sge_host,hgname,aliases):
-    output = '\n'.join(sge_host.ssh.execute('source /etc/profile && qconf -shgrp ' + hgname,log_output=False))
+    output = '\n'.join(sge_host.ssh.execute(
+              'source /etc/profile && qconf -shgrp ' + hgname,log_output=False))
     q_pattern = re.compile("([\S]+)[\s]+(.*)")
     parsed_output = [x.groups() for x in list(q_pattern.finditer(output))]
     
@@ -384,15 +387,18 @@ hostlist NONE
 import BeautifulSoup
 def get_qstat(sge_host,queue_name):
 
-    output_all = '\n'.join(sge_host.ssh.execute('source /etc/profile && qstat -xml',log_output=False))
+    output_all = '\n'.join(sge_host.ssh.execute(
+                          'source /etc/profile && qstat -xml',log_output=False))
     parsed_output = parse_qstat(output_all)
-    
-    jobs = [str(j.contents[0]) for j in BeautifulSoup.BeautifulStoneSoup(output_all).findAll('jb_job_number')]
+    Soup_output = BeautifulSoup.BeautifulStoneSoup(output_all)
+    jobs = [str(j.contents[0]) for j in Soup_output.findAll('jb_job_number')]
     queue_jobs = []
+    get_cname = lambda x : x.name == 'ce_name' and x.text == 'qname'
     for j in jobs:
-        output = '\n'.join(sge_host.ssh.execute('source /etc/profile && qstat -xml -j ' + j,log_output=False))
+        output = '\n'.join(sge_host.ssh.execute(
+                  'source /etc/profile && qstat -xml -j ' + j,log_output=False))
         Soup = BeautifulSoup.BeautifulStoneSoup(output)
-        qname = Soup.findAll(lambda x : x.name == 'ce_name' and x.text == 'qname')[0].findNext('ce_stringval').text
+        qname = Soup.findAll(get_cname)[0].findNext('ce_stringval').text
         if qname == queue_name:
             queue_jobs.append(j)
     
