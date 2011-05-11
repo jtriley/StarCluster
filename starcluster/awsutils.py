@@ -409,8 +409,10 @@ class EasyEC2(EasyAWS):
         try:
             self.get_all_instances()
             return True
-        except boto.exception.EC2ResponseError:
-            return False
+        except boto.exception.EC2ResponseError, e:
+            if e.status in [401, 403]:
+                return False
+            raise
 
     def get_all_spot_requests(self, spot_ids=[], filters=None):
         spots = self.conn.get_all_spot_instance_requests(spot_ids,
