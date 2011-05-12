@@ -2,6 +2,8 @@
 
 from completers import ClusterCompleter
 
+##changes
+#   added image_id, instance_type, availability zone, and spot_bid options
 
 class CmdAddNode(ClusterCompleter):
     """

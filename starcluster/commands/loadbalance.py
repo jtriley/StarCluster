@@ -5,6 +5,8 @@ from starcluster.balancers import sge
 
 from completers import ClusterCompleter
 
+##changes
+#   added A, I, z,b, q , h and S options
 
 class CmdLoadBalance(ClusterCompleter):
     """

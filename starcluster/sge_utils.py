@@ -304,29 +304,52 @@ def remove_from_queue(sge_host,qname,aliases):
     f.close()
     return sge_host.ssh.execute('source /etc/profile && qconf -Mq ' + tmpfile)
 
+def remove_from_host_group(sge_host,hgname,aliases):
+    contents = '\n'.join(sge_host.ssh.execute(
+        'source /etc/profile && qconf -shgrp ' + hgname, log_output = False))    
+    q_pattern = re.compile("([\S]+)[\s]+(.*)")
+    parsed_output = [x.groups() for x in list(q_pattern.finditer(contents))]
+
+    for (i,(k,v)) in enumerate(parsed_output):
+        if k == 'hostlist':
+            vlist = v.split(' ')
+            for alias in aliases:
+                if alias in vlist:
+                    vlist.remove(alias)
+            if vlist:
+                newv = ' '.join(vlist)
+            else:
+                newv = 'NONE'
+            parsed_output[i] = (k,newv)
+            
+    new_conf_string = '\n'.join([k + ' ' + v for (k,v) in parsed_output])
+    
+    tmpfile = '/tmp/hgmod_' + hgname      
+    f = sge_host.ssh.remote_file(tmpfile, 'w')    
+    f.write(new_conf_string)
+    f.close()
+    return sge_host.ssh.execute('source /etc/profile && qconf -Mhgrp ' + tmpfile)
 
 def remove_from_sge(sge_host,alias):
 
-	#find all queues the node is     
-	#remove the node and its slots from each queue
-	hosts = get_hosts(sge_host)
-	for qname in hosts[alias]['queues']:
-	    remove_from_queue(sge_host,qname,[alias])
+    #find all queues the node is     
+    #remove the node and its slots from each queue
+    hosts = get_hosts(sge_host)
+    for qname in hosts[alias]['queues']:
+        remove_from_queue(sge_host,qname,[alias])
 
-	#get all host groups the node is in
-	#remove it from all the host groups
-	host_groups = get_host_groups(sge_host)
-	for (hgname,hg) in host_groups.items():
-		if alias in hg['hostlist']:
-			remove_from_host_group(sge_host,hgname,[alias])	  
-	 
-	#remove host configuration
-	sge_host.ssh.execute(
-		'source /etc/profile && qconf -de %s' % alias)
-	sge_host.ssh.execute(
-		'source /etc/profile && qconf -dconf %s' % alias)
-		
-		
+    #get all host groups the node is in
+    #remove it from all the host groups
+    host_groups = get_host_groups(sge_host)
+    for (hgname,hg) in host_groups.items():
+        if alias in hg['hostlist']:
+            remove_from_host_group(sge_host,hgname,[alias])   
+
+    #remove host configuration
+    sge_host.ssh.execute(
+        'source /etc/profile && qconf -de %s' % alias)
+    sge_host.ssh.execute(
+        'source /etc/profile && qconf -dconf %s' % alias)
 
 QCONF_TEMPLATE = """qname                 $QNAME
 hostlist              NONE
@@ -404,3 +427,17 @@ def get_qstat(sge_host,queue_name):
     
     return [p for p in parsed_output if p['JB_job_number'] in queue_jobs]
         
+
+###for testing
+from starcluster.templates import sge  
+def add_to_sge(sge_host,node):
+	sge_profile = node.ssh.remote_file("/etc/profile.d/sge.sh")
+	arch = node.ssh.execute("/opt/sge6/util/arch")[0]
+	print >> sge_profile, sge.sgeprofile_template % {'arch': arch}
+	sge_profile.close()
+	sge_host.ssh.execute('source /etc/profile && qconf -ah %s' % \
+					   node.alias)
+	sge_host.ssh.execute('source /etc/profile && qconf -as %s' % \
+					   node.alias)
+	node.ssh.execute(('cd /opt/sge6 && TERM=rxvt ./inst_sge ' + \
+					  '-x -noremote -auto ./ec2_sge.conf'))

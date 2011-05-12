@@ -21,7 +21,19 @@ DEFAULT_STATS_FILE = os.path.join(DEFAULT_STATS_DIR, 'sge-stats.csv')
 #    added queue_name, image_id, instance_id, zone, spot_bid params  
 #          --> and corresponding arguments to commands.loadbalancer
 #    added queue_name to default stats dir 
-#    added 
+#    added queue_name param to qhost,qacct,and qstat commands
+#          --> but using "sge_utils.get_qstat"  instead of original qstat command 
+#              to handle problem with 0 nodes
+#    removed SGE command output parsing functions (and other sge utils) to sge_utils.py
+#    removed slot number consistency check, and instead using default slots for instance type  
+#          --> the way this is handled should be improved
+#    modified logic of load balancer to handle case with 0 nodes in queue
+#    _find_node_for_removal ensures that node is removed with queue that is being balanced
+#    creates queue if it doesn't already exist
+#    added host_group param, to specify of node should be added to host group instead of directly to queue
+#          --> creates host group if it doesn't already exist and adds hostgroup to specified queue
+#    upon adding node, adds the node to the specified queue / hostgroup if it hasn't already been added
+#    added slots option, so that number of slots new nodes should take in the queue can be specified
 
 DEFAULT_SLOTS = {
     't1.micro': 1,
@@ -359,7 +371,7 @@ class SGELoadBalancer(LoadBalancer):
 
     def __init__(self, interval=60, max_nodes=5, wait_time=900,
                  add_pi=1, kill_after=45, stab=180, lookback_win=3,
-                 min_nodes=0, allow_master_kill=False, plot_stats=False,
+                 min_nodes=1, allow_master_kill=False, plot_stats=False,
                  plot_output_dir=None, dump_stats=False, stats_file=None,
                  queue_name='all.q', image_id=None, instance_type=None, 
                  zone=None, spot_bid=None, host_group = None, slots = None):

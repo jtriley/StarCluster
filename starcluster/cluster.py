@@ -23,6 +23,10 @@ from starcluster.utils import print_timing
 from starcluster.templates import user_msgs
 from starcluster.logger import log, INFO_NO_NEWLINE
 
+##changes:
+#   added spot_bid option to Cluster.create_nodes
+#   added various options available on Cluster.create_nodes to Cluster.add_node(s)
+#         and ClusterManager.add_node(s) methods
 
 class ClusterManager(managers.Manager):
     """
