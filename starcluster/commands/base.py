@@ -145,8 +145,8 @@ class CmdBase(optcomplete.CmdComplete):
         Warn user that an experimental feature is being used
         Counts down from num_secs before continuing
         """
-        for l in msg.splitlines():
-            log.warn(l)
+        sep = '*' * 60
+        log.warn('\n'.join([sep, msg, sep]), extra=dict(__textwrap__=True))
         r = range(1, num_secs + 1)
         r.reverse()
         print

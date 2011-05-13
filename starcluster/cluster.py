@@ -21,7 +21,7 @@ from starcluster import clustersetup
 from starcluster.node import Node
 from starcluster.utils import print_timing
 from starcluster.templates import user_msgs
-from starcluster.logger import log, INFO_NO_NEWLINE
+from starcluster.logger import log
 
 
 class ClusterManager(managers.Manager):
@@ -206,12 +206,9 @@ class ClusterManager(managers.Manager):
             try:
                 cl = self.get_cluster(tag, group=scg, load_plugins=False)
             except exception.IncompatibleCluster, e:
-                lines = e.msg.splitlines()
                 sep = '*' * 60
-                log.error(sep)
-                for l in lines:
-                    log.error(l)
-                log.error(sep + '\n')
+                log.error('\n'.join([sep, e.msg, sep]),
+                          extra={'__textwrap__': True})
                 continue
             header = '%s (security group: %s)' % (tag, scg.name)
             print '-' * len(header)
@@ -1014,7 +1011,7 @@ class Cluster(object):
             s.stop()
         """
         s = spinner.Spinner()
-        log.log(INFO_NO_NEWLINE, msg)
+        log.info(msg, extra=dict(__nonewline__=True))
         s.start()
         return s
 
@@ -1236,7 +1233,7 @@ class Cluster(object):
             'user': self.cluster_user,
             'key': self.key_location,
             'tag': self.cluster_tag,
-        })
+        }, extra=dict(__textwrap__=True, __raw__=True))
 
     def _setup_cluster(self):
         """

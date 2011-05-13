@@ -6,6 +6,7 @@ import os
 import types
 import logging
 import logging.handlers
+import textwrap
 
 from starcluster import static
 
@@ -13,42 +14,73 @@ INFO = logging.INFO
 DEBUG = logging.DEBUG
 WARN = logging.WARN
 ERROR = logging.ERROR
+CRITICAL = logging.CRITICAL
 FATAL = logging.FATAL
 
-INFO_NO_NEWLINE = logging.INFO + 1
-INFO_FORMAT = ">>> %(message)s\n"
-INFO_FORMAT_NONL = ">>> %(message)s"
-DEFAULT_FORMAT = "%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n"
-DEFAULT_FORMAT_NONL = "%(filename)s:%(lineno)d - %(levelname)s - %(message)s"
-DEFAULT_FORMAT_NONL_PID = ("PID: %s " % str(static.PID)) + DEFAULT_FORMAT_NONL
+RAW_FORMAT = "%(message)s\n"
+INFO_FORMAT = " ".join(['>>>', "%(message)s\n"])
+DEBUG_FORMAT = "%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n"
+DEBUG_FORMAT_PID = ("PID: %s " % str(static.PID)) + DEBUG_FORMAT
+DEFAULT_CONSOLE_FORMAT = "%(levelname)s - %(message)s\n"
+ERROR_CONSOLE_FORMAT = " ".join(['!!!', DEFAULT_CONSOLE_FORMAT])
+WARN_CONSOLE_FORMAT = " ".join(['***', DEFAULT_CONSOLE_FORMAT])
 
 
 class ConsoleLogger(logging.StreamHandler):
 
     formatters = {
-        logging.INFO: logging.Formatter(INFO_FORMAT),
-        INFO_NO_NEWLINE: logging.Formatter(INFO_FORMAT_NONL),
-        logging.DEBUG: logging.Formatter(DEFAULT_FORMAT),
-        logging.WARN: logging.Formatter(DEFAULT_FORMAT),
-        logging.CRITICAL: logging.Formatter(DEFAULT_FORMAT),
-        logging.ERROR: logging.Formatter(DEFAULT_FORMAT),
+        INFO: logging.Formatter(INFO_FORMAT),
+        DEBUG: logging.Formatter(DEBUG_FORMAT),
+        WARN: logging.Formatter(WARN_CONSOLE_FORMAT),
+        ERROR: logging.Formatter(ERROR_CONSOLE_FORMAT),
+        CRITICAL: logging.Formatter(ERROR_CONSOLE_FORMAT),
+        FATAL: logging.Formatter(ERROR_CONSOLE_FORMAT),
+        'raw': logging.Formatter(RAW_FORMAT),
     }
 
     def format(self, record):
-        return self.formatters[record.levelno].format(record)
+        if hasattr(record, '__raw__'):
+            result = self.formatters['raw'].format(record)
+        else:
+            result = self.formatters[record.levelno].format(record)
+        if hasattr(record, '__nonewline__'):
+            result = result.rstrip()
+        return result
+
+    def _wrap(self, msg):
+        msg = textwrap.wrap(msg, width=60, replace_whitespace=False,
+                            drop_whitespace=True, break_on_hyphens=False)
+        return msg or ['']
+
+    def _emit_textwrap(self, record):
+        lines = []
+        for line in record.msg.splitlines():
+            lines.extend(self._wrap(line))
+        if hasattr(record, '__nosplitlines__'):
+            lines = ['\n'.join(lines)]
+        for line in lines:
+            record.msg = line
+            self._emit(record)
+
+    def _emit(self, record):
+        msg = self.format(record)
+        fs = "%s"
+        if not hasattr(types, "UnicodeType"):
+             # if no unicode support...
+            self.stream.write(fs % msg)
+        else:
+            try:
+                self.stream.write(fs % msg)
+            except UnicodeError:
+                self.stream.write(fs % msg.encode("UTF-8"))
+        self.flush()
 
     def emit(self, record):
         try:
-            msg = self.format(record)
-            fs = "%s"
-            if not hasattr(types, "UnicodeType"):  # if no unicode support...
-                self.stream.write(fs % msg)
+            if hasattr(record, '__textwrap__'):
+                self._emit_textwrap(record)
             else:
-                try:
-                    self.stream.write(fs % msg)
-                except UnicodeError:
-                    self.stream.write(fs % msg.encode("UTF-8"))
-            self.flush()
+                self._emit(record)
         except (KeyboardInterrupt, SystemExit):
             raise
         except:
@@ -59,9 +91,14 @@ class NullHandler(logging.Handler):
     def emit(self, record):
         pass
 
-log = logging.getLogger('starcluster')
-log.addHandler(NullHandler())
 
+def get_starcluster_logger():
+    log = logging.getLogger('starcluster')
+    log.addHandler(NullHandler())
+    return log
+
+
+log = get_starcluster_logger()
 console = ConsoleLogger()
 
 
@@ -79,7 +116,7 @@ def configure_sc_logging(use_syslog=False):
     /dev/log exists on the system (standard for most Linux distros)
     """
     log.setLevel(logging.DEBUG)
-    formatter = logging.Formatter(DEFAULT_FORMAT_NONL_PID)
+    formatter = logging.Formatter(DEBUG_FORMAT_PID.rstrip())
     rfh = logging.handlers.RotatingFileHandler(static.DEBUG_FILE,
                                                maxBytes=1048576,
                                                backupCount=2)

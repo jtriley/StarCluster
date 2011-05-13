@@ -6,15 +6,16 @@ Either choose a different tag name, or stop the EBS cluster using:
 
   $ starcluster stop %(cluster_name)s
 
-This command will put all nodes into a 'stopped' state and preserve their local
-disks. The cluster can later be resumed by passing the -x option to the start
-command. (NOTE: You pay for the local disks when the nodes are not running)
+This command will put all nodes into a 'stopped' state and preserve their \
+local disks. The cluster can later be resumed by passing the -x option to \
+the start command. (NOTE: You pay for the local disks when the nodes are \
+not running)
 
 Another option is to terminate the existing EBS Cluster using:
 
   $ starcluster terminate %(cluster_name)s
 
-NOTE: Terminating an EBS cluster will destroy the local disks (volumes)
+NOTE: Terminating an EBS cluster will destroy the local disks (volumes) \
 backing the nodes.
 """
 
@@ -28,17 +29,24 @@ Another option is to terminate the existing EBS Cluster using:
 
   $ starcluster terminate %(cluster_name)s
 
-NOTE: Terminating an EBS cluster will destroy all volumes backing the nodes.
+NOTE: Terminating an EBS cluster will destroy the local disks (voluems) \
+backing the nodes.
 """
 
 cluster_exists = """Cluster with tag name %(cluster_name)s already exists.
 
-Either choose a different tag name, or terminate the existing cluster using:
+If you want to reconfigure the existing instances use the 'restart' command:
+
+  $ starcluster restart %(cluster_name)s
+
+This will reboot all of the instances and configure the cluster starting from \
+scratch.
+
+Otherwise either choose a different tag name, or terminate the existing \
+cluster using:
 
   $ starcluster terminate %(cluster_name)s
 
-If you wish to use these existing instances anyway, pass --no-create to
-the start command
 """
 
 cluster_started_msg = """
@@ -54,35 +62,43 @@ When you are finished using the cluster, run:
 
 to shutdown the cluster and stop paying for service.
 
-If this cluster uses EBS instances then the 'stop' command
-above will put all nodes into a 'stopped' state. The cluster
-may then be restarted at a later time, without losing data,
-by passing the -x option to the 'start' command.
+If this cluster uses EBS instances then the 'stop' command above will put all \
+nodes into a 'stopped' state. The cluster may then be restarted at a later \
+time, without losing data, by passing the -x option to the 'start' command.
 
 To completely terminate an EBS cluster:
 
     $ starcluster terminate %(tag)s
+
+NOTE: Terminating an EBS cluster will destroy all volumes backing the nodes.
 """
 
 spotmsg = """SPOT INSTANCES ARE NOT GUARANTEED TO COME UP
 
-Spot instances can take a long time to come up and may not come
-up at all depending on the current AWS load and your max spot bid
-price.
+Spot instances can take a long time to come up and may not come up at all \
+depending on the current AWS load and your max spot bid price.
 
-StarCluster will wait indefinitely until all instances come up.
-If this takes too long, you can cancel the start command using
-CTRL-C and manually wait for the spot instances to come up by
-periodically checking the output of:
+StarCluster will wait indefinitely until all instances come up. If this takes \
+too long, you can cancel the start command using CTRL-C and manually wait for \
+the spot instances to come up by periodically checking the output of:
 
    $ starcluster listclusters %(tag)s
 
-Once all instances (%(size)d) show up in the output of the 'listclusters'
-command above, re-execute this same start command with the
---no-create option:
+Once all instances (%(size)d) show up in the output of the 'listclusters' \
+command above, re-execute this same start command with the \
+--no-create (-x) option:
 
    $ starcluster %(cmd)s
 
-This will use the existing spot instances launched previously and
-continue starting the cluster.
+This will use the existing spot instances launched previously and continue \
+starting the cluster.
+"""
+
+version_mismatch = """\
+The cluster '%(cluster)s' was created with a newer version of StarCluster \
+(%(new_version)s). You're currently using version %(old_version)s.
+
+This may or may not be a problem depending on what's changed between these \
+versions, however, it's highly recommended that you use version \
+%(old_version)s when using the '%(cluster)s' cluster.\
 """
