@@ -8,7 +8,7 @@ from starcluster import utils
 from starcluster import exception
 from starcluster.spinner import Spinner
 from starcluster.utils import print_timing
-from starcluster.logger import log, INFO_NO_NEWLINE
+from starcluster.logger import log
 
 
 class ImageCreator(object):
@@ -227,8 +227,8 @@ class EBSImageCreator(ImageCreator):
         log.info("Creating EBS image...")
         imgid = self.ec2.create_image(self.host.id, self.name,
                                       self.description)
-        log.log(INFO_NO_NEWLINE,
-                "Waiting for AMI %s to become available..." % imgid)
+        log.info("Waiting for AMI %s to become available..." % imgid,
+                 extra=dict(__nonewline__=True))
         img = self.ec2.get_image(imgid)
         s = Spinner()
         s.start()
