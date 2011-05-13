@@ -208,7 +208,7 @@ class ClusterManager(managers.Manager):
             except exception.IncompatibleCluster, e:
                 sep = '*' * 60
                 log.error('\n'.join([sep, e.msg, sep]),
-                          extra={'__textwrap__': True})
+                          extra=dict(__textwrap__=True))
                 continue
             header = '%s (security group: %s)' % (tag, scg.name)
             print '-' * len(header)
@@ -568,12 +568,18 @@ class Cluster(object):
         try:
             desc = self.cluster_group.description
             version, b64data = desc.split('-', 1)
+            if utils.program_version_greater(version, static.VERSION):
+                d = dict(cluster=self.cluster_tag, old_version=static.VERSION,
+                         new_version=version)
+                msg = user_msgs.version_mismatch % d
+                sep = '*' * 60
+                log.warn('\n'.join([sep, msg, sep]), extra={'__textwrap__': 1})
             compressed_data = base64.b64decode(b64data)
             pkl_data = zlib.decompress(compressed_data)
             cluster_settings = cPickle.loads(str(pkl_data)).__dict__
         except (cPickle.PickleError, zlib.error, ValueError, TypeError,
                 EOFError, IndexError), e:
-            # TODO raise exception about old version
+            log.debug('load receipt exception: ', exc_info=True)
             raise exception.IncompatibleCluster(self.cluster_group)
         except Exception, e:
             raise exception.ClusterReceiptError(
