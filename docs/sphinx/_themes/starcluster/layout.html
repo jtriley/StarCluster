@@ -1,0 +1,192 @@
+{% extends "pylons/layout.html" %}
+{% set title = 'Home' %}
+
+{% block relbar12 %}
+{% endblock %}
+
+{% block header %}
+<div class="header-small">
+        {%- if theme_logo %}
+        {% set img, ext = theme_logo.split('.', -1) %}
+        <div class="logo-small">
+                <a href="{{ pathto(master_doc) }}">
+                <img class="logo" src="{{ pathto('_static/%s-small.%s' % (img, ext), 1)}}" alt="Logo"/>
+                </a>
+        </div>
+        {%- endif %}
+</div>
+{% endblock %}
+
+{%- macro relbar() %}
+<div class="related">
+	<h3>{{ _('Navigation') }}</h3>
+	<ul>
+		{%- for rellink in rellinks %}
+		<li class="right" {% if loop.first %}style="margin-right: 10px"{% endif %}>
+			<a href="{{ pathto(rellink[0]) }}" title="{{ rellink[1]|striptags|e }}"
+			{{ accesskey(rellink[2]) }}>{{ rellink[3] }}</a>
+			{%- if not loop.first %}{{ reldelim2 }}{% endif %}
+		</li>
+		{%- endfor %}
+    	{%- block rootrellink %}
+    	<li><a href="{{ pathto(master_doc) }}">{{ theme_short_title|e }}</a>{{ reldelim2 }}</li>
+        <li><a href="{{ pathto('installation') }}">Install</a>{{ reldelim2 }}</li>
+        <li><a href="{{ pathto('configuration') }}">Config</a>{{ reldelim2 }}</li>
+        <li><a href="{{ pathto('examples') }}">Examples</a>{{ reldelim2 }}</li>
+        <li><a href="{{ pathto('support') }}">Support</a></li>
+    	{%- endblock %}
+    	{%- for parent in parents %}
+          <li><a href="{{ parent.link|e }}" {% if loop.last %}{{ accesskey("U") }}{% endif %}>{{ parent.title }}</a>{{ reldelim1 }}</li>
+        {%- endfor %}
+        {%- block relbaritems %} {% endblock %}
+  	</ul>
+</div>
+{%- endmacro %}
+
+{% block body %}
+
+  <h1>{{ project }} documentation (v. {{release}})</h1>
+
+  <p>Welcome to StarCluster main documentation. StarCluster is a no-nonsense
+  packaging tool solution for python softwares, targeted as an
+  alternative to distutils/setuptools/distribute/etc.... StarCluster aims at
+  being simple, hackable, and extensible - in other words, pythonic
+  !</p>
+
+  <p>StarCluster is under constant development. The main implemented features are</p>
+  <ul>
+      <li><b>Declarative description of your package</b>. Metadata
+      (name, version, etc...) as well as data files, options and
+      package content are described in a simple format.
+      <li><b>Flexible installation scheme</b>: although the
+      installer inluded with StarCluster use sensible
+      platform-dependent defaults, you can install any file
+      anywhere.</li>
+      <li><b>Simple data files handling</b>: installing configuration
+      files, library files, etc... at the right place is now possible.
+      The install paths do not need to be hardcoded, and may be
+      customized at will through StarCluster command line interface</li>
+      <li><b>Layered internal architecture</b>: packaging, command
+      line interface, are clearly separated.
+      </li>
+      <li><b>Hackable and extensible</b>: StarCluster is designed from
+      the ground up to be extensible. It includes its own small
+      build tool for C extensions, but it is possible to use
+      something else like waf, scons or even distutils (for
+      compatibility reason).
+      </li>
+      <li><b>Scale down</b>: a core principle of StarCluster is to make
+      simple softwares easier to package, and avoid too many choices.
+      <li><b>Scale up</b>: on the other hand, thanks to extensive
+      extensibility, StarCluster can be used for complex packages. StarCluster is
+      already able to build numpy and scipy, with much less
+      boilerplate than with the current numpy distutils extensions.
+      </li>
+  </ul>
+  <h2>User Sections</h2>
+   <table class="contentstable" align="center">
+      <tr valign="top"><td width="50%">
+      <p class="biglink">
+         <a class="biglink" href="{{ pathto('getting_started') }}">
+            Overview</a><br/>
+         <span class="linkdescr">
+            Introduction to {{project}}.
+         </span></p>
+
+     <p class="biglink">
+         <a class="biglink" href="{{ pathto('installation') }}">
+            Install instructions</a><br/>
+         <span class="linkdescr">
+     How to install StarCluster.
+         </span></p>
+
+      <p class="biglink">
+         <a class="biglink" href="{{ pathto('tutorial') }}">
+            Tutorial</a><br/>
+         <span class="linkdescr">
+            A tutorial for StarCluster newcommers.
+         </span></p>
+
+   </td><td width="50%">
+
+     <p class="biglink">
+         <a class="biglink" href="{{ pathto('guides') }}">
+            Guides</a><br/>
+         <span class="linkdescr">
+     Task oriented guides
+         </span></p>
+
+     <p class="biglink">
+         <a class="biglink" href="{{ pathto('reference') }}">
+            Reference</a><br/>
+         <span class="linkdescr">
+     Detailed description of the file format and command line interface.
+         </span></p>
+
+     <p class="biglink">
+         <a class="biglink" href="{{ pathto('faq') }}">
+            FAQ</a><br/>
+         <span class="linkdescr">
+             FAQ.
+         </span></p>
+   </td></tr></table>
+
+  <h2>StarCluster development</h2>
+   <table class="contentstable" align="center">
+      <tr valign="top"><td width="50%">
+     <p class="biglink">
+         <a class="biglink" href="{{ pathto('features') }}">
+            Features</a><br/>
+         <span class="linkdescr">
+             Current and planned features.
+         </span></p>
+
+     <p class="biglink">
+         <a class="biglink" href="{{ pathto('hacking') }}">
+            Hacking</a><br/>
+         <span class="linkdescr">
+             Design rationales, source organization.
+         </span></p>
+   </td><td width="50%">
+
+      <p class="biglink">
+        <a class="biglink" href="{{ pathto('contribute') }}">
+            Contribute</a><br/>
+        <span class="linkdescr">
+            Taking part in StarCluster's development.
+        </span></p>
+
+      <p class="biglink">
+        <a class="biglink" href="{{ pathto('TODO') }}">
+            TODO</a><br/>
+        <span class="linkdescr">
+            Remaining tasks.
+        </span></p>
+
+   </td></tr></table>
+
+   <h2>Indices and Tables</h2>
+
+   <table class="contentstable" align="center">
+      <tr valign="top"><td width="50%">
+      <p class="biglink">
+         <a class="biglink" href="{{ pathto('contents') }}">
+            Table of Contents</a><br/>
+         <span class="linkdescr">
+            Lists all sections and subsections.
+         </span></p>
+      <p class="biglink">
+         <a class="biglink" href="{{ pathto('search') }}">
+            Search Page</a><br/>
+         <span class="linkdescr">
+            Search this documentation.
+         </span></p>
+      </td><td width="50%">
+      <p class="biglink">
+         <a class="biglink" href="{{ pathto('genindex') }}">
+            Index</a><br/>
+         <span class="linkdescr">
+            All functions, classes, terms.
+         </span></p>
+    </td></tr></table>
+{% endblock %}
