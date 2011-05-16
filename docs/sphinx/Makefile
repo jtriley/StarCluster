@@ -34,7 +34,11 @@ html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
-	webserver.py $(BUILDDIR)/html
+
+web: html
+	python $(BUILDDIR)/../../../utils/webserver.py $(BUILDDIR)/html
+
+cleanweb: clean web
 
 dirhtml:
 	$(SPHINXBUILD) -b dirhtml $(ALLSPHINXOPTS) $(BUILDDIR)/dirhtml
