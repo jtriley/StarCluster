@@ -1,27 +1,35 @@
 {% extends "layout.html" %}
 {% set title = 'Home' %}
 
-{% block relbar12 %}
-{% endblock %}
-
-{% block header %}
-<div style="background-color: white; text-align: left; padding: 10px 10px 15px 15px">
-{{ super() }}
-    <!--<a href="{{ pathto('index') }}"><img src="{{pathto("_static/logo.png", 1) }}" border="0" alt="StarCluster"/></a>-->
-    <h1>{{ project }}: build/manage clusters on Amazon's Elastic Compute Cloud (EC2)</h1>
-    <div style="text-align: left; font-size: 130%; vertical-align: middle;">
-            <a href="{{ pathto('index') }}">home</a>&nbsp;|&nbsp;
-            <a href="{{ pathto('installation') }}">install</a>&nbsp;|&nbsp;
-            <a href="{{ pathto('examples') }}">examples</a>&nbsp;|&nbsp;
-            <a href="{{ pathto('config') }}">config</a>&nbsp;|&nbsp;
-            <a href="{{ pathto('support') }}">support</a>&nbsp;
-    </div>
+{%- macro relbar() %}
+<div class="related">
+	<h3>{{ _('Navigation') }}</h3>
+	<ul>
+		{%- for rellink in rellinks %}
+		<li class="right" {% if loop.first %}style="margin-right: 10px"{% endif %}>
+			<a href="{{ pathto(rellink[0]) }}" title="{{ rellink[1]|striptags|e }}"
+			{{ accesskey(rellink[2]) }}>{{ rellink[3] }}</a>
+			{%- if not loop.first %}{{ reldelim2 }}{% endif %}
+		</li>
+		{%- endfor %}
+    	{%- block rootrellink %}
+    	<li><a href="{{ pathto(master_doc) }}">{{ theme_short_title|e }}</a>{{ reldelim2 }}</li>
+        <li><a href="{{ pathto('installation') }}">Install</a>{{ reldelim2 }}</li>
+        <li><a href="{{ pathto('configuration') }}">Config</a>{{ reldelim2 }}</li>
+        <li><a href="{{ pathto('examples') }}">Examples</a>{{ reldelim2 }}</li>
+        <li><a href="{{ pathto('support') }}">Support</a></li>
+    	{%- endblock %}
+    	{%- for parent in parents %}
+          <li><a href="{{ parent.link|e }}" {% if loop.last %}{{ accesskey("U") }}{% endif %}>{{ parent.title }}</a>{{ reldelim1 }}</li>
+        {%- endfor %}
+        {%- block relbaritems %} {% endblock %}
+  	</ul>
 </div>
-{% endblock %}
+{%- endmacro %}
 
 {% block body %}
 
-  <!--<h1>{{ project }} documentation (release {{release}})</h1>-->
+  <h1>{{ project }} documentation (v. {{release}})</h1>
 
   <p>Welcome to StarCluster main documentation. StarCluster is a no-nonsense
   packaging tool solution for python softwares, targeted as an
