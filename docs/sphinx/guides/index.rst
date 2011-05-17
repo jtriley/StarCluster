@@ -11,17 +11,7 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   overview
-   installation
-   quickstart
-   guides/index
-   manual/index
-   reference
-   faq
-   features
-   hacking
-   contribute
-   TODO
+
 
 Indices and tables
 ==================

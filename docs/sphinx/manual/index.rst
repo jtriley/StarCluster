@@ -11,17 +11,17 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   overview
-   installation
-   quickstart
-   guides/index
-   manual/index
-   reference
-   faq
-   features
+   configuration
+   volumes
+   launch
+   getting_started
+   create_new_ami
+   list_public_amis
+   shell_completion
+   plugins
+   load_balancer
    hacking
-   contribute
-   TODO
+   features
 
 Indices and tables
 ==================

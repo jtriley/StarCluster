@@ -53,7 +53,7 @@ of this project and starcluster in general, we do not look at system load.
 
 This diagram illustrates the decisions that ELB will make in each loop:
 
-.. image:: _static/balancer_decision_diagram.jpg
+.. image:: ../_static/balancer_decision_diagram.jpg
 
 Operation
 ----------

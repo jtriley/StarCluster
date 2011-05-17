@@ -27,23 +27,23 @@ below to create and initialize your EBS volume.
 1. Open ElasticFox by first opening Firefox and then going to Tools -> ElasticFox 
 in the main menu: 
 
-.. image:: _static/openelasticfox.png 
+.. image:: ../_static/openelasticfox.png 
 
 2. Add your AWS Credentials to ElasticFox by clicking the Credentials button, 
 filling in your AWS account info, and pressing the **Add** button. 
 
-.. image:: _static/setupaccount.png 
+.. image:: ../_static/setupaccount.png 
 
 3. After you've entered your AWS Credentials in ElasticFox, navigate to the 
 *Volumes and Snapshots* tab in ElasticFox.
 
-.. image:: _static/volumesandsnapshots.png 
+.. image:: ../_static/volumesandsnapshots.png 
 
 4. Next we'll add a new Elastic Block Storage volume by clicking the *plus* icon and 
 providing the Size, Availability Zone (**remember this!!!**), and optionally any 
 Tag (ie description) you want to apply (leave **SNAP ID** blank)
 
-.. image:: _static/createvolume.png 
+.. image:: ../_static/createvolume.png 
 
 5. Press the Create button to create the volume
 
@@ -59,30 +59,30 @@ device, and then format that partition using the ext3 filesystem.
 box, and right click the 'StarCluster i386' image and select Launch instance(s) 
 of this AMI 
 
-.. image:: _static/launchstarclusterami.png
+.. image:: ../_static/launchstarclusterami.png
 
 2. In the dialog that pops up, make sure to select the same Availability Zone you 
 used to create the EBS volume in the previous section. This is needed in order to 
 attach the volume to the new instance. Also, be sure to select your AWS keypair.
 
-.. image:: _static/launchinstancedialog.png
+.. image:: ../_static/launchinstancedialog.png
 
 3. Switch over to the Instances tab and continue to press the refresh tab every 
 few minutes or so until the instance is in a running state 
 
-.. image:: _static/runninginstance.png
+.. image:: ../_static/runninginstance.png
 
 4. Once the instance is running, switch over to the Volumes and Snapshots tab, 
 right click your volume, and select Attach Volume
 
-.. image:: _static/attachvolume.png
+.. image:: ../_static/attachvolume.png
 
 5. In the dialog that pops up, select the instance's id in the instance combo box 
 and put /dev/sdj in the device section and press OK. If you don't see your instance 
 in the combo list, this is most likely due to your instance not being launched in the 
 same availability zone as your EBS volume. 
 
-.. image:: _static/attachdialog.png
+.. image:: ../_static/attachdialog.png
 
 6. Refresh the Volumes and Snapshots tab every few minutes until the volume is 
 attached.
@@ -93,7 +93,7 @@ do this through ElasticFox in the Instances tab by right clicking the instance a
 selecting *Connect to Public DNS Name*. This will launch a terminal and attempt to 
 login to the instance as root via SSH: 
 
-.. image:: _static/connecttoinstance.png
+.. image:: ../_static/connecttoinstance.png
 
 8. After logging into the server as root, run the following command to 
 automatically partition the volume with one Linux partition (/dev/sdj1) that takes
