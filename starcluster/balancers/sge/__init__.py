@@ -510,10 +510,10 @@ class SGELoadBalancer(LoadBalancer):
             qacct_cmd = 'source /etc/profile && qacct -j -b ' + qatime
             qstat_cmd = 'source /etc/profile && qstat -q all.q -u \"*\" -xml'
             qhostxml = '\n'.join(master.ssh.execute(
-                'source /etc/profile && qhost -xml', log_output=False))
+                'source /etc/profile && qhost -xml', log_output=True))
             qstatxml = '\n'.join(master.ssh.execute(qstat_cmd,
-                                                    log_output=False))
-            qacct = '\n'.join(master.ssh.execute(qacct_cmd, log_output=False,
+                                                    log_output=True))
+            qacct = '\n'.join(master.ssh.execute(qacct_cmd, log_output=True,
                                                  ignore_exit_status=True))
         except Exception, e:
             log.error("Error occured getting SGE stats via ssh. "
