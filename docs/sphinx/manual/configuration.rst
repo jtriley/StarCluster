@@ -80,7 +80,7 @@ eu-west-1              ec2.eu-west-1.amazonaws.com
 ap-southeast-1         ec2.ap-southeast-1.amazonaws.com  
 =====================  ==================================
 
-.. _list: http://developer.amazonwebservices.com/connect/entry.jspa?externalID=3912 
+.. _list: http://aws.amazon.com/articles/3912
 
 The above table is only for convenience. You will likely want to check the official list_ from Amazon instead.
 
@@ -97,7 +97,7 @@ additional *aws_s3_host* setting in your **[aws info]** section:
     aws_region_name = ec2.us-west-1.amazonaws.com
     aws_s3_host = s3-us-west-1.amazonaws.com
 
-.. _amazon: http://developer.amazonwebservices.com/connect/entry.jspa?externalID=3912
+.. _amazon: http://aws.amazon.com/articles/3912
 
 Below is a table of S3 region-specific endpoints:
 

@@ -22,10 +22,3 @@ Contents:
    load_balancer
    hacking
    features
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

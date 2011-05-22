@@ -46,7 +46,7 @@ Install development version using a downloaded snapshot
 This method does not require any special tools other than a web browser and python and is recommended if you don't use git but 
 would still like the latest development changes.
 
-Download a `zip <http://github.com/jtriley/StarCluster/zipball/master>`_ or `tar <http://github.com/jtriley/StarCluster/zipball/master>`_ 
+Download a `zip <https://github.com/jtriley/StarCluster/zipball/master>`_ or `tar <https://github.com/jtriley/StarCluster/zipball/master>`_ 
 snapshot of the latest development code.
 
 After downloading the code, perform the following in a terminal to install:

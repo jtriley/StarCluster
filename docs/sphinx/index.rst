@@ -16,16 +16,10 @@ Contents:
    quickstart
    guides/index
    manual/index
+   plugins/index
    reference
    faq
    features
    hacking
    contribute
    TODO
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

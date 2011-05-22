@@ -3,11 +3,11 @@ Contributing to StarCluster
 
 Sign-up for a Github acount
 ---------------------------
-http://github.com
+https://github.com
 
 Fork the StarCluster project
 ----------------------------
-http://github.com/jtriley/StarCluster
+https://github.com/jtriley/StarCluster
 
 Clone your fork
 ---------------
