@@ -72,12 +72,13 @@ Here *aws_region_name* is the name of the region you wish to use and *aws_region
 a table of EC2 region-specific endpoints:
 
 =====================  ==================================
-aws_region_name        aws_region_host                   
+aws_region_name        aws_region_host
 =====================  ==================================
-us-east-1              ec2.us-east-1.amazonaws.com       
-us-west-1              ec2.us-west-1.amazonaws.com       
-eu-west-1              ec2.eu-west-1.amazonaws.com       
-ap-southeast-1         ec2.ap-southeast-1.amazonaws.com  
+us-east-1              ec2.us-east-1.amazonaws.com
+us-west-1              ec2.us-west-1.amazonaws.com
+eu-west-1              ec2.eu-west-1.amazonaws.com
+ap-southeast-1         ec2.ap-southeast-1.amazonaws.com
+ap-northeast-1         ec2.ap-northeast-1.amazonaws.com
 =====================  ==================================
 
 .. _list: http://aws.amazon.com/articles/3912
@@ -86,7 +87,7 @@ The above table is only for convenience. You will likely want to check the offic
 
 Amazon S3 Region-Specific Endpoints
 -----------------------------------
-StarCluster uses s3.amazonaws.com as the S3 endpoint by default. If you'd like to switch S3 endpoints you can do so by specifying an 
+StarCluster uses s3.amazonaws.com as the S3 endpoint by default. If you'd like to switch S3 endpoints you can do so by specifying an
 additional *aws_s3_host* setting in your **[aws info]** section:
 
 .. code-block:: ini
@@ -102,17 +103,20 @@ additional *aws_s3_host* setting in your **[aws info]** section:
 Below is a table of S3 region-specific endpoints:
 
 ================  =================================
-Region            aws_s3_host                      
+Region            aws_s3_host
 ================  =================================
-us-east-1         s3.amazonaws.com                 
-us-west-1         s3-us-west-1.amazonaws.com       
-eu-west-1         s3-eu-west-1.amazonaws.com       
-ap-southeast-1    s3-ap-southeast-1.amazonaws.com  
+us-east-1         s3.amazonaws.com
+us-west-1         s3-us-west-1.amazonaws.com
+eu-west-1         s3-eu-west-1.amazonaws.com
+ap-southeast-1    s3-ap-southeast-1.amazonaws.com
+ap-northeast-1    s3-ap-northeast-1.amazonaws.com
 ================  =================================
 
-**NOTE**: Switching S3 endpoints is usually not necessary. From amazon_: Switching to a region-specific S3 endpoint is completely optional. 
-The main advantage of doing so is to reduce the temporary latency you might experience immediately after creating a bucket in a specific region.
-This temporary latency typically lasts less than one hour.
+.. note::
+
+   Switching S3 endpoints is usually not necessary. From amazon_: Switching to a region-specific S3 endpoint is completely optional.
+   The main advantage of doing so is to reduce the temporary latency you might experience immediately after creating a bucket in a specific region.
+   This temporary latency typically lasts less than one hour.
 
 Amazon EC2 Keypairs
 -------------------
