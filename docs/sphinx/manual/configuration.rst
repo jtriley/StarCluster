@@ -128,8 +128,10 @@ You should define a new **[keypair]** section for each Amazon EC2 keypair you wi
 As an example, suppose we have two keypairs on Amazon EC2 that we wish to use with StarCluster named "mykeypair1" 
 and "mykeypair2" on Amazon. 
 
-**NOTE**: If you do not know the name of your keypair(s), use StarCluster's *listkeypairs* command or the *ec2-describe-keypairs* 
-command in the EC2 command line tools. The **[keypair]** section name *must* match the name of the keypair on Amazon EC2.
+.. note::
+
+   If you do not know the name of your keypair(s), use StarCluster's *listkeypairs* command or the *ec2-describe-keypairs*
+   command in the EC2 command line tools. The **[keypair]** section name *must* match the name of the keypair on Amazon EC2.
 
 To configure StarCluster for these keypairs we define a **[keypair]** section for each of them in the configuration file:
 
@@ -146,9 +148,11 @@ To configure StarCluster for these keypairs we define a **[keypair]** section fo
 These keypair sections can now be referenced in a *cluster templates*' **keyname** setting as we'll show below in an
 example *cluster template*.
 
-**NOTE**: In order for StarCluster to interact with **any** instances you have on EC2, the keypair used to launch those instances 
-**must** be defined in the config. You can check what keypairs were used to launch an instance using StarCluster's *listinstances* 
-command or the *ec2-describe-instances* command from the ec2 command-line tools.
+.. note::
+
+   In order for StarCluster to interact with **any** instances you have on EC2, the keypair used to launch those instances
+   **must** be defined in the config. You can check what keypairs were used to launch an instance using StarCluster's *listinstances*
+   command or the *ec2-describe-instances* command from the ec2 command-line tools.
 
 Defining Cluster Templates
 --------------------------
@@ -235,13 +239,21 @@ configure the **default_template** setting:
 
 The above example sets the 'smallcluster' *cluster template* as the default.
 
+.. note::
+
+   If you do not specify a default *cluster template* in the config you will have to specify one at the command line using
+   the --cluster-template option.
+
 Amazon EBS Volumes
 ------------------
+.. note::
+
+   Using EBS volumes with StarCluster is completely optional. If you do not wish to use EBS volumes with StarCluster, simply do not
+   define any **[volume]** sections and remove or comment-out the **volumes** setting from your *cluster template(s)*.
+
 StarCluster has the ability to use Amazon EBS volumes to provide persistent data storage on a given cluster. If you wish to use 
 EBS volumes with StarCluster you will need to define a **[volume]** section in the configuration file for each volume you wish to 
-use with StarCluster and then add this **[volume]** section name to a *cluster template*'s **volumes** setting. Please note that 
-using EBS volumes with StarCluster is completely optional. If you do not wish to use EBS volumes with StarCluster, simply do not 
-define any **[volume]** sections and remove or comment-out the **volumes** setting from your *cluster template(s)*.
+use with StarCluster and then add this **[volume]** section name to a *cluster template*'s **volumes** setting.
 
 However, if you do not use an EBS volume with StarCluster, any data that you wish to keep around after shutdown 
 must be manually copied somewhere outside of the cluster (e.g. download the data locally or move it to S3 manually). This is because
@@ -361,3 +373,7 @@ After you've defined some **[plugin]** sections, you can reference them in a *cl
 Notice the added *plugins* setting for the 'mediumcluster' template. This setting instructs StarCluster to first run the 'myplug1' plugin 
 and then the 'myplug2' plugin afterwards. Reversing myplug1/myplug2 in the plugins setting in the above example would reverse the order 
 of execution.
+
+.. seealso::
+
+   See also the documentation for the :doc:`plugins`

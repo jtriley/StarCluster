@@ -11,8 +11,9 @@ To use EBS for persistent storage you must first create a new EBS volume,
 partition the volume, and then format the partitions. Below are instructions 
 for creating and formating a new EBS volume for use with StarCluster.
 
-**NOTE:** These instructions only need to be followed the first time you create 
-an EBS volume.
+.. note::
+
+    These instructions only need to be followed the first time you create an EBS volume.
 
 Creating a New EBS Volume
 -------------------------

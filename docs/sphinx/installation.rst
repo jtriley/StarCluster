@@ -35,9 +35,10 @@ Assuming this command completes successfully you're now ready to create the conf
 Install development version from github
 =======================================
 
-**WARNING**: These methods describe installing the latest development snapshot. Although we try to keep the latest code functional, 
-please be aware that things may break with these snapshots and that you use them at your own risk. This section is really only 
-meant for those that are interested in contributing to or testing the latest development code.
+.. warning::
+    These methods describe installing the latest development snapshot. Although we try to keep the latest code functional,
+    please be aware that things may break with these snapshots and that you use them at your own risk. This section is really only
+    meant for those that are interested in contributing to or testing the latest development code.
 
 There are two ways to install the latest development version of StarCluster from github:
 
