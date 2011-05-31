@@ -456,8 +456,10 @@ class SGELoadBalancer(LoadBalancer):
             try:
                 if makedirs:
                     os.makedirs(directory)
+                    logger.info("Created directories %s." % directory)
                 else:
                     os.mkdir(directory)
+                    logger.info("Created single directory %s." % directory)
             except IOError, e:
                 raise exception.BaseException(str(e))
 
@@ -635,7 +637,8 @@ class SGELoadBalancer(LoadBalancer):
                              " shorter than 10 minutes in duration.")
                     #need_to_add = 0
         if need_to_add > 0:
-            need_to_add = min(self.add_nodes_per_iteration, need_to_add)
+            head_room = self.max_nodes - len(self.stat.hosts)
+            need_to_add = min(self.add_nodes_per_iteration, need_to_add, head_room)
             log.info("*** ADDING %d NODES at %s." %
                      (need_to_add, str(datetime.datetime.utcnow())))
             try:
