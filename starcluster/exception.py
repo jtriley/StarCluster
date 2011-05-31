@@ -46,8 +46,8 @@ class SSHConnectionError(SSHError):
 class SSHAuthException(SSHError):
     """Raised when an ssh connection fails to authenticate"""
     def __init__(self, user, host):
-        self.msg = "failed to authenticate to host %s as user %s" % (user,
-                                                                     host)
+        self.msg = "failed to authenticate to host %s as user %s" % (host,
+                                                                     user)
 
 
 class SSHNoCredentialsError(SSHError):
@@ -90,8 +90,8 @@ class KeyPairDoesNotExist(AWSError):
 
 
 class ZoneDoesNotExist(AWSError):
-    def __init__(self, zone):
-        self.msg = "zone %s does not exist" % zone
+    def __init__(self, zone, region):
+        self.msg = "zone %s does not exist in region %s" % (zone, region)
 
 
 class VolumeDoesNotExist(AWSError):
@@ -102,6 +102,12 @@ class VolumeDoesNotExist(AWSError):
 class SnapshotDoesNotExist(AWSError):
     def __init__(self, snap_id):
         self.msg = "snapshot %s does not exist" % snap_id
+
+
+class BucketAlreadyExists(AWSError):
+    def __init__(self, bucket_name):
+        self.msg = "bucket with name '%s' already exists on S3\n" % bucket_name
+        self.msg += "(NOTE: S3's bucket namepsace is shared by all AWS users)"
 
 
 class BucketDoesNotExist(AWSError):
@@ -369,7 +375,7 @@ class CancelledCreateVolume(BaseException):
     def __init__(self):
         self.msg = "Request to create volume was cancelled"
         self.msg += "\n\nPlease be aware that the volume host instance"
-        self.msg += "may still be running. "
+        self.msg += " may still be running. "
         self.msg += "\n\nTo destroy this instance please run:"
         self.msg += "\n\n   $ starcluster terminate %s" % \
                 static.VOLUME_GROUP_NAME
@@ -381,7 +387,7 @@ class CancelledCreateVolume(BaseException):
 
 class CancelledCreateImage(BaseException):
     def __init__(self, bucket, image_name):
-        self.msg = "Request to createimage was cancelled"
+        self.msg = "Request to create an S3 AMI was cancelled"
         self.msg += "\n\nDepending on how far along the process was before it "
         self.msg += "was cancelled, \nsome intermediate files might still be "
         self.msg += "around in /mnt on the instance."
@@ -391,11 +397,35 @@ class CancelledCreateImage(BaseException):
         self.msg += "\n\n   $ starcluster showbucket %(bucket)s\n\n"
         self.msg += "and looking for files like: "
         self.msg += "'%(iname)s.manifest.xml' or '%(iname)s.part.*'"
-        self.msg += "\nRe-executing the same creatimage command "
+        self.msg += "\nRe-executing the same s3image command "
         self.msg += "should take care of these \nintermediate files and "
         self.msg += "will also automatically override any\npartially uploaded "
         self.msg += "files in S3."
         self.msg = self.msg % {'bucket': bucket, 'iname': image_name}
+
+
+CancelledS3ImageCreation = CancelledCreateImage
+
+
+class CancelledEBSImageCreation(BaseException):
+    def __init__(self, is_ebs_backed, image_name):
+        self.msg = "Request to create EBS image %s was cancelled" % image_name
+        if is_ebs_backed:
+            self.msg += "\n\nDepending on how far along the process was "
+            self.msg += "before it was cancelled, \na snapshot of the image "
+            self.msg += "host's root volume may have been created.\nPlease "
+            self.msg += "inspect the output of:\n\n"
+            self.msg += "   $ starcluster listsnapshots\n\n"
+            self.msg += "and clean up any unwanted snapshots"
+        else:
+            self.msg += "\n\nDepending on how far along the process was "
+            self.msg += "before it was cancelled, \na new volume and a "
+            self.msg += "snapshot of that new volume may have been created.\n"
+            self.msg += "Please inspect the output of:\n\n"
+            self.msg += "   $ starcluster listvolumes\n\n"
+            self.msg += "   and\n\n"
+            self.msg += "   $ starcluster listsnapshots\n\n"
+            self.msg += "and clean up any unwanted volumes or snapshots"
 
 
 class ExperimentalFeature(BaseException):
@@ -404,3 +434,59 @@ class ExperimentalFeature(BaseException):
         self.msg += "release. \nIf you wish to test this feature, set "
         self.msg += "ENABLE_EXPERIMENTAL=True \nin the [global] section of the"
         self.msg += " config. \nYou have officially been warned :D"
+
+
+class ThreadPoolException(BaseException):
+    def __init__(self, msg, exceptions):
+        self.msg = msg
+        self.exceptions = exceptions
+
+    def print_excs(self):
+        print self.format_excs()
+
+    def format_excs(self):
+        excs = []
+        for exception in self.exceptions:
+            e, tb_msg, jobid = exception
+            excs.append('error occured in job (id=%s): %s' % (jobid, str(e)))
+            excs.append(tb_msg)
+        return '\n'.join(excs)
+
+
+class IncompatibleCluster(BaseException):
+    main_msg = """\
+The cluster '%(tag)s' was either created by a previous stable or development \
+version of StarCluster or you manually created the '%(group)s' group. In any \
+case '%(tag)s' cannot be used with this version of StarCluster (%(version)s).
+
+"""
+
+    insts_msg = """\
+The cluster '%(tag)s' currently has %(num_nodes)d active nodes.
+
+"""
+
+    no_insts_msg = """\
+The cluster '%(tag)s' does not have any nodes and is safe to terminate.
+
+"""
+
+    terminate_msg = """\
+Please terminate the cluster using:
+
+    $ starcluster terminate %(tag)s
+"""
+
+    def __init__(self, group):
+        tag = group.name.replace(static.SECURITY_GROUP_PREFIX + '-', '')
+        self.msg = "Incompatible Cluster: %(tag)s\n\n" % dict(tag=tag)
+        self.msg += self.main_msg % dict(group=group.name, tag=tag,
+                                         version=static.VERSION)
+        states = ['pending', 'running', 'stopping', 'stopped']
+        insts = filter(lambda x: x.state in states, group.instances())
+        ctx = dict(tag=tag, num_nodes=len(insts))
+        if insts:
+            self.msg += self.insts_msg % ctx
+        else:
+            self.msg += self.no_insts_msg % ctx
+        self.msg += self.terminate_msg % ctx

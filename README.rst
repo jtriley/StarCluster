@@ -38,9 +38,10 @@ an EC2 instance.
 Dependencies:
 -------------
 * Amazon AWS Account
-* Python 2.4+
-* Boto 2.0b3
+* Python 2.5+
+* Boto 2.0b4
 * Paramiko 1.7.6
+* WorkerPool 0.9.2
 
 Getting Started:
 ----------------

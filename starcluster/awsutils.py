@@ -267,6 +267,29 @@ class EasyEC2(EasyAWS):
             pg = self.create_placement_group(name)
         return pg
 
+    def request_instances(self, image_id, price=None, instance_type='m1.small',
+                          min_count=1, max_count=1, count=1, key_name=None,
+                          security_groups=None, launch_group=None,
+                          availability_zone_group=None, placement=None,
+                          user_data=None, placement_group=None):
+        """
+        Convenience method for running spot or flat-rate instances
+        """
+        if price:
+            return self.request_spot_instances(
+                price, image_id, instance_type=instance_type,
+                count=count, launch_group=launch_group, key_name=key_name,
+                security_groups=security_groups,
+                availability_zone_group=availability_zone_group,
+                placement=placement, user_data=user_data)
+        else:
+            return self.run_instances(
+                image_id, instance_type=instance_type,
+                min_count=min_count, max_count=max_count,
+                key_name=key_name, security_groups=security_groups,
+                placement=placement, user_data=user_data,
+                placement_group=placement_group)
+
     def request_spot_instances(self, price, image_id, instance_type='m1.small',
                                count=1, launch_group=None, key_name=None,
                                availability_zone_group=None,
@@ -386,8 +409,10 @@ class EasyEC2(EasyAWS):
         try:
             self.get_all_instances()
             return True
-        except boto.exception.EC2ResponseError:
-            return False
+        except boto.exception.EC2ResponseError, e:
+            if e.status in [401, 403]:
+                return False
+            raise
 
     def get_all_spot_requests(self, spot_ids=[], filters=None):
         spots = self.conn.get_all_spot_instance_requests(spot_ids,
@@ -516,7 +541,7 @@ class EasyEC2(EasyAWS):
         for img in imgs:
             name = self.get_image_name(img)
             template = "[%d] %s %s %s"
-            if img.virtualizationType == 'hvm':
+            if img.virtualization_type == 'hvm':
                 template += ' (HVM-EBS)'
             elif img.root_device_type == 'ebs':
                 template += ' (EBS)'
@@ -620,9 +645,9 @@ class EasyEC2(EasyAWS):
             return self.conn.get_all_zones(zones=[zone])[0]
         except boto.exception.EC2ResponseError, e:
             self.__check_for_auth_failure(e)
-            raise exception.ZoneDoesNotExist(zone)
+            raise exception.ZoneDoesNotExist(zone, self.region.name)
         except IndexError:
-            raise exception.ZoneDoesNotExist(zone)
+            raise exception.ZoneDoesNotExist(zone, self.region.name)
 
     def get_zone_or_none(self, zone):
         """
@@ -631,7 +656,7 @@ class EasyEC2(EasyAWS):
         """
         try:
             return self.get_zone(zone)
-        except:
+        except exception.ZoneDoesNotExist:
             pass
 
     def create_s3_image(self, instance_id, key_location, aws_user_id,
@@ -653,7 +678,7 @@ class EasyEC2(EasyAWS):
 
     def create_ebs_image(self, instance_id, key_location, name,
                          description=None, snapshot_description=None,
-                         kernel_id=None, ramdisk_id=None, vol_size=15,
+                         kernel_id=None, ramdisk_id=None, root_vol_size=15,
                          **kwargs):
         """
         Create EBS-backed image from running instance
@@ -665,7 +690,7 @@ class EasyEC2(EasyAWS):
                                          kernel_id=kernel_id,
                                          ramdisk_id=ramdisk_id,
                                          **kwargs)
-        return icreator.create_image(size=vol_size)
+        return icreator.create_image(size=root_vol_size)
 
     def get_image(self, image_id):
         """
@@ -927,12 +952,15 @@ class EasyEC2(EasyAWS):
             self.wait_for_snapshot(snap, refresh_interval)
         return snap
 
-    def get_snapshots(self):
+    def get_snapshots(self, volume_ids=[]):
         """
         Returns a list of all EBS volume snapshots for this account
         """
+        filters = {}
+        if volume_ids:
+            filters['volume-id'] = volume_ids
         try:
-            return self.conn.get_all_snapshots(owner='self')
+            return self.conn.get_all_snapshots(owner='self', filters=filters)
         except boto.exception.EC2ResponseError, e:
             self.__check_for_auth_failure(e)
 
@@ -983,15 +1011,18 @@ class EasyEC2(EasyAWS):
         if snapshot_id:
             filters['snapshot-id'] = snapshot_id
         vols = self.get_volumes(filters=filters)
+        vols.sort(key=lambda x: x.create_time)
         if vols:
             for vol in vols:
                 print "volume_id: %s" % vol.id
                 print "size: %sGB" % vol.size
                 print "status: %s" % vol.status
+                if vol.attachment_state():
+                    print "attachment_status: %s" % vol.attachment_state()
                 print "availability_zone: %s" % vol.zone
                 if vol.snapshot_id:
                     print "snapshot_id: %s" % vol.snapshot_id
-                snapshots = vol.snapshots()
+                snapshots = self.get_snapshots(volume_ids=[vol.id])
                 if snapshots:
                     snap_list = ' '.join([snap.id for snap in snapshots])
                     print 'snapshots: %s' % snap_list
@@ -1037,10 +1068,14 @@ class EasyEC2(EasyAWS):
             try:
                 import pylab
                 pylab.plot_date(pylab.date2num(dates), prices, linestyle='-')
-                pylab.xlabel('date')
-                pylab.ylabel('price (cents)')
+                pylab.xlabel('Date')
+                pylab.ylabel('Price (US Dollars)')
                 pylab.title('%s Price vs Date (%s - %s)' % (instance_type,
                                                             start, end))
+                xmin, xmax = pylab.xlim()
+                ymin, ymax = pylab.ylim()
+                pylab.xlim([xmin - 1, xmax + 1])
+                pylab.ylim([0, ymax * (1.02)])
                 pylab.grid(True)
                 pylab.show()
             except ImportError, e:
@@ -1080,6 +1115,20 @@ class EasyS3(EasyAWS):
     def __check_for_auth_failure(self, e):
         if e.error_code == "InvalidAccessKeyId":
             raise e
+
+    def create_bucket(self, bucket_name):
+        """
+        Create a new bucket on S3. bucket_name must be unique, the bucket
+        namespace is shared by all AWS users
+        """
+        bucket_name = bucket_name.split('/')[0]
+        try:
+            return self.conn.create_bucket(bucket_name)
+        except boto.exception.S3CreateError, e:
+            self.__check_for_auth_failure(e)
+            if e.error_code == "BucketAlreadyExists":
+                raise exception.BucketAlreadyExists(bucket_name)
+            raise
 
     def bucket_exists(self, bucket_name):
         """

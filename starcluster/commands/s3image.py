@@ -8,9 +8,9 @@ from starcluster.logger import log
 from completers import InstanceCompleter
 
 
-class CmdCreateImage(InstanceCompleter):
+class CmdS3Image(InstanceCompleter):
     """
-    createimage [options] <instance-id> <image_name> [<bucket>]
+    s3image [options] <instance-id> <image_name> [<bucket>]
 
     Create a new instance-store (S3) AMI from a running EC2 instance
 
@@ -22,7 +22,7 @@ class CmdCreateImage(InstanceCompleter):
     StarCluster. If you have issues please submit a bug report to the mailing
     list.
     """
-    names = ['createimage', 'ci', 's3image']
+    names = ['s3image', 'simg', 'createimage']
 
     bucket = None
     image_name = None
@@ -48,7 +48,7 @@ class CmdCreateImage(InstanceCompleter):
             "instance after registering (for S3 AMIs)")
 
     def cancel_command(self, signum, frame):
-        raise exception.CancelledCreateImage(self.bucket, self.image_name)
+        raise exception.CancelledS3ImageCreation(self.bucket, self.image_name)
 
     def execute(self, args):
         if len(args) != 3:

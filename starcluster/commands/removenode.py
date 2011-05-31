@@ -19,9 +19,6 @@ class CmdRemoveNode(ClusterCompleter):
 
     tag = None
 
-    def addopts(self, parser):
-        pass
-
     def execute(self, args):
         if len(args) != 2:
             self.parser.error("please specify a <cluster_tag> and <node>")

@@ -72,6 +72,7 @@ class StarClusterConfig(object):
         self.cfg_file = config_file or static.STARCLUSTER_CFG_FILE
         self.type_validators = {
             int: self._get_int,
+            float: self._get_float,
             str: self._get_string,
             bool: self._get_bool,
             list: self._get_list,
@@ -142,6 +143,19 @@ class StarClusterConfig(object):
                 "Expected integer value for setting %s in section [%s]" %
                 (option, section))
 
+    def _get_float(self, config, section, option):
+        try:
+            opt = config.getfloat(section, option)
+            return opt
+        except ConfigParser.NoSectionError:
+            pass
+        except ConfigParser.NoOptionError:
+            pass
+        except ValueError:
+            raise exception.ConfigError(
+                "Expected float value for setting %s in section [%s]" %
+                (option, section))
+
     def _get_string(self, config, section, option):
         try:
             opt = config.get(section, option)
@@ -188,7 +202,8 @@ class StarClusterConfig(object):
             self._config = self.__load_config()
         return self._config
 
-    def _load_settings(self, section_name, settings, store):
+    def _load_settings(self, section_name, settings, store,
+                       filter_settings=True):
         """
         Load section settings into a dictionary
         """
@@ -200,7 +215,7 @@ class StarClusterConfig(object):
         section_conf = store
         for setting in settings:
             requirements = settings[setting]
-            func, required, default, options = requirements
+            func, required, default, options, callback = requirements
             func = self.type_validators.get(func)
             value = func(self.config, section_name, setting)
             if value is not None:
@@ -209,7 +224,13 @@ class StarClusterConfig(object):
                         '"%s" setting in section "%s" must be one of: %s' %
                         (setting, section_name,
                          ', '.join([str(o) for o in options])))
+                if callback:
+                    value = callback(value)
                 section_conf[setting] = value
+        if filter_settings:
+            for key in store.keys():
+                if key not in settings and key != '__name__':
+                    store.pop(key)
 
     def _check_required(self, section_name, settings, store):
         """
@@ -397,7 +418,8 @@ class StarClusterConfig(object):
                                       type=itype)
             itypes.append(itype_dic)
 
-    def _load_section(self, section_name, section_settings):
+    def _load_section(self, section_name, section_settings,
+                      filter_settings=True):
         """
         Returns a dictionary containing all section_settings for a given
         section_name by first loading the settings in the config, loading
@@ -405,7 +427,8 @@ class StarClusterConfig(object):
         that all required options have been specified
         """
         store = AttributeDict()
-        self._load_settings(section_name, section_settings, store)
+        self._load_settings(section_name, section_settings, store,
+                            filter_settings)
         self._load_defaults(section_settings, store)
         self._check_required(section_name, section_settings, store)
         return store
@@ -429,7 +452,8 @@ class StarClusterConfig(object):
         return [s for s in self.config.sections() if
                 s.startswith(section_prefix)]
 
-    def _load_sections(self, section_prefix, section_settings):
+    def _load_sections(self, section_prefix, section_settings,
+                       filter_settings=True):
         """
         Loads all sections starting with section_prefix and returns a
         dictionary containing the name and dictionary of settings for each
@@ -455,7 +479,8 @@ class StarClusterConfig(object):
         sections_store = AttributeDict()
         for sec in sections:
             name = self._get_section_name(sec)
-            sections_store[name] = self._load_section(sec, section_settings)
+            sections_store[name] = self._load_section(sec, section_settings,
+                                                      filter_settings)
         return sections_store
 
     def _load_cluster_sections(self, cluster_sections):
@@ -500,7 +525,8 @@ class StarClusterConfig(object):
             self.aws.update(self.get_aws_from_environ())
         self.keys = self._load_sections('key', self.key_settings)
         self.vols = self._load_sections('volume', self.volume_settings)
-        self.plugins = self._load_sections('plugin', self.plugin_settings)
+        self.plugins = self._load_sections('plugin', self.plugin_settings,
+                                           filter_settings=False)
         self.permissions = self._load_sections('permission',
                                                self.permission_settings)
         sections = self._get_sections('cluster')

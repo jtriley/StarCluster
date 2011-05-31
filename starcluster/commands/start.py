@@ -136,7 +136,7 @@ class CmdStart(ClusterCompleter):
 
     def execute(self, args):
         if len(args) != 1:
-            self.parser.error("please specify a cluster <cluster_tag>")
+            self.parser.error("please specify a <cluster_tag>")
         tag = self.tag = args[0]
         create = not self.opts.no_create
         create_only = self.opts.create_only
@@ -183,10 +183,10 @@ class CmdStart(ClusterCompleter):
             log.warn("SKIPPING VALIDATION - USE AT YOUR OWN RISK")
         if validate_only:
             return
-        if self.opts.spot_bid is not None:
+        if self.opts.spot_bid is not None and not self.opts.no_create:
             cmd = ' '.join(sys.argv[1:])
             cmd = cmd.replace('--no-create', '').replace('-x', '')
-            cmd += ' --no-create'
+            cmd += ' -x'
             msg = user_msgs.spotmsg % {'cmd': cmd,
                                        'size': scluster.cluster_size,
                                        'tag': tag}

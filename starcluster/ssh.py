@@ -43,42 +43,52 @@ class SSHClient(object):
                  private_key_pass=None,
                  port=22,
                  timeout=30):
-        self._timeout = timeout
-        self._sftp_live = False
-        self._sftp = None
+        self._host = host
+        self._port = 22
         self._pkey = None
-        if not username:
-            username = os.environ['LOGNAME']
-        # Begin the SSH transport.
-        self._transport_live = False
-        try:
-            sock = self._get_socket(host, port)
-            self._transport = paramiko.Transport(sock)
-            self._transport.banner_timeout = self._timeout
-        except socket.error:
-            raise exception.SSHConnectionError(host, port)
-        self._transport_live = True
-        # Authenticate the transport.
-        pkey = None
+        self._username = username or os.environ['LOGNAME']
+        self._password = password
+        self._timeout = timeout
+        self._sftp = None
+        self._transport = None
         if private_key:
-            # Use Private Key.
-            log.debug('private key specified')
-            if private_key.endswith('rsa') or private_key.count('rsa'):
-                pkey = self._load_rsa_key(private_key, private_key_pass)
-            elif private_key.endswith('dsa') or private_key.count('dsa'):
-                pkey = self._load_dsa_key(private_key, private_key_pass)
-            else:
-                log.debug("specified key does not end in either rsa or dsa" + \
-                          ", trying both")
-                pkey = self._load_rsa_key(private_key, private_key_pass)
-                if pkey is None:
-                    pkey = self._load_dsa_key(private_key, private_key_pass)
-            self._pkey = pkey
+            self._pkey = self.load_private_key(private_key, private_key_pass)
         elif not password:
             raise exception.SSHNoCredentialsError()
+
+    def load_private_key(self, private_key, private_key_pass=None):
+        # Use Private Key.
+        log.debug('loading private key %s' % private_key)
+        if private_key.endswith('rsa') or private_key.count('rsa'):
+            pkey = self._load_rsa_key(private_key, private_key_pass)
+        elif private_key.endswith('dsa') or private_key.count('dsa'):
+            pkey = self._load_dsa_key(private_key, private_key_pass)
+        else:
+            log.debug("specified key does not end in either rsa or dsa" + \
+                      ", trying both")
+            pkey = self._load_rsa_key(private_key, private_key_pass)
+            if pkey is None:
+                pkey = self._load_dsa_key(private_key, private_key_pass)
+        return pkey
+
+    def connect(self, host=None, username=None, password=None,
+                private_key=None, private_key_pass=None, port=22, timeout=30):
+        host = host or self._host
+        username = username or self._username
+        pkey = self._pkey
+        if private_key:
+            pkey = self.load_private_key(private_key, private_key_pass)
+        log.debug("connecting to host %s on port %d as user %s" % (host, port,
+                                                                   username))
         try:
-            self._transport.connect(username=username, pkey=pkey,
-                                    password=password)
+            sock = self._get_socket(host, port)
+            transport = paramiko.Transport(sock)
+            transport.banner_timeout = timeout
+        except socket.error:
+            raise exception.SSHConnectionError(host, port)
+        # Authenticate the transport.
+        try:
+            transport.connect(username=username, pkey=pkey, password=password)
         except paramiko.AuthenticationException:
             raise exception.SSHAuthException(username, host)
         except paramiko.SSHException, e:
@@ -90,6 +100,27 @@ class SSHClient(object):
             raise exception.SSHConnectionError(host, port)
         except Exception, e:
             raise exception.SSHError(str(e))
+        self.close()
+        self._transport = transport
+        return self
+
+    @property
+    def transport(self):
+        """
+        This property attempts to return an active SSH transport
+        """
+        if not self._transport or not self._transport.is_active():
+            self.connect(self._host, self._username, self._password,
+                         port=self._port, timeout=self._timeout)
+        return self._transport
+
+    def get_server_public_key(self):
+        return self.transport.get_remote_server_key()
+
+    def is_active(self):
+        if self._transport:
+            return self._transport.is_active()
+        return False
 
     def _get_socket(self, hostname, port):
         for (family, socktype, proto, canonname, sockaddr) in \
@@ -114,7 +145,7 @@ class SSHClient(object):
             log.debug("Using private key %s (rsa)" % private_key)
             return rsa_key
         except paramiko.SSHException:
-            log.error('invalid rsa key or password specified')
+            log.error('invalid rsa key or passphrase specified')
 
     def _load_dsa_key(self, private_key, private_key_pass=None):
         private_key_file = os.path.expanduser(private_key)
@@ -124,13 +155,15 @@ class SSHClient(object):
             log.info("Using private key %s (dsa)" % private_key)
             return dsa_key
         except paramiko.SSHException:
-            log.error('invalid dsa key or password specified')
+            log.error('invalid dsa key or passphrase specified')
 
-    def _sftp_connect(self):
+    @property
+    def sftp(self):
         """Establish the SFTP connection."""
-        if not self._sftp_live:
-            self._sftp = paramiko.SFTPClient.from_transport(self._transport)
-            self._sftp_live = True
+        if not self._sftp or self._sftp.sock.closed:
+            log.debug("creating sftp connection")
+            self._sftp = paramiko.SFTPClient.from_transport(self.transport)
+        return self._sftp
 
     def generate_rsa_key(self):
         return paramiko.RSAKey.generate(2048)
@@ -178,9 +211,8 @@ class SSHClient(object):
 
         mode specifies unix permissions to apply to the new dir
         """
-        self._sftp_connect()
         try:
-            return self._sftp.mkdir(path, mode)
+            return self.sftp.mkdir(path, mode)
         except IOError:
             if not ignore_failure:
                 raise
@@ -224,12 +256,14 @@ class SSHClient(object):
         f.writelines(lines)
         f.close()
 
+    def unlink(self, remote_file):
+        return self.sftp.unlink(remote_file)
+
     def remote_file(self, file, mode='w'):
         """
         Returns a remote file descriptor
         """
-        self._sftp_connect()
-        rfile = self._sftp.open(file, mode)
+        rfile = self.sftp.open(file, mode)
         rfile.name = file
         return rfile
 
@@ -238,7 +272,6 @@ class SSHClient(object):
         Test whether a remote path exists.
         Returns False for broken symbolic links
         """
-        self._sftp_connect()
         try:
             self.stat(path)
             return True
@@ -265,14 +298,12 @@ class SSHClient(object):
         """
         Return a list containing the names of the entries in the remote path.
         """
-        self._sftp_connect()
-        return [os.path.join(path, f) for f in self._sftp.listdir(path)]
+        return [os.path.join(path, f) for f in self.sftp.listdir(path)]
 
     def isdir(self, path):
         """
         Return true if the remote path refers to an existing directory.
         """
-        self._sftp_connect()
         try:
             s = self.stat(path)
         except IOError:
@@ -283,7 +314,6 @@ class SSHClient(object):
         """
         Return true if the remote path refers to an existing file.
         """
-        self._sftp_connect()
         try:
             s = self.stat(path)
         except IOError:
@@ -294,8 +324,7 @@ class SSHClient(object):
         """
         Perform a stat system call on the given remote path.
         """
-        self._sftp_connect()
-        return self._sftp.stat(path)
+        return self.sftp.stat(path)
 
     def get(self, remotepath, localpath=None):
         """
@@ -303,8 +332,8 @@ class SSHClient(object):
         """
         if not localpath:
             localpath = os.path.split(remotepath)[1]
-        self._sftp_connect()
-        self._sftp.get(remotepath, localpath)
+        self.sftp_connect()
+        self.sftp.get(remotepath, localpath)
 
     def put(self, localpath, remotepath=None):
         """
@@ -312,8 +341,7 @@ class SSHClient(object):
         """
         if not remotepath:
             remotepath = os.path.split(localpath)[1]
-        self._sftp_connect()
-        self._sftp.put(localpath, remotepath)
+        self.sftp.put(localpath, remotepath)
 
     def execute_async(self, command):
         """
@@ -324,7 +352,7 @@ class SSHClient(object):
         code exits, it will not persist on the remote machine
         """
 
-        channel = self._transport.open_session()
+        channel = self.transport.open_session()
         channel.exec_command(command)
 
     def execute(self, command, silent=True, only_printable=False,
@@ -340,7 +368,7 @@ class SSHClient(object):
                         characters
         returns List of output lines
         """
-        channel = self._transport.open_session()
+        channel = self.transport.open_session()
         channel.exec_command(command)
         #stdin = channel.makefile('wb', -1)
         stdout = channel.makefile('rb', -1)
@@ -353,15 +381,17 @@ class SSHClient(object):
             while line != '':
                 line = stdout.readline()
                 if only_printable:
-                    line = ''.join(
-                        char for char in line if char in string.printable)
+                    line = ''.join(c for c in line if c in string.printable)
                 if line != '':
                     output.append(line)
                     print line,
             for line in stderr.readlines():
                 output.append(line)
                 print line
-        output = [line.strip() for line in output]
+        if only_printable:
+            output = map(lambda line: ''.join(c for c in line if c in
+                                              string.printable), output)
+        output = map(lambda line: line.strip(), output)
         exit_status = channel.recv_exit_status()
         if exit_status != 0:
             if not ignore_exit_status:
@@ -412,18 +442,16 @@ class SSHClient(object):
 
     def close(self):
         """Closes the connection and cleans up."""
-        # Close SFTP Connection.
-        if self._sftp_live:
+        if self._sftp:
             self._sftp.close()
-            self._sftp_live = False
-        # Close the SSH Transport.
-        if self._transport_live:
+        if self._transport:
             self._transport.close()
-            self._transport_live = False
 
-    def interactive_shell(self):
+    def interactive_shell(self, user='root'):
+        if user and self.transport.get_username() != user:
+            self.connect(username=user)
         try:
-            chan = self._transport.open_session()
+            chan = self.transport.open_session()
             chan.get_pty()
             chan.invoke_shell()
             log.info('Starting interactive shell...')
@@ -489,6 +517,9 @@ class SSHClient(object):
 
         writer = threading.Thread(target=writeall, args=(chan,))
         writer.start()
+
+        # needs to be sent to give vim correct size FIX
+        chan.send('eval $(resize)\n')
 
         try:
             while True:

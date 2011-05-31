@@ -14,7 +14,7 @@ class CmdShowImage(CmdDownloadImage):
 
         $ starcluster showimage ami-999999
     """
-    names = ['showimage', 'simg']
+    names = ['showimage', 'shimg']
 
     def execute(self, args):
         if not args:

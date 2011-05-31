@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 import os
 import pwd
+import grp
 import time
 import stat
+import base64
 import posixpath
 
 from starcluster import ssh
@@ -77,21 +79,39 @@ class Node(object):
     @property
     def alias(self):
         """
-        Return the alias stored in this node's user data.
-        Alias returned as:
-            user_data.split('|')[self.ami_launch_index]
+        Fetches the node's alias stored in a tag from either the instance
+        or the instance's parent spot request. If no alias tag is found an
+        exception is raised.
         """
         if not self._alias:
-            user_data = self.ec2.get_instance_user_data(self.id)
-            aliases = user_data.split('|')
-            index = self.ami_launch_index
-            alias = aliases[index]
+            alias = self.tags.get('alias')
             if not alias:
-                # TODO: raise exception about old version
-                raise exception.BaseException(
-                    "instance %s has no alias" % alias)
+                user_data = self.ec2.get_instance_user_data(self.id)
+                aliases = user_data.split('|')
+                index = self.ami_launch_index
+                alias = aliases[index]
+                if not alias:
+                    # TODO: raise exception about old version
+                    raise exception.BaseException(
+                        "instance %s has no alias" % self.id)
+                self.add_tag('alias', alias)
             self._alias = alias
         return self._alias
+
+    def _remove_all_tags(self):
+        tags = self.tags.keys()[:]
+        for t in tags:
+            self.remove_tag(t)
+
+    @property
+    def tags(self):
+        return self.instance.tags
+
+    def add_tag(self, key, value=None):
+        return self.instance.add_tag(key, value)
+
+    def remove_tag(self, key, value=None):
+        return self.instance.remove_tag(key, value)
 
     @property
     def groups(self):
@@ -216,6 +236,29 @@ class Node(object):
     def root_device_type(self):
         return self.instance.root_device_type
 
+    def get_group_map(self, key_by_gid=False):
+        """
+        Returns dictionary where keys are remote group names and values are
+        grp.struct_grp objects from the standard grp module
+
+        key_by_gid=True will use the integer gid as the returned dictionary's
+        keys instead of the group's name
+        """
+        grp_file = self.ssh.remote_file('/etc/group', 'r')
+        groups = [l.strip().split(':') for l in grp_file.readlines()]
+        grp_file.close()
+        grp_map = {}
+        for group in groups:
+            print grp
+            name, passwd, gid, mems = group
+            gid = int(gid)
+            mems = mems.split(',')
+            key = name
+            if key_by_gid:
+                key = gid
+            grp_map[key] = grp.struct_group([name, passwd, gid, mems])
+        return grp_map
+
     def get_user_map(self, key_by_uid=False):
         """
         Returns dictionary where keys are remote usernames and values are
@@ -238,6 +281,24 @@ class Node(object):
             user_map[key] = pwd.struct_passwd([name, passwd, uid, gid,
                                                gecos, home, shell])
         return user_map
+
+    def getgrgid(self, gid):
+        """
+        Remote version of the getgrgid method in the standard grp module
+
+        returns a grp.struct_group
+        """
+        gmap = self.get_group_map(key_by_gid=True)
+        return gmap.get(gid)
+
+    def getgrnam(self, groupname):
+        """
+        Remote version of the getgrnam method in the standard grp module
+
+        returns a grp.struct_group
+        """
+        gmap = self.get_group_map()
+        return gmap.get(groupname)
 
     def getpwuid(self, uid):
         """
@@ -347,37 +408,33 @@ class Node(object):
         auth_keys.close()
         return key
 
-    def _get_network_names_for_nodes(self, nodes):
-        hostnames = []
-        for name in self.network_names.values():
-            hostnames.append(name)
-        for node in nodes:
-            for name in node.network_names.values():
-                if name not in hostnames:
-                    hostnames.append(name)
-        return hostnames
-
-    def add_to_known_hosts(self, username, nodes):
+    def add_to_known_hosts(self, username, nodes, add_self=True):
         """
-        Use ssh-keyscan to populate user's known_hosts file with pub keys from
-        hosts in nodes list (ssh-keyscan rocks!)
+        Populate user's known_hosts file with pub keys from hosts in nodes list
 
         username - name of the user to add to known hosts for
         nodes - the nodes to add to the user's known hosts file
+        add_self - add this Node to known_hosts in addition to nodes
 
-        NOTE: this node's network names will also be added to the known_hosts
+        NOTE: this node's hostname will also be added to the known_hosts
         file
         """
         user = self.getpwnam(username)
         known_hosts_file = posixpath.join(user.pw_dir, '.ssh', 'known_hosts')
         self.remove_from_known_hosts(username, nodes)
-        hostnames = self._get_network_names_for_nodes(nodes)
-        keyscan_cmd = 'ssh-keyscan -t rsa %s' % ' '.join(hostnames)
-        output = self.ssh.execute(keyscan_cmd)
-        khosts = self.ssh.remote_file(known_hosts_file, 'a')
-        khosts.write('\n'.join(output))
-        khosts.chown(user.pw_uid, user.pw_gid)
-        khosts.close()
+        khosts = []
+        for node in nodes:
+            server_pkey = node.ssh.get_server_public_key()
+            khosts.append(' '.join([node.alias, server_pkey.get_name(),
+                                    base64.b64encode(str(server_pkey))]))
+        if add_self and self not in nodes:
+            server_pkey = self.ssh.get_server_public_key()
+            khosts.append(' '.join([self.alias, server_pkey.get_name(),
+                                    base64.b64encode(str(server_pkey))]))
+        khostsf = self.ssh.remote_file(known_hosts_file, 'a')
+        khostsf.write('\n'.join(khosts) + '\n')
+        khostsf.chown(user.pw_uid, user.pw_gid)
+        khostsf.close()
 
     def remove_from_known_hosts(self, username, nodes):
         """
@@ -386,7 +443,7 @@ class Node(object):
         """
         user = self.getpwnam(username)
         known_hosts_file = posixpath.join(user.pw_dir, '.ssh', 'known_hosts')
-        hostnames = self._get_network_names_for_nodes(nodes)
+        hostnames = map(lambda n: n.alias, nodes)
         if self.ssh.isfile(known_hosts_file):
             regex = '|'.join(hostnames)
             self.ssh.remove_lines_from_file(known_hosts_file, regex)
@@ -402,25 +459,27 @@ class Node(object):
         known_hosts_file = posixpath.join(ssh_folder, 'known_hosts')
         auth_key_file = posixpath.join(ssh_folder, 'authorized_keys')
         self.add_to_known_hosts(username, nodes)
-        for node in nodes:
-            # copy private key and public key to node
-            self.copy_remote_file_to_node(priv_key_file, node)
-            self.copy_remote_file_to_node(pub_key_file, node)
-            # copy authorized_keys and known_hosts to node
-            self.copy_remote_file_to_node(auth_key_file, node)
-            self.copy_remote_file_to_node(known_hosts_file, node)
+        # exclude this node from copying
+        nodes = filter(lambda n: n.id != self.id, nodes)
+        # copy private key and public key to node
+        self.copy_remote_file_to_nodes(priv_key_file, nodes)
+        self.copy_remote_file_to_nodes(pub_key_file, nodes)
+        # copy authorized_keys and known_hosts to node
+        self.copy_remote_file_to_nodes(auth_key_file, nodes)
+        self.copy_remote_file_to_nodes(known_hosts_file, nodes)
 
     def copy_remote_file_to_node(self, remote_file, node, dest=None):
+        return self.copy_remote_file_to_nodes(remote_file, [node], dest=dest)
+
+    def copy_remote_file_to_nodes(self, remote_file, nodes, dest=None):
         """
         Copies a remote file from this Node instance to another Node instance
-        without passwordless ssh between the two
+        without passwordless ssh between the two.
 
         dest - path to store the data in on the node (defaults to remote_file)
         """
         if not dest:
             dest = remote_file
-        if self.id == node.id and remote_file == dest:
-            raise IOError("src and destination are the same: %s" % remote_file)
         rf = self.ssh.remote_file(remote_file, 'r')
         contents = rf.read()
         sts = rf.stat()
@@ -428,11 +487,16 @@ class Node(object):
         uid = sts.st_uid
         gid = sts.st_gid
         rf.close()
-        nrf = node.ssh.remote_file(dest, 'w')
-        nrf.write(contents)
-        nrf.chown(uid, gid)
-        nrf.chmod(mode)
-        nrf.close()
+        for node in nodes:
+            if self.id == node.id and remote_file == dest:
+                log.warn("src and destination are the same: %s, skipping" %
+                         remote_file)
+                continue
+            nrf = node.ssh.remote_file(dest, 'w')
+            nrf.write(contents)
+            nrf.chown(uid, gid)
+            nrf.chmod(mode)
+            nrf.close()
 
     def remove_user(self, name):
         """
@@ -459,7 +523,7 @@ class Node(object):
         etc_exports = self.ssh.remote_file('/etc/exports')
         for node in nodes:
             for path in export_paths:
-                etc_exports.write(' '.join([path, node.private_dns_name + \
+                etc_exports.write(' '.join([path, node.alias + \
                                             nfs_export_settings + '\n']))
         etc_exports.close()
         self.ssh.execute('exportfs -a')
@@ -473,7 +537,7 @@ class Node(object):
         Example:
         $ node.remove_export_fs_to_nodes(nodes=[node1,node2])
         """
-        regex = '|'.join(map(lambda x: x.private_dns_name, nodes))
+        regex = '|'.join(map(lambda x: x.alias, nodes))
         self.ssh.remove_lines_from_file('/etc/exports', regex)
         self.ssh.execute('exportfs -a')
 
@@ -501,7 +565,7 @@ class Node(object):
         fstab = self.ssh.remote_file('/etc/fstab', 'a')
         for path in remote_paths:
             fstab.write('%s:%s %s nfs user,rw,exec,noauto 0 0\n' %
-                        (server_node.private_dns_name, path, path))
+                        (server_node.alias, path, path))
         fstab.close()
         for path in remote_paths:
             if not self.ssh.path_exists(path):
@@ -613,7 +677,8 @@ class Node(object):
 
     @property
     def spot_id(self):
-        return self.instance.spot_instance_request_id
+        if self.instance.spot_instance_request_id:
+            return self.instance.spot_instance_request_id
 
     def get_spot_request(self):
         spot = self.ec2.get_all_spot_requests(
@@ -637,7 +702,7 @@ class Node(object):
         return self.instance.instance_type in static.CLUSTER_GPU_TYPES
 
     def is_cluster_type(self):
-        return self.instance_type.instance_type in static.CLUSTER_TYPES
+        return self.instance.instance_type in static.CLUSTER_TYPES
 
     def is_spot(self):
         return self.spot_id is not None
@@ -699,7 +764,7 @@ class Node(object):
 
     def is_ssh_up(self):
         try:
-            return self.ssh is not None
+            return self.ssh.transport is not None
         except exception.SSHError:
             return False
 
@@ -752,19 +817,20 @@ class Node(object):
                 label = "node '%s'" % self.alias
             raise exception.InstanceNotRunning(self.id, self.state,
                                                label=label)
+        user = user or self.user
         if utils.has_required(['ssh']):
             log.debug("using system's ssh client")
-            user = user or self.user
-            os.system(static.SSH_TEMPLATE % (self.key_location, user,
-                                             self.dns_name))
+            ssh_cmd = static.SSH_TEMPLATE % (self.key_location, user,
+                                             self.dns_name)
+            log.debug("ssh_cmd: %s" % ssh_cmd)
+            os.system(ssh_cmd)
         else:
             log.debug("using pure-python ssh client")
-            self.ssh.interactive_shell()
+            self.ssh.interactive_shell(user=user)
 
     def get_hosts_entry(self):
         """ Returns /etc/hosts entry for this node """
-        etc_hosts_line = "%(INTERNAL_IP)s %(INTERNAL_NAME)s "
-        etc_hosts_line += "%(INTERNAL_NAME_SHORT)s %(INTERNAL_ALIAS)s"
+        etc_hosts_line = "%(INTERNAL_IP)s %(INTERNAL_ALIAS)s"
         etc_hosts_line = etc_hosts_line % self.network_names
         return etc_hosts_line
 

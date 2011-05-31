@@ -6,7 +6,7 @@ default_config = {
     'aws_access_key_id': 'asd0asd9f0asd0fas0d9f0',
     'aws_secret_access_key': 'asdf0a9sdf09203fj0asdf',
     'aws_user_id': 9009230923,
-    'k1_location': '/path/to/k1_rsa',
+    'k1_location': '~/.path/to/k1_rsa',
     'k2_location': '/path/to/k2_rsa',
     'k3_location': '/path/to/k3_rsa',
     'v1_id': 'vol-c999999',

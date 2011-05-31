@@ -4,11 +4,11 @@ StarCluster Command Line Interface:
 
 starcluster [global-opts] action [action-opts] [<action-args> ...]
 """
-
 import os
 import sys
 import socket
 import optparse
+import traceback
 
 # hack for now to ignore paramiko 1.7.6 using RandomPool (report bug)
 import warnings
@@ -19,9 +19,9 @@ from boto.exception import BotoServerError, EC2ResponseError, S3ResponseError
 from starcluster import config
 from starcluster import static
 from starcluster import logger
+from starcluster import commands
 from starcluster import exception
 from starcluster import optcomplete
-from starcluster.commands import all_cmds
 from starcluster.logger import log, console
 
 from starcluster import __version__
@@ -125,11 +125,19 @@ class StarClusterCLI(object):
                            help="specify a region to use (default: us-east-1)")
         return gparser
 
+    def bug_found(self):
+        log.error("Oops! Looks like you've found a bug in StarCluster")
+        log.error("Debug file written to: %s" % static.DEBUG_FILE)
+        log.error("Look for lines starting with PID: %s" % static.PID)
+        log.error("Please submit this file, minus any private information,")
+        log.error("to starcluster@mit.edu")
+        sys.exit(1)
+
     def main(self):
         # Create global options parser.
         self.gparser = gparser = self.create_global_parser()
         # Declare subcommands.
-        subcmds = all_cmds
+        subcmds = commands.all_cmds
         # subcommand completions
         scmap = {}
         for sc in subcmds:
@@ -150,11 +158,6 @@ class StarClusterCLI(object):
             sys.exit(0)
         try:
             sc.execute(args)
-        except exception.BaseException, e:
-            lines = e.msg.splitlines()
-            for l in lines:
-                log.error(l)
-            sys.exit(1)
         except (EC2ResponseError, S3ResponseError, BotoServerError), e:
             log.error("%s: %s" % (e.error_code, e.error_message))
             sys.exit(1)
@@ -162,21 +165,23 @@ class StarClusterCLI(object):
             log.error("Unable to connect: %s" % e)
             log.error("Check your internet connection?")
             sys.exit(1)
+        except exception.ThreadPoolException, e:
+            if not gopts.DEBUG:
+                e.print_excs()
+            log.debug(e.format_excs())
+            print
+            self.bug_found()
+        except exception.BaseException, e:
+            log.error(e.msg, extra={'__textwrap__': True})
+            sys.exit(1)
         except SystemExit, e:
             raise e
         except Exception, e:
-            import traceback
             if not gopts.DEBUG:
                 traceback.print_exc()
             log.debug(traceback.format_exc())
             print
-            log.error("Oops! Looks like you've found a bug in StarCluster")
-            log.error("Debug file written to: %s" % static.DEBUG_FILE)
-            log.error("Look for lines starting with PID: %s" % static.PID)
-            log.error(
-                "Please submit this file, minus any private information,")
-            log.error("to starcluster@mit.edu")
-            sys.exit(1)
+            self.bug_found()
 
 
 def main():

@@ -190,9 +190,13 @@ class TestStarClusterConfig(tests.StarClusterTest):
         k1 = kpairs.get('k1')
         k2 = kpairs.get('k2')
         k3 = kpairs.get('k3')
-        assert k1 and k1['key_location'] == '/path/to/k1_rsa'
-        assert k2 and k2['key_location'] == '/path/to/k2_rsa'
-        assert k3 and k3['key_location'] == '/path/to/k3_rsa'
+        dcfg = tests.templates.config.default_config
+        k1_location = os.path.expanduser(dcfg['k1_location'])
+        k2_location = dcfg['k2_location']
+        k3_location = dcfg['k3_location']
+        assert k1 and k1['key_location'] == k1_location
+        assert k2 and k2['key_location'] == k2_location
+        assert k3 and k3['key_location'] == k3_location
 
     def test_keypair_not_defined(self):
         try:

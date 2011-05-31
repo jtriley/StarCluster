@@ -6,6 +6,7 @@ import os
 import getpass
 import tempfile
 
+VERSION = "0.9999"
 PID = os.getpid()
 TMP_DIR = tempfile.gettempdir()
 if os.path.exists("/tmp"):
@@ -70,8 +71,6 @@ CLUSTER_GPU_TYPES = ['cg1.4xlarge']
 
 CLUSTER_TYPES = CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES
 
-SPOT_TYPES = [t for t in INSTANCE_TYPES if t not in CLUSTER_TYPES]
-
 PROTOCOLS = ['tcp', 'udp', 'icmp']
 
 AVAILABLE_SHELLS = {
@@ -83,48 +82,48 @@ AVAILABLE_SHELLS = {
 }
 
 GLOBAL_SETTINGS = {
-    # setting, type, required?, default, options
-    'default_template': (str, False, None, None),
-    'enable_experimental': (bool, False, False, None),
-    'refresh_interval': (int, False, 30, None),
+    # setting, type, required?, default, options, callback
+    'default_template': (str, False, None, None, None),
+    'enable_experimental': (bool, False, False, None, None),
+    'refresh_interval': (int, False, 30, None, None),
 }
 
 AWS_SETTINGS = {
-    'aws_access_key_id': (str, True, None, None),
-    'aws_secret_access_key': (str, True, None, None),
-    'aws_user_id': (str, False, None, None),
-    'ec2_cert': (str, False, None, None),
-    'ec2_private_key': (str, False, None, None),
-    'aws_port': (int, False, None, None),
-    'aws_ec2_path': (str, False, '/', None),
-    'aws_s3_path': (str, False, '/', None),
-    'aws_is_secure': (bool, False, True, None),
-    'aws_region_name': (str, False, None, None),
-    'aws_region_host': (str, False, None, None),
-    'aws_s3_host': (str, False, None, None),
+    'aws_access_key_id': (str, True, None, None, None),
+    'aws_secret_access_key': (str, True, None, None, None),
+    'aws_user_id': (str, False, None, None, None),
+    'ec2_cert': (str, False, None, None, None),
+    'ec2_private_key': (str, False, None, None, None),
+    'aws_port': (int, False, None, None, None),
+    'aws_ec2_path': (str, False, '/', None, None),
+    'aws_s3_path': (str, False, '/', None, None),
+    'aws_is_secure': (bool, False, True, None, None),
+    'aws_region_name': (str, False, None, None, None),
+    'aws_region_host': (str, False, None, None, None),
+    'aws_s3_host': (str, False, None, None, None),
 }
 
 KEY_SETTINGS = {
-    'key_location': (str, True, None, None),
+    'key_location': (str, True, None, None, os.path.expanduser),
 }
 
 EBS_VOLUME_SETTINGS = {
-    'volume_id': (str, True, None, None),
-    'device': (str, False, None, None),
-    'partition': (int, False, None, None),
-    'mount_path': (str, True, None, None),
+    'volume_id': (str, True, None, None, None),
+    'device': (str, False, None, None, None),
+    'partition': (int, False, None, None, None),
+    'mount_path': (str, True, None, None, None),
 }
 
 PLUGIN_SETTINGS = {
-    'setup_class': (str, True, None, None),
+    'setup_class': (str, True, None, None, None),
 }
 
 PERMISSION_SETTINGS = {
     # either you're specifying an ip-based rule
-    'ip_protocol': (str, False, 'tcp', PROTOCOLS),
-    'from_port': (int, True, None, None),
-    'to_port': (int, True, None, None),
-    'cidr_ip': (str, False, '0.0.0.0/0', None),
+    'ip_protocol': (str, False, 'tcp', PROTOCOLS, None),
+    'from_port': (int, True, None, None, None),
+    'to_port': (int, True, None, None, None),
+    'cidr_ip': (str, False, '0.0.0.0/0', None, None),
     # or you're allowing full access to another security group
     # skip this for now...these two options are mutually exclusive to
     # the four settings above and source_group is  less commonly
@@ -134,18 +133,19 @@ PERMISSION_SETTINGS = {
 }
 
 CLUSTER_SETTINGS = {
-    'cluster_size': (int, True, None, None),
-    'cluster_user': (str, False, 'sgeadmin', None),
-    'cluster_shell': (str, False, 'bash', AVAILABLE_SHELLS.keys()),
-    'master_image_id': (str, False, None, None),
-    'master_instance_type': (str, False, None, INSTANCE_TYPES.keys()),
-    'node_image_id': (str, True, None, None),
-    'node_instance_type': (list, True, [], None),
-    'availability_zone': (str, False, None, None),
-    'keyname': (str, True, None, None),
-    'extends': (str, False, None, None),
-    'volumes': (list, False, [], None),
-    'plugins': (list, False, [], None),
-    'permissions': (list, False, [], None),
-    'disable_queue': (bool, False, False, None),
+    'spot_bid': (float, False, None, None, None),
+    'cluster_size': (int, True, None, None, None),
+    'cluster_user': (str, False, 'sgeadmin', None, None),
+    'cluster_shell': (str, False, 'bash', AVAILABLE_SHELLS.keys(), None),
+    'master_image_id': (str, False, None, None, None),
+    'master_instance_type': (str, False, None, INSTANCE_TYPES.keys(), None),
+    'node_image_id': (str, True, None, None, None),
+    'node_instance_type': (list, True, [], None, None),
+    'availability_zone': (str, False, None, None, None),
+    'keyname': (str, True, None, None, None),
+    'extends': (str, False, None, None, None),
+    'volumes': (list, False, [], None, None),
+    'plugins': (list, False, [], None, None),
+    'permissions': (list, False, [], None, None),
+    'disable_queue': (bool, False, False, None, None),
 }

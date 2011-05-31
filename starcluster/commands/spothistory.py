@@ -55,9 +55,9 @@ class CmdSpotHistory(CmdBase):
                 'please provide an instance type (options: %s)' % \
                              instance_types)
         instance_type = args[0]
-        if not instance_type in static.SPOT_TYPES:
+        if not instance_type in static.INSTANCE_TYPES:
             self.parser.error('invalid instance type. possible options: %s' % \
-                              ', '.join(static.SPOT_TYPES))
+                              ', '.join(static.INSTANCE_TYPES))
         start = self.opts.start_time
         end = self.opts.end_time
         if self.opts.days_ago:

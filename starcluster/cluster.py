@@ -8,19 +8,20 @@ import pprint
 import base64
 import inspect
 import cPickle
+import traceback
 
 from starcluster import utils
 from starcluster import static
+from starcluster import spinner
 from starcluster import iptools
 from starcluster import managers
 from starcluster import exception
 from starcluster import progressbar
 from starcluster import clustersetup
 from starcluster.node import Node
-from starcluster.spinner import Spinner
 from starcluster.utils import print_timing
 from starcluster.templates import user_msgs
-from starcluster.logger import log, INFO_NO_NEWLINE
+from starcluster.logger import log
 
 
 class ClusterManager(managers.Manager):
@@ -30,15 +31,19 @@ class ClusterManager(managers.Manager):
     def __repr__(self):
         return "<ClusterManager: %s>" % self.ec2.region.name
 
-    def get_cluster(self, cluster_name, load_plugins=True):
+    def get_cluster(self, cluster_name, group=None, load_receipt=True,
+                    load_plugins=True):
         """
         Returns a Cluster object representing an active cluster
         """
         try:
             clname = self._get_cluster_name(cluster_name)
-            self.ec2.get_security_group(clname)
-            cl = Cluster(ec2_conn=self.ec2, cluster_tag=cluster_name)
-            cl.load_receipt(load_plugins=load_plugins)
+            if not group:
+                group = self.ec2.get_security_group(clname)
+            cl = Cluster(ec2_conn=self.ec2, cluster_tag=cluster_name,
+                         cluster_group=group)
+            if load_receipt:
+                cl.load_receipt(load_plugins=load_plugins)
             try:
                 key_location = self.cfg.get_key(cl.keyname).get('key_location')
                 cl.key_location = key_location
@@ -114,10 +119,16 @@ class ClusterManager(managers.Manager):
         cl.add_node(alias)
 
     def add_nodes(self, cluster_name, num_nodes, aliases=None):
+        """
+        Add one or more nodes to cluster
+        """
         cl = self.get_cluster(cluster_name)
         cl.add_nodes(num_nodes, aliases=aliases)
 
     def remove_node(self, cluster_name, alias):
+        """
+        Remove a single node from a cluster
+        """
         cl = self.get_cluster(cluster_name)
         n = cl.get_node_by_alias(alias)
         if not n:
@@ -176,7 +187,7 @@ class ClusterManager(managers.Manager):
         if match:
             return match.groups()[0]
 
-    def list_clusters(self, cluster_groups=None):
+    def list_clusters(self, cluster_groups=None, show_ssh_status=False):
         """
         Prints a summary for each active cluster on EC2
         """
@@ -192,7 +203,13 @@ class ClusterManager(managers.Manager):
                 raise exception.ClusterDoesNotExist(g)
         for scg in cluster_groups:
             tag = self.get_tag_from_sg(scg.name)
-            cl = self.get_cluster(tag, load_plugins=False)
+            try:
+                cl = self.get_cluster(tag, group=scg, load_plugins=False)
+            except exception.IncompatibleCluster, e:
+                sep = '*' * 60
+                log.error('\n'.join([sep, e.msg, sep]),
+                          extra=dict(__textwrap__=True))
+                continue
             header = '%s (security group: %s)' % (tag, scg.name)
             print '-' * len(header)
             print header
@@ -229,12 +246,14 @@ class ClusterManager(managers.Manager):
             if nodes:
                 print 'Cluster nodes:'
                 for node in nodes:
-                    spot = node.spot_id or ''
-                    if spot:
-                        spot = '(spot %s)' % spot
-                    print "    %7s %s %s %s %s" % (node.alias, node.state,
-                                                   node.id, node.dns_name,
-                                                   spot)
+                    nodeline = "    %7s %s %s %s" % (node.alias, node.state,
+                                                        node.id, node.dns_name)
+                    if node.spot_id:
+                        nodeline += ' (spot %s)' % node.spot_id
+                    if show_ssh_status:
+                        ssh_status = {True: 'Up', False: 'Down'}
+                        nodeline += ' (SSH: %s)' % ssh_status[node.is_up()]
+                    print nodeline
                 print 'Total nodes: %d' % len(nodes)
             else:
                 print 'Cluster nodes: N/A'
@@ -277,6 +296,8 @@ class Cluster(object):
             permissions=[],
             refresh_interval=30,
             disable_queue=False,
+            disable_threads=False,
+            cluster_group=None,
             **kwargs):
 
         now = time.strftime("%Y%m%d%H%M")
@@ -305,6 +326,7 @@ class Cluster(object):
         self.permissions = permissions
         self.refresh_interval = refresh_interval
         self.disable_queue = disable_queue
+        self.disable_threads = disable_threads
 
         self.__instance_types = static.INSTANCE_TYPES
         self.__cluster_settings = static.CLUSTER_SETTINGS
@@ -544,28 +566,38 @@ class Cluster(object):
         description field.
         """
         try:
-            compressed_data = base64.b64decode(self.cluster_group.description)
+            desc = self.cluster_group.description
+            version, b64data = desc.split('-', 1)
+            if utils.program_version_greater(version, static.VERSION):
+                d = dict(cluster=self.cluster_tag, old_version=static.VERSION,
+                         new_version=version)
+                msg = user_msgs.version_mismatch % d
+                sep = '*' * 60
+                log.warn('\n'.join([sep, msg, sep]), extra={'__textwrap__': 1})
+            compressed_data = base64.b64decode(b64data)
             pkl_data = zlib.decompress(compressed_data)
             cluster_settings = cPickle.loads(str(pkl_data)).__dict__
-            for key in cluster_settings:
-                if hasattr(self, key):
-                    setattr(self, key, cluster_settings.get(key))
-            if load_plugins:
-                self.plugins = self.load_plugins(self._plugins)
-            return True
-        except zlib.error:
-            # TODO raise exception
-            return False
-        except (cPickle.PickleError, ValueError, EOFError):
-            # TODO raise exception about old version
-            return False
-        except exception.PluginError, e:
-            log.warn(e)
-            log.warn("An error occured while loading plugins")
-            log.warn("Not running any plugins")
+        except (cPickle.PickleError, zlib.error, ValueError, TypeError,
+                EOFError, IndexError), e:
+            log.debug('load receipt exception: ', exc_info=True)
+            raise exception.IncompatibleCluster(self.cluster_group)
         except Exception, e:
             raise exception.ClusterReceiptError(
                 'failed to load cluster receipt: %s' % e)
+        for key in cluster_settings:
+            if hasattr(self, key):
+                setattr(self, key, cluster_settings.get(key))
+        if load_plugins:
+            try:
+                self.plugins = self.load_plugins(self._plugins)
+            except exception.PluginError, e:
+                log.warn(e)
+                log.warn("An error occured while loading plugins")
+                log.warn("Not running any plugins")
+            except Exception, e:
+                raise exception.ClusterReceiptError(
+                    'failed to load cluster receipt: %s' % e)
+        return True
 
     def __getstate__(self):
         cfg = {}
@@ -588,9 +620,10 @@ class Cluster(object):
     @property
     def cluster_group(self):
         if self._cluster_group is None:
-            description = base64.b64encode(zlib.compress(cPickle.dumps(self)))
+            desc = base64.b64encode(zlib.compress(cPickle.dumps(self)))
+            desc = '-'.join([static.VERSION, desc])
             sg = self.ec2.get_or_create_group(self._security_group,
-                                              description,
+                                              desc,
                                               auth_ssh=True,
                                               auth_group_traffic=True)
             for p in self.permissions:
@@ -628,6 +661,11 @@ class Cluster(object):
         filters = {'group-id': self._security_group,
                    'instance-state-name': states}
         nodes = self.ec2.get_all_instances(filters=filters)
+        # remove any cached nodes not in the current node list from EC2
+        current_ids = map(lambda n: n.id, nodes)
+        remove_nodes = filter(lambda n: n.id not in current_ids, self._nodes)
+        map(lambda n: self._nodes.remove(n), remove_nodes)
+        # update node cache with latest instance data from EC2
         existing_nodes = dict(map(lambda x: (x.id, x), self._nodes))
         log.debug('existing nodes: %s' % existing_nodes)
         for node in nodes:
@@ -644,7 +682,6 @@ class Cluster(object):
                     self._nodes.insert(0, n)
                 else:
                     self._nodes.append(n)
-        self._nodes = filter(lambda n: n.state in states, self._nodes)
         self._nodes.sort(key=lambda n: n.alias)
         log.debug('returning self._nodes = %s' % self._nodes)
         return self._nodes
@@ -681,42 +718,24 @@ class Cluster(object):
                    'state': ['active', 'open']}
         return self.ec2.get_all_spot_requests(filters=filters)
 
-    def _run_instances(self, price=None, image_id=None,
-                       instance_type='m1.small', min_count=1, max_count=1,
-                       count=1, key_name=None, security_groups=None,
-                       launch_group=None, availability_zone_group=None,
-                       placement=None, user_data=None, placement_group=None):
-        """
-        Convenience method for running spot or flat-rate instances
-        """
-        conn = self.ec2
-        if price:
-            return conn.request_spot_instances(
-                price, image_id, instance_type=instance_type,
-                count=count, launch_group=launch_group, key_name=key_name,
-                security_groups=security_groups,
-                availability_zone_group=availability_zone_group,
-                placement=placement, user_data=user_data)
-        else:
-            return conn.run_instances(image_id, instance_type=instance_type,
-                                      min_count=min_count, max_count=max_count,
-                                      key_name=key_name,
-                                      security_groups=security_groups,
-                                      placement=placement,
-                                      user_data=user_data,
-                                      placement_group=placement_group)
+    def create_node(self, alias, image_id=None, instance_type=None, zone=None,
+                    placement_group=None):
+        return self.create_nodes([alias], image_id=image_id,
+                                 instance_type=instance_type, count=1,
+                                 zone=zone, placement_group=placement_group)
 
-    def create_node(self, alias, image_id=None, instance_type=None, count=1,
+    def create_nodes(self, aliases, image_id=None, instance_type=None, count=1,
                     zone=None, placement_group=None):
         """
-        Convenience method for requesting an instance with this cluster's
+        Convenience method for requesting instances with this cluster's
         settings
         """
         cluster_sg = self.cluster_group.name
         if instance_type in static.CLUSTER_TYPES:
             placement_group = self.placement_group.name
-        return self._run_instances(self.spot_bid,
-            image_id=image_id or self.node_image_id,
+        response = self.ec2.request_instances(
+            image_id or self.node_image_id,
+            price=self.spot_bid,
             instance_type=instance_type or self.node_instance_type,
             min_count=count, max_count=count, count=count,
             key_name=self.keyname,
@@ -724,8 +743,9 @@ class Cluster(object):
             availability_zone_group=cluster_sg,
             launch_group=cluster_sg,
             placement=zone or self.zone,
-            user_data=alias,
+            user_data='|'.join(aliases),
             placement_group=placement_group)
+        return response
 
     def _get_next_node_num(self):
         nodes = self._nodes_in_states(['pending', 'running'])
@@ -737,8 +757,7 @@ class Cluster(object):
             except ValueError:
                 pass
         next = highest + 1
-        log.debug("Highest node number is %d. choosing %d." % \
-                  (highest, next))
+        log.debug("Highest node number is %d. choosing %d." % (highest, next))
         return next
 
     def add_node(self, alias=None):
@@ -773,19 +792,11 @@ class Cluster(object):
                 raise exception.ClusterValidationError(
                     "node with alias %s already exists" % node.alias)
         log.debug("Adding node(s): %s" % aliases)
-        if self.spot_bid:
-            for alias in aliases:
-                log.info("Launching node: %s" % alias)
-                print self.create_node(alias)[0]
-        else:
-            user_data = '|'.join(aliases)
-            log.info("Launching node(s): %s" % ', '.join(aliases))
-            print self.create_node(user_data,
-                                   image_id=self.node_image_id,
-                                   instance_type=self.node_instance_type,
-                                   count=len(aliases))
+        log.info("Launching node(s): %s" % ', '.join(aliases))
+        print self.create_nodes(aliases, count=len(aliases))
         self.wait_for_cluster(msg="Waiting for node(s) to come up...")
-        default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue)
+        default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue,
+                                                          self.disable_threads)
         for alias in aliases:
             node = self.get_node_by_alias(alias)
             default_plugin.on_add_node(
@@ -804,7 +815,8 @@ class Cluster(object):
         """
         Remove a list of nodes from this cluster
         """
-        default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue)
+        default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue,
+                                                          self.disable_threads)
         for node in nodes:
             if node.is_master():
                 raise exception.InvalidOperation("cannot remove master node")
@@ -869,15 +881,28 @@ class Cluster(object):
             if alias in lmap.get(key):
                 return key
 
+    def create_cluster(self):
+        """
+        Launches all EC2 instances based on this cluster's settings.
+        """
+        log.info("Launching a %d-node cluster..." % self.cluster_size)
+        mtype = self.master_instance_type or self.node_instance_type
+        self.master_instance_type = mtype
+        if self.spot_bid:
+            self._create_spot_cluster()
+        else:
+            self._create_flat_rate_cluster()
+
     def _create_flat_rate_cluster(self):
         """
         Launches cluster using flat-rate instances. This method attempts to
         minimize the number of launch requests by grouping nodes of the same
-        type/ami and launching each group simulatenously within a single launch
+        type/ami and launching each group simultaneously within a single launch
         request. This is especially important for Cluster Compute instances
         given that Amazon *highly* recommends requesting all CCI in a single
         launch request.
         """
+        log.info("Launching a %d-node cluster..." % self.cluster_size)
         lmap = self._get_launch_map()
         zone = None
         master_map = None
@@ -886,14 +911,12 @@ class Cluster(object):
             aliases = lmap.get((type, image))
             if 'master' in aliases:
                 master_map = (type, image)
-                user_data = '|'.join(aliases)
                 for alias in aliases:
-                    log.info("Launching %s (ami: %s, type: %s)" % \
+                    log.debug("Launching %s (ami: %s, type: %s)" % \
                              (alias, image, type))
-                master_response = self.create_node(user_data,
-                                                   image_id=image,
-                                                   instance_type=type,
-                                                   count=len(aliases))
+                master_response = self.create_nodes(aliases, image_id=image,
+                                                    instance_type=type,
+                                                    count=len(aliases))
                 zone = master_response.instances[0].placement
                 print master_response
         lmap.pop(master_map)
@@ -902,14 +925,11 @@ class Cluster(object):
         for (type, image) in lmap:
             aliases = lmap.get((type, image))
             for alias in aliases:
-                log.info("Launching %s (ami: %s, type: %s)" % \
-                         (alias, image, type))
-            user_data = '|'.join(aliases)
-            node_response = self.create_node(user_data,
-                                             image_id=image,
-                                             instance_type=type,
-                                             count=len(aliases),
-                                             zone=zone)
+                log.debug("Launching %s (ami: %s, type: %s)" % \
+                          (alias, image, type))
+            node_response = self.create_nodes(aliases, image_id=image,
+                                              instance_type=type,
+                                              count=len(aliases), zone=zone)
             print node_response
 
     def _create_spot_cluster(self):
@@ -941,18 +961,6 @@ class Cluster(object):
                                              instance_type=ntype,
                                              zone=zone)
             print node_response[0]
-
-    def create_cluster(self):
-        """
-        Launches all EC2 instances based on this cluster's settings.
-        """
-        log.info("Launching a %d-node cluster..." % self.cluster_size)
-        mtype = self.master_instance_type or self.node_instance_type
-        self.master_instance_type = mtype
-        if self.spot_bid:
-            self._create_spot_cluster()
-        else:
-            self._create_flat_rate_cluster()
 
     def is_ebs_cluster(self):
         """
@@ -999,6 +1007,20 @@ class Cluster(object):
                 return False
         return True
 
+    def get_spinner(self, msg):
+        """
+        Logs a status msg, starts a spinner, and returns the spinner object.
+        This is useful for long running processes:
+
+            s = self.get_spinner("Long running process running...")
+            (do something)
+            s.stop()
+        """
+        s = spinner.Spinner()
+        log.info(msg, extra=dict(__nonewline__=True))
+        s.start()
+        return s
+
     @property
     def progress_bar(self):
         if not self._progress_bar:
@@ -1036,6 +1058,12 @@ class Cluster(object):
                     spots = self.spot_requests
             pbar.reset()
         nodes = self.nodes
+        if len(nodes) == 0:
+            s = self.get_spinner("Waiting for instances to activate...")
+            while len(nodes) == 0:
+                time.sleep(interval)
+                nodes = self.nodes
+            s.stop()
         log.info("Waiting for all nodes to be in a 'running' state...")
         pbar.maxval = len(nodes)
         pbar.update(0)
@@ -1109,6 +1137,7 @@ class Cluster(object):
         for node in self.nodes:
             node.detach_external_volumes()
 
+    @print_timing('Restarting cluster')
     def restart_cluster(self):
         """
         Reboot all instances and reconfigure the cluster
@@ -1121,7 +1150,7 @@ class Cluster(object):
         for node in nodes:
             node.reboot()
         sleep = 20
-        log.info("Sleeping for %d secs..." % sleep)
+        log.info("Sleeping for %d seconds..." % sleep)
         time.sleep(sleep)
         self._setup_cluster()
 
@@ -1167,9 +1196,7 @@ class Cluster(object):
         self.cluster_group.delete()
         pg = self.ec2.get_placement_group_or_none(self._security_group)
         if pg:
-            log.log(INFO_NO_NEWLINE, "Waiting for cluster to terminate...")
-            s = Spinner()
-            s.start()
+            s = self.get_spinner("Waiting for cluster to terminate...")
             while not self.is_cluster_terminated():
                 time.sleep(5)
             s.stop()
@@ -1212,7 +1239,7 @@ class Cluster(object):
             'user': self.cluster_user,
             'key': self.key_location,
             'tag': self.cluster_tag,
-        })
+        }, extra=dict(__textwrap__=True, __raw__=True))
 
     def _setup_cluster(self):
         """
@@ -1225,10 +1252,10 @@ class Cluster(object):
         log.info("Setting up the cluster...")
         if self.volumes:
             self.attach_volumes_to_master()
-        clustersetup.DefaultClusterSetup(self.disable_queue).run(
-            self.nodes, self.master_node,
-            self.cluster_user, self.cluster_shell,
-            self.volumes)
+        default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue,
+                                                          self.disable_threads)
+        default_plugin.run(self.nodes, self.master_node, self.cluster_user,
+                           self.cluster_shell, self.volumes)
         self.run_plugins()
 
     def run_plugins(self, plugins=None, method_name="run", node=None,
@@ -1274,11 +1301,14 @@ class Cluster(object):
         except NotImplementedError:
             log.debug("method %s not implemented by plugin %s" % (method_name,
                                                                   plugin_name))
-        except Exception:
+        except Exception, e:
             log.error("Error occured while running plugin '%s':" % plugin_name)
-            import traceback
-            traceback.print_exc()
-            log.debug(traceback.format_exc())
+            if isinstance(e, exception.ThreadPoolException):
+                e.print_excs()
+                log.debug(e.format_excs())
+            else:
+                traceback.print_exc()
+                log.debug(traceback.format_exc())
 
     def is_running_valid(self):
         """
@@ -1408,7 +1438,7 @@ class Cluster(object):
             raise exception.ClusterValidationError('Image %s does not exist' %
                                                    image_id)
         image_platform = image.architecture
-        image_is_hvm = (image.virtualizationType == "hvm")
+        image_is_hvm = (image.virtualization_type == "hvm")
         if image_is_hvm and not instance_type in static.CLUSTER_TYPES:
             cctypes_list = ', '.join(static.CLUSTER_TYPES)
             raise exception.ClusterValidationError(
@@ -1491,12 +1521,8 @@ class Cluster(object):
         lmap = self._get_launch_map()
         for (type, image) in lmap:
             if type in static.CLUSTER_TYPES:
-                if self.spot_bid:
-                    raise exception.ClusterValidationError((
-                        'Cluster Compute/GPU instance type %s ' +
-                        'cannot be used with spot instances') % type)
                 img = self.ec2.get_image(image)
-                if img.virtualizationType != 'hvm':
+                if img.virtualization_type != 'hvm':
                     raise exception.ClusterValidationError((
                         'Cluster Compute/GPU instance type %s ' +
                         'can only be used with HVM images.\n' +
@@ -1597,16 +1623,6 @@ class Cluster(object):
                 raise exception.ClusterValidationError(
                     "Can't mount more than one volume on %s" % path)
         return True
-
-    #def _has_all_required_settings(self, settings, object):
-        #has_all_required = True
-        #for opt in settings:
-            #requirements = settings[opt]
-            #name = opt; required = requirements[1];
-            #if required and object.get(name.lower()) is None:
-                #log.warn('Missing required setting %s' % name)
-                #has_all_required = False
-        #return has_all_required
 
     def _has_all_required_settings(self):
         has_all_required = True
