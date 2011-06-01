@@ -1,6 +1,12 @@
 Quick-Start
 ===========
 
+.. note::
+
+    These instructions are meant to get users up and running quickly without
+    going through all of the steps in detail. For more information please refer
+    to the full :ref:`user manual <starcluster-user-manual>`.
+
 Install StarCluster using easy_install::
 
     $ sudo easy_install StarCluster
@@ -15,11 +21,26 @@ or to install StarCluster manually::
 After the software has been installed, the next step is to setup the configuration file: ::
 
     $ starcluster help
-    
-This will give you a template to use to create a configuration file containing your AWS credentials, 
-cluster settings, etc.  The next step is to customize this file using your favorite text-editor: ::
+    StarCluster - (http://web.mit.edu/starcluster) (v. 0.9999)
+    Software Tools for Academics and Researchers (STAR)
+    Please submit bug reports to starcluster@mit.edu
 
-    $ vi ~/.starcluster/config  
+    cli.py:87 - ERROR - config file /home/user/.starcluster/config does not exist
+
+    Options:
+    --------
+    [1] Show the StarCluster config template
+    [2] Write config template to /home/user/.starcluster/config
+    [q] Quit
+
+    Please enter your selection:
+
+Select the second option by typing *2* and pressing enter. This will give you a
+template to use to create a configuration file containing your AWS credentials,
+cluster settings, etc.  The next step is to customize this file using your
+favorite text-editor: ::
+
+    $ vi ~/.starcluster/config
 
 This file is commented with example "cluster templates". A cluster template defines a set of configuration
 settings used to start a new cluster. The example config provides a 'smallcluster' template that is
@@ -44,21 +65,43 @@ Once you have a key the next step is to fill-in your keypair info in the StarClu
     [key key-name-here]
     key_location = /path/to/your/keypair.rsa
 
-Next we start a cluster named "mycluster" using the default cluster template 'smallcluster' in the example config: ::
+For example, the section for the keypair created above using the **createkey** command would look like:
 
-    $ starcluster start mycluster 
+.. code-block:: ini
+
+    [key mykey]
+    key_location = ~/.ssh/mykey.rsa
+
+After defining your keypair in the config, the next step is to update the default cluster template 'smallcluster' with the name of your keypair on EC2:
+
+.. code-block:: ini
+
+    [cluster smallcluster]
+    keyname = key-name-here
+
+For example, the 'smallcluster' template would be updated to look like:
+
+.. code-block:: ini
+
+    [cluster smallcluster]
+    keyname = mykey
+
+Now that the config file has been set up we're ready to start using StarCluster. Next we start a cluster
+named "mycluster" using the default cluster template 'smallcluster' in the example config: ::
+
+    $ starcluster start mycluster
 
 The *default_template* setting in the [global] section of the config specifies the default cluster template and
 is automatically set to 'smallcluster' in the example config.
 
-After the *start* command completes you should now have a working cluster. You can login to the master node as 
+After the *start* command completes you should now have a working cluster. You can login to the master node as
 root by running: ::
 
     $ starcluster sshmaster mycluster
 
 Once you've finished using the cluster and wish to stop paying for it: ::
 
-    $ starcluster stop mycluster 
+    $ starcluster stop mycluster
 
 Have a look at the rest of StarCluster's commands: ::
 
