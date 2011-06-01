@@ -18,7 +18,7 @@ Contents:
    manual/index
    plugins/index
    faq
-   features
-   hacking
    contribute
+   hacking
+   features
    TODO
