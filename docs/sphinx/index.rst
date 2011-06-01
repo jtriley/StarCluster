@@ -17,7 +17,6 @@ Contents:
    guides/index
    manual/index
    plugins/index
-   reference
    faq
    features
    hacking
