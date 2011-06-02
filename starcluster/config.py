@@ -584,10 +584,9 @@ class StarClusterConfig(object):
 
     def get_default_cluster_template(self):
         """
-        Returns the cluster template with "DEFAULT=True" in the config
-        If more than one found, raises MultipleDefaultTemplates exception.
-        If no cluster template has "DEFAULT=True", raises
-        NoDefaultTemplateFound exception.
+        Returns the default_template specified in the [global] section
+        of the config. Raises NoDefaultTemplateFound if no default cluster
+        template has been specified in the config.
         """
         default = self.globals.get('default_template')
         if not default:
