@@ -34,12 +34,6 @@ account that you can modify and commit to. Having your own copy allows you to
 work on bug fixes, docs, new features, etc. without needing special commit
 access to the main StarCluster repository.
 
-Clone your fork
----------------
-.. code-block::  ini
-
-    $ git clone <user>@github.com:<user>/StarCluster.git
-
 Setup a virtualenv for StarCluster development
 ----------------------------------------------
 When developing a Python project it's useful to work inside an isolated Python
@@ -84,24 +78,118 @@ shell or *re-source* your shell's *rc* file:
     $ source $HOME/.bashrc
 
 This will reload your shell's configuration file and configure
-virtualenvwrapper. The next step is to create a new virtual env called
+virtualenvwrapper. The next step is to create a new virtual environment called
 *starcluster* and change into that virtual environment:
 
 .. code-block:: ini
 
     $ mkvirtualenv --clear --no-site-packages --distribute starcluster
+    (starcluster)$ echo $PATH
+    /home/user/.virtualenvs/starcluster/bin:/usr/local/bin:/usr/bin:/bin:/opt/bin
 
-This will create a
+Running this command will create a new folder *$HOME/.virtualenvs/starcluster* containing your
+new isolated Python environment for StarCluster. This command will also modify
+your current shell's environment to work with the StarCluster virtual
+environment. As you can see from the *echo $PATH* command above your PATH
+environment variable has been modified to include the virtual environment's
+*bin* directory at the front of the path. This means when you type *python* or
+other Python-related commands (e.g. easy_install, pip, etc) you will be using
+the virtual environment's isolated Python installation.
 
+To see a list of your virtual environments:
+
+.. code-block:: ini
+
+    $ workon
+    starcluster
+
+To *activate* (or enter) a virtual environment:
+
+.. code-block:: ini
+
+    $ workon starcluster
+    (starcluster)$ cdvirtualenv
+    (starcluster)$ pwd
+    /home/user/.virtualenvs/starcluster
+    (starcluster)$ ls
+    bin  build  include  lib  lib64  man  share
+
+To *de-activate* (or leave) a virtual environment:
+
+.. code-block:: ini
+
+    (starcluster)$ deactivate
+    $ echo $PATH
+    /usr/local/bin:/usr/bin:/bin:/opt/bin
+
+Installing packages within your virtual environment is the same as outside the
+virtual environment except you don't need *root* privileges. You can use either
+*easy_install* or *pip* to install Python packages/modules. Since IPython_
+is required to use StarCluster's development shell let's install IPython_ now to
+test this out:
+
+
+.. code-block:: ini
+
+    (starcluster)$ pip install ipython
+
+This will install IPython_ within the virtual environment. You can verify this
+using the following command:
+
+.. code-block:: ini
+
+    (starcluster)$ which ipython
+    /home/user/.virtualenvs/bin/ipython
+
+.. _IPython: http://pypi.python.org/pypi/ipython
+
+Clone your fork
+---------------
+Now that you have a working virtual environment for StarCluster it's time to check out your fork of StarCluster:
+
+.. note::
+    Replace **<user>** in the *git clone* command below with your github username.
+
+.. code-block::  ini
+
+    $ workon starcluster
+    (starcluster)$ cdvirtualenv
+    (starcluster)$ git clone <user>@github.com:<user>/StarCluster.git starcluster
+
+The *git clone* command above will checkout StarCluster's source files to
+$HOME/.virtualenvs/starcluster/starcluster. The next step is to configure
+StarCluster's Python source for development. To do this run the following
+command:
+
+.. code-block:: ini
+
+    $ workon starcluster
+    (starcluster)$ cd $VIRTUAL_ENV/starcluster
+    (starcluster)$ python setup.py develop
+
+The *python setup.py develop* command will install StarCluster into the
+virtual environment's site-packages in such a way that the sources
+are *linked* rather than copied to the site-packages directory.
+
+.. note::
+
+    This has the benefit that as soon as a change is made in the StarCluster
+    source files the changes will show up immediately in the virtual
+    environment's `site-packages
+    <http://docs.python.org/install/index.html#how-installation-works>`_
+    directory.  If you were to use *python setup.py install* you would instead
+    need to re-install StarCluster each time you made a change for the changes
+    to become active in the virtual environment's Python installation.
 
 Code clean-up
 -------------
 Before committing any code please be sure to run the `check.py
 <https://github.com/jtriley/StarCluster/blob/master/check.py>`_ script in the
-root of your StarCluster git repository. This script runs pep8 and pyflakes on
-all source files and outputs any errors it finds related to pep8 formatting,
-syntax, import errors, undefined variables, etc. Please fix any errors reported
-before committing. 
+root of your StarCluster git repository. This script runs `pep8
+<http://pypi.python.org/pypi/pep8>`_ and `pyflakes
+<http://pypi.python.org/pypi/pyflakes>`_ on all source files and outputs any
+errors it finds related to pep8 formatting, syntax, import errors, undefined
+variables, etc. Please fix any errors reported before committing.
 
 :pep:`8`
 
