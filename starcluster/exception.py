@@ -184,19 +184,6 @@ class PluginNotFound(ConfigError):
         self.msg = 'Plugin "%s" not found in config' % plugin
 
 
-class MultipleDefaultTemplates(ConfigError):
-    def __init__(self, defaults):
-        msg = 'Cluster templates %s each have DEFAULT=True in your config.'
-        msg += ' Only one cluster can be the default. Please pick one.'
-        if len(defaults) == 2:
-            tmpl_list = ' and '.join(defaults)
-        else:
-            first = defaults[0:-1]
-            last = defaults[-1]
-            tmpl_list = ', and '.join([', '.join(first), last])
-        self.msg = msg % tmpl_list
-
-
 class NoDefaultTemplateFound(ConfigError):
     def __init__(self, options=None):
         msg = "No default cluster template specified. To set the default "
