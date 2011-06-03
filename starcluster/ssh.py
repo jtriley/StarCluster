@@ -145,7 +145,7 @@ class SSHClient(object):
             log.debug("Using private key %s (rsa)" % private_key)
             return rsa_key
         except paramiko.SSHException:
-            log.error('invalid rsa key or password specified')
+            log.error('invalid rsa key or passphrase specified')
 
     def _load_dsa_key(self, private_key, private_key_pass=None):
         private_key_file = os.path.expanduser(private_key)
@@ -155,7 +155,7 @@ class SSHClient(object):
             log.info("Using private key %s (dsa)" % private_key)
             return dsa_key
         except paramiko.SSHException:
-            log.error('invalid dsa key or password specified')
+            log.error('invalid dsa key or passphrase specified')
 
     @property
     def sftp(self):
@@ -381,15 +381,17 @@ class SSHClient(object):
             while line != '':
                 line = stdout.readline()
                 if only_printable:
-                    line = ''.join(
-                        char for char in line if char in string.printable)
+                    line = ''.join(c for c in line if c in string.printable)
                 if line != '':
                     output.append(line)
                     print line,
             for line in stderr.readlines():
                 output.append(line)
                 print line
-        output = [line.strip() for line in output]
+        if only_printable:
+            output = map(lambda line: ''.join(c for c in line if c in
+                                              string.printable), output)
+        output = map(lambda line: line.strip(), output)
         exit_status = channel.recv_exit_status()
         if exit_status != 0:
             if not ignore_exit_status:

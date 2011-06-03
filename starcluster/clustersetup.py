@@ -378,9 +378,7 @@ class DefaultClusterSetup(ClusterSetup):
 
         # create sge parallel environment
         # first iterate through each machine and count the number of processors
-        num_processors = 0
-        for node in self._nodes:
-            num_processors += node.num_processors
+        num_processors = sum(map(lambda n: n.num_processors, self._nodes))
         parallel_environment = mconn.remote_file("/tmp/pe.txt")
         print >> parallel_environment, sge.sge_pe_template % num_processors
         parallel_environment.close()

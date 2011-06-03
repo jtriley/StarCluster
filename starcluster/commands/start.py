@@ -186,7 +186,7 @@ class CmdStart(ClusterCompleter):
         if self.opts.spot_bid is not None and not self.opts.no_create:
             cmd = ' '.join(sys.argv[1:])
             cmd = cmd.replace('--no-create', '').replace('-x', '')
-            cmd += ' --no-create'
+            cmd += ' -x'
             msg = user_msgs.spotmsg % {'cmd': cmd,
                                        'size': scluster.cluster_size,
                                        'tag': tag}

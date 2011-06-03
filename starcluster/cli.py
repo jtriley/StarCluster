@@ -172,9 +172,7 @@ class StarClusterCLI(object):
             print
             self.bug_found()
         except exception.BaseException, e:
-            lines = e.msg.splitlines()
-            for l in lines:
-                log.error(l)
+            log.error(e.msg, extra={'__textwrap__': True})
             sys.exit(1)
         except SystemExit, e:
             raise e

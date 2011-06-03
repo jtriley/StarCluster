@@ -447,8 +447,10 @@ class SGELoadBalancer(LoadBalancer):
             try:
                 if makedirs:
                     os.makedirs(directory)
+                    log.info("Created directories %s." % directory)
                 else:
                     os.mkdir(directory)
+                    log.info("Created single directory %s." % directory)
             except IOError, e:
                 raise exception.BaseException(str(e))
 
@@ -502,15 +504,14 @@ class SGELoadBalancer(LoadBalancer):
         try:
             now = self.get_remote_time()
             qatime = self.get_qatime(now)
-            
+
             qacct_cmd = 'source /etc/profile && qacct -l qname=' + qname + ' -j -b ' + qatime
             qstat_cmd = 'source /etc/profile && qstat -l qname=' + qname + ' -u \"*\" -xml'
-            qhost_cmd = 'source /etc/profile && qhost -xml -q'
-            
-            qhostxml = '\n'.join(master.ssh.execute(qhost_cmd, log_output=False))
+            qhost_cmd = 'source /etc/profile && qhost -xml -q'            
+            qhostxml = '\n'.join(master.ssh.execute(qhost_cmd, log_output=True))
             qstatxml = '\n'.join(master.ssh.execute(qstat_cmd,
-                                                    log_output=False))
-            qacct = '\n'.join(master.ssh.execute(qacct_cmd, log_output=False,
+                                                    log_output=True))
+            qacct = '\n'.join(master.ssh.execute(qacct_cmd, log_output=True,
                                                  ignore_exit_status=True))
         except Exception, e:
             log.error("Error occured getting SGE stats via ssh. "
@@ -683,9 +684,10 @@ class SGELoadBalancer(LoadBalancer):
                         #need_to_add = 0
                 else:
                     need_to_add = max(1,qlen/sph)
-
+        max_add = self.max_nodes - len(self.stat.hosts)
+        need_to_add = min(self.add_nodes_per_iteration, need_to_add, max_add)
+        
         if need_to_add > 0:
-            need_to_add = min(self.add_nodes_per_iteration, need_to_add)
             log.info("*** ADDING %d NODES at %s." %
                      (need_to_add, str(datetime.datetime.utcnow())))
             try:

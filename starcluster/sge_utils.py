@@ -406,27 +406,25 @@ h_vmem                INFINITY
 HGCONF_TEMPLATE = """group_name $HGNAME
 hostlist NONE
 """
-
-import BeautifulSoup
-def get_qstat(sge_host,queue_name):
-
+        
+def get_qstat(sge_host, queue_name):
     output_all = '\n'.join(sge_host.ssh.execute(
-                          'source /etc/profile && qstat -xml',log_output=False))
+                          'source /etc/profile && qstat -xml',log_output=False))    
     parsed_output = parse_qstat(output_all)
-    Soup_output = BeautifulSoup.BeautifulStoneSoup(output_all)
-    jobs = [str(j.contents[0]) for j in Soup_output.findAll('jb_job_number')]
+    all_parsed = xml.dom.minidom.parseString(output_all)
+    jobs = [str(x.childNodes[0].nodeValue) for x in all_parsed.getElementsByTagName('JB_job_number')]
     queue_jobs = []
-    get_cname = lambda x : x.name == 'ce_name' and x.text == 'qname'
     for j in jobs:
         output = '\n'.join(sge_host.ssh.execute(
                   'source /etc/profile && qstat -xml -j ' + j,log_output=False))
-        Soup = BeautifulSoup.BeautifulStoneSoup(output)
-        qname = Soup.findAll(get_cname)[0].findNext('ce_stringval').text
+        parsed = xml.dom.minidom.parseString(output)
+        ce_names = [node for node in parsed.getElementsByTagName('CE_name') if str(node.childNodes[0].nodeValue) == 'qname']
+        qname = str(ce_names[0].parentNode.getElementsByTagName("CE_stringval")[0].childNodes[0].nodeValue)
         if qname == queue_name:
-            queue_jobs.append(j)
-    
+            queue_jobs.append(j)        
     return [p for p in parsed_output if p['JB_job_number'] in queue_jobs]
-        
+                
+
 
 ###for testing
 from starcluster.templates import sge  

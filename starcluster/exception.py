@@ -184,19 +184,6 @@ class PluginNotFound(ConfigError):
         self.msg = 'Plugin "%s" not found in config' % plugin
 
 
-class MultipleDefaultTemplates(ConfigError):
-    def __init__(self, defaults):
-        msg = 'Cluster templates %s each have DEFAULT=True in your config.'
-        msg += ' Only one cluster can be the default. Please pick one.'
-        if len(defaults) == 2:
-            tmpl_list = ' and '.join(defaults)
-        else:
-            first = defaults[0:-1]
-            last = defaults[-1]
-            tmpl_list = ', and '.join([', '.join(first), last])
-        self.msg = msg % tmpl_list
-
-
 class NoDefaultTemplateFound(ConfigError):
     def __init__(self, options=None):
         msg = "No default cluster template specified. To set the default "
@@ -451,3 +438,42 @@ class ThreadPoolException(BaseException):
             excs.append('error occured in job (id=%s): %s' % (jobid, str(e)))
             excs.append(tb_msg)
         return '\n'.join(excs)
+
+
+class IncompatibleCluster(BaseException):
+    main_msg = """\
+The cluster '%(tag)s' was either created by a previous stable or development \
+version of StarCluster or you manually created the '%(group)s' group. In any \
+case '%(tag)s' cannot be used with this version of StarCluster (%(version)s).
+
+"""
+
+    insts_msg = """\
+The cluster '%(tag)s' currently has %(num_nodes)d active nodes.
+
+"""
+
+    no_insts_msg = """\
+The cluster '%(tag)s' does not have any nodes and is safe to terminate.
+
+"""
+
+    terminate_msg = """\
+Please terminate the cluster using:
+
+    $ starcluster terminate %(tag)s
+"""
+
+    def __init__(self, group):
+        tag = group.name.replace(static.SECURITY_GROUP_PREFIX + '-', '')
+        self.msg = "Incompatible Cluster: %(tag)s\n\n" % dict(tag=tag)
+        self.msg += self.main_msg % dict(group=group.name, tag=tag,
+                                         version=static.VERSION)
+        states = ['pending', 'running', 'stopping', 'stopped']
+        insts = filter(lambda x: x.state in states, group.instances())
+        ctx = dict(tag=tag, num_nodes=len(insts))
+        if insts:
+            self.msg += self.insts_msg % ctx
+        else:
+            self.msg += self.no_insts_msg % ctx
+        self.msg += self.terminate_msg % ctx
