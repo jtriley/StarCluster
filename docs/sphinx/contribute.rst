@@ -1,7 +1,7 @@
 Contributing to StarCluster
 ===========================
 .. note:: 
-    **Prequisites**: You need to `install git
+    **Prerequisites**: You need to `install git
     <http://help.github.com/set-up-git-redirect>`_ before following these
     instructions. You should also familiarize yourself with the basic use and
     work flow model of git before following these instructions. The folks over
@@ -139,7 +139,7 @@ using the following command:
 .. code-block:: ini
 
     (starcluster)$ which ipython
-    /home/user/.virtualenvs/bin/ipython
+    /home/user/.virtualenvs/starcluster/bin/ipython
 
 .. _IPython: http://pypi.python.org/pypi/ipython
 
