@@ -456,10 +456,10 @@ class SGELoadBalancer(LoadBalancer):
             try:
                 if makedirs:
                     os.makedirs(directory)
-                    logger.info("Created directories %s." % directory)
+                    log.info("Created directories %s." % directory)
                 else:
                     os.mkdir(directory)
-                    logger.info("Created single directory %s." % directory)
+                    log.info("Created single directory %s." % directory)
             except IOError, e:
                 raise exception.BaseException(str(e))
 
