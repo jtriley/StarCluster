@@ -40,6 +40,11 @@ web: html
 
 cleanweb: clean web
 
+pubweb: html
+	python $(BUILDDIR)/../../../utils/webserver.py -i 0.0.0.0 $(BUILDDIR)/html
+
+cleanpubweb: clean pubweb
+
 dirhtml:
 	$(SPHINXBUILD) -b dirhtml $(ALLSPHINXOPTS) $(BUILDDIR)/dirhtml
 	@echo
