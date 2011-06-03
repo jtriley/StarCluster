@@ -1,13 +1,15 @@
 ******************************
 StarCluster Configuration File
 ******************************
-The StarCluster configuration file uses ini formatting (see http://en.wikipedia.org/wiki/INI_file). 
-It is made up of various sections which are described in detail here. This document explains how 
-to configure the three required sections **[aws info]**, **[keypair]**, and **[cluster]** as well as
-optional **[global]**, **[volume]**, and **[plugin]** sections.
+The StarCluster configuration file uses `ini formatting <http://en.wikipedia.org/wiki/INI_file>`_. It is made up of
+various sections which are described here in detail. This document explains how to configure the three required
+sections **[aws info]**, **[keypair]**, and **[cluster]** as well as optional **[global]**, **[volume]**,
+and **[plugin]** sections.
 
-Creating the config file
-------------------------
+
+
+Creating the configuration file
+-------------------------------
 The default starcluster config lives in ~/.starcluster/config. You can either create this file manually
 or have starcluster create it for you with an example configuration template (recommended).
 
@@ -145,7 +147,7 @@ To configure StarCluster for these keypairs we define a **[keypair]** section fo
     # this is the path to your openssh private key for mykeypair2
     key_location=/path/to/your/mykeypair2.rsa
 
-These keypair sections can now be referenced in a *cluster templates*' **keyname** setting as we'll show below in an
+These keypair sections can now be referenced in a *cluster templates*' **keyname** setting as we'll :ref:`show below <defining-cluster-templates>` in an
 example *cluster template*.
 
 .. note::
@@ -153,6 +155,9 @@ example *cluster template*.
    In order for StarCluster to interact with **any** instances you have on EC2, the keypair used to launch those instances
    **must** be defined in the config. You can check what keypairs were used to launch an instance using StarCluster's *listinstances*
    command or the *ec2-describe-instances* command from the ec2 command-line tools.
+
+
+.. _defining-cluster-templates:
 
 Defining Cluster Templates
 --------------------------
@@ -305,7 +310,7 @@ Amazon Security Group Permissions
 When starting a cluster each node is added to a common security group. This security group is created by StarCluster and has  
 a name of the form "@sc-*<cluster_tag>*" where *<cluster_tag>* is the name you provided to the "start" command.
 
-By default, StarCluster adds a permission to this security group that allows access to port 22 (openssh) from all IP addresses. This is needed
+By default, StarCluster adds a permission to this security group that allows access to port 22 (ssh) from all IP addresses. This is needed
 so that StarCluster can connect to the instances and configure them properly. If you want to specify additional security group permissions to be 
 set after starting your cluster you can do so in the config by creating one or more **[permission]** sections. These sections can then be specified
 in one or more cluster templates. Here's an example that opens port 80 (web server) to the world for the *smallcluster* template:
@@ -338,7 +343,7 @@ ip address (ie the "world"). In the above example, we created a permission secti
 and to_port both to be 80.  You can restrict the ip addresses that the rule applies to by specifying the proper cidr_ip setting. In the above example, 
 the *ftp* permission specifies that only 66.249.90.104 ip address can access port 21 on the cluster nodes. 
 
-StarCluster Plugins
+Defining Plugins
 -------------------
 StarCluster also has support for user contributed plugins (see :doc:`plugins`).  To configure a *cluster template* to use a particular 
 plugin, we must first create a plugin section for each plugin we wish to use. For example, suppose we have two plugins myplug1 and myplug2:
