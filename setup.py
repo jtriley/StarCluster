@@ -12,7 +12,7 @@ setup(
     package_dir={'starcluster': 'starcluster'},
     packages=find_packages(src),
     scripts=['bin/starcluster'],
-    install_requires=["paramiko==1.7.6", "boto==2.0b4", "workerpool==0.9.2"],
+    install_requires=["paramiko==1.7.7.1", "boto==2.0b4", "workerpool==0.9.2"],
     zip_safe=True,
     download_url='http://web.mit.edu/starcluster',
     license='LGPL3',

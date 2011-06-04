@@ -10,10 +10,6 @@ import socket
 import optparse
 import traceback
 
-# hack for now to ignore paramiko 1.7.6 using RandomPool (report bug)
-import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning)
-
 from boto.exception import BotoServerError, EC2ResponseError, S3ResponseError
 
 from starcluster import config
@@ -23,7 +19,6 @@ from starcluster import commands
 from starcluster import exception
 from starcluster import optcomplete
 from starcluster.logger import log, console
-
 from starcluster import __version__
 
 __description__ = """
