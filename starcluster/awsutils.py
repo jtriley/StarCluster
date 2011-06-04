@@ -177,7 +177,12 @@ class EasyEC2(EasyAWS):
         if auth_ssh:
             sg.authorize('tcp', 22, 22, '0.0.0.0/0')
         if auth_group_traffic:
-            sg.authorize(src_group=self.get_group_or_none(name))
+            sg.authorize('icmp', -1, -1,
+                         src_group=self.get_group_or_none(name))
+            sg.authorize('tcp', 1, 65535,
+                         src_group=self.get_group_or_none(name))
+            sg.authorize('udp', 1, 65535,
+                         src_group=self.get_group_or_none(name))
         return sg
 
     def get_all_security_groups(self, groupnames=[]):
