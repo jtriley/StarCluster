@@ -228,7 +228,7 @@ class ProgressBar(object):
     - seconds_elapsed: seconds elapsed since start_time
     - percentage(): percentage of the progress (this is a method)
     """
-    def __init__(self, maxval=100, widgets=default_widgets, term_width=None,
+    def __init__(self, maxval=100, widgets=default_widgets, term_width=79,
                  fd=sys.stderr, force_update=False):
         assert maxval > 0
         self.maxval = maxval
