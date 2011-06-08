@@ -941,7 +941,7 @@ class Cluster(object):
         """
         (mtype, mimage) = self._get_type_and_image_id('master')
         log.info("Launching master node (ami: %s, type: %s)..." % \
-                 (mtype, mimage))
+                 (mimage, mtype))
         master_response = self.create_node('master',
                                            image_id=mimage,
                                            instance_type=mtype)
