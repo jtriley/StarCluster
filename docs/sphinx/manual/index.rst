@@ -21,6 +21,7 @@ Contents:
    list_public_amis
    shell_completion
    plugins
+   addremovenode
    load_balancer
    hacking
    features
