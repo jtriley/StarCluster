@@ -1,30 +1,31 @@
 Sun Grid Engine (SGE) QuickStart
---------------------------------
+================================
+StarCluster has support for the Sun Grid Engine (SGE) queuing system
 Submit a Simple Job through Sun Grid Engine Submit a job that runs hostname on
-a single node to Sun Grid Engine
+a single node to Sun Grid Engine:
 
 .. code-block:: none
 
         sgeadmin@domU-12-31-38-00-A0-61:~$ qsub -V -b y -cwd hostname
         Your job 1 ("hostname") has been submitted
 
-The -V option to qsub states that the job should have the same environment
-variables as the shell executing qsub (recommended)
+The **-V** option to qsub states that the job should have the same environment
+variables as the shell executing qsub (*recommended*)
 
-The -b option to qsub states that the command being executed could be a single
-binary executable or a bash script. In this case the command 'hostname' is a
+The **-b** option to qsub states that the command being executed could be a single
+binary executable or a bash script. In this case the command *hostname* is a
 single binary.
 
-The -cwd option to qsub tells Sun Grid Engine that the job should be executed
+The **-cwd** option to qsub tells Sun Grid Engine that the job should be executed
 in the same directory that qsub was called.
 
-The last argument to qsub is the command to be executed (in this case 'hostname')
+The last argument to qsub is the command to be executed (in this case *hostname*)
 
 Monitoring Jobs in the Queue
 ----------------------------
 
 Now that our job has been submitted, let's take a look at the job's status in
-the queue using the command 'qstat':
+the queue using the command *qstat*:
 
 .. code-block:: none
 
@@ -34,9 +35,9 @@ the queue using the command 'qstat':
         1 0.00000 hostname sgeadmin qw 09/09/2009 14:58:00 1
         sgeadmin@domU-12-31-38-00-A0-61:~$
 
-From this output, we can see that the job is in the *qw* state which stands for
-'queued and waiting'. After a few seconds, the job will transition into a *r*,
-or 'running', state.
+From this output, we can see that the job is in the **qw** state which stands for
+*queued and waiting*. After a few seconds, the job will transition into a **r**,
+or *running*, state.
 
 .. code-block:: none
 
@@ -76,10 +77,10 @@ For the simple job submitted above we have:
         sgeadmin@domU-12-31-38-00-A0-61:~$ cat hostname.e1
         sgeadmin@domU-12-31-38-00-A0-61:~$
 
-Notice that Sun Grid Engine automatically named the job 'hostname' and created
-two output files: hostname.e1 and hostname.o1. The 'e' stands for stderr and
-the 'o' for stdout. The 1 at the end of the files' extension is the job
-number. So if the job had been named 'my_new_job' and was job #23 submitted,
+Notice that Sun Grid Engine automatically named the job *hostname* and created
+two output files: hostname.e1 and hostname.o1. The **e** stands for stderr and
+the **o** for stdout. The **1** at the end of the files' extension is the job
+number. So if the job had been named *my_new_job* and was job #23 submitted,
 the output files would look like:
 
 .. code-block:: none
@@ -228,3 +229,157 @@ After running qdel you'll notice the job is gone from the queue:
 
         sgeadmin@domU-12-31-38-00-A0-61:~$ qstat
         sgeadmin@domU-12-31-38-00-A0-61:~$
+
+OpenMPI and Sun Grid Engine
+---------------------------
+.. note::
+        OpenMPI must be compiled with SGE support (--with-sge) to make use of
+        the tight-integration between OpenMPI and SGE as documented in this
+        section. This is the case on all of StarCluster's public AMIs.
+
+OpenMPI supports tight integration with Sun Grid Engine. This integration
+allows Sun Grid Engine to handle assigning hosts to parallel jobs and to
+properly account for parallel jobs.
+
+OpenMPI Parallel Environment
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+StarCluster by default sets up a parallel environment, called "orte",
+that has been configured for OpenMPI integration within SGE and has a
+number of slots equal to the total number of processors in the cluster.
+You can inspect the SGE parallel environment by running:
+
+.. code-block:: none
+
+        sgeadmin@ip-10-194-13-219:~$ qconf -sp orte
+        pe_name            orte
+        slots              16
+        user_lists         NONE
+        xuser_lists        NONE
+        start_proc_args    /bin/true
+        stop_proc_args     /bin/true
+        allocation_rule    $round_robin
+        control_slaves     TRUE
+        job_is_first_task  FALSE
+        urgency_slots      min
+        accounting_summary FALSE
+
+This is the default configuration for a two-node, c1.xlarge cluster (16
+virtual cores).
+
+
+Round Robin vs Fill Up Modes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Notice the *allocation_rule* setting in the output of the *qconf* command in
+the previous section. This defines how to assign *slots* to a job. By default
+StarCluster configures *round_robin* allocation.  This means that if a job
+requests 8 slots for example, it will go to the first machine, grab a single
+slot if available, move to the next machine and grab a single slot if
+available, and so on wrapping around the cluster again if necessary.
+
+You can also configure the parallel environment to try and localize
+slots as much as possible using the *fill_up* allocation rule. With this
+rule, if a user requests 8 slots and a single machine has 8 slots
+available, that job will run entirely on one machine. If 5 slots are
+available on one host and 3 on another, it will take all 5 on that host,
+and all 3 on the other host.
+
+You can switch between *round_robin* and *fill_up* modes by using the
+following command:
+
+.. code-block:: none
+
+        $ qconf -mp orte
+
+This will open up vi (or any editor defined in *EDITOR* env variable) and let
+you edit the parallel environment settings. To change from *round_robin* to
+*fill_up* in the above example, change the *allocation_rule* line from:
+
+.. code-block:: none
+
+        allocation_rule    $round_robin
+
+to
+
+.. code-block:: none
+
+        allocation_rule    $fill_up
+
+After making the change and saving the file you can verify your settings using:
+
+.. code-block:: none
+
+        sgeadmin@ip-10-194-13-219:~$ qconf -sp orte
+        pe_name            orte
+        slots              16
+        user_lists         NONE
+        xuser_lists        NONE
+        start_proc_args    /bin/true
+        stop_proc_args     /bin/true
+        allocation_rule    $fill_up
+        control_slaves     TRUE
+        job_is_first_task  FALSE
+        urgency_slots      min
+        accounting_summary FALSE
+
+Submitting OpenMPI Jobs to Sun Grid Engine
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The general workflow for running MPI code is:
+
+1. Compile the code using mpicc, mpicxx, mpif77, mpif90, etc
+2. Copy the resulting executable to the same path on all nodes or to an
+   NFS-shared location on the master node
+.. note::
+        It is important that the path to the executable is *identical* on all
+        nodes for mpirun to correctly launch your parallel code. The easiest
+        approach is to copy the executable somewhere under /home on the master
+        node since /home is NFS-shared across all nodes in the cluster.
+3. Run the code on *X* machines using:
+
+.. code-block:: none
+
+        $ mpirun -np X -hostfile myhostfile ./mpi-executable arg1 arg2 [...]
+
+where the hostfile looks something like:
+
+.. code-block:: none
+
+        $ cat /path/to/hostfile
+        master  slots=2
+        node001 slots=2
+        node002 slots=2
+        node003 slots=2
+
+However, when using an SGE parallel environment with OpenMPI **you no longer
+have to specify the -np, -hostfile, -host, etc options to mpirun**. This is
+because SGE will *automatically* assign hosts and processors to be used by
+OpenMPI for your job. You also do not need to pass the --byslot and --bynode
+options to mpirun given that these mechanisms are now handled by the *fill_up*
+and *round_robin* modes specified in the SGE parallel environment.
+
+Instead of using the above formulation create a simple job script that contains
+a very simplified mpirun call:
+
+.. code-block:: none
+
+        $ cat myjobscript.sh
+        mpirun /path/to/mpi-executable arg1 arg2 [...]
+
+Then submit the job using the *qsub* command and the *orte* parallel
+environment automatically configured for you by StarCluster:
+
+.. code-block:: none
+
+        $ qsub -pe orte 24 ./myjobscript.sh
+
+The **-pe** option species which parallel environment to use and how many slots
+to request. The above example requests 24 slots (or processors) using the
+*orte* parallel environment. The parallel environment configuration takes care
+to distribute the MPI job amongst the SGE nodes and perform the slot assignment
+based on the *allocation_rule* defined in the parallel environment configuration.
+
+You can also do this without a job script like so:
+
+.. code-block:: none
+
+        $ cd /path/to/executable
+        $ qsub -b y -cwd -pe orte 24 mpirun ./mpi-executable arg1 arg2 [...]
