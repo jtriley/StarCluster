@@ -1,10 +1,11 @@
-StarCluster Plugins Documentation
-=================================
+Plugin Documentation
+====================
 
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
+   :numbered:
 
    ipython
    mysqlcluster

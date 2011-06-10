@@ -9,6 +9,7 @@ Welcome to StarCluster's documentation!
 Contents:
 
 .. toctree::
+   :hidden:
    :maxdepth: 2
 
    overview
