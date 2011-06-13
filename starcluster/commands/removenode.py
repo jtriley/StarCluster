@@ -5,9 +5,9 @@ from completers import ClusterCompleter
 
 class CmdRemoveNode(ClusterCompleter):
     """
-    addnode [options] <cluster_tag> <node>
+    removenode [options] <cluster_tag> <node> [<node> ...]
 
-    Terminate a node in the cluster
+    Terminate one or more nodes in the cluster
 
     Example:
 
@@ -20,8 +20,9 @@ class CmdRemoveNode(ClusterCompleter):
     tag = None
 
     def execute(self, args):
-        if len(args) != 2:
+        if not len(args) >= 2:
             self.parser.error("please specify a <cluster_tag> and <node>")
         tag = self.tag = args[0]
-        alias = args[1]
-        self.cm.remove_node(tag, alias)
+        aliases = args[1:]
+        for alias in aliases:
+            self.cm.remove_node(tag, alias)
