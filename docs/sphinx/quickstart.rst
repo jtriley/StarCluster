@@ -101,7 +101,7 @@ root by running: ::
 
 Once you've finished using the cluster and wish to stop paying for it: ::
 
-    $ starcluster stop mycluster
+    $ starcluster terminate mycluster
 
 Have a look at the rest of StarCluster's commands: ::
 
