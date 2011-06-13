@@ -20,6 +20,10 @@ class CmdCreateVolume(CmdBase):
 
     def addopts(self, parser):
         parser.add_option(
+            "-b", "--bid", dest="spot_bid", action="store", type="float",
+            default=None, help="Requests spot instances instead of flat "
+            "rate instances. Uses SPOT_BID as max bid for the request.")
+        parser.add_option(
             "-k", "--keypair", dest="keypair",
             action="store", type="string", default=None,
             help="The keypair to use when launching host instance " + \
