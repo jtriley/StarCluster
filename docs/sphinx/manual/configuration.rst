@@ -256,15 +256,19 @@ Amazon EBS Volumes
    Using EBS volumes with StarCluster is completely optional. If you do not wish to use EBS volumes with StarCluster, simply do not
    define any **[volume]** sections and remove or comment-out the **volumes** setting from your *cluster template(s)*.
 
+.. warning::
+   If you do not use an EBS volume with StarCluster, any data that you
+   wish to keep around after shutdown must be manually copied somewhere outside
+   of the cluster (e.g. download the data locally or move it to S3 manually).
+   This is because local instance storage on EC2 is ephemeral and does not
+   persist after an instance has been shutdown. The advantage of using EBS
+   volumes with StarCluster is that when you shutdown a particular cluster, any
+   data saved on an EBS volume attached to that cluster will be available the
+   next time the volume is attached to another cluster or EC2 instance.
+
 StarCluster has the ability to use Amazon EBS volumes to provide persistent data storage on a given cluster. If you wish to use 
 EBS volumes with StarCluster you will need to define a **[volume]** section in the configuration file for each volume you wish to 
 use with StarCluster and then add this **[volume]** section name to a *cluster template*'s **volumes** setting.
-
-However, if you do not use an EBS volume with StarCluster, any data that you wish to keep around after shutdown 
-must be manually copied somewhere outside of the cluster (e.g. download the data locally or move it to S3 manually). This is because
-local instance storage on EC2 is ephemeral and does not persist after an instance has been shutdown. The advantage of using EBS 
-volumes with StarCluster is that when you shutdown a particular cluster, any data saved on an EBS volume attached to that cluster 
-will be available the next time the volume is attached to another cluster (or EC2 instance). 
 
 To configure an EBS volume for use with Starcluster, define a new **[volume]** section for each EBS volume. For example, suppose
 we have two volumes we'd like to use: vol-c9999999 and vol-c8888888. Below is an example configuration for these volumes:
@@ -288,10 +292,12 @@ we have two volumes we'd like to use: vol-c9999999 and vol-c8888888. Below is an
     mount_path=/scratch2
     partition=2
 
-StarCluster by default attempts to mount the first partition in the volume onto the master node. It is possible to use a different 
-partition by configuring a **partition** setting in your **[volume]** section as in the *myvoldata2-alternate* example above.
+StarCluster by default attempts to mount either the entire drive or the first
+partition in the volume onto the master node. It is possible to use a different
+partition by configuring a **partition** setting in your **[volume]** section
+as in the *myvoldata2-alternate* example above.
 
-After defininig one or more **[volume]** sections, you then need to add them to a *cluster template* in order to use them. To do this,
+After defining one or more **[volume]** sections, you then need to add them to a *cluster template* in order to use them. To do this,
 specify the **[volume]** section name(s) in the **volumes** setting in one or more of your *cluster templates*. For example, to use both 
 myvoldata1 and myvoldata2 from the above example in a *cluster template* called *smallcluster*:
 
