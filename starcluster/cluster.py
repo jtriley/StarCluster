@@ -1167,8 +1167,7 @@ class Cluster(object):
         instances can not be 'stopped', they must be terminated.
         """
         self.run_plugins(method_name="on_shutdown", reverse=True)
-        if self.volumes:
-            self.detach_volumes()
+        self.detach_volumes()
         for node in self.nodes:
             node.shutdown()
         for spot in self.spot_requests:
@@ -1187,8 +1186,7 @@ class Cluster(object):
         security group.
         """
         self.run_plugins(method_name="on_shutdown", reverse=True)
-        if self.volumes:
-            self.detach_volumes()
+        self.detach_volumes()
         for node in self.nodes:
             node.terminate()
         for spot in self.spot_requests:
