@@ -690,16 +690,19 @@ class Cluster(object):
         for node in self.nodes:
             if node.dns_name == dns_name:
                 return node
+        raise exception.InstanceDoesNotExist(dns_name, label='node')
 
     def get_node_by_id(self, instance_id):
         for node in self.nodes:
             if node.id == instance_id:
                 return node
+        raise exception.InstanceDoesNotExist(instance_id, label='node')
 
     def get_node_by_alias(self, alias):
         for node in self.nodes:
             if node.alias == alias:
                 return node
+        raise exception.InstanceDoesNotExist(alias, label='node')
 
     def _nodes_in_states(self, states):
         return filter(lambda x: x.state in states, self.nodes)
