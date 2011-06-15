@@ -12,12 +12,3 @@ Contents:
    :maxdepth: 1
 
    sge
-
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

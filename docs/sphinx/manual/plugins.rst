@@ -146,7 +146,7 @@ To launch StarCluster's development shell, use the *shell* command
         >>> Importing module boto
         >>> Importing module paramiko
 
-        [~]|1> 
+        [~]|1>
 
 .. _IPython: http://ipython.scipy.org
 
@@ -154,10 +154,10 @@ This launches you into an IPython_ shell with all of the StarCluster modules
 automatically loaded. You'll also notice that you have the following variables
 available to you automagically:
 
-1. **cm** - manager object for clusters (starcluster.cluster.ClusterManager)
-2. **cfg** - object for retrieving values from the config file (starcluster.config.StarClusterConfig)
-3. **ec2** - object for interacting with EC2 (starcluster.awsutils.EasyEC2)
-4. **s3** - object for interacting with S3 (starcluster.awsutils.EasyS3)
+1. **cm** - manager object for clusters (*starcluster.cluster.ClusterManager*)
+2. **cfg** - object for retrieving values from the config file (*starcluster.config.StarClusterConfig*)
+3. **ec2** - object for interacting with EC2 (*starcluster.awsutils.EasyEC2*)
+4. **s3** - object for interacting with S3 (*starcluster.awsutils.EasyS3*)
 
 Plugin Development Workflow
 ---------------------------
