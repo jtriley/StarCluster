@@ -12,14 +12,4 @@ Contents:
    :hidden:
    :maxdepth: 2
 
-   overview
-   installation
-   quickstart
-   guides/index
-   manual/index
-   plugins/index
-   faq
-   contribute
-   hacking
-   features
-   TODO
+   contents
