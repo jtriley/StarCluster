@@ -113,7 +113,5 @@ The table has been replicated, and the cluster is working.
 Recommendations for Use
 -----------------------
 * Clusters should have three nodes at the very least.
-* NUM_REPLICAS should probably stay at 2. Consequently, there should
-be an even number of data nodes.
-* Set DATA_DIR and BACKUP_DATA_DIR to an EBS volume if you want the
-data to persist.
+* NUM_REPLICAS should probably stay at 2. Consequently, there should be an even number of data nodes.
+* Set DATA_DIR and BACKUP_DATA_DIR to an EBS volume if you want the data to persist.
