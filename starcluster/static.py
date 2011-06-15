@@ -6,7 +6,7 @@ import os
 import getpass
 import tempfile
 
-VERSION = "0.9999"
+VERSION = "0.92rc1"
 PID = os.getpid()
 TMP_DIR = tempfile.gettempdir()
 if os.path.exists("/tmp"):
