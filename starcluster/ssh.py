@@ -14,8 +14,14 @@ import glob
 import string
 import socket
 import fnmatch
-import paramiko
+import hashlib
 import posixpath
+
+import paramiko
+from paramiko import util
+from paramiko import RSAKey
+from pyasn1.codec.der import encoder
+from pyasn1.type import univ
 
 # windows does not have termios...
 try:
@@ -754,6 +760,87 @@ def main():
     print myssh.execute('hostname')
     #myssh.put('ssh.py')
     myssh.close()
+
+
+RSA_OID = univ.ObjectIdentifier('1.2.840.113549.1.1.1')
+RSA_PARAMS = ['n', 'e', 'd', 'p', 'q', 'dp', 'dq', 'invq']
+
+
+def insert_char_every_n_chars(string, char='\n', every=64):
+    return char.join(
+        string[i:i + every] for i in xrange(0, len(string), every))
+
+
+def ASN1Sequence(*vals):
+    seq = univ.Sequence()
+    for i in range(len(vals)):
+        seq.setComponentByPosition(i, vals[i])
+    return seq
+
+
+def export_rsa_to_pkcs8(params):
+    oid = ASN1Sequence(RSA_OID, univ.Null())
+    key = univ.Sequence().setComponentByPosition(0, univ.Integer(0))  # version
+    for i in range(len(RSA_PARAMS)):
+        key.setComponentByPosition(i + 1, univ.Integer(params[RSA_PARAMS[i]]))
+    octkey = encoder.encode(key)
+    seq = ASN1Sequence(univ.Integer(0), oid, univ.OctetString(octkey))
+    return encoder.encode(seq)
+
+
+def get_private_rsa_fingerprint(key_location):
+    """
+    Returns the fingerprint of a private RSA key as a 59-character string (40
+    characters separated every 2 characters by a ':'). The fingerprint is
+    computed using a SHA1 digest of the DER encoded RSA private key.
+    """
+    k = RSAKey.from_private_key_file(key_location)
+    params = dict(invq=util.mod_inverse(k.q, k.p), dp=k.d % (k.p - 1),
+                  dq=k.d % (k.q - 1), d=k.d, n=k.n, p=k.p, q=k.q, e=k.e)
+    assert len(params) == 8
+    # must convert from pkcs1 to pkcs8 and then DER encode
+    pkcs8der = export_rsa_to_pkcs8(params)
+    sha1digest = hashlib.sha1(pkcs8der).hexdigest()
+    return insert_char_every_n_chars(sha1digest, ':', 2)
+
+
+def get_public_rsa_fingerprint(pubkey_location):
+    k = RSAKey.from_private_key_file(pubkey_location)
+    md5digest = hashlib.md5(str(k)).hexdigest()
+    return insert_char_every_n_chars(md5digest, ':', 2)
+
+
+def test_create_keypair_fingerprint(keypair=None):
+    """
+    TODO: move this to 'live' tests
+    """
+    from starcluster import config
+    cfg = config.StarClusterConfig().load()
+    ec2 = cfg.get_easy_ec2()
+    if keypair is None:
+        keypair = cfg.keys.keys()[0]
+    key_location = cfg.get_key(keypair).key_location
+    localfprint = get_private_rsa_fingerprint(key_location)
+    ec2fprint = ec2.get_keypair(keypair).fingerprint
+    print 'local fingerprint: %s' % localfprint
+    print '  ec2 fingerprint: %s' % ec2fprint
+    assert localfprint == ec2fprint
+
+
+def test_import_keypair_fingerprint(keypair):
+    """
+    TODO: move this to 'live' tests
+    """
+    from starcluster import config
+    cfg = config.StarClusterConfig().load()
+    ec2 = cfg.get_easy_ec2()
+    key_location = cfg.get_key(keypair).key_location
+    localfprint = get_public_rsa_fingerprint(key_location)
+    ec2fprint = ec2.get_keypair(keypair).fingerprint
+    print 'local fingerprint: %s' % localfprint
+    print '  ec2 fingerprint: %s' % ec2fprint
+    assert localfprint == ec2fprint
+
 
 if __name__ == "__main__":
     main()
