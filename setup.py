@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 import os
 import sys
+
 from setuptools import setup, find_packages
-from starcluster import __version__
 
 src = os.path.realpath(os.path.dirname(__file__))
 sys.path.append(src)
+
+from starcluster import __version__
 
 setup(
     name='StarCluster',
