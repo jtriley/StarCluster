@@ -1,19 +1,15 @@
 #!/usr/bin/env python
 import os
-import sys
-
 from setuptools import setup, find_packages
 
-src = os.path.realpath(os.path.dirname(__file__))
-sys.path.append(src)
-
-from starcluster import __version__
+VERSION = 0.9999
+static = os.path.join('starcluster', 'static.py')
+execfile(static)  # pull VERSION from static.py
 
 setup(
     name='StarCluster',
-    version=__version__,
-    package_dir={'starcluster': 'starcluster'},
-    packages=find_packages(src),
+    version=VERSION,
+    packages=find_packages(),
     scripts=['bin/starcluster'],
     install_requires=["paramiko==1.7.7.1", "boto==2.0b4", "workerpool==0.9.2"],
     zip_safe=True,
