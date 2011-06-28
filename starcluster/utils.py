@@ -217,8 +217,8 @@ def iso_to_localtime_tuple(iso):
 try:
     import IPython
     if IPython.__version__ < '0.11':
-        from IPython.Shell import Embed
-        ipy_shell = Embed(argv=[])
+        from IPython.Shell import IPShellEmbed
+        ipy_shell = IPShellEmbed(argv=[])
     else:
         from IPython import embed
         ipy_shell = lambda local_ns=None: embed(user_ns=local_ns)
