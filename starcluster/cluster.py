@@ -6,7 +6,6 @@ import zlib
 import string
 import pprint
 import base64
-import inspect
 import cPickle
 import traceback
 
@@ -437,33 +436,22 @@ class Cluster(object):
                 raise exception.PluginError(
                     ("Plugin %s must be a subclass of " + \
                      "starcluster.clustersetup.ClusterSetup") % setup_class)
-            (args, varargs,
-             keywords, defaults) = inspect.getargspec(klass.__init__)
-            log.debug('plugin args = %s' % args)
-            log.debug('plugin varargs = %s' % varargs)
-            log.debug('plugin keywords = %s' % keywords)
-            log.debug('plugin defaults = %s' % str(defaults))
-            args = args[1:]  # ignore self
-            nargs = len(args)
-            ndefaults = 0
-            if defaults:
-                ndefaults = len(defaults)
-            nrequired = nargs - ndefaults
-            args = args[:nrequired]
-            kwargs = args[nrequired:]
+            args, kwargs = utils.get_arg_spec(klass.__init__)
             config_args = []
             for arg in args:
                 if arg in plugin:
                     config_args.append(plugin.get(arg))
+            log.debug("config_args = %s" % config_args)
+            missing_args = filter(lambda arg: arg not in config_args, args)
+            if missing_args:
+                raise exception.PluginError(
+                    "Not enough settings provided for plugin %s (missing: %s)"
+                    % (plugin_name, ', '.join(missing_args)))
             config_kwargs = {}
             for arg in kwargs:
                 if arg in plugin:
                     config_kwargs[arg] = plugin.get(arg)
-            log.debug("config_args = %s" % config_args)
             log.debug("config_kwargs = %s" % config_kwargs)
-            if nrequired > len(config_args):
-                raise exception.PluginError(
-                "Not enough settings provided for plugin %s" % plugin_name)
             plugs.append((plugin_name, klass(*config_args, **config_kwargs)))
         return plugs
 

@@ -7,6 +7,7 @@ import os
 import re
 import time
 import types
+import inspect
 import calendar
 import urlparse
 from datetime import datetime
@@ -415,3 +416,30 @@ def test_version_to_float():
     assert program_version_greater("0.92", "0.92b1")
     assert program_version_greater("0.9999", "0.92b3")
     print("All tests passed")
+
+
+def get_arg_spec(func):
+    """
+    Convenience wrapper around inspect.getargspec
+
+    Returns a tuple whose first element is a list containing the names of all
+    required arguments and whose second element is a list containing the names
+    of all keyword (optional) arguments.
+    """
+    allargs, varargs, keywords, defaults = inspect.getargspec(func)
+    if 'self' in allargs:
+        allargs.remove('self')  # ignore self
+    nargs = len(allargs)
+    ndefaults = 0
+    if defaults:
+        ndefaults = len(defaults)
+    nrequired = nargs - ndefaults
+    args = allargs[:nrequired]
+    kwargs = allargs[nrequired:]
+    log.debug('nargs = %s' % nargs)
+    log.debug('ndefaults = %s' % ndefaults)
+    log.debug('nrequired = %s' % nrequired)
+    log.debug('args = %s' % args)
+    log.debug('kwargs = %s' % kwargs)
+    log.debug('defaults = %s' % str(defaults))
+    return args, kwargs
