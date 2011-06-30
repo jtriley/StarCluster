@@ -13,7 +13,6 @@ setup(
     scripts=['bin/starcluster'],
     install_requires=["paramiko==1.7.7.1", "boto==2.0b4", "workerpool==0.9.2"],
     zip_safe=True,
-    download_url='http://web.mit.edu/starcluster',
     license='LGPL3',
     author='Justin Riley',
     author_email='justin.t.riley@gmail.com',
