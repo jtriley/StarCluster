@@ -438,11 +438,13 @@ class Cluster(object):
                      "starcluster.clustersetup.ClusterSetup") % setup_class)
             args, kwargs = utils.get_arg_spec(klass.__init__)
             config_args = []
+            missing_args = []
             for arg in args:
                 if arg in plugin:
                     config_args.append(plugin.get(arg))
+                else:
+                    missing_args.append(arg)
             log.debug("config_args = %s" % config_args)
-            missing_args = filter(lambda arg: arg not in config_args, args)
             if missing_args:
                 raise exception.PluginError(
                     "Not enough settings provided for plugin %s (missing: %s)"
