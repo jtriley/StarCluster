@@ -1,6 +1,58 @@
 #!/usr/bin/env python
 import os
-from setuptools import setup, find_packages
+
+try:
+    from setuptools import setup, find_packages
+    extra = dict(test_suite="starcluster.tests",
+                 tests_require="nose",
+                 install_requires=["paramiko==1.7.7.1", "boto==2.0b4",
+                                   "workerpool==0.9.2"],
+                 zip_safe=True)
+except ImportError:
+    import string
+    from distutils.core import setup
+
+    def convert_path(pathname):
+        """
+        Local copy of setuptools.convert_path used by find_packages (only used
+        with distutils which is missing the find_packages feature)
+        """
+        if os.sep == '/':
+            return pathname
+        if not pathname:
+            return pathname
+        if pathname[0] == '/':
+            raise ValueError("path '%s' cannot be absolute" % pathname)
+        if pathname[-1] == '/':
+            raise ValueError("path '%s' cannot end with '/'" % pathname)
+        paths = string.split(pathname, '/')
+        while '.' in paths:
+            paths.remove('.')
+        if not paths:
+            return os.curdir
+        return os.path.join(*paths)
+
+    def find_packages(where='.', exclude=()):
+        """
+        Local copy of setuptools.find_packages (only used with distutils which
+        is missing the find_packages feature)
+        """
+        out = []
+        stack = [(convert_path(where), '')]
+        while stack:
+            where, prefix = stack.pop(0)
+            for name in os.listdir(where):
+                fn = os.path.join(where, name)
+                if ('.' not in name and os.path.isdir(fn) and
+                    os.path.isfile(os.path.join(fn, '__init__.py'))):
+                    out.append(prefix + name)
+                    stack.append((fn, prefix + name + '.'))
+        for pat in list(exclude) + ['ez_setup', 'distribute_setup']:
+            from fnmatch import fnmatchcase
+            out = [item for item in out if not fnmatchcase(item, pat)]
+        return out
+
+    extra = {}
 
 VERSION = 0.9999
 static = os.path.join('starcluster', 'static.py')
@@ -11,8 +63,6 @@ setup(
     version=VERSION,
     packages=find_packages(),
     scripts=['bin/starcluster'],
-    install_requires=["paramiko==1.7.7.1", "boto==2.0b4", "workerpool==0.9.2"],
-    zip_safe=True,
     license='LGPL3',
     author='Justin Riley',
     author_email='justin.t.riley@gmail.com',
@@ -69,4 +119,5 @@ setup(
         'Topic :: System :: Distributed Computing',
         'Topic :: System :: Clustering',
     ],
+    **extra
 )
