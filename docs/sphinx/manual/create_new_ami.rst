@@ -100,6 +100,7 @@ AMI. Below are some of the advantages and disadvantages of using S3 vs EBS:
 +--------------------------------+------------------------------------------------------------------------------------------------------------------+-----------------------------------+
 | Instance Usage Charge          | No charge for stopped instances. Charged full instance hour for *every* transition from stopped to running state | Not Applicable                    |
 +--------------------------------+------------------------------------------------------------------------------------------------------------------+-----------------------------------+
+(see `Amazon's summary of EBS vs S3 backed AMIs`_ for more details)
 
 If you're in doubt about which type of AMI to create, choose an EBS-backed AMI.
 This will allow you to create clusters that you can start and stop repeatedly
@@ -149,3 +150,4 @@ AMI id that you can then use in the *node_image_id*/*master_image_id* settings
 in your *cluster templates*.
 
 .. _report an issue on github: https://github.com/jtriley/StarCluster/issues
+.. _Amazon's summary of EBS vs S3 backed AMIs: http://docs.amazonwebservices.com/AWSEC2/latest/UserGuide/index.html?Concepts_BootFromEBS.html#summary_differences_ebs_s3
