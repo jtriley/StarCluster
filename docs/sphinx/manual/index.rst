@@ -11,7 +11,7 @@ StarCluster User Manual
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
    configuration
    volumes
