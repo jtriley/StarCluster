@@ -11,6 +11,7 @@ __all__ = [
     "clustersetup",
     "node",
     "ssh",
+    "scp",
     "plugins",
     "balancers",
     "managers",
