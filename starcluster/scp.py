@@ -269,6 +269,8 @@ class SCPClient(object):
                 pos = file_hdl.tell()
                 if self._progress:
                     self._progress(path, size, pos)
+            if size == 0 and self._progress:
+                self._progress(path, 1, 1)
 
             msg = chan.recv(512)
             if msg and msg[0] != '\x00':
