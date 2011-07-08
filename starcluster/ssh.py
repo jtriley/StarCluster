@@ -360,6 +360,11 @@ class SSHClient(object):
         if pbar.finished:
             pbar.reset()
 
+    def _make_list(self, obj):
+        if not isinstance(obj, (list, tuple)):
+            return [obj]
+        return obj
+
     def get(self, remotepath, localpath=''):
         """
         Copies a file between the remote host and the local host.
@@ -367,12 +372,17 @@ class SSHClient(object):
         recursive = self.isdir(remotepath)
         self.scp.get(remotepath, localpath, recursive=recursive)
 
-    def put(self, localpath, remotepath='.'):
+    def put(self, localpaths, remotepath='.'):
         """
-        Copies a file between the local host and the remote host.
+        Copies one or more files from the local host to the remote host.
         """
-        recursive = os.path.isdir(localpath)
-        self.scp.put(localpath, remote_path=remotepath, recursive=recursive)
+        localpaths = self._make_list(localpaths)
+        recursive = False
+        for lpath in localpaths:
+            if os.path.isdir(lpath):
+                recursive = True
+                break
+        self.scp.put(localpaths, remote_path=remotepath, recursive=recursive)
 
     def execute_async(self, command):
         """

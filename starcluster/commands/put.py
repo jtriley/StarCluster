@@ -7,7 +7,7 @@ from completers import ClusterCompleter
 
 class CmdPut(ClusterCompleter):
     """
-    put [options] <cluster_tag> <local_file_or_dir> <remote_destination>
+    put [options] <cluster_tag> [<local_file_or_dir> ...] <remote_destination>
 
     Copy files to a running cluster
 
@@ -22,6 +22,9 @@ class CmdPut(ClusterCompleter):
         # Copy a file or dir to a node (node001 in this example)
         $ starcluster put mycluster --node node001 /local/path /remote/path
 
+        # Copy two files or dirs to a node (node001 in this example)
+        $ starcluster put mycluster --node node001 /local/dir /local/file /remote/dir
+
     This will copy a file or directory to the remote server
     """
     names = ['put']
@@ -34,8 +37,8 @@ class CmdPut(ClusterCompleter):
 
     def execute(self, args):
         if len(args) < 3:
-            self.parser.error("please specify a cluster, local file or " +
-                              "directory, and a remote destination path")
+            self.parser.error("please specify a cluster, local files or " +
+                              "directories, and a remote destination path")
         ctag = args[0]
         rpath = args[-1]
         lpaths = args[1:-1]
@@ -50,5 +53,4 @@ class CmdPut(ClusterCompleter):
         if len(lpaths) > 1 and not node.ssh.isdir(rpath):
             raise exception.BaseException("Remote path does not exist: %s" %
                                           rpath)
-        for lpath in lpaths:
-            node.ssh.put(lpath, rpath)
+        node.ssh.put(lpaths, rpath)
