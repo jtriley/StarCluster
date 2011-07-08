@@ -365,12 +365,17 @@ class SSHClient(object):
             return [obj]
         return obj
 
-    def get(self, remotepath, localpath=''):
+    def get(self, remotepaths, localpath=''):
         """
-        Copies a file between the remote host and the local host.
+        Copies one or more files from the remote host to the local host.
         """
-        recursive = self.isdir(remotepath)
-        self.scp.get(remotepath, localpath, recursive=recursive)
+        remotepaths = self._make_list(remotepaths)
+        recursive = False
+        for rpath in remotepaths:
+            if self.isdir(rpath):
+                recursive = True
+                break
+        self.scp.get(remotepaths, localpath, recursive=recursive)
 
     def put(self, localpaths, remotepath='.'):
         """
