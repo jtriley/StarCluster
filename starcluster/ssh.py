@@ -23,7 +23,9 @@ try:
 except ImportError:
     HAS_TERMIOS = False
 
+from starcluster import scp
 from starcluster import exception
+from starcluster import progressbar
 from starcluster.logger import log
 
 
@@ -50,7 +52,9 @@ class SSHClient(object):
         self._password = password
         self._timeout = timeout
         self._sftp = None
+        self._scp = None
         self._transport = None
+        self._progress_bar = None
         if private_key:
             self._pkey = self.load_private_key(private_key, private_key_pass)
         elif not password:
@@ -164,6 +168,15 @@ class SSHClient(object):
             log.debug("creating sftp connection")
             self._sftp = paramiko.SFTPClient.from_transport(self.transport)
         return self._sftp
+
+    @property
+    def scp(self):
+        """Initialize the SCP client."""
+        if not self._scp:
+            log.debug("creating scp connection")
+            self._scp = scp.SCPClient(self.transport,
+                                      progress=self._file_transfer_progress)
+        return self._scp
 
     def generate_rsa_key(self):
         return paramiko.RSAKey.generate(2048)
@@ -326,22 +339,40 @@ class SSHClient(object):
         """
         return self.sftp.stat(path)
 
-    def get(self, remotepath, localpath=None):
+    @property
+    def progress_bar(self):
+        if not self._progress_bar:
+            widgets = ['FileTransfer: ', ' ', progressbar.Percentage(), ' ',
+                       progressbar.Bar(marker=progressbar.RotatingMarker()),
+                       ' ', progressbar.ETA(), ' ',
+                       progressbar.FileTransferSpeed()]
+            pbar = progressbar.ProgressBar(widgets=widgets,
+                                           maxval=1,
+                                           force_update=True)
+            self._progress_bar = pbar
+        return self._progress_bar
+
+    def _file_transfer_progress(self, filename, size, sent):
+        pbar = self.progress_bar
+        pbar.widgets[0] = filename
+        pbar.maxval = size
+        pbar.update(sent)
+        if pbar.finished:
+            pbar.reset()
+
+    def get(self, remotepath, localpath=''):
         """
         Copies a file between the remote host and the local host.
         """
-        if not localpath:
-            localpath = os.path.split(remotepath)[1]
-        self.sftp_connect()
-        self.sftp.get(remotepath, localpath)
+        recursive = self.isdir(remotepath)
+        self.scp.get(remotepath, localpath, recursive=recursive)
 
-    def put(self, localpath, remotepath=None):
+    def put(self, localpath, remotepath='.'):
         """
         Copies a file between the local host and the remote host.
         """
-        if not remotepath:
-            remotepath = os.path.split(localpath)[1]
-        self.sftp.put(localpath, remotepath)
+        recursive = os.path.isdir(localpath)
+        self.scp.put(localpath, remote_path=remotepath, recursive=recursive)
 
     def execute_async(self, command):
         """

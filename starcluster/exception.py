@@ -55,6 +55,11 @@ class SSHNoCredentialsError(SSHError):
         self.msg = "No password or key specified"
 
 
+class SCPException(BaseException):
+    """SCP exception class"""
+    pass
+
+
 class AWSError(BaseException):
     """Base exception for all AWS related errors"""
 

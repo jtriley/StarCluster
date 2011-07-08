@@ -34,6 +34,7 @@ from loadbalance import CmdLoadBalance
 from shell import CmdShell
 from createkey import CmdCreateKey
 from removekey import CmdRemoveKey
+from put import CmdPut
 from help import CmdHelp
 
 all_cmds = [
@@ -44,6 +45,7 @@ all_cmds = [
     CmdListClusters(),
     CmdSshMaster(),
     CmdSshNode(),
+    CmdPut(),
     CmdAddNode(),
     CmdRemoveNode(),
     CmdLoadBalance(),
