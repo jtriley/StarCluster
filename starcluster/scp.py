@@ -122,6 +122,8 @@ class SCPClient(object):
         prsv = ('', ' -p')[preserve_times]
         self.channel = self.transport.open_session()
         self.channel.settimeout(self.socket_timeout)
+        if isinstance(remote_path, (list, tuple)):
+            remote_path = ' '.join(remote_path)
         self.channel.exec_command('scp%s%s -f %s' % (rcsv, prsv, remote_path))
         self._recv_all()
 
