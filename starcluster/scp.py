@@ -154,6 +154,8 @@ class SCPClient(object):
                 file_pos = file_hdl.tell()
                 if self._progress:
                     self._progress(basename, size, file_pos)
+            if size == 0 and self._progress:
+                self._progress(basename, 1, 1)
             chan.sendall('\x00')
             file_hdl.close()
 
