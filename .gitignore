@@ -1,9 +1,12 @@
 *.pyc
-*.swp
+*.pyo
 *.pkl
-StarCluster.egg-info
+*~
+.*.swp
+MANIFEST
 build
 dist
+StarCluster.egg-info
 docs/sphinx/_build
 docs/epydoc/apidocs
 src
