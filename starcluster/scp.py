@@ -160,8 +160,12 @@ class SCPClient(object):
             file_hdl.close()
 
     def _send_recursive(self, files):
+        single_files = []
         for base in files:
             lastdir = base
+            if not os.path.isdir(base):
+                single_files.append(base)
+                continue
             for root, dirs, fls in os.walk(base):
                 # pop back out to the next dir in the walk
                 while lastdir != os.path.commonprefix([lastdir, root]):
@@ -170,6 +174,9 @@ class SCPClient(object):
                 self._send_pushd(root)
                 lastdir = root
                 self._send_files([os.path.join(root, f) for f in fls])
+        if single_files:
+            self._send_popd()
+            self._send_files(single_files)
 
     def _send_pushd(self, directory):
         (mode, size, mtime, atime) = self._read_stats(directory)
