@@ -184,5 +184,6 @@ NODE_INSTANCE_TYPE = m1.small
 }
 
 DASHES = '-' * 10
-copy_paste_template = DASHES + ' COPY BELOW THIS LINE ' + DASHES + '\n' + \
-        config_template + '\n' + DASHES + ' END COPY ' + DASHES + '\n'
+copy_below = ' '.join([DASHES, 'COPY BELOW THIS LINE', DASHES])
+end_copy = ' '.join([DASHES, 'END COPY', DASHES])
+copy_paste_template = '\n'.join([copy_below, config_template, end_copy]) + '\n'
