@@ -10,8 +10,10 @@ import os
 import re
 import sys
 import stat
+import glob
 import string
 import socket
+import fnmatch
 import paramiko
 import posixpath
 
@@ -291,6 +293,17 @@ class SSHClient(object):
         except IOError:
             return False
 
+    def lpath_exists(self, path):
+        """
+        Test whether a remote path exists.
+        Returns True for broken symbolic links
+        """
+        try:
+            self.lstat(path)
+            return True
+        except IOError:
+            return False
+
     def chown(self, uid, gid, remote_file):
         """
         Apply permissions (mode) to remote_file
@@ -338,6 +351,12 @@ class SSHClient(object):
         Perform a stat system call on the given remote path.
         """
         return self.sftp.stat(path)
+
+    def lstat(self, path):
+        """
+        Same as stat but doesn't follow symlinks
+        """
+        return self.sftp.lstat(path)
 
     @property
     def progress_bar(self):
@@ -585,6 +604,67 @@ class SSHClient(object):
 
 # for backwards compatibility
 Connection = SSHClient
+
+
+class SSHGlob(object):
+
+    def __init__(self, ssh_client):
+        self.ssh = ssh_client
+
+    def glob(self, pathname):
+        return list(self.iglob(pathname))
+
+    def iglob(self, pathname):
+        """
+        Return an iterator which yields the paths matching a pathname pattern.
+        The pattern may contain simple shell-style wildcards a la fnmatch.
+        """
+        if not glob.has_magic(pathname):
+            if self.ssh.lpath_exists(pathname):
+                yield pathname
+            return
+        dirname, basename = posixpath.split(pathname)
+        if not dirname:
+            for name in self.glob1(posixpath.curdir, basename):
+                yield name
+            return
+        if glob.has_magic(dirname):
+            dirs = self.iglob(dirname)
+        else:
+            dirs = [dirname]
+        if glob.has_magic(basename):
+            glob_in_dir = self.glob1
+        else:
+            glob_in_dir = self.glob0
+        for dirname in dirs:
+            for name in glob_in_dir(dirname, basename):
+                yield posixpath.join(dirname, name)
+
+    def glob0(self, dirname, basename):
+        if basename == '':
+            # `os.path.split()` returns an empty basename for paths ending with
+            # a directory separator.  'q*x/' should match only directories.
+            if self.ssh.isdir(dirname):
+                return [basename]
+        else:
+            if self.ssh.lexists(posixpath.join(dirname, basename)):
+                return [basename]
+        return []
+
+    def glob1(self, dirname, pattern):
+        if not dirname:
+            dirname = posixpath.curdir
+        if isinstance(pattern, unicode) and not isinstance(dirname, unicode):
+            #encoding = sys.getfilesystemencoding() or sys.getdefaultencoding()
+            #dirname = unicode(dirname, encoding)
+            dirname = unicode(dirname, 'UTF-8')
+        try:
+            names = [os.path.basename(n) for n in self.ssh.ls(dirname)]
+        except os.error:
+            return []
+        if pattern[0] != '.':
+            names = filter(lambda x: x[0] != '.', names)
+        return fnmatch.filter(names, pattern)
 
 
 def main():
