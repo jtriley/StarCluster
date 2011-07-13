@@ -8,6 +8,7 @@ import re
 import time
 import base64
 import string
+import jinja2
 import tempfile
 
 import boto
@@ -1062,34 +1063,23 @@ class EasyEC2(EasyAWS):
                                         product_description="Linux/UNIX")
         if not hist:
             raise exception.SpotHistoryError(start, end)
-        dates = [utils.iso_to_datetime_tuple(i.timestamp) for i in hist]
+        dates = [utils.iso_to_javascript_timestamp(i.timestamp) for i in hist]
         prices = [i.price for i in hist]
         maximum = max(prices)
         avg = sum(prices) / len(prices)
         log.info("Current price: $%.2f" % hist[-1].price)
         log.info("Max price: $%.2f" % maximum)
         log.info("Average price: $%.2f" % avg)
+        data = [list(point) for point in zip(dates, prices)]
         if plot:
-            try:
-                import pylab
-                pylab.plot_date(pylab.date2num(dates), prices, linestyle='-')
-                pylab.xlabel('Date')
-                pylab.ylabel('Price (US Dollars)')
-                pylab.title('%s Price vs Date (%s - %s)' % (instance_type,
-                                                            start, end))
-                xmin, xmax = pylab.xlim()
-                ymin, ymax = pylab.ylim()
-                pylab.xlim([xmin - 1, xmax + 1])
-                pylab.ylim([0, ymax * (1.02)])
-                pylab.grid(True)
-                pylab.show()
-            except ImportError, e:
-                log.error("Error importing pylab:")
-                log.error(str(e))
-                log.error("please ensure matplotlib is installed and that:")
-                log.error("   $ python -c 'import pylab'")
-                log.error("completes without error")
-        return zip(dates, prices)
+            env = jinja2.Environment(loader=jinja2.PackageLoader('starcluster',
+                                                                 'staticweb'))
+            templ = env.get_template('flot.html')
+            # TODO: Implement single-request webserver and launch web browser
+            out = open('/tmp/spot.html', 'w')
+            out.write(templ.render(time_series_data=str(data)))
+            out.close()
+        return data
 
     def show_console_output(self, instance_id):
         instance = self.get_instance(instance_id)

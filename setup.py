@@ -6,7 +6,7 @@ try:
     extra = dict(test_suite="starcluster.tests",
                  tests_require="nose",
                  install_requires=["paramiko==1.7.7.1", "boto==2.0b4",
-                                   "workerpool==0.9.2"],
+                                   "workerpool==0.9.2", "Jinja2==2.5.5"],
                  zip_safe=True)
 except ImportError:
     import string
