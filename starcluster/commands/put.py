@@ -16,14 +16,15 @@ class CmdPut(ClusterCompleter):
         # Copy a file or dir to the master as root
         $ starcluster put mycluster /path/to/file/or/dir /path/on/remote/server
 
+        # Copy one or more files or dirs to the master as root
+        $ starcluster put mycluster /local/dir /local/file /remote/dir
+
         # Copy a file or dir to the master as normal user
         $ starcluster put mycluster --user myuser /local/path /remote/path
 
         # Copy a file or dir to a node (node001 in this example)
         $ starcluster put mycluster --node node001 /local/path /remote/path
 
-        # Copy two files or dirs to a node (node001 in this example)
-        $ starcluster put mycluster --node node001 /local/dir /local/file /remote/dir
 
     This will copy a file or directory to the remote server
     """
