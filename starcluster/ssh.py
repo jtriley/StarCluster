@@ -61,6 +61,7 @@ class SSHClient(object):
             self._pkey = self.load_private_key(private_key, private_key_pass)
         elif not password:
             raise exception.SSHNoCredentialsError()
+        self._glob = SSHGlob(self)
 
     def load_private_key(self, private_key, private_key_pass=None):
         # Use Private Key.
@@ -326,6 +327,9 @@ class SSHClient(object):
         """
         return [os.path.join(path, f) for f in self.sftp.listdir(path)]
 
+    def glob(self, pattern):
+        return self._glob.glob(pattern)
+
     def isdir(self, path):
         """
         Return true if the remote path refers to an existing directory.
@@ -389,7 +393,23 @@ class SSHClient(object):
         Copies one or more files from the remote host to the local host.
         """
         remotepaths = self._make_list(remotepaths)
+        localpath = localpath or os.getcwd()
+        globs = []
+        noglobs = []
+        for rpath in remotepaths:
+            if glob.has_magic(rpath):
+                globs.append(rpath)
+            else:
+                noglobs.append(rpath)
+        globresults = [self.glob(g) for g in globs]
+        remotepaths = noglobs
+        for globresult in globresults:
+            remotepaths.extend(globresult)
         recursive = False
+        for rpath in remotepaths:
+            if not self.path_exists(rpath):
+                raise exception.BaseException(
+                    "Remote file or directory does not exist: %s" % rpath)
         for rpath in remotepaths:
             if self.isdir(rpath):
                 recursive = True
