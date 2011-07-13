@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os
+import glob
 
 from starcluster import exception
 from completers import ClusterCompleter
@@ -43,13 +43,10 @@ class CmdGet(ClusterCompleter):
         rpaths = args[1:-1]
         cl = self.cm.get_cluster(ctag)
         node = cl.get_node_by_alias(self.opts.node)
-        for rpath in rpaths:
-            if not node.ssh.path_exists(rpath):
-                raise exception.BaseException(
-                    "Remote file or directory does not exist: %s" % lpath)
         if self.opts.user:
             node.ssh.connect(username=self.opts.user)
-        if len(rpaths) > 1 and not os.path.isdir(lpath):
-            raise exception.BaseException("Local path is not a directory: %s" %
-                                          lpath)
+        for rpath in rpaths:
+            if not glob.has_magic(rpath) and not node.ssh.path_exists(rpath):
+                raise exception.BaseException(
+                    "Remote file or directory does not exist: %s" % lpath)
         node.ssh.get(rpaths, lpath)
