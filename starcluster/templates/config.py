@@ -15,6 +15,8 @@ DEFAULT_TEMPLATE=smallcluster
 ENABLE_EXPERIMENTAL=False
 # number of seconds to wait when polling instances (default: 30s)
 #REFRESH_INTERVAL=15
+# specify a web browser to launch when viewing spot history plots
+#WEB_BROWSER=chromium
 
 [aws info]
 # This is the AWS credentials section.
