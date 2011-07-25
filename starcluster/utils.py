@@ -209,11 +209,26 @@ def get_elapsed_time(past_time):
     return time.strftime("%H:%M:%S", time.gmtime(delta.seconds))
 
 
-def iso_to_localtime_tuple(iso):
+def iso_to_unix_time(iso):
     dtup = iso_to_datetime_tuple(iso)
     secs = calendar.timegm(dtup.timetuple())
+    return secs
+
+
+def iso_to_javascript_timestamp(iso):
+    """
+    Convert dates to Javascript timestamps (number of milliseconds since
+    January 1st 1970 UTC)
+    """
+    secs = iso_to_unix_time(iso)
+    return secs * 1000
+
+
+def iso_to_localtime_tuple(iso):
+    secs = iso_to_unix_time(iso)
     t = time.mktime(time.localtime(secs))
     return datetime.fromtimestamp(t)
+
 
 try:
     import IPython

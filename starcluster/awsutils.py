@@ -17,6 +17,7 @@ import boto.s3.connection
 from starcluster import image
 from starcluster import utils
 from starcluster import static
+from starcluster import webtools
 from starcluster import exception
 from starcluster import progressbar
 from starcluster.utils import print_timing
@@ -1050,46 +1051,55 @@ class EasyEC2(EasyAWS):
     def get_security_groups(self, filters=None):
         return self.conn.get_all_security_groups(filters=filters)
 
-    def get_spot_history(self, instance_type,
-                         start=None, end=None, plot=False):
-        if not utils.is_iso_time(start):
+    def get_spot_history(self, instance_type, start=None, end=None, plot=False,
+                         plot_server_interface="localhost",
+                         plot_launch_browser=True, plot_shutdown_server=True):
+        if start and not utils.is_iso_time(start):
             raise exception.InvalidIsoDate(start)
-        if not utils.is_iso_time(end):
+        if end and not utils.is_iso_time(end):
             raise exception.InvalidIsoDate(end)
-        hist = self.conn.get_spot_price_history(start_time=start,
-                                        end_time=end,
-                                        instance_type=instance_type,
-                                        product_description="Linux/UNIX")
+        pdesc = "Linux/UNIX"
+        hist = self.conn.get_spot_price_history(start_time=start, end_time=end,
+                                                instance_type=instance_type,
+                                                product_description=pdesc)
         if not hist:
             raise exception.SpotHistoryError(start, end)
-        dates = [utils.iso_to_datetime_tuple(i.timestamp) for i in hist]
-        prices = [i.price for i in hist]
+        dates = []
+        prices = []
+        data = []
+        for item in hist:
+            timestamp = utils.iso_to_javascript_timestamp(item.timestamp)
+            price = item.price
+            dates.append(timestamp)
+            prices.append(price)
+            data.append([timestamp, price])
         maximum = max(prices)
-        avg = sum(prices) / len(prices)
-        log.info("Current price: $%.2f" % hist[-1].price)
+        avg = sum(prices) / float(len(prices))
+        log.info("Current price: $%.2f" % prices[-1])
         log.info("Max price: $%.2f" % maximum)
         log.info("Average price: $%.2f" % avg)
         if plot:
-            try:
-                import pylab
-                pylab.plot_date(pylab.date2num(dates), prices, linestyle='-')
-                pylab.xlabel('Date')
-                pylab.ylabel('Price (US Dollars)')
-                pylab.title('%s Price vs Date (%s - %s)' % (instance_type,
-                                                            start, end))
-                xmin, xmax = pylab.xlim()
-                ymin, ymax = pylab.ylim()
-                pylab.xlim([xmin - 1, xmax + 1])
-                pylab.ylim([0, ymax * (1.02)])
-                pylab.grid(True)
-                pylab.show()
-            except ImportError, e:
-                log.error("Error importing pylab:")
-                log.error(str(e))
-                log.error("please ensure matplotlib is installed and that:")
-                log.error("   $ python -c 'import pylab'")
-                log.error("completes without error")
-        return zip(dates, prices)
+            context = dict(instance_type=instance_type,
+                           start=start, end=end,
+                           time_series_data=str(data),
+                           shutdown=plot_shutdown_server)
+            log.info("", extra=dict(__raw__=True))
+            log.info("Starting StarCluster Webserver...")
+            s = webtools.get_template_server('web', context=context,
+                                             interface=plot_server_interface)
+            base_url = "http://%s:%s" % s.server_address
+            shutdown_url = '/'.join([base_url, 'shutdown'])
+            spot_url = "http://%s:%s/spothistory.html" % s.server_address
+            log.info("Server address is %s" % base_url)
+            log.info("(use CTRL-C or navigate to %s to shutdown server)" %
+                     shutdown_url)
+            if plot_launch_browser:
+                webtools.open_browser(spot_url)
+            else:
+                log.info("Browse to %s to view the spot history plot" %
+                         spot_url)
+            s.serve_forever()
+        return data
 
     def show_console_output(self, instance_id):
         instance = self.get_instance(instance_id)
