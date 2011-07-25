@@ -234,9 +234,10 @@ class DefaultClusterSetup(ClusterSetup):
                 log.error("missing required settings for vol %s" % vol)
                 continue
             if not master.ssh.path_exists(device):
-                log.warn("Cannot find device %s for volume %s" % (device, vol))
+                log.warn("Cannot find device %s for volume %s" %
+                         (device, vol_id))
                 log.warn("Not mounting %s on %s" % (vol_id, mount_path))
-                log.warn("This usually means there was a problem" + \
+                log.warn("This usually means there was a problem "
                          "attaching the EBS volume to the master node")
                 continue
             if not volume_partition:
