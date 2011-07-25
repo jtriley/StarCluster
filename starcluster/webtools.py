@@ -10,6 +10,7 @@ import subprocess
 import BaseHTTPServer as httpserv
 
 from starcluster import templates
+from starcluster import exception
 from starcluster.logger import log
 
 ERROR_MSG = """\
@@ -177,7 +178,7 @@ def open_browser(url, browser_cmd=None):
         cmd = shlex.split(browser_cmd)
         arg0 = cmd[0]
         if not _which(arg0):
-            raise Exception("browser %s does not exist" % arg0)
+            raise exception.BaseException("browser %s does not exist" % arg0)
         if "%s" not in browser_cmd:
             cmd.append("%s")
         browser = BackgroundBrowser(cmd)
