@@ -1053,7 +1053,8 @@ class EasyEC2(EasyAWS):
 
     def get_spot_history(self, instance_type, start=None, end=None, plot=False,
                          plot_server_interface="localhost",
-                         plot_launch_browser=True, plot_shutdown_server=True):
+                         plot_launch_browser=True, plot_web_browser=None,
+                         plot_shutdown_server=True):
         if start and not utils.is_iso_time(start):
             raise exception.InvalidIsoDate(start)
         if end and not utils.is_iso_time(end):
@@ -1094,7 +1095,7 @@ class EasyEC2(EasyAWS):
             log.info("(use CTRL-C or navigate to %s to shutdown server)" %
                      shutdown_url)
             if plot_launch_browser:
-                webtools.open_browser(spot_url)
+                webtools.open_browser(spot_url, plot_web_browser)
             else:
                 log.info("Browse to %s to view the spot history plot" %
                          spot_url)
