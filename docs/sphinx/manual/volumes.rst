@@ -26,24 +26,24 @@ In this case, whenever a cluster is launched using the *smallcluster* template
 StarCluster will attach the EBS volume *vol-v99999* to the *master* node on
 */data* and then NFS-share */data* to all the nodes in the cluster.
 
-Create, Partition, and Format a new EBS Volume
-----------------------------------------------
+Create and Format a new EBS Volume
+----------------------------------
 StarCluster's **createvolume** command completely automates the process of
-creating a new EBS volume, launching a *host* instance to attach the volume to,
-partitioning the volume, and formatting the volume.
+creating a new EBS volume. This includes launching a host instance in the
+target zone, attaching the new volume to the host, and formatting the entire
+volume.
 
 .. warning::
 
-        The **createvolume** command only supports partitioning the *entire
-        volume* into a single partition that uses all of the space on the
-        device. If you *really* need more than one partition you're probably
-        better off creating a new volume entirely.  If this is not the case and
-        you have a use-case for partitioning an EBS volume into more than one
-        partition, please send a note to the StarCluster mailing list
-        (starcluster 'at' mit 'dot' edu).
+        The **createvolume** command *only* supports formatting the *entire
+        volume* using all of the space on the device. If you need multiple
+        partitions you're probably better off creating multiple volumes
+        instead. If this is not the case and you have a use-case for
+        partitioning EBS volumes please send a note to the StarCluster mailing
+        list (starcluster 'at' mit 'dot' edu).
 
-To have StarCluster create, partition, and format a new volume for you
-automatically simply run: ::
+To create and format a new volume simply specify a volume size (in GB) and the
+zone you want to create the volume in::
 
         $ starcluster createvolume 20 us-east-1c
 
@@ -59,12 +59,12 @@ volume host: ::
 .. warning::
 
         In previous versions the **createvolume** command used to terminate the
-        host instance after creating the volume, however, the latest version
-        **does not do this by default** in order to allow multiple volumes to
-        be created in the same zone with a *single* host instance. You can pass
-        the *--shutdown-volume-host* option to the *createvolume* command to
-        have StarCluster automatically shutdown the volume host after creating
-        the new volume.
+        host instance after creating the volume. **The latest version does not
+        do this by default** in order to allow multiple volumes to be created
+        in the same zone with a *single* host instance. You can pass the
+        *--shutdown-volume-host* option to the *createvolume* command to have
+        StarCluster automatically shutdown the volume host after creating the
+        new volume.
 
 Let's look at an example::
 
