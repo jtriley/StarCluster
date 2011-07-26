@@ -436,9 +436,16 @@ class SSHClient(object):
         complete or background itself before the python process executing this
         code exits, it will not persist on the remote machine
         """
-
         channel = self.transport.open_session()
         channel.exec_command(command)
+
+    def get_status(self, command):
+        """
+        Execute a remote command and return the exit status
+        """
+        channel = self.transport.open_session()
+        channel.exec_command(command)
+        return channel.recv_exit_status()
 
     def execute(self, command, silent=True, only_printable=False,
                 ignore_exit_status=False, log_output=True):
