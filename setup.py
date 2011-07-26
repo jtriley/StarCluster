@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 import os
+import sys
+
+if sys.version_info < (2, 5):
+    error = "ERROR: StarCluster requires Python 2.5+ ... exiting."
+    print >> sys.stderr, error
+    sys.exit(1)
 
 try:
     from setuptools import setup, find_packages
@@ -62,7 +68,8 @@ setup(
     name='StarCluster',
     version=VERSION,
     packages=find_packages(),
-    package_data={'starcluster.templates': ['web/*.*','web/css/*', 'web/js/*']},
+    package_data={'starcluster.templates':
+                  ['web/*.*', 'web/css/*', 'web/js/*']},
     scripts=['bin/starcluster'],
     license='LGPL3',
     author='Justin Riley',
