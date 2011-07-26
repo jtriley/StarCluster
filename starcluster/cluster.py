@@ -427,7 +427,7 @@ class Cluster(object):
             except ImportError, e:
                 raise exception.PluginLoadError(
                     "Failed to import plugin %s: %s" % \
-                    (plugin_name, e.message))
+                    (plugin_name, e[0]))
             klass = getattr(mod, class_name, None)
             if not klass:
                 raise exception.PluginError(

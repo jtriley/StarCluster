@@ -12,6 +12,7 @@ from starcluster.templates import config, user_msgs
 
 class BaseException(Exception):
     def __init__(self, *args):
+        self.args = args
         self.msg = args[0]
 
     def __str__(self):

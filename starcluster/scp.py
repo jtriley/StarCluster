@@ -334,7 +334,7 @@ class SCPClient(object):
             self._utime = None
             self._recv_dir = path
         except (OSError, exception.SCPException), e:
-            self.channel.send('\x01' + e.message)
+            self.channel.send('\x01' + e[0])
             raise
 
     def _recv_popd(self, *cmd):
