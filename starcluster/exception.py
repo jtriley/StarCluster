@@ -55,6 +55,11 @@ class SSHNoCredentialsError(SSHError):
         self.msg = "No password or key specified"
 
 
+class SCPException(BaseException):
+    """SCP exception class"""
+    pass
+
+
 class AWSError(BaseException):
     """Base exception for all AWS related errors"""
 
@@ -418,9 +423,9 @@ class CancelledEBSImageCreation(BaseException):
 class ExperimentalFeature(BaseException):
     def __init__(self, feature_name):
         self.msg = "%s is an experimental feature for this " % feature_name
-        self.msg += "release. \nIf you wish to test this feature, set "
-        self.msg += "ENABLE_EXPERIMENTAL=True \nin the [global] section of the"
-        self.msg += " config. \nYou have officially been warned :D"
+        self.msg += "release. If you wish to test this feature, please set "
+        self.msg += "ENABLE_EXPERIMENTAL=True in the [global] section of the"
+        self.msg += " config. \n\nYou've officially been warned :D"
 
 
 class ThreadPoolException(BaseException):

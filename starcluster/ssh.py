@@ -10,8 +10,10 @@ import os
 import re
 import sys
 import stat
+import glob
 import string
 import socket
+import fnmatch
 import paramiko
 import posixpath
 
@@ -23,7 +25,9 @@ try:
 except ImportError:
     HAS_TERMIOS = False
 
+from starcluster import scp
 from starcluster import exception
+from starcluster import progressbar
 from starcluster.logger import log
 
 
@@ -50,11 +54,14 @@ class SSHClient(object):
         self._password = password
         self._timeout = timeout
         self._sftp = None
+        self._scp = None
         self._transport = None
+        self._progress_bar = None
         if private_key:
             self._pkey = self.load_private_key(private_key, private_key_pass)
         elif not password:
             raise exception.SSHNoCredentialsError()
+        self._glob = SSHGlob(self)
 
     def load_private_key(self, private_key, private_key_pass=None):
         # Use Private Key.
@@ -164,6 +171,15 @@ class SSHClient(object):
             log.debug("creating sftp connection")
             self._sftp = paramiko.SFTPClient.from_transport(self.transport)
         return self._sftp
+
+    @property
+    def scp(self):
+        """Initialize the SCP client."""
+        if not self._scp:
+            log.debug("creating scp connection")
+            self._scp = scp.SCPClient(self.transport,
+                                      progress=self._file_transfer_progress)
+        return self._scp
 
     def generate_rsa_key(self):
         return paramiko.RSAKey.generate(2048)
@@ -278,6 +294,17 @@ class SSHClient(object):
         except IOError:
             return False
 
+    def lpath_exists(self, path):
+        """
+        Test whether a remote path exists.
+        Returns True for broken symbolic links
+        """
+        try:
+            self.lstat(path)
+            return True
+        except IOError:
+            return False
+
     def chown(self, uid, gid, remote_file):
         """
         Apply permissions (mode) to remote_file
@@ -299,6 +326,9 @@ class SSHClient(object):
         Return a list containing the names of the entries in the remote path.
         """
         return [os.path.join(path, f) for f in self.sftp.listdir(path)]
+
+    def glob(self, pattern):
+        return self._glob.glob(pattern)
 
     def isdir(self, path):
         """
@@ -326,22 +356,77 @@ class SSHClient(object):
         """
         return self.sftp.stat(path)
 
-    def get(self, remotepath, localpath=None):
+    def lstat(self, path):
         """
-        Copies a file between the remote host and the local host.
+        Same as stat but doesn't follow symlinks
         """
-        if not localpath:
-            localpath = os.path.split(remotepath)[1]
-        self.sftp_connect()
-        self.sftp.get(remotepath, localpath)
+        return self.sftp.lstat(path)
 
-    def put(self, localpath, remotepath=None):
+    @property
+    def progress_bar(self):
+        if not self._progress_bar:
+            widgets = ['FileTransfer: ', ' ', progressbar.Percentage(), ' ',
+                       progressbar.Bar(marker=progressbar.RotatingMarker()),
+                       ' ', progressbar.ETA(), ' ',
+                       progressbar.FileTransferSpeed()]
+            pbar = progressbar.ProgressBar(widgets=widgets,
+                                           maxval=1,
+                                           force_update=True)
+            self._progress_bar = pbar
+        return self._progress_bar
+
+    def _file_transfer_progress(self, filename, size, sent):
+        pbar = self.progress_bar
+        pbar.widgets[0] = filename
+        pbar.maxval = size
+        pbar.update(sent)
+        if pbar.finished:
+            pbar.reset()
+
+    def _make_list(self, obj):
+        if not isinstance(obj, (list, tuple)):
+            return [obj]
+        return obj
+
+    def get(self, remotepaths, localpath=''):
         """
-        Copies a file between the local host and the remote host.
+        Copies one or more files from the remote host to the local host.
         """
-        if not remotepath:
-            remotepath = os.path.split(localpath)[1]
-        self.sftp.put(localpath, remotepath)
+        remotepaths = self._make_list(remotepaths)
+        localpath = localpath or os.getcwd()
+        globs = []
+        noglobs = []
+        for rpath in remotepaths:
+            if glob.has_magic(rpath):
+                globs.append(rpath)
+            else:
+                noglobs.append(rpath)
+        globresults = [self.glob(g) for g in globs]
+        remotepaths = noglobs
+        for globresult in globresults:
+            remotepaths.extend(globresult)
+        recursive = False
+        for rpath in remotepaths:
+            if not self.path_exists(rpath):
+                raise exception.BaseException(
+                    "Remote file or directory does not exist: %s" % rpath)
+        for rpath in remotepaths:
+            if self.isdir(rpath):
+                recursive = True
+                break
+        self.scp.get(remotepaths, localpath, recursive=recursive)
+
+    def put(self, localpaths, remotepath='.'):
+        """
+        Copies one or more files from the local host to the remote host.
+        """
+        localpaths = self._make_list(localpaths)
+        recursive = False
+        for lpath in localpaths:
+            if os.path.isdir(lpath):
+                recursive = True
+                break
+        self.scp.put(localpaths, remote_path=remotepath, recursive=recursive)
 
     def execute_async(self, command):
         """
@@ -539,6 +624,67 @@ class SSHClient(object):
 
 # for backwards compatibility
 Connection = SSHClient
+
+
+class SSHGlob(object):
+
+    def __init__(self, ssh_client):
+        self.ssh = ssh_client
+
+    def glob(self, pathname):
+        return list(self.iglob(pathname))
+
+    def iglob(self, pathname):
+        """
+        Return an iterator which yields the paths matching a pathname pattern.
+        The pattern may contain simple shell-style wildcards a la fnmatch.
+        """
+        if not glob.has_magic(pathname):
+            if self.ssh.lpath_exists(pathname):
+                yield pathname
+            return
+        dirname, basename = posixpath.split(pathname)
+        if not dirname:
+            for name in self.glob1(posixpath.curdir, basename):
+                yield name
+            return
+        if glob.has_magic(dirname):
+            dirs = self.iglob(dirname)
+        else:
+            dirs = [dirname]
+        if glob.has_magic(basename):
+            glob_in_dir = self.glob1
+        else:
+            glob_in_dir = self.glob0
+        for dirname in dirs:
+            for name in glob_in_dir(dirname, basename):
+                yield posixpath.join(dirname, name)
+
+    def glob0(self, dirname, basename):
+        if basename == '':
+            # `os.path.split()` returns an empty basename for paths ending with
+            # a directory separator.  'q*x/' should match only directories.
+            if self.ssh.isdir(dirname):
+                return [basename]
+        else:
+            if self.ssh.lexists(posixpath.join(dirname, basename)):
+                return [basename]
+        return []
+
+    def glob1(self, dirname, pattern):
+        if not dirname:
+            dirname = posixpath.curdir
+        if isinstance(pattern, unicode) and not isinstance(dirname, unicode):
+            #encoding = sys.getfilesystemencoding() or sys.getdefaultencoding()
+            #dirname = unicode(dirname, encoding)
+            dirname = unicode(dirname, 'UTF-8')
+        try:
+            names = [os.path.basename(n) for n in self.ssh.ls(dirname)]
+        except os.error:
+            return []
+        if pattern[0] != '.':
+            names = filter(lambda x: x[0] != '.', names)
+        return fnmatch.filter(names, pattern)
 
 
 def main():
