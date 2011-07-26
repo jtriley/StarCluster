@@ -37,6 +37,8 @@ class CmdPut(ClusterCompleter):
                           help="Transfer files to NODE (defaults to master)")
 
     def execute(self, args):
+        if not self.cfg.globals.enable_experimental:
+            raise exception.ExperimentalFeature("The 'put' command")
         if len(args) < 3:
             self.parser.error("please specify a cluster, local files or " +
                               "directories, and a remote destination path")
