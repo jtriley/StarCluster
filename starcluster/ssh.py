@@ -447,6 +447,33 @@ class SSHClient(object):
         channel.exec_command(command)
         return channel.recv_exit_status()
 
+    def _get_output(self, channel, silent=True, only_printable=False):
+        #stdin = channel.makefile('wb', -1)
+        output = []
+        if channel.closed:
+            return output
+        stdout = channel.makefile('rb', -1)
+        stderr = channel.makefile_stderr('rb', -1)
+        if silent:
+            output = stdout.readlines() + stderr.readlines()
+        else:
+            line = None
+            while line != '':
+                line = stdout.readline()
+                if only_printable:
+                    line = ''.join(c for c in line if c in string.printable)
+                if line != '':
+                    output.append(line)
+                    print line,
+            for line in stderr.readlines():
+                output.append(line)
+                print line
+        if only_printable:
+            output = map(lambda line: ''.join(c for c in line if c in
+                                              string.printable), output)
+        output = map(lambda line: line.strip(), output)
+        return output
+
     def execute(self, command, silent=True, only_printable=False,
                 ignore_exit_status=False, log_output=True):
         """
@@ -462,28 +489,8 @@ class SSHClient(object):
         """
         channel = self.transport.open_session()
         channel.exec_command(command)
-        #stdin = channel.makefile('wb', -1)
-        stdout = channel.makefile('rb', -1)
-        stderr = channel.makefile_stderr('rb', -1)
-        output = []
-        line = None
-        if silent:
-            output = stdout.readlines() + stderr.readlines()
-        else:
-            while line != '':
-                line = stdout.readline()
-                if only_printable:
-                    line = ''.join(c for c in line if c in string.printable)
-                if line != '':
-                    output.append(line)
-                    print line,
-            for line in stderr.readlines():
-                output.append(line)
-                print line
-        if only_printable:
-            output = map(lambda line: ''.join(c for c in line if c in
-                                              string.printable), output)
-        output = map(lambda line: line.strip(), output)
+        output = self._get_output(channel, silent=silent,
+                                  only_printable=only_printable)
         exit_status = channel.recv_exit_status()
         if exit_status != 0:
             if not ignore_exit_status:
