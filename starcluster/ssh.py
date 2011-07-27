@@ -539,13 +539,17 @@ class SSHClient(object):
         if self._transport:
             self._transport.close()
 
+    def _invoke_shell(self, term='screen', cols=80, lines=24):
+        chan = self.transport.open_session()
+        chan.get_pty(term, cols, lines)
+        chan.invoke_shell()
+        return chan
+
     def interactive_shell(self, user='root'):
         if user and self.transport.get_username() != user:
             self.connect(username=user)
         try:
-            chan = self.transport.open_session()
-            chan.get_pty()
-            chan.invoke_shell()
+            chan = self._invoke_shell()
             log.info('Starting interactive shell...')
             if HAS_TERMIOS:
                 self._posix_shell(chan)
