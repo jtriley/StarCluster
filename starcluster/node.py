@@ -76,6 +76,21 @@ class Node(object):
     def __repr__(self):
         return '<Node: %s (%s)>' % (self.alias, self.id)
 
+    def _get_user_data(self, tries=5):
+        tries = range(tries)
+        last_try = tries[-1]
+        for i in tries:
+            try:
+                user_data = self.ec2.get_instance_user_data(self.id)
+                return user_data
+            except exception.InstanceDoesNotExist:
+                if i == last_try:
+                    log.debug("failed fetching user data")
+                    raise
+                log.debug("InvalidInstanceID.NotFound: "
+                          "retrying fetching user data (tries: %s)" % (i+1))
+                time.sleep(5)
+
     @property
     def alias(self):
         """
@@ -86,7 +101,7 @@ class Node(object):
         if not self._alias:
             alias = self.tags.get('alias')
             if not alias:
-                user_data = self.ec2.get_instance_user_data(self.id)
+                user_data = self._get_user_data(tries=5)
                 aliases = user_data.split('|')
                 index = self.ami_launch_index
                 alias = aliases[index]

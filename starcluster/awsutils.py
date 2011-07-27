@@ -391,10 +391,14 @@ class EasyEC2(EasyAWS):
         return image_name
 
     def get_instance_user_data(self, instance_id):
-        i = self.get_instance(instance_id)
-        attributes = self.conn.get_instance_attribute(i.id, 'userData')
-        user_data = attributes['userData'] or ''
-        return base64.b64decode(user_data)
+        try:
+            attrs = self.conn.get_instance_attribute(instance_id, 'userData')
+            user_data = attrs.get('userData', '')
+            return base64.b64decode(user_data)
+        except boto.exception.EC2ResponseError, e:
+            if e.error_code == "InvalidInstanceID.NotFound":
+                raise exception.InstanceDoesNotExist(instance_id)
+            raise e
 
     def get_instance(self, instance_id):
         try:
