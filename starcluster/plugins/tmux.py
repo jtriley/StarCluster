@@ -34,7 +34,7 @@ class TmuxControlCenter(ClusterSetup):
         node.ssh.execute('tmux send-keys -t %s:%s "Enter"' % (envname, window))
 
     def _new_session(self, node, envname):
-        node.ssh.execute('tmux new-session -d -s %s' % envname)
+        node.ssh.execute('tmux new-session -d -s %s' % envname, detach=True)
 
     def _kill_session(self, node, envname):
         node.ssh.execute('tmux kill-session -t %s' % envname)
@@ -52,9 +52,9 @@ class TmuxControlCenter(ClusterSetup):
         log.info("Starting TMUX Control Center...")
         envname = 'starcluster'
         master.ssh.connect(username=user)
-        num_nodes = len(nodes)
-        self.create_session(master, envname, num_nodes)
-        for i, node in enumerate(nodes):
+        self.create_session(master, envname, num_windows=1)
+        workers = filter(lambda n: not n.is_master(), nodes)
+        for i, node in enumerate(workers):
             self._new_window(master, envname, i)
             self._send_keys(master, envname, 'ssh %s' % node.alias,
                             window=i)
