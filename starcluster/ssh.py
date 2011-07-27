@@ -448,15 +448,17 @@ class SSHClient(object):
         return channel.recv_exit_status()
 
     def _get_output(self, channel, silent=True, only_printable=False):
+        """
+        Returns the stdout/stderr output from a paramiko channel as a list of
+        strings (non-interactive only)
+        """
         #stdin = channel.makefile('wb', -1)
-        output = []
-        if channel.closed:
-            return output
         stdout = channel.makefile('rb', -1)
         stderr = channel.makefile_stderr('rb', -1)
         if silent:
             output = stdout.readlines() + stderr.readlines()
         else:
+            output = []
             line = None
             while line != '':
                 line = stdout.readline()
