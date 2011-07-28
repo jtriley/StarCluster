@@ -85,8 +85,8 @@ function addControls() {
     addZoom('reset', ctrx-3, 40);
     addZoom('out', ctrx-3, 55);
     addArrow('down', ctrx, ctry + vertlen/2.0, { top: 100 });
-    addArrow('right', ctrx - horlen/2.0 - 1, ctry + 2, { left: -100 });
-    addArrow('left', ctrx + horlen/2.0 - 4, ctry + 2, { left: 100 });
+    addArrow('right', ctrx - horlen/2.0 - 1, ctry + 2, { left: 100 });
+    addArrow('left', ctrx + horlen/2.0 - 4, ctry + 2, { left: -100 });
 }
 
 addControls();
