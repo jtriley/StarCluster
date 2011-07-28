@@ -1085,12 +1085,13 @@ class EasyEC2(EasyAWS):
         log.info("Average price: $%.2f" % avg)
         if plot:
             xaxisrange = dates[-1] - dates[0]
-            xpanrange = [dates[0] - xaxisrange/2., dates[-1] + xaxisrange/2.]
-            xzoomrange = [0.1, xpanrange[-1]-xpanrange[0]]
+            xpanrange = [dates[0] - xaxisrange / 2.,
+                         dates[-1] + xaxisrange / 2.]
+            xzoomrange = [0.1, xpanrange[-1] - xpanrange[0]]
             minimum = min(prices)
             yaxisrange = maximum - minimum
-            ypanrange = [minimum - yaxisrange/2., maximum + yaxisrange/2.]
-            yzoomrange = [0.1, ypanrange[-1]-ypanrange[0]]
+            ypanrange = [minimum - yaxisrange / 2., maximum + yaxisrange / 2.]
+            yzoomrange = [0.1, ypanrange[-1] - ypanrange[0]]
             context = dict(instance_type=instance_type,
                            start=start, end=end,
                            time_series_data=str(data),
