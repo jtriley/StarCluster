@@ -43,7 +43,7 @@ var placeholder = $("#placeholder");
 var plot = $.plot(placeholder, [d], options);
 
 function addArrow(dir, right, top, offset) {
-    $('<img class="button" src="/imgs/arrow-' + dir + '.png" style="right:' + right + 'px;top:' + top + 'px">').appendTo(placeholder).click(function (e) {
+    $('<img class="button" title="Pan ' + dir + '" src="/imgs/arrow-' + dir + '.png" style="right:' + right + 'px;top:' + top + 'px">').appendTo(placeholder).click(function (e) {
         e.preventDefault();
         plot.pan(offset);
     });
@@ -51,17 +51,17 @@ function addArrow(dir, right, top, offset) {
 
 function addZoom(dir, right, top) {
     if(dir=="in"){
-        $('<img class="button" src="/imgs/zoom' + dir + '.png" style="right:' + right + 'px;top:' + top + 'px">').appendTo(placeholder).click(function (e) {
+        $('<img class="button" title="Zoom In" src="/imgs/zoom' + dir + '.png" style="right:' + right + 'px;top:' + top + 'px">').appendTo(placeholder).click(function (e) {
             e.preventDefault();
             plot.zoom();
         });
     } else if(dir=="out"){
-        $('<img class="button" src="/imgs/zoom' + dir + '.png" style="right:' + right + 'px;top:' + top + 'px">').appendTo(placeholder).click(function (e) {
+        $('<img class="button" title="Zoom Out" src="/imgs/zoom' + dir + '.png" style="right:' + right + 'px;top:' + top + 'px">').appendTo(placeholder).click(function (e) {
             e.preventDefault();
             plot.zoomOut();
         });
     } else if(dir=="reset"){
-        $('<img class="button" src="/imgs/reset.png" style="right:' + right + 'px;top:' + top + 'px">').appendTo(placeholder).click(function (e) {
+        $('<img class="button" title="Reset Plot" src="/imgs/reset.png" style="right:' + right + 'px;top:' + top + 'px">').appendTo(placeholder).click(function (e) {
             e.preventDefault();
             plot = $.plot(placeholder, [d], options);
             addControls();
