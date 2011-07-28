@@ -94,8 +94,8 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="0.98994949"
-     inkscape:cx="309.87494"
-     inkscape:cy="794.14668"
+     inkscape:cx="135.3063"
+     inkscape:cy="631.20278"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -130,9 +130,9 @@
            height="47.142857"
            x="-165.71428"
            y="192.36218" /></flowRegion><flowPara
-         id="flowPara3767"></flowPara></flowRoot>    <g
+         id="flowPara3767" /></flowRoot>    <g
        id="g4764"
-       transform="translate(-133.05306,136.38398)"
+       transform="matrix(0.58677243,0,0,0.58677243,71.707854,426.07729)"
        inkscape:export-filename="/home/jtriley/py-workspace/starcluster/starcluster/templates/web/imgs/zoomout.png"
        inkscape:export-xdpi="9.8373003"
        inkscape:export-ydpi="9.8373003">
@@ -160,7 +160,7 @@
     </g>
     <g
        id="g4773"
-       transform="translate(-2.30738,1.1507309)"
+       transform="matrix(0.58677243,0,0,0.58677243,148.42581,346.72615)"
        inkscape:export-filename="/home/jtriley/py-workspace/starcluster/starcluster/templates/web/imgs/zoomin.png"
        inkscape:export-xdpi="9.8373003"
        inkscape:export-ydpi="9.8373003">
@@ -195,8 +195,8 @@
          style="fill:none;stroke:#000000;stroke-width:11.35849667;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
     </g>
     <path
-       style="fill:none;stroke:#000000;stroke-width:5.9078784;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;marker-end:url(#Arrow1Lend)"
-       d="m 490.29934,306.54994 56.59793,0 0,0 0,0"
+       style="fill:none;stroke:#000000;stroke-width:3.46658015;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;marker-end:url(#Arrow1Lend)"
+       d="m 437.47386,525.92599 33.2101,0 0,0 0,0"
        id="path3779-13"
        inkscape:connector-curvature="0"
        inkscape:export-filename="/home/jtriley/py-workspace/starcluster/starcluster/templates/web/imgs/arrow-right.png"
@@ -204,8 +204,8 @@
        inkscape:export-ydpi="12.187114"
        sodipodi:nodetypes="cccc" />
     <path
-       style="fill:none;stroke:#000000;stroke-width:5.9078784;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;marker-start:url(#Arrow1Lstart);marker-end:none"
-       d="m 377.5522,14.058297 0,56.59794 0,0 0,0"
+       style="fill:none;stroke:#000000;stroke-width:3.46658015;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;marker-start:url(#Arrow1Lstart);marker-end:none"
+       d="m 371.31694,354.29995 0,33.21012 0,0 0,0"
        id="path3779-13-4"
        inkscape:connector-curvature="0"
        inkscape:export-filename="/home/jtriley/py-workspace/starcluster/starcluster/templates/web/imgs/arrow-up.png"
@@ -213,8 +213,8 @@
        inkscape:export-ydpi="12.187119"
        sodipodi:nodetypes="cccc" />
     <path
-       style="fill:none;stroke:#000000;stroke-width:5.9078784;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;marker-start:url(#Arrow1Lstart);marker-end:none"
-       d="m 377.5522,599.04154 0,-56.59793 0,0 0,0"
+       style="fill:none;stroke:#000000;stroke-width:3.46658015;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;marker-start:url(#Arrow1Lstart);marker-end:none"
+       d="m 371.31694,697.55199 0,-33.2101 0,0 0,0"
        id="path3779-13-4-3"
        inkscape:connector-curvature="0"
        inkscape:export-filename="/home/jtriley/py-workspace/starcluster/starcluster/templates/web/imgs/arrow-down.png"
@@ -222,8 +222,8 @@
        inkscape:export-ydpi="12.187119"
        sodipodi:nodetypes="cccc" />
     <path
-       style="fill:none;stroke:#000000;stroke-width:5.9078784;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;marker-start:url(#Arrow1Lstart);marker-end:none"
-       d="m 207.09111,306.54994 56.59794,0 0,0 0,0"
+       style="fill:none;stroke:#000000;stroke-width:3.46658015;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;marker-start:url(#Arrow1Lstart);marker-end:none"
+       d="m 271.29507,525.92599 33.21012,0 0,0 0,0"
        id="path3779-13-4-3-0"
        inkscape:connector-curvature="0"
        inkscape:export-filename="/home/jtriley/py-workspace/starcluster/starcluster/templates/web/imgs/arrow-left.png"
@@ -232,7 +232,7 @@
        sodipodi:nodetypes="cccc" />
     <g
        id="g4768"
-       transform="translate(0.38193,1.7220262)"
+       transform="matrix(0.58677243,0,0,0.58677243,150.00383,347.06137)"
        inkscape:export-filename="/home/jtriley/py-workspace/starcluster/starcluster/templates/web/imgs/reset.png"
        inkscape:export-xdpi="9.8373003"
        inkscape:export-ydpi="9.8373003">
@@ -269,9 +269,19 @@
     <rect
        style="fill:none;stroke-width:9.1208992;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0"
        id="rect4835"
-       width="418.20316"
-       height="671.75146"
-       x="138.3909"
-       y="-53.754856" />
+       width="245.39008"
+       height="394.16525"
+       x="230.98369"
+       y="314.50906" />
+    <rect
+       style="opacity:0.28451885;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:2.19689965;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
+       id="rect3020"
+       width="321.8522"
+       height="537.13391"
+       x="207.27451"
+       y="243.26071"
+       inkscape:export-filename="/home/jtriley/py-workspace/starcluster/starcluster/templates/web/imgs/controlsbg.png"
+       inkscape:export-xdpi="7.1478596"
+       inkscape:export-ydpi="7.1478596" />
   </g>
 </svg>
