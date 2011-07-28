@@ -88,7 +88,7 @@ class Node(object):
                     log.debug("failed fetching user data")
                     raise
                 log.debug("InvalidInstanceID.NotFound: "
-                          "retrying fetching user data (tries: %s)" % (i+1))
+                          "retrying fetching user data (tries: %s)" % (i + 1))
                 time.sleep(5)
 
     @property
