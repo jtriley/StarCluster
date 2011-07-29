@@ -19,8 +19,10 @@ FATAL = logging.FATAL
 
 RAW_FORMAT = "%(message)s\n"
 INFO_FORMAT = " ".join(['>>>', "%(message)s\n"])
-DEBUG_FORMAT = "%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n"
-DEBUG_FORMAT_PID = ("PID: %s " % str(static.PID)) + DEBUG_FORMAT
+_DEBUG_FORMAT = "%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n"
+DEBUG_FORMAT = "%(asctime)s " + _DEBUG_FORMAT
+DEBUG_FORMAT_PID = ' '.join(["%(asctime)s", "PID: %s" % str(static.PID),
+                             _DEBUG_FORMAT])
 DEFAULT_CONSOLE_FORMAT = "%(levelname)s - %(message)s\n"
 ERROR_CONSOLE_FORMAT = " ".join(['!!!', DEFAULT_CONSOLE_FORMAT])
 WARN_CONSOLE_FORMAT = " ".join(['***', DEFAULT_CONSOLE_FORMAT])
