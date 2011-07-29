@@ -730,12 +730,13 @@ class Cluster(object):
         if force_flat:
             spot_bid = None
         cluster_sg = self.cluster_group.name
-        if instance_type in static.CLUSTER_TYPES:
+        instance_type = instance_type or self.node_instance_type
+        if not placement_group and instance_type in static.CLUSTER_TYPES:
             placement_group = self.placement_group.name
         response = self.ec2.request_instances(
             image_id or self.node_image_id,
             price=spot_bid,
-            instance_type=instance_type or self.node_instance_type,
+            instance_type=instance_type,
             min_count=count, max_count=count, count=count,
             key_name=self.keyname,
             security_groups=[cluster_sg],
