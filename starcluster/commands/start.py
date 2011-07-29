@@ -27,9 +27,9 @@ class CmdStart(ClusterCompleter):
     the default cluster template defined in the configuration file. The
     default cluster template is specified by the 'default_template' option in
     the [global] section of the config. To use another template besides the
-    default use the --cluster-template option:
+    default use the -c (--cluster-template) option:
 
-        $ starcluster start --cluster-template largecluster mynewcluster
+        $ starcluster start -c largecluster mynewcluster
 
     This will do the same thing only using the settings from the "largecluster"
     cluster template defined in the config.
@@ -41,32 +41,27 @@ class CmdStart(ClusterCompleter):
     def addopts(self, parser):
         cfg = config.StarClusterConfig().load()
         templates = cfg.get_cluster_names().keys()
-        opt = parser.add_option("-c", "--cluster-template", action="store",
-                                dest="cluster_template", choices=templates,
-                                default=None,
-                                help="cluster template to use " + \
-                                "from the config file")
         parser.add_option("-x", "--no-create", dest="no_create",
                           action="store_true", default=False,
-                          help="Do not launch new EC2 instances when " + \
+                          help="do not launch new EC2 instances when " + \
                           "starting cluster (use existing instances instead)")
         parser.add_option("-o", "--create-only", dest="create_only",
                           action="store_true", default=False,
-                          help="Only launch/start EC2 instances, " + \
+                          help="only launch/start EC2 instances, " + \
                           "do not perform any setup routines")
         parser.add_option("-v", "--validate-only", dest="validate_only",
                           action="store_true", default=False,
-                          help="Only validate cluster settings, do " + \
+                          help="only validate cluster settings, do " + \
                           "not start a cluster")
         parser.add_option("-V", "--skip-validation", dest="validate",
                           action="store_false", default=True,
-                          help="Do not validate cluster settings")
+                          help="do not validate cluster settings")
         parser.add_option("-l", "--login-master", dest="login_master",
                           action="store_true", default=False,
-                          help="ssh to ec2 cluster master node after launch")
+                          help="login to master node after launch")
         parser.add_option("-q", "--disable-queue", dest="disable_queue",
                           action="store_true", default=None,
-                          help="Do not configure a queueing system (SGE)")
+                          help="do not configure a queueing system (SGE)")
         parser.add_option("--force-spot-master",
                           dest="force_spot_master", action="store_true",
                           default=False, help="when creating a spot cluster "
@@ -74,14 +69,19 @@ class CmdStart(ClusterCompleter):
                           "a flat-rate instance for stability. this option "
                           "forces launching the master node as a spot "
                           "instance when a spot cluster is requested.")
+        opt = parser.add_option("-c", "--cluster-template", action="store",
+                                dest="cluster_template", choices=templates,
+                                default=None,
+                                help="cluster template to use " + \
+                                "from the config file")
         parser.add_option("-r", "--refresh-interval", dest="refresh_interval",
                           type="int", action="callback", default=None,
                           callback=self._positive_int,
-                          help="Refresh interval when waiting for cluster " + \
+                          help="refresh interval when waiting for cluster " + \
                           "nodes to come up (default: 30)")
         parser.add_option("-b", "--bid", dest="spot_bid", action="store",
                           type="float", default=None,
-                          help="Requests spot instances instead of flat " + \
+                          help="requests spot instances instead of flat " + \
                           "rate instances. Uses SPOT_BID as max bid for " + \
                           "the request.")
         if optcomplete:
@@ -116,27 +116,27 @@ class CmdStart(ClusterCompleter):
         parser.add_option("-I", "--master-instance-type",
                           dest="master_instance_type", action="store",
                           choices=static.INSTANCE_TYPES.keys(), default=None,
-                          help="specify machine type for the master instance")
+                          help="instance type for the master instance")
         opt = parser.add_option("-i", "--node-instance-type",
                                 dest="node_instance_type", action="store",
                                 choices=static.INSTANCE_TYPES.keys(),
                                 default=None,
-                                help="specify machine type for the node " + \
-                                "instances")
+                                help="instance type for the node instances")
         if optcomplete:
             opt.completer = optcomplete.ListCompleter(opt.choices)
         parser.add_option("-a", "--availability-zone",
                           dest="availability_zone", action="store",
                           type="string", default=None,
-                          help="availability zone to launch ec2 instances in")
+                          help="availability zone to launch instances in")
         parser.add_option("-k", "--keyname", dest="keyname", action="store",
                           type="string", default=None,
-                          help="name of the AWS keypair to use when " + \
+                          help="name of the keypair to use when "
                           "launching the cluster")
         parser.add_option("-K", "--key-location", dest="key_location",
                           action="store", type="string", default=None,
                           metavar="FILE",
-                          help="path to ssh private key used for this cluster")
+                          help="path to an ssh private key that matches the"
+                          "cluster keypair")
 
     def cancel_command(self, signum, frame):
         raise exception.CancelledStartRequest(self.tag)
