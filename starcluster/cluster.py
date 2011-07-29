@@ -297,10 +297,10 @@ class Cluster(object):
             disable_queue=False,
             disable_threads=False,
             cluster_group=None,
+            force_spot_master=False,
             **kwargs):
 
         now = time.strftime("%Y%m%d%H%M")
-
         self.ec2 = ec2_conn
         self.spot_bid = spot_bid
         self.cluster_tag = cluster_tag
@@ -326,6 +326,7 @@ class Cluster(object):
         self.refresh_interval = refresh_interval
         self.disable_queue = disable_queue
         self.disable_threads = disable_threads
+        self.force_spot_master = force_spot_master
 
         self.__instance_types = static.INSTANCE_TYPES
         self.__cluster_settings = static.CLUSTER_SETTINGS
@@ -712,24 +713,32 @@ class Cluster(object):
         return self.ec2.get_all_spot_requests(filters=filters)
 
     def create_node(self, alias, image_id=None, instance_type=None, zone=None,
-                    placement_group=None):
+                    placement_group=None, spot_bid=None, force_flat=False):
         return self.create_nodes([alias], image_id=image_id,
                                  instance_type=instance_type, count=1,
-                                 zone=zone, placement_group=placement_group)
+                                 zone=zone, placement_group=placement_group,
+                                 spot_bid=spot_bid, force_flat=force_flat)
 
     def create_nodes(self, aliases, image_id=None, instance_type=None, count=1,
-                    zone=None, placement_group=None):
+                     zone=None, placement_group=None, spot_bid=None,
+                     force_flat=False):
         """
         Convenience method for requesting instances with this cluster's
-        settings
+        settings. All settings (kwargs) except force_flat default to cluster
+        settings if not provided. Passing force_flat=True ignores spot_bid
+        completely forcing a flat-rate instance to be requested.
         """
+        spot_bid = spot_bid or self.spot_bid
+        if force_flat:
+            spot_bid = None
         cluster_sg = self.cluster_group.name
-        if instance_type in static.CLUSTER_TYPES:
+        instance_type = instance_type or self.node_instance_type
+        if not placement_group and instance_type in static.CLUSTER_TYPES:
             placement_group = self.placement_group.name
         response = self.ec2.request_instances(
             image_id or self.node_image_id,
-            price=self.spot_bid,
-            instance_type=instance_type or self.node_instance_type,
+            price=spot_bid,
+            instance_type=instance_type,
             min_count=count, max_count=count, count=count,
             key_name=self.keyname,
             security_groups=[cluster_sg],
@@ -935,15 +944,23 @@ class Cluster(object):
         (mtype, mimage) = self._get_type_and_image_id('master')
         log.info("Launching master node (ami: %s, type: %s)..." % \
                  (mimage, mtype))
+        force_flat = not self.force_spot_master and self.cluster_size > 1
         master_response = self.create_node('master',
                                            image_id=mimage,
-                                           instance_type=mtype)
-        print master_response[0]
+                                           instance_type=mtype,
+                                           force_flat=force_flat)
+        zone = None
+        if not force_flat and self.spot_bid:
+            master_response = master_response[0]
+            # Make sure nodes are in same zone as master
+            launch_spec = master_response.launch_specification
+            zone = launch_spec.placement
+        else:
+            # Make sure nodes are in same zone as master
+            zone = master_response.instances[0].placement
+        print master_response
         if self.cluster_size <= 1:
             return
-        # Make sure nodes are in same zone as master
-        launch_spec = master_response[0].launch_specification
-        zone = launch_spec.placement
         for id in range(1, self.cluster_size):
             alias = 'node%.3d' % id
             (ntype, nimage) = self._get_type_and_image_id(alias)
