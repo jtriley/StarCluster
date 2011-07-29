@@ -31,8 +31,8 @@ class CmdStart(ClusterCompleter):
 
         $ starcluster start -c largecluster mynewcluster
 
-    This will do the same thing only using the settings from the "largecluster"
-    cluster template defined in the config.
+    This will launch a cluster named "mynewcluster" using the settings from
+    the "largecluster" cluster template instead of the default template.
     """
     names = ['start']
 
