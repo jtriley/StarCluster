@@ -37,9 +37,10 @@ class ClusterManager(managers.Manager):
         """
         try:
             clname = self._get_cluster_name(cluster_name)
+            cltag = self.get_tag_from_sg(clname)
             if not group:
                 group = self.ec2.get_security_group(clname)
-            cl = Cluster(ec2_conn=self.ec2, cluster_tag=cluster_name,
+            cl = Cluster(ec2_conn=self.ec2, cluster_tag=cltag,
                          cluster_group=group)
             if load_receipt:
                 cl.load_receipt(load_plugins=load_plugins)
