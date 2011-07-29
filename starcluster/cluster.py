@@ -53,6 +53,17 @@ class ClusterManager(managers.Manager):
         except exception.SecurityGroupDoesNotExist:
             raise exception.ClusterDoesNotExist(cluster_name)
 
+    def get_clusters(self, load_receipt=True, load_plugins=True):
+        """
+        Returns a list of all active clusters
+        """
+        cluster_groups = self.get_cluster_security_groups()
+        clusters = [self.get_cluster(g.name, group=g,
+                                     load_receipt=load_receipt,
+                                     load_plugins=load_plugins)
+                    for g in cluster_groups]
+        return clusters
+
     def get_default_cluster_template(self):
         """
         Returns name of the default cluster template defined in the config
