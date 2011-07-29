@@ -149,4 +149,5 @@ CLUSTER_SETTINGS = {
     'plugins': (list, False, [], None, None),
     'permissions': (list, False, [], None, None),
     'disable_queue': (bool, False, False, None, None),
+    'force_spot_master': (bool, False, False, None, None),
 }

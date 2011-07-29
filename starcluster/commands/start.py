@@ -64,7 +64,7 @@ class CmdStart(ClusterCompleter):
                           help="do not configure a queueing system (SGE)")
         parser.add_option("--force-spot-master",
                           dest="force_spot_master", action="store_true",
-                          default=False, help="when creating a spot cluster "
+                          default=None, help="when creating a spot cluster "
                           "the default is to launch the master as "
                           "a flat-rate instance for stability. this option "
                           "forces launching the master node as a spot "
