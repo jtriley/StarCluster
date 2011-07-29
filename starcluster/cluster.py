@@ -297,6 +297,7 @@ class Cluster(object):
             disable_queue=False,
             disable_threads=False,
             cluster_group=None,
+            force_spot_master=False,
             **kwargs):
 
         now = time.strftime("%Y%m%d%H%M")
@@ -325,6 +326,7 @@ class Cluster(object):
         self.refresh_interval = refresh_interval
         self.disable_queue = disable_queue
         self.disable_threads = disable_threads
+        self.force_spot_master = force_spot_master
 
         self.__instance_types = static.INSTANCE_TYPES
         self.__cluster_settings = static.CLUSTER_SETTINGS
@@ -942,15 +944,23 @@ class Cluster(object):
         (mtype, mimage) = self._get_type_and_image_id('master')
         log.info("Launching master node (ami: %s, type: %s)..." % \
                  (mimage, mtype))
+        force_flat = not self.force_spot_master and self.cluster_size > 1
         master_response = self.create_node('master',
                                            image_id=mimage,
-                                           instance_type=mtype)
-        print master_response[0]
+                                           instance_type=mtype,
+                                           force_flat=force_flat)
+        zone = None
+        if not force_flat and self.spot_bid:
+            master_response = master_response[0]
+            # Make sure nodes are in same zone as master
+            launch_spec = master_response.launch_specification
+            zone = launch_spec.placement
+        else:
+            # Make sure nodes are in same zone as master
+            zone = master_response.instances[0].placement
+        print master_response
         if self.cluster_size <= 1:
             return
-        # Make sure nodes are in same zone as master
-        launch_spec = master_response[0].launch_specification
-        zone = launch_spec.placement
         for id in range(1, self.cluster_size):
             alias = 'node%.3d' % id
             (ntype, nimage) = self._get_type_and_image_id(alias)

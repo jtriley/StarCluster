@@ -67,6 +67,13 @@ class CmdStart(ClusterCompleter):
         parser.add_option("-q", "--disable-queue", dest="disable_queue",
                           action="store_true", default=None,
                           help="Do not configure a queueing system (SGE)")
+        parser.add_option("--force-spot-master",
+                          dest="force_spot_master", action="store_true",
+                          default=False, help="when creating a spot cluster "
+                          "the default is to launch the master as "
+                          "a flat-rate instance for stability. this option "
+                          "forces launching the master node as a spot "
+                          "instance when a spot cluster is requested.")
         parser.add_option("-r", "--refresh-interval", dest="refresh_interval",
                           type="int", action="callback", default=None,
                           callback=self._positive_int,
