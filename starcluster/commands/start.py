@@ -165,12 +165,23 @@ class CmdStart(ClusterCompleter):
             validate_running = True
             scluster = self.cm.get_cluster(tag)
             log.info(
-                "Using original template used to launch cluster '%s'" % \
+                "Using original template used to launch cluster '%s'" %
                 scluster.cluster_tag)
         else:
             template = self.opts.cluster_template
             if not template:
-                template = self.cm.get_default_cluster_template()
+                try:
+                    template = self.cm.get_default_cluster_template()
+                except exception.NoDefaultTemplateFound, e:
+                    try:
+                        ctmpl = e.options[0]
+                    except IndexError:
+                        ctmpl = "smallcluster"
+                    e.msg += " \n\nAlternatively, you can specify a cluster "
+                    e.msg += "template to use by passing the '-c' option to "
+                    e.msg += "the 'start' command, e.g.:\n\n"
+                    e.msg += "    $ starcluster start -c %s %s" % (ctmpl, tag)
+                    raise e
                 log.info("Using default cluster template: %s" % template)
             scluster = self.cm.get_cluster_template(template, tag)
         scluster.update(self.specified_options_dict)
