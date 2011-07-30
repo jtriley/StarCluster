@@ -35,7 +35,14 @@ class CmdStop(ClusterCompleter):
 
     def execute(self, args):
         if not args:
-            self.parser.error("please specify a cluster")
+            cls = [c.cluster_tag for c in
+                   self.cm.get_clusters(load_plugins=False,
+                                        load_receipt=False)]
+            msg = "please specify a cluster"
+            if cls:
+                opts = ', '.join(cls)
+                msg = " ".join([msg, '(options:', opts, ')'])
+            self.parser.error(msg)
         for cluster_name in args:
             cl = self.cm.get_cluster(cluster_name)
             is_ebs = cl.is_ebs_cluster()

@@ -5,6 +5,7 @@ import ConfigParser
 
 from starcluster import utils
 from starcluster import static
+from starcluster import cluster
 from starcluster import awsutils
 from starcluster import exception
 from starcluster.cluster import Cluster
@@ -33,6 +34,15 @@ def get_easy_ec2(config_file=None, cache=False):
     """
     cfg = get_config(config_file, cache)
     return cfg.get_easy_ec2()
+
+
+def get_cluster_manager(config_file=None, cache=False):
+    """
+    Factory for ClusterManager class that attempts to load AWS credentials from
+    the StarCluster config file. Returns a ClusterManager object if successful
+    """
+    cfg = get_config(config_file, cache)
+    return cfg.get_cluster_manager()
 
 
 def get_config(config_file=None, cache=False):
@@ -490,13 +500,12 @@ class StarClusterConfig(object):
         """
         clusters = cluster_sections
         cluster_store = AttributeDict()
-        for cluster in clusters:
-            name = self._get_section_name(cluster)
+        for cl in clusters:
+            name = self._get_section_name(cl)
             cluster_store[name] = AttributeDict()
-            self._load_settings(cluster, self.cluster_settings,
-                               cluster_store[name])
-        for cluster in clusters:
-            name = self._get_section_name(cluster)
+            self._load_settings(cl, self.cluster_settings, cluster_store[name])
+        for cl in clusters:
+            name = self._get_section_name(cl)
             self._load_extends_settings(name, cluster_store)
             self._load_defaults(self.cluster_settings, cluster_store[name])
             self._load_keypairs(cluster_store[name])
@@ -504,8 +513,8 @@ class StarClusterConfig(object):
             self._load_plugins(cluster_store[name])
             self._load_permissions(cluster_store[name])
             self._load_instance_types(cluster_store[name])
-            self._check_required(cluster, self.cluster_settings,
-                               cluster_store[name])
+            self._check_required(cl, self.cluster_settings,
+                                 cluster_store[name])
         return cluster_store
 
     def load(self):
@@ -598,8 +607,8 @@ class StarClusterConfig(object):
 
     def get_clusters(self):
         clusters = []
-        for cluster in self.clusters:
-            clusters.append(self.get_cluster_template(cluster))
+        for cl in self.clusters:
+            cl.append(self.get_cluster_template(cluster))
         return clusters
 
     def get_plugin(self, plugin):
@@ -639,6 +648,11 @@ class StarClusterConfig(object):
             return ec2
         except TypeError:
             raise exception.ConfigError("no aws credentials found")
+
+    def get_cluster_manager(self):
+        ec2 = self.get_easy_ec2()
+        return cluster.ClusterManager(self, ec2)
+
 
 if __name__ == "__main__":
     from pprint import pprint

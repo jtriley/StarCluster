@@ -192,12 +192,16 @@ class PluginNotFound(ConfigError):
 
 class NoDefaultTemplateFound(ConfigError):
     def __init__(self, options=None):
-        msg = "No default cluster template specified. To set the default "
-        msg += "cluster template, set DEFAULT_TEMPLATE in the [global] section"
-        msg += " of the config to the name of one of your cluster templates "
+        msg = "No default cluster template specified.\n\n"
+        msg += "To set the default cluster template, set DEFAULT_TEMPLATE "
+        msg += "in the [global] section of the config to the name of one of "
+        msg += "your cluster templates"
+        optlist = ', '.join(options)
         if options:
-            msg += '(' + ', '.join(options) + ')'
+            msg += '\n\nCurrent Templates:\n\n' + optlist
         self.msg = msg
+        self.options = options
+        self.options_list = optlist
 
 
 class ConfigNotFound(ConfigError):
@@ -334,7 +338,7 @@ class ClusterDoesNotExist(BaseException):
     Exception raised when user requests a running cluster that does not exist
     """
     def __init__(self, cluster_name):
-        self.msg = "cluster %s does not exist" % cluster_name
+        self.msg = "cluster '%s' does not exist" % cluster_name
 
 
 class ClusterExists(BaseException):

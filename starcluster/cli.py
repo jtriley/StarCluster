@@ -166,10 +166,20 @@ class StarClusterCLI(object):
             log.debug(e.format_excs())
             print
             self.bug_found()
+        except exception.ClusterDoesNotExist, e:
+            cm = gopts.CONFIG.get_cluster_manager()
+            cls = cm.get_clusters()
+            log.error(e.msg)
+            if cls:
+                taglist = ', '.join([c.cluster_tag for c in cls])
+                active_clusters = "(active clusters: %s)" % taglist
+                log.error(active_clusters)
+            sys.exit(1)
         except exception.BaseException, e:
             log.error(e.msg, extra={'__textwrap__': True})
             sys.exit(1)
         except SystemExit, e:
+            # re-raise SystemExit to avoid the bug-catcher below
             raise e
         except Exception, e:
             if not gopts.DEBUG:
