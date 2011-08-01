@@ -248,8 +248,9 @@ class DefaultClusterSetup(ClusterSetup):
                     volume_partition = device + '1'
                 else:
                     log.error(
-                        "volume has more than one partition, must specify" + \
-                        "a partition to use in the config")
+                        "volume has more than one partition, please specify "
+                        "which partition to use (e.g. partition=0, "
+                        "partition=1, etc) in the volume's config")
                     continue
             elif not master.ssh.path_exists(volume_partition):
                 log.warn("Cannot find partition %s on volume %s" % \
