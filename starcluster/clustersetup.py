@@ -313,7 +313,7 @@ class DefaultClusterSetup(ClusterSetup):
                                  jobid=node.alias)
         self.pool.wait(numtasks=len(nodes))
 
-    @print_timing
+    @print_timing("Setting up NFS")
     def _setup_nfs(self, nodes=None, start_server=True):
         """
         Share /home, /opt/sge6, and all EBS mount paths via NFS to all nodes
