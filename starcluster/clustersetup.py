@@ -233,7 +233,12 @@ class DefaultClusterSetup(ClusterSetup):
             if not (vol_id and device and mount_path):
                 log.error("missing required settings for vol %s" % vol)
                 continue
-            if not master.ssh.path_exists(device):
+            dev_exists = master.ssh.path_exists(device)
+            if not dev_exists and device.startswith('/dev/sd'):
+                # check for "correct" device in unpatched kernels
+                device = device.replace('/dev/sd', '/dev/xvd')
+                dev_exists = master.ssh.path_exists(device)
+            if not dev_exists:
                 log.warn("Cannot find device %s for volume %s" %
                          (device, vol_id))
                 log.warn("Not mounting %s on %s" % (vol_id, mount_path))
