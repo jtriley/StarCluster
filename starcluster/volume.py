@@ -25,8 +25,8 @@ class VolumeCreator(cluster.Cluster):
     shutdown_instance - True will shutdown the host instance after volume
     creation
     """
-    def __init__(self, ec2_conn, keypair=None, key_location=None,
-                 host_instance=None, device='/dev/sdz',
+    def __init__(self, ec2_conn, spot_bid=None, keypair=None,
+                 key_location=None, host_instance=None, device='/dev/sdz',
                  image_id=static.BASE_AMI_32, instance_type="m1.small",
                  shutdown_instance=False, detach_vol=False,
                  mkfs_cmd='mkfs.ext3', resizefs_cmd='resize2fs', **kwargs):
@@ -40,11 +40,11 @@ class VolumeCreator(cluster.Cluster):
         self._detach_vol = detach_vol
         self._mkfs_cmd = mkfs_cmd
         self._resizefs_cmd = resizefs_cmd
-        self._alias_tmpl = "volumecreator-%s"
+        self._alias_tmpl = "volhost-%s"
         super(VolumeCreator, self).__init__(
-            ec2_conn=ec2_conn, keyname=keypair, key_location=key_location,
-            cluster_tag=static.VOLUME_GROUP_NAME, cluster_size=1,
-            cluster_user="sgeadmin", cluster_shell="bash",
+            ec2_conn=ec2_conn, spot_bid=spot_bid, keyname=keypair,
+            key_location=key_location, cluster_tag=static.VOLUME_GROUP_NAME,
+            cluster_size=1, cluster_user="sgeadmin", cluster_shell="bash",
             node_image_id=self._image_id,
             node_instance_type=self._instance_type)
 

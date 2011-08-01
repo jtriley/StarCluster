@@ -35,9 +35,10 @@ Assuming this command completes successfully you're now ready to create the conf
 Install development version from github
 =======================================
 
-**WARNING**: These methods describe installing the latest development snapshot. Although we try to keep the latest code functional, 
-please be aware that things may break with these snapshots and that you use them at your own risk. This section is really only 
-meant for those that are interested in contributing to or testing the latest development code.
+.. warning::
+    These methods describe installing the latest development snapshot. Although we try to keep the latest code functional,
+    please be aware that things may break with these snapshots and that you use them at your own risk. This section is really only
+    meant for those that are interested in contributing to or testing the latest development code.
 
 There are two ways to install the latest development version of StarCluster from github:
 
@@ -46,7 +47,7 @@ Install development version using a downloaded snapshot
 This method does not require any special tools other than a web browser and python and is recommended if you don't use git but 
 would still like the latest development changes.
 
-Download a `zip <http://github.com/jtriley/StarCluster/zipball/master>`_ or `tar <http://github.com/jtriley/StarCluster/zipball/master>`_ 
+Download a `zip <https://github.com/jtriley/StarCluster/zipball/master>`_ or `tar <https://github.com/jtriley/StarCluster/zipball/master>`_ 
 snapshot of the latest development code.
 
 After downloading the code, perform the following in a terminal to install:

@@ -9,23 +9,7 @@ Welcome to StarCluster's documentation!
 Contents:
 
 .. toctree::
+   :hidden:
    :maxdepth: 2
 
-   installation.rst
-   configuration.rst
-   volumes.rst
-   launch.rst
-   getting_started.rst
-   create_new_ami.rst
-   list_public_amis.rst
-   shell_completion.rst
-   plugins.rst
-   load_balancer.rst
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
+   contents

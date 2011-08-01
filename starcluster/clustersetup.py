@@ -198,7 +198,6 @@ class DefaultClusterSetup(ClusterSetup):
         log.info("Configuring /etc/hosts on each node")
         nodes = nodes or self._nodes
         for node in nodes:
-            log.info("Configuring /etc/hosts for node %s" % node.id)
             self.pool.simple_job(node.add_to_etc_hosts, (nodes, ),
                                  jobid=node.alias)
         self.pool.wait(numtasks=len(nodes))
