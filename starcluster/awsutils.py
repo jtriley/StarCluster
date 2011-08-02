@@ -188,37 +188,56 @@ class EasyEC2(EasyAWS):
 
     def get_all_security_groups(self, groupnames=[]):
         """
-        Returns group with name if it exists otherwise returns None
+        Returns all security groups
+
+        groupnames - optional list of group names to retrieve
         """
-        try:
-            return self.conn.get_all_security_groups(groupnames=groupnames)
-        except boto.exception.EC2ResponseError, e:
-            self.__check_for_auth_failure(e)
-        except IndexError, e:
-            pass
+        filters = {}
+        if groupnames:
+            filters = {'group-name': groupnames}
+        return self.get_security_groups(filters=filters)
 
     def get_group_or_none(self, name):
         """
         Returns group with name if it exists otherwise returns None
         """
-        sgs = self.get_all_security_groups(groupnames=[name])
-        if sgs:
-            return sgs[0]
+        try:
+            return self.get_security_group(name)
+        except exception.SecurityGroupDoesNotExist:
+            pass
 
     def get_or_create_group(self, name, description, auth_ssh=True,
                             auth_group_traffic=False):
         """
-        Try to return a security group by name.
-        If the group is not found, attempt to create it.
-        Description only applies to creation.
+        Try to return a security group by name. If the group is not found,
+        attempt to create it.  Description only applies to creation.
 
-        Authorizes all traffic between members of the group
+        auth_ssh - authorize ssh traffic from world
+        auth_group_traffic - authorizes all traffic between members of the
+                             group
         """
         sg = self.get_group_or_none(name)
         if not sg:
             sg = self.create_group(name, description, auth_ssh,
-                                     auth_group_traffic)
+                                   auth_group_traffic)
         return sg
+
+    def get_security_group(self, groupname):
+        try:
+            return self.get_security_groups(
+                filters={'group-name': groupname})[0]
+        except boto.exception.EC2ResponseError, e:
+            if e.error_code == "InvalidGroup.NotFound":
+                raise exception.SecurityGroupDoesNotExist(groupname)
+            raise
+        except IndexError:
+            raise exception.SecurityGroupDoesNotExist(groupname)
+
+    def get_security_groups(self, filters=None):
+        """
+        Returns all security groups on this EC2 account
+        """
+        return self.conn.get_all_security_groups(filters=filters)
 
     def has_permission(self, group, ip_protocol, from_port, to_port, cidr_ip):
         """
@@ -1041,19 +1060,6 @@ class EasyEC2(EasyAWS):
                 print "create_time: %s" % lt
                 print
         print 'Total: %s' % len(vols)
-
-    def get_security_group(self, groupname):
-        try:
-            return self.conn.get_all_security_groups(filters={'group-name':
-                                                              groupname})[0]
-        except boto.exception.EC2ResponseError, e:
-            self.__check_for_auth_failure(e)
-            raise exception.SecurityGroupDoesNotExist(groupname)
-        except IndexError:
-            raise exception.SecurityGroupDoesNotExist(groupname)
-
-    def get_security_groups(self, filters=None):
-        return self.conn.get_all_security_groups(filters=filters)
 
     def get_spot_history(self, instance_type, start=None, end=None, plot=False,
                          plot_server_interface="localhost",
