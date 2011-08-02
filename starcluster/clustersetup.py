@@ -372,10 +372,6 @@ class DefaultClusterSetup(ClusterSetup):
         mconn.execute('source /etc/profile && ' + \
                       'qconf -mattr queue shell "/bin/bash" all.q')
         for node in self.nodes:
-            master.ssh.execute('source /etc/profile && qconf -ah %s' %
-                               node.alias)
-            master.ssh.execute('source /etc/profile && qconf -as %s' %
-                               node.alias)
             self.pool.simple_job(self._add_to_sge, (node,), jobid=node.alias)
         self.pool.wait(numtasks=len(self.nodes))
 
