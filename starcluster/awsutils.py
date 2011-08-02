@@ -63,7 +63,7 @@ class EasyEC2(EasyAWS):
     def __init__(self, aws_access_key_id, aws_secret_access_key,
                  aws_ec2_path='/', aws_s3_host=None, aws_s3_path='/',
                  aws_port=None, aws_region_name=None, aws_is_secure=True,
-                 aws_region_host=None, cache=False, **kwargs):
+                 aws_region_host=None, **kwargs):
         aws_region = None
         if aws_region_name and aws_region_host:
             aws_region = boto.ec2.regioninfo.RegionInfo(
@@ -75,15 +75,8 @@ class EasyEC2(EasyAWS):
         kwargs = dict(aws_s3_host=aws_s3_host,
                       aws_s3_path=aws_s3_path,
                       aws_port=aws_port,
-                      aws_is_secure=aws_is_secure,
-                      cache=cache)
+                      aws_is_secure=aws_is_secure)
         self.s3 = EasyS3(aws_access_key_id, aws_secret_access_key, **kwargs)
-        self.cache = cache
-        self._instance_response = None
-        self._keypair_response = None
-        self._images = None
-        self._executable_images = None
-        self._security_group_response = None
         self._regions = None
 
     def __repr__(self):
@@ -145,16 +138,11 @@ class EasyEC2(EasyAWS):
 
     @property
     def registered_images(self):
-        if not self.cache or self._images is None:
-            self._images = self.conn.get_all_images(owners=["self"])
-        return self._images
+        return self.conn.get_all_images(owners=["self"])
 
     @property
     def executable_images(self):
-        if not self.cache or self._images is None:
-            self._executable_images = self.conn.get_all_images(
-                executable_by=["self"])
-        return self._executable_images
+        return self.conn.get_all_images(executable_by=["self"])
 
     def get_registered_image(self, image_id):
         if not image_id.startswith('ami') or len(image_id) != 12:
@@ -936,19 +924,11 @@ class EasyEC2(EasyAWS):
 
     @property
     def instances(self):
-        if not self.cache or self._instance_response is None:
-            log.debug('instance_response = %s, cache = %s' %
-            (self._instance_response, self.cache))
-            self._instance_response = self.conn.get_all_instances()
-        return self._instance_response
+        return self.get_all_instances()
 
     @property
     def keypairs(self):
-        if not self.cache or self._keypair_response is None:
-            log.debug('keypair_response = %s, cache = %s' %
-            (self._keypair_response, self.cache))
-            self._keypair_response = self.conn.get_all_key_pairs()
-        return self._keypair_response
+        return self.get_keypairs()
 
     def terminate_instances(self, instances=None):
         if instances:
@@ -1150,7 +1130,7 @@ class EasyS3(EasyAWS):
 
     def __init__(self, aws_access_key_id, aws_secret_access_key,
                  aws_s3_path='/', aws_port=None, aws_is_secure=True,
-                 aws_s3_host=DefaultHost, cache=False, **kwargs):
+                 aws_s3_host=DefaultHost, **kwargs):
         kwargs = dict(is_secure=aws_is_secure,
                       host=aws_s3_host or self.DefaultHost,
                       port=aws_port,
@@ -1159,7 +1139,6 @@ class EasyS3(EasyAWS):
             kwargs.update(dict(calling_format=self._calling_format))
         super(EasyS3, self).__init__(aws_access_key_id, aws_secret_access_key,
                                      boto.connect_s3, **kwargs)
-        self.cache = cache
 
     def __repr__(self):
         return '<EasyS3: %s>' % self.conn.server_name()
