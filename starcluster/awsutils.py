@@ -1142,10 +1142,6 @@ class EasyS3(EasyAWS):
     def __repr__(self):
         return '<EasyS3: %s>' % self.conn.server_name()
 
-    def __check_for_auth_failure(self, e):
-        if e.error_code == "InvalidAccessKeyId":
-            raise e
-
     def create_bucket(self, bucket_name):
         """
         Create a new bucket on S3. bucket_name must be unique, the bucket
@@ -1155,7 +1151,6 @@ class EasyS3(EasyAWS):
         try:
             return self.conn.create_bucket(bucket_name)
         except boto.exception.S3CreateError, e:
-            self.__check_for_auth_failure(e)
             if e.error_code == "BucketAlreadyExists":
                 raise exception.BucketAlreadyExists(bucket_name)
             raise
@@ -1165,10 +1160,8 @@ class EasyS3(EasyAWS):
         Check if bucket_name exists on S3
         """
         try:
-            self.conn.get_bucket(bucket_name)
-            return True
-        except boto.exception.S3ResponseError, e:
-            self.__check_for_auth_failure(e)
+            return self.get_bucket(bucket_name) is not None
+        except exception.BucketDoesNotExist:
             return False
 
     def get_bucket_or_none(self, bucket_name):
@@ -1188,8 +1181,9 @@ class EasyS3(EasyAWS):
         try:
             return self.conn.get_bucket(bucketname)
         except boto.exception.S3ResponseError, e:
-            self.__check_for_auth_failure(e)
-            raise exception.BucketDoesNotExist(bucketname)
+            if e.error_code == "NoSuchBucket":
+                raise exception.BucketDoesNotExist(bucketname)
+            raise
 
     def list_bucket(self, bucketname):
         bucket = self.get_bucket(bucketname)
@@ -1201,7 +1195,7 @@ class EasyS3(EasyAWS):
         try:
             buckets = self.conn.get_all_buckets()
         except TypeError:
-            #hack until boto fixes get_all_buckets
+            # hack until boto (or eucalyptus) fixes get_all_buckets
             raise exception.AWSError("AWS credentials are not valid")
         return buckets
 
@@ -1210,12 +1204,8 @@ class EasyS3(EasyAWS):
             print bucket.name
 
     def get_bucket_files(self, bucketname):
-        files = []
-        try:
-            bucket = self.get_bucket(bucketname)
-            files = [file for file in bucket.list()]
-        except:
-            pass
+        bucket = self.get_bucket(bucketname)
+        files = [file for file in bucket.list()]
         return files
 
 if __name__ == "__main__":
