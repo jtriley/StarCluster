@@ -45,7 +45,7 @@ CSP_MAIL_ADDRESS="none@none.edu"
 """
 
 sge_pe_template = """
-pe_name           orte
+pe_name           %s
 slots             %s
 user_lists        NONE
 xuser_lists       NONE

@@ -333,6 +333,42 @@ class DefaultClusterSetup(ClusterSetup):
         master.export_fs_to_nodes(nodes, export_paths)
         self._mount_nfs_shares(nodes)
 
+    def _create_sge_pe(self, name="orte", nodes=None, queue="all.q"):
+        """
+        Create or update an SGE parallel environment
+
+        name - name of parallel environment
+        nodes - list of nodes to include in the parallel environment
+                (default: all)
+        queue - configure queue to use the new parallel environment
+        """
+        mssh = self._master.ssh
+        pe_exists = mssh.get_status('source /etc/profile && qconf -sp %s' %
+                                    name)
+        pe_exists = pe_exists == 0
+        if not pe_exists:
+            log.info("Creating SGE parallel environment '%s'" % name)
+        else:
+            log.info("Updating SGE parallel environment '%s'" % name)
+        # iterate through each machine and count the number of processors
+        nodes = nodes or self._nodes
+        num_processors = sum(self.pool.map(lambda n: n.num_processors, nodes))
+        penv = mssh.remote_file("/tmp/pe.txt")
+        print >> penv, sge.sge_pe_template % (name, num_processors)
+        penv.close()
+        if not pe_exists:
+            mssh.execute("source /etc/profile && qconf -Ap %s" %
+                               penv.name)
+        else:
+            mssh.execute("source /etc/profile && qconf -Mp %s" %
+                               penv.name)
+        if queue:
+            log.info("Adding parallel environment '%s' to queue '%s'" %
+                     (name, queue))
+            mssh.execute(
+                'source /etc/profile && qconf -mattr queue pe_list "%s" %s' %
+                (name, queue))
+
     def _setup_sge(self):
         """
         Install Sun Grid Engine with a default parallel
@@ -374,17 +410,7 @@ class DefaultClusterSetup(ClusterSetup):
         for node in self.nodes:
             self.pool.simple_job(self._add_to_sge, (node,), jobid=node.alias)
         self.pool.wait(numtasks=len(self.nodes))
-
-        # create sge parallel environment
-        # first iterate through each machine and count the number of processors
-        num_processors = sum(map(lambda n: n.num_processors, self._nodes))
-        parallel_environment = mconn.remote_file("/tmp/pe.txt")
-        print >> parallel_environment, sge.sge_pe_template % num_processors
-        parallel_environment.close()
-        mconn.execute("source /etc/profile && qconf -Ap %s" % \
-                      parallel_environment.name)
-        mconn.execute(
-            'source /etc/profile && qconf -mattr queue pe_list "orte" all.q')
+        self._create_sge_pe()
 
     def run(self, nodes, master, user, user_shell, volumes):
         """Start cluster configuration"""
@@ -463,9 +489,12 @@ class DefaultClusterSetup(ClusterSetup):
         f.close()
         master.ssh.execute('source /etc/profile && qconf -Mq /tmp/allq_new')
         master.ssh.execute(
-            'source /etc/profile && qconf -de %s' % node.alias)
-        master.ssh.execute(
             'source /etc/profile && qconf -dconf %s' % node.alias)
+        master.ssh.execute(
+            'source /etc/profile && qconf -de %s' % node.alias)
+        node.ssh.execute('pkill -9 sge_execd')
+        nodes = filter(lambda n: n.alias != node.alias, self._nodes)
+        self._create_sge_pe(nodes=nodes)
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
@@ -518,3 +547,4 @@ class DefaultClusterSetup(ClusterSetup):
         if not self._disable_queue:
             log.info("Adding %s to SGE" % node.alias)
             self._add_to_sge(node)
+            self._create_sge_pe()
