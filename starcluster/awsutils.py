@@ -1012,17 +1012,14 @@ class EasyEC2(EasyAWS):
             self.wait_for_snapshot(snap, refresh_interval)
         return snap
 
-    def get_snapshots(self, volume_ids=[]):
+    def get_snapshots(self, volume_ids=[], filters=None):
         """
         Returns a list of all EBS volume snapshots for this account
         """
-        filters = {}
+        filters = filters or {}
         if volume_ids:
             filters['volume-id'] = volume_ids
-        try:
-            return self.conn.get_all_snapshots(owner='self', filters=filters)
-        except boto.exception.EC2ResponseError, e:
-            self.__check_for_auth_failure(e)
+        return self.conn.get_all_snapshots(owner='self', filters=filters)
 
     def get_snapshot(self, snapshot_id):
         """
@@ -1030,10 +1027,11 @@ class EasyEC2(EasyAWS):
         Raises exception.SnapshotDoesNotExist if unsuccessful
         """
         try:
-            return self.conn.get_all_snapshots(snapshot_ids=[snapshot_id])[0]
+            return self.get_snapshots(filters={'snapshot-id': snapshot_id})[0]
         except boto.exception.EC2ResponseError, e:
-            self.__check_for_auth_failure(e)
-            raise exception.SnapshotDoesNotExist(snapshot_id)
+            if e.error_code == "InvalidSnapshot.NotFound":
+                raise exception.SnapshotDoesNotExist(snapshot_id)
+            raise
         except IndexError:
             raise exception.SnapshotDoesNotExist(snapshot_id)
 
