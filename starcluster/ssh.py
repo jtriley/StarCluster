@@ -428,20 +428,23 @@ class SSHClient(object):
                 break
         self.scp.put(localpaths, remote_path=remotepath, recursive=recursive)
 
-    def execute_async(self, command):
+    def execute_async(self, command, source_profile=False):
         """
         Executes a remote command so that it continues running even after this
         SSH connection closes. The remote process will be put into the
         background via nohup. Does not return output or check for non-zero exit
         status.
         """
-        return self.execute(command, detach=True)
+        return self.execute(command, detach=True,
+                            source_profile=source_profile)
 
-    def get_status(self, command):
+    def get_status(self, command, source_profile=False):
         """
         Execute a remote command and return the exit status
         """
         channel = self.transport.open_session()
+        if source_profile:
+            command = "source /etc/profile && %s" % command
         channel.exec_command(command)
         return channel.recv_exit_status()
 
@@ -475,7 +478,8 @@ class SSHClient(object):
         return output
 
     def execute(self, command, silent=True, only_printable=False,
-                ignore_exit_status=False, log_output=True, detach=False):
+                ignore_exit_status=False, log_output=True, detach=False,
+                source_profile=False):
         """
         Execute a remote command and return stdout/stderr
 
@@ -490,14 +494,19 @@ class SSHClient(object):
         detach - detach the remote process so that it continues to run even
                  after the SSH connection closes (does NOT return output or
                  check for non-zero exit status if detach=True)
+        source_profile - if True prefix the command with "source /etc/profile"
         returns List of output lines
         """
         channel = self.transport.open_session()
         if detach:
             command = "nohup %s &" % command
+            if source_profile:
+                command = "source /etc/profile && %s" % command
             channel.exec_command(command)
             channel.close()
             return
+        if source_profile:
+            command = "source /etc/profile && %s" % command
         channel.exec_command(command)
         output = self._get_output(channel, silent=silent,
                                   only_printable=only_printable)
