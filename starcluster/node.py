@@ -249,7 +249,6 @@ class Node(object):
         grp_file.close()
         grp_map = {}
         for group in groups:
-            print grp
             name, passwd, gid, mems = group
             gid = int(gid)
             mems = mems.split(',')
