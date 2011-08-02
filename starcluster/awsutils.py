@@ -433,19 +433,21 @@ class EasyEC2(EasyAWS):
                 raise exception.InstanceDoesNotExist(instance_id)
             raise e
 
+    def get_instances(self, filters=None):
+        return self.conn.get_all_instances(filters=filters)
+
     def get_instance(self, instance_id):
         try:
-            res = self.conn.get_all_instances(
-                filters={'instance-id': instance_id})
+            res = self.get_all_instances(filters={'instance-id': instance_id})
             i = res[0].instances[0]
             # set group info
             i.groups = res[0].groups
             return i
         except boto.exception.EC2ResponseError, e:
-            self.__check_for_auth_failure(e)
-            raise exception.InstanceDoesNotExist(instance_id)
+            if e.error_code == "InvalidInstanceID.NotFound":
+                raise exception.InstanceDoesNotExist(instance_id)
+            raise
         except IndexError:
-            # for eucalyptus, invalid instance_id returns []
             raise exception.InstanceDoesNotExist(instance_id)
 
     def is_valid_conn(self):
