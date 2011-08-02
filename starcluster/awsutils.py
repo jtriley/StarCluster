@@ -740,16 +740,20 @@ class EasyEC2(EasyAWS):
                                          **kwargs)
         return icreator.create_image(size=root_vol_size)
 
+    def get_images(self, filters=None):
+        return self.conn.get_all_images(filters=filters)
+
     def get_image(self, image_id):
         """
         Return image object representing an AMI.
         Raises exception.AMIDoesNotExist if unsuccessful
         """
         try:
-            return self.conn.get_all_images(image_ids=[image_id])[0]
+            return self.get_images(filters={'image-id': image_id})[0]
         except boto.exception.EC2ResponseError, e:
-            self.__check_for_auth_failure(e)
-            raise exception.AMIDoesNotExist(image_id)
+            if e.error_code == "InvalidAMIID.NotFound":
+                raise exception.AMIDoesNotExist(image_id)
+            raise
         except IndexError:
             raise exception.AMIDoesNotExist(image_id)
 
@@ -760,7 +764,7 @@ class EasyEC2(EasyAWS):
         """
         try:
             return self.get_image(image_id)
-        except:
+        except exception.AMIDoesNotExist:
             pass
 
     def _get_image_files(self, image, bucket):
