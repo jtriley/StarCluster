@@ -455,7 +455,8 @@ class EasyEC2(EasyAWS):
             self.get_all_instances()
             return True
         except boto.exception.EC2ResponseError, e:
-            if e.status in [401, 403]:
+            cred_errs = ['AuthFailure', 'SignatureDoesNotMatch']
+            if e.error_code in cred_errs:
                 return False
             raise
 
