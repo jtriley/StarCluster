@@ -385,19 +385,23 @@ class EasyEC2(EasyAWS):
                 raise exception.BaseException(str(e))
         return kp
 
+    def get_keypairs(self, filters={}):
+        return self.conn.get_all_key_pairs(filters=filters)
+
     def get_keypair(self, keypair):
         try:
-            return self.conn.get_all_key_pairs(keynames=[keypair])[0]
+            return self.get_keypairs(filters={'key-name': keypair})[0]
         except boto.exception.EC2ResponseError, e:
-            self.__check_for_auth_failure(e)
-            raise exception.KeyPairDoesNotExist(keypair)
+            if e.error_code == "InvalidKeyPair.NotFound":
+                raise exception.KeyPairDoesNotExist(keypair)
+            raise
         except IndexError:
             raise exception.KeyPairDoesNotExist(keypair)
 
     def get_keypair_or_none(self, keypair):
         try:
             return self.get_keypair(keypair)
-        except:
+        except exception.KeyPairDoesNotExist:
             pass
 
     def __print_header(self, msg):
