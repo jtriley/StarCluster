@@ -961,10 +961,7 @@ class EasyEC2(EasyAWS):
         """
         Returns a list of all EBS volumes
         """
-        try:
-            return self.conn.get_all_volumes(filters=filters)
-        except boto.exception.EC2ResponseError, e:
-            self.__check_for_auth_failure(e)
+        return self.conn.get_all_volumes(filters=filters)
 
     def get_volume(self, volume_id):
         """
@@ -972,13 +969,23 @@ class EasyEC2(EasyAWS):
         Raises exception.VolumeDoesNotExist if unsuccessful
         """
         try:
-            return self.conn.get_all_volumes(
-                filters={'volume-id': volume_id})[0]
+            return self.get_volumes(filters={'volume-id': volume_id})[0]
         except boto.exception.EC2ResponseError, e:
-            self.__check_for_auth_failure(e)
-            raise exception.VolumeDoesNotExist(volume_id)
+            if e.error_code == "InvalidVolume.NotFound":
+                raise exception.VolumeDoesNotExist(volume_id)
+            raise
         except IndexError:
             raise exception.VolumeDoesNotExist(volume_id)
+
+    def get_volume_or_none(self, volume_id):
+        """
+        Returns EBS volume object representing volume_id.
+        Returns None if unsuccessful
+        """
+        try:
+            return self.get_volume(volume_id)
+        except exception.VolumeDoesNotExist:
+            pass
 
     def wait_for_snapshot(self, snapshot, refresh_interval=30):
         snap = snapshot
@@ -1029,16 +1036,6 @@ class EasyEC2(EasyAWS):
             raise exception.SnapshotDoesNotExist(snapshot_id)
         except IndexError:
             raise exception.SnapshotDoesNotExist(snapshot_id)
-
-    def get_volume_or_none(self, volume_id):
-        """
-        Returns EBS volume object representing volume_id.
-        Returns none if unsuccessful
-        """
-        try:
-            return self.get_volume(volume_id)
-        except:
-            pass
 
     def list_volumes(self, volume_id=None, status=None,
                      attach_status=None, size=None, zone=None,
