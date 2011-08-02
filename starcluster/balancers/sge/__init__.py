@@ -509,14 +509,17 @@ class SGELoadBalancer(LoadBalancer):
         try:
             now = self.get_remote_time()
             qatime = self.get_qatime(now)
-            qacct_cmd = 'source /etc/profile && qacct -j -b ' + qatime
-            qstat_cmd = 'source /etc/profile && qstat -q all.q -u \"*\" -xml'
-            qhostxml = '\n'.join(master.ssh.execute(
-                'source /etc/profile && qhost -xml', log_output=True))
+            qacct_cmd = 'qacct -j -b ' + qatime
+            qstat_cmd = 'qstat -q all.q -u \"*\" -xml'
+            qhostxml = '\n'.join(master.ssh.execute('qhost -xml',
+                                                    log_output=True,
+                                                    source_profile=True))
             qstatxml = '\n'.join(master.ssh.execute(qstat_cmd,
-                                                    log_output=True))
+                                                    log_output=True,
+                                                    source_profile=True))
             qacct = '\n'.join(master.ssh.execute(qacct_cmd, log_output=True,
-                                                 ignore_exit_status=True))
+                                                 ignore_exit_status=True,
+                                                 source_profile=True))
         except Exception, e:
             log.error("Error occured getting SGE stats via ssh. "
                       "Cluster terminated?")
