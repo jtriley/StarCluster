@@ -480,11 +480,6 @@ class Cluster(object):
         Validate existing instances against this template's settings
         """
         self._validate_instance_types()
-        num_running = len(self.nodes)
-        if num_running != self.cluster_size:
-            raise exception.ClusterValidationError(
-                "Number of existing instances (%s) != cluster_size (%s)" % \
-                (num_running, self.cluster_size))
         mtype = self.master_node.instance_type
         mastertype = self.master_instance_type or self.node_instance_type
         if mtype != mastertype:
