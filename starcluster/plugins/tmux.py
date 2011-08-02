@@ -1,15 +1,40 @@
 #!/usr/bin/env python
 
-from starcluster.clustersetup import ClusterSetup
+from starcluster import exception
+from starcluster import clustersetup
 from starcluster.logger import log
 
 
-class TmuxControlCenter(ClusterSetup):
+class TmuxControlCenter(clustersetup.DefaultClusterSetup):
     """
     Starts a TMUX session on StarCluster configured with split panes for all
     nodes. This allows you to interactively run commands on all nodes and see
     all the output at once.
     """
+    _layouts = ['even-horizontal', 'even-vertical', 'main-horizontal',
+                'main-vertical', 'tiled']
+
+    def __init__(self, envname="starcluster"):
+        self._envname = envname
+        self._nodes = None
+        self._master = None
+        self._user = None
+        self._user_shell = None
+        self._volumes = None
+
+    def _select_layout(self, node, envname, window='', layout="main-vertical"):
+        if layout not in self._layouts:
+            raise exception.PluginError("unknown layout (options: %s)" %
+                                          ", ".join(self._layouts))
+        cmd = 'tmux select-layout -t %s:%s %s'
+        status = node.ssh.get_status(cmd % (envname, window, layout))
+        if status != 0 and layout != "main-vertical":
+            log.warn("failed to select layout '%s', defaulting to "
+                     "main-vertical" % (layout))
+            layout = "main-vertical"
+            status = node.ssh.get_status(cmd % (envname, window, layout))
+        if status != 0:
+            raise exception.PluginError("failed to set a layout")
 
     def _resize_pane(self, node, envname, pane, units, up=False):
         upordown = '-D %s' % units
@@ -42,23 +67,65 @@ class TmuxControlCenter(ClusterSetup):
     def _new_window(self, node, envname, title):
         node.ssh.execute('tmux new-window -n %s -t %s:' % (title, envname))
 
+    def _select_window(self, node, envname, window=''):
+        node.ssh.execute('tmux select-window -t %s:%s' % (envname, window))
+
+    def _select_pane(self, node, envname, window, pane):
+        node.ssh.execute('tmux select-pane -t %s:%s.%s' %
+                         (envname, window, pane))
+
     def create_session(self, node, envname, num_windows=5):
         if not self._has_session(node, envname):
             self._new_session(node, envname)
         for i in range(1, num_windows):
             self._new_window(node, envname, i)
 
+    def setup_tmuxcc(self, client=None, nodes=None, user='root'):
+        log.info("Creating TMUX Control Center for user '%s'" % user)
+        client = client or self._master
+        nodes = nodes or self._nodes
+        envname = self._envname
+        orig_user = client.ssh._username
+        if orig_user != user:
+            client.ssh.connect(username=user)
+        self.create_session(client, envname, num_windows=1)
+        if len(nodes) == 1 and client == nodes[0]:
+            return
+        for i, node in enumerate(nodes):
+            if node.alias != client.alias:
+                self._split_window(client, envname, 0)
+                self._send_keys(client, envname, cmd='ssh %s' % node.alias,
+                                window="0.%d" % i)
+        self._select_layout(client, envname, window=0, layout='tiled')
+        for i, node in enumerate(nodes):
+            self._new_window(client, envname, node.alias)
+            if node.alias != client.alias:
+                self._send_keys(client, envname, cmd='ssh %s' % node.alias,
+                                window=i + 1)
+        self._select_window(client, envname, window=0)
+        self._select_pane(client, envname, window=0, pane=0)
+        if orig_user != user:
+            client.ssh.connect(username=orig_user)
+
+    def add_to_utmp_group(self, client, user):
+        """
+        Adds user (if exists) to 'utmp' group (if exists)
+        """
+        try:
+            client.add_user_to_group(user, 'utmp')
+        except exception.BaseException:
+            pass
+
     def run(self, nodes, master, user, user_shell, volumes):
         log.info("Starting TMUX Control Center...")
-        envname = 'starcluster'
-        master.ssh.connect(username=user)
-        self.create_session(master, envname, num_windows=1)
-        workers = filter(lambda n: not n.is_master(), nodes)
-        for i, node in enumerate(workers):
-            self._new_window(master, envname, i)
-            self._send_keys(master, envname, 'ssh %s' % node.alias,
-                            window=i)
-        master.ssh.connect(username='root')
+        self._nodes = nodes
+        self._master = master
+        self._user = user
+        self._user_shell = user_shell
+        self._volumes = volumes
+        self.add_to_utmp_group(master, user)
+        self.setup_tmuxcc(user=user)
+        self.setup_tmuxcc(user='root')
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         log.info("Adding %s to TMUX Control Center" % node.alias)
