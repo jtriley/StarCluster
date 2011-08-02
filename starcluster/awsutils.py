@@ -681,16 +681,19 @@ class EasyEC2(EasyAWS):
             print 'status: ', zone.state
             print
 
+    def get_zones(self, filters=None):
+        return self.conn.get_all_zones(filters=filters)
+
     def get_zone(self, zone):
         """
         Return zone object respresenting an EC2 availability zone
         Raises exception.ZoneDoesNotExist if not successful
         """
         try:
-            return self.conn.get_all_zones(zones=[zone])[0]
+            return self.get_zones(filters={'zone-name': zone})[0]
         except boto.exception.EC2ResponseError, e:
-            self.__check_for_auth_failure(e)
-            raise exception.ZoneDoesNotExist(zone, self.region.name)
+            if e.error_code == "InvalidZone.NotFound":
+                raise exception.ZoneDoesNotExist(zone, self.region.name)
         except IndexError:
             raise exception.ZoneDoesNotExist(zone, self.region.name)
 
