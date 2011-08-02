@@ -433,8 +433,17 @@ class EasyEC2(EasyAWS):
                 raise exception.InstanceDoesNotExist(instance_id)
             raise e
 
-    def get_instances(self, filters=None):
-        return self.conn.get_all_instances(filters=filters)
+    def get_all_instances(self, instance_ids=[], filters=None):
+        reservations = self.conn.get_all_instances(instance_ids,
+                                                   filters=filters)
+        instances = []
+        for res in reservations:
+            insts = res.instances
+            for i in insts:
+                # set group info
+                i.groups = res.groups
+            instances.extend(insts)
+        return instances
 
     def get_instance(self, instance_id):
         try:
@@ -464,18 +473,6 @@ class EasyEC2(EasyAWS):
         spots = self.conn.get_all_spot_instance_requests(spot_ids,
                                                          filters=filters)
         return spots
-
-    def get_all_instances(self, instance_ids=[], filters=None):
-        reservations = self.conn.get_all_instances(instance_ids,
-                                                   filters=filters)
-        instances = []
-        for res in reservations:
-            insts = res.instances
-            for i in insts:
-                # set group info
-                i.groups = res.groups
-            instances.extend(insts)
-        return instances
 
     def list_all_spot_instances(self, show_closed=False):
         s = self.conn.get_all_spot_instance_requests()
