@@ -749,9 +749,17 @@ class EasyEC2(EasyAWS):
         except exception.AMIDoesNotExist:
             pass
 
-    def _get_image_files(self, image, bucket):
+    def get_image_files(self, image):
         """
+        Returns a list of files on S3 for an EC2 instance-store (S3-backed)
+        image. This includes the image's manifest and part files.
         """
+        if not hasattr(image, 'id'):
+            image = self.get_image(image)
+        if image.root_device_type == 'ebs':
+            raise exception.AWSError(
+                "Image %s is an EBS image. No image files on S3." % image.id)
+        bucket = self.get_image_bucket(image)
         bname = re.escape(bucket.name)
         prefix = re.sub('^%s\/' % bname, '', image.location)
         prefix = re.sub('\.manifest\.xml$', '', prefix)
@@ -763,18 +771,6 @@ class EasyEC2(EasyAWS):
         files = [f for f in files if hasattr(f, 'delete') and
                  part_regex.match(f.name) or manifest_regex.match(f.name)]
         return files
-
-    def get_image_files(self, image_id):
-        """
-        Return list of files on S3 for image_id
-        The list includes the image's manifest and part files
-        """
-        image = self.get_image(image_id)
-        if image.root_device_type == 'ebs':
-            raise exception.AWSError(
-                "Image %s is an EBS image. No image files on S3." % image_id)
-        bucket = self.get_image_bucket(image)
-        return self._get_image_files(image, bucket)
 
     def get_image_bucket(self, image):
         bucket_name = image.location.split('/')[0]
@@ -805,8 +801,7 @@ class EasyEC2(EasyAWS):
             raise exception.AWSError(
                 "The image you wish to migrate is EBS-based. " +
                 "This method only works for instance-store images")
-        ibucket = self.get_image_bucket(image)
-        files = self._get_image_files(image, ibucket)
+        files = self.get_image_files(image)
         if not files:
             log.info("No files found for image: %s" % image_id)
             return
