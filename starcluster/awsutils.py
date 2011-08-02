@@ -257,40 +257,50 @@ class EasyEC2(EasyAWS):
             return True
         return False
 
-    def get_placement_group_or_none(self, name):
-        """
-        Returns placement group with name if it exists otherwise returns None
-        """
-        try:
-            pg = self.conn.get_all_placement_groups(groupnames=[name])[0]
-            return pg
-        except boto.exception.EC2ResponseError, e:
-            self.__check_for_auth_failure(e)
-        except IndexError:
-            pass
-
     def create_placement_group(self, name):
         """
         Create a new placement group for your account.
         This will create the placement group within the region you
         are currently connected to.
         """
-        if not name:
-            return
         log.info("Creating placement group %s..." % name)
         success = self.conn.create_placement_group(name)
         if success:
             return self.get_placement_group_or_none(name)
+
+    def get_placement_groups(self, filters=None):
+        return self.conn.get_all_placement_groups(filters=filters)
+
+    def get_placement_group(self, groupname=None):
+        try:
+            return self.get_placement_groups(filters={'group-name':
+                                                      groupname})[0]
+        except boto.exception.EC2ResponseError, e:
+            if e.error_code == "InvalidPlacementGroup.Unknown":
+                raise exception.PlacementGroupDoesNotExist(groupname)
+            raise
+        except IndexError:
+            raise exception.PlacementGroupDoesNotExist(groupname)
+
+    def get_placement_group_or_none(self, name):
+        """
+        Returns placement group with name if it exists otherwise returns None
+        """
+        try:
+            return self.get_placement_group(name)
+        except exception.PlacementGroupDoesNotExist:
+            pass
 
     def get_or_create_placement_group(self, name):
         """
         Try to return a placement group by name.
         If the group is not found, attempt to create it.
         """
-        pg = self.get_placement_group_or_none(name)
-        if not pg:
+        try:
+            return self.get_placement_group(name)
+        except exception.PlacementGroupDoesNotExist:
             pg = self.create_placement_group(name)
-        return pg
+            return pg
 
     def request_instances(self, image_id, price=None, instance_type='m1.small',
                           min_count=1, max_count=1, count=1, key_name=None,

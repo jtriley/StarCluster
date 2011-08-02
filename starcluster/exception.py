@@ -90,6 +90,11 @@ class SecurityGroupDoesNotExist(AWSError):
         self.msg = "security group %s does not exist" % sg_name
 
 
+class PlacementGroupDoesNotExist(AWSError):
+    def __init__(self, pg_name):
+        self.msg = "placement group %s does not exist" % pg_name
+
+
 class KeyPairDoesNotExist(AWSError):
     def __init__(self, keyname):
         self.msg = "keypair %s does not exist" % keyname
