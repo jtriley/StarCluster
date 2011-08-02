@@ -45,10 +45,11 @@ def _worker_factory(parent):
 
 
 class SimpleJob(workerpool.jobs.SimpleJob):
-    def __init__(self, method, args=[], jobid=None):
+    def __init__(self, method, args=[], jobid=None, results_queue=None):
         self.method = method
         self.args = args
         self.jobid = jobid
+        self.results_queue = results_queue
 
     def run(self):
         if isinstance(self.args, list) or isinstance(self.args, tuple):
@@ -57,6 +58,8 @@ class SimpleJob(workerpool.jobs.SimpleJob):
             r = self.method(**self.args)
         else:
             r = self.method(self.args)
+        if self.results_queue:
+            return self.results_queue.put(r)
         return r
 
 
@@ -82,12 +85,23 @@ class ThreadPool(workerpool.WorkerPool):
             self._progress_bar = pbar
         return self._progress_bar
 
-    def simple_job(self, method, args=[], jobid=None):
-        job = SimpleJob(method, args, jobid)
+    def simple_job(self, method, args=[], jobid=None, results_queue=None):
+        job = SimpleJob(method, args, jobid, results_queue=results_queue)
         if not self.disable_threads:
             return self.put(job)
         else:
             return job.run()
+
+    def map(self, fn, *seq):
+        results = Queue.Queue()
+        args = zip(*seq)
+        for seq in args:
+            self.simple_job(fn, seq, results_queue=results)
+        self.wait(numtasks=len(args))
+        r = []
+        for i in xrange(len(args)):
+            r.append(results.get())
+        return r
 
     def store_exception(self, e):
         self._exception_queue.put(e)
