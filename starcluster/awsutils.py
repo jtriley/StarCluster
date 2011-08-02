@@ -82,10 +82,6 @@ class EasyEC2(EasyAWS):
     def __repr__(self):
         return '<EasyEC2: %s (%s)>' % (self.region.name, self.region.endpoint)
 
-    def __check_for_auth_failure(self, e):
-        if e.error_code in ["AuthFailure", "SignatureDoesNotMatch"]:
-            raise e
-
     def connect_to_region(self, region_name):
         """
         Connects to a given region if it exists, raises RegionDoesNotExist
