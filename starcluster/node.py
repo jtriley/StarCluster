@@ -251,6 +251,22 @@ class Node(object):
     def root_device_type(self):
         return self.instance.root_device_type
 
+    def add_user_to_group(self, user, group):
+        """
+        Add user (if exists) to group (if exists)
+        """
+        if not user in self.get_user_map():
+            raise exception.BaseException("user %s does not exist" % user)
+        if group in self.get_group_map():
+            if self.ssh._username != 'root':
+                orig_user = self.ssh._username
+                self.ssh.connect(username='root')
+            self.ssh.execute('gpasswd -a %s %s' % (user, 'utmp'))
+            if self.ssh._username != 'root':
+                self.ssh.connect(username=orig_user)
+        else:
+            raise exception.BaseException("group %s does not exist" % group)
+
     def get_group_map(self, key_by_gid=False):
         """
         Returns dictionary where keys are remote group names and values are
@@ -264,7 +280,6 @@ class Node(object):
         grp_file.close()
         grp_map = {}
         for group in groups:
-            print grp
             name, passwd, gid, mems = group
             gid = int(gid)
             mems = mems.split(',')

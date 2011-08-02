@@ -430,14 +430,12 @@ class SSHClient(object):
 
     def execute_async(self, command):
         """
-        Executes a remote command without blocking
-
-        NOTE: this method will not block, however, if your process does not
-        complete or background itself before the python process executing this
-        code exits, it will not persist on the remote machine
+        Executes a remote command so that it continues running even after this
+        SSH connection closes. The remote process will be put into the
+        background via nohup. Does not return output or check for non-zero exit
+        status.
         """
-        channel = self.transport.open_session()
-        channel.exec_command(command)
+        return self.execute(command, detach=True)
 
     def get_status(self, command):
         """
@@ -447,29 +445,19 @@ class SSHClient(object):
         channel.exec_command(command)
         return channel.recv_exit_status()
 
-    def execute(self, command, silent=True, only_printable=False,
-                ignore_exit_status=False, log_output=True):
+    def _get_output(self, channel, silent=True, only_printable=False):
         """
-        Execute a remote command and return stdout/stderr
-
-        NOTE: this function blocks until the process finishes
-
-        kwargs:
-        silent - do not print output
-        only_printable - filter the command's output to allow only printable
-                        characters
-        returns List of output lines
+        Returns the stdout/stderr output from a paramiko channel as a list of
+        strings (non-interactive only)
         """
-        channel = self.transport.open_session()
-        channel.exec_command(command)
         #stdin = channel.makefile('wb', -1)
         stdout = channel.makefile('rb', -1)
         stderr = channel.makefile_stderr('rb', -1)
-        output = []
-        line = None
         if silent:
             output = stdout.readlines() + stderr.readlines()
         else:
+            output = []
+            line = None
             while line != '':
                 line = stdout.readline()
                 if only_printable:
@@ -484,14 +472,42 @@ class SSHClient(object):
             output = map(lambda line: ''.join(c for c in line if c in
                                               string.printable), output)
         output = map(lambda line: line.strip(), output)
+        return output
+
+    def execute(self, command, silent=True, only_printable=False,
+                ignore_exit_status=False, log_output=True, detach=False):
+        """
+        Execute a remote command and return stdout/stderr
+
+        NOTE: this function blocks until the process finishes
+
+        kwargs:
+        silent - do not log output to console
+        only_printable - filter the command's output to allow only printable
+                        characters
+        ignore_exit_status - don't warn about non-zero exit status
+        log_output - log output to debug file
+        detach - detach the remote process so that it continues to run even
+                 after the SSH connection closes (does NOT return output or
+                 check for non-zero exit status if detach=True)
+        returns List of output lines
+        """
+        channel = self.transport.open_session()
+        if detach:
+            command = "nohup %s &" % command
+            channel.exec_command(command)
+            channel.close()
+            return
+        channel.exec_command(command)
+        output = self._get_output(channel, silent=silent,
+                                  only_printable=only_printable)
         exit_status = channel.recv_exit_status()
         if exit_status != 0:
+            msg = "command '%s' failed with status %d" % (command, exit_status)
             if not ignore_exit_status:
-                log.error("command '%s' failed with status %d" % (command,
-                                                                  exit_status))
+                log.error(msg)
             else:
-                log.debug("command %s failed with status %d" % (command,
-                                                                exit_status))
+                log.debug(msg)
         if log_output:
             for line in output:
                 log.debug(line.strip())

@@ -16,6 +16,31 @@ from starcluster import iptools
 from starcluster import exception
 from starcluster.logger import log
 
+try:
+    import IPython
+    if IPython.__version__ < '0.11':
+        from IPython.Shell import IPShellEmbed
+        ipy_shell = IPShellEmbed(argv=[])
+    else:
+        from IPython import embed
+        ipy_shell = lambda local_ns=None: embed(user_ns=local_ns)
+except ImportError:
+
+    def ipy_shell(local_ns=None):
+        log.error("Unable to load IPython.")
+        log.error("Please check that IPython is installed and working.")
+        log.error("If not, you can install it via: easy_install ipython")
+
+try:
+    import pudb
+    set_trace = pudb.set_trace
+except ImportError:
+
+    def set_strace():
+        log.error("Unable to load PuDB")
+        log.error("Please check that PuDB is installed and working.")
+        log.error("If not, you can install it via: easy_install pudb")
+
 
 class AttributeDict(dict):
     """
@@ -228,22 +253,6 @@ def iso_to_localtime_tuple(iso):
     secs = iso_to_unix_time(iso)
     t = time.mktime(time.localtime(secs))
     return datetime.fromtimestamp(t)
-
-
-try:
-    import IPython
-    if IPython.__version__ < '0.11':
-        from IPython.Shell import IPShellEmbed
-        ipy_shell = IPShellEmbed(argv=[])
-    else:
-        from IPython import embed
-        ipy_shell = lambda local_ns=None: embed(user_ns=local_ns)
-except ImportError:
-
-    def ipy_shell(local_ns=None):
-        log.error("Unable to load IPython.")
-        log.error("Please check that IPython is installed and working.")
-        log.error("If not, you can install it via: easy_install ipython")
 
 
 def permute(a):
