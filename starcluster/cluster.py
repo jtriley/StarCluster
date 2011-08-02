@@ -125,18 +125,19 @@ class ClusterManager(managers.Manager):
             cluster_name = static.SECURITY_GROUP_TEMPLATE % cluster_name
         return cluster_name
 
-    def add_node(self, cluster_name, alias=None):
+    def add_node(self, cluster_name, alias=None, no_create=False):
         cl = self.get_cluster(cluster_name)
-        cl.add_node(alias)
+        cl.add_node(alias, no_create=no_create)
 
-    def add_nodes(self, cluster_name, num_nodes, aliases=None):
+    def add_nodes(self, cluster_name, num_nodes, aliases=None,
+                  no_create=False):
         """
         Add one or more nodes to cluster
         """
         cl = self.get_cluster(cluster_name)
-        cl.add_nodes(num_nodes, aliases=aliases)
+        cl.add_nodes(num_nodes, aliases=aliases, no_create=no_create)
 
-    def remove_node(self, cluster_name, alias):
+    def remove_node(self, cluster_name, alias, terminate=True):
         """
         Remove a single node from a cluster
         """
@@ -144,7 +145,7 @@ class ClusterManager(managers.Manager):
         n = cl.get_node_by_alias(alias)
         if not n:
             raise exception.InstanceDoesNotExist(alias, label='node')
-        cl.remove_node(n)
+        cl.remove_node(n, terminate=terminate)
 
     def restart_cluster(self, cluster_name):
         """
@@ -769,16 +770,16 @@ class Cluster(object):
         log.debug("Highest node number is %d. choosing %d." % (highest, next))
         return next
 
-    def add_node(self, alias=None):
+    def add_node(self, alias=None, no_create=False):
         """
         Add a single node to this cluster
         """
         aliases = None
         if alias:
             aliases = [alias]
-        self.add_nodes(1, aliases=aliases)
+        self.add_nodes(1, aliases=aliases, no_create=no_create)
 
-    def add_nodes(self, num_nodes, aliases=None):
+    def add_nodes(self, num_nodes, aliases=None, no_create=False):
         """
         Add new nodes to this cluster
 
@@ -796,14 +797,15 @@ class Cluster(object):
         if "master" in aliases:
             raise exception.ClusterValidationError(
                 "worker nodes cannot have master as an alias")
-        for node in running_pending:
-            if node.alias in aliases:
-                raise exception.ClusterValidationError(
-                    "node with alias %s already exists" % node.alias)
-        log.debug("Adding node(s): %s" % aliases)
-        log.info("Launching node(s): %s" % ', '.join(aliases))
-        print self.create_nodes(aliases, count=len(aliases))
+        if not no_create:
+            for node in running_pending:
+                if node.alias in aliases:
+                    raise exception.ClusterValidationError(
+                        "node with alias %s already exists" % node.alias)
+            log.info("Launching node(s): %s" % ', '.join(aliases))
+            print self.create_nodes(aliases, count=len(aliases))
         self.wait_for_cluster(msg="Waiting for node(s) to come up...")
+        log.debug("Adding node(s): %s" % aliases)
         default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue,
                                                           self.disable_threads)
         for alias in aliases:
@@ -814,13 +816,13 @@ class Cluster(object):
                 self.volumes)
             self.run_plugins(method_name="on_add_node", node=node)
 
-    def remove_node(self, node):
+    def remove_node(self, node, terminate=True):
         """
         Remove a single node from this cluster
         """
-        return self.remove_nodes([node])
+        return self.remove_nodes([node], terminate=terminate)
 
-    def remove_nodes(self, nodes):
+    def remove_nodes(self, nodes, terminate=True):
         """
         Remove a list of nodes from this cluster
         """
@@ -835,6 +837,8 @@ class Cluster(object):
                 node, self.nodes, self.master_node,
                 self.cluster_user, self.cluster_shell,
                 self.volumes)
+            if not terminate:
+                continue
             if node.spot_id:
                 log.info("Cancelling spot request %s" % node.spot_id)
                 node.get_spot_request().cancel()

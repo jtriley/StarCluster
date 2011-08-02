@@ -19,10 +19,16 @@ class CmdRemoveNode(ClusterCompleter):
 
     tag = None
 
+    def addopts(self, parser):
+        parser.add_option("-k", "--keep-instance", dest="terminate",
+                          action="store_false", default=True,
+                          help="do not terminate instances "
+                          "after removing nodes")
+
     def execute(self, args):
         if not len(args) >= 2:
             self.parser.error("please specify a <cluster_tag> and <node>")
         tag = self.tag = args[0]
         aliases = args[1:]
         for alias in aliases:
-            self.cm.remove_node(tag, alias)
+            self.cm.remove_node(tag, alias, terminate=self.opts.terminate)
