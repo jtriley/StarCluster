@@ -45,19 +45,27 @@ def _worker_factory(parent):
 
 
 class SimpleJob(workerpool.jobs.SimpleJob):
-    def __init__(self, method, args=[], jobid=None, results_queue=None):
+    def __init__(self, method, args=[], kwargs={}, jobid=None,
+                 results_queue=None):
         self.method = method
         self.args = args
+        self.kwargs = kwargs
         self.jobid = jobid
         self.results_queue = results_queue
 
     def run(self):
         if isinstance(self.args, list) or isinstance(self.args, tuple):
-            r = self.method(*self.args)
-        elif isinstance(self.args, dict):
-            r = self.method(**self.args)
+            if isinstance(self.kwargs, dict):
+                r = self.method(*self.args, **self.kwargs)
+            else:
+                r = self.method(*self.args)
+        elif self.args is not None and self.args is not []:
+            if isinstance(self.kwargs, dict):
+                r = self.method(self.args, **self.kwargs)
+            else:
+                r = self.method(self.args)
         else:
-            r = self.method(self.args)
+            r = self.method()
         if self.results_queue:
             return self.results_queue.put(r)
         return r
@@ -79,14 +87,16 @@ class ThreadPool(workerpool.WorkerPool):
             widgets = ['', progressbar.Fraction(), ' ',
                        progressbar.Bar(marker=progressbar.RotatingMarker()),
                        ' ', progressbar.Percentage(), ' ', ' ']
-            pbar = progressbar.ProgressBar(widgets=widgets,
-                                           maxval=1,
+            pbar = progressbar.ProgressBar(widgets=widgets, maxval=1,
                                            force_update=True)
             self._progress_bar = pbar
         return self._progress_bar
 
-    def simple_job(self, method, args=[], jobid=None, results_queue=None):
-        job = SimpleJob(method, args, jobid, results_queue=results_queue)
+    def simple_job(self, method, args=[], kwargs={}, jobid=None,
+                   results_queue=None):
+        results_queue = results_queue or self._results_queue
+        job = SimpleJob(method, args, kwargs, jobid,
+                        results_queue=results_queue)
         if not self.disable_threads:
             return self.put(job)
         else:
