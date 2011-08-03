@@ -9,11 +9,25 @@ class CmdRemoveNode(ClusterCompleter):
 
     Terminate one or more nodes in the cluster
 
-    Example:
+    Examples:
 
-        $ starcluster removenode mynewcluster node003
+        $ starcluster removenode mycluster node003
 
-    This will remove node003 from mynewcluster and terminate the node.
+    This will remove node003 from mycluster and terminate the node.
+
+    You can also specify multiple nodes to remove and terminate one after
+    another:
+
+        $ starcluster removenode mycluster node001 node002 node003
+
+    If you'd rather not terminate the node(s) after removing from the cluster,
+    use the -k option:
+
+        $ starcluster removenode -k mycluster node001 node002 node003
+
+    This will remove the nodes from the cluster but leave the instances
+    running. This can be useful, for example, when testing on_add_node methods
+    in a StarCluster plugin.
     """
     names = ['removenode', 'rn']
 
