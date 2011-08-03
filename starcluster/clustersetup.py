@@ -404,6 +404,8 @@ class DefaultClusterSetup(ClusterSetup):
         mconn.execute('qconf -mattr queue shell "/bin/bash" all.q',
                       source_profile=True)
         for node in self.nodes:
+            self._add_sge_administrative_host(node)
+            self._add_sge_submit_host(node)
             self.pool.simple_job(self._add_to_sge, (node,), jobid=node.alias)
         self.pool.wait(numtasks=len(self.nodes))
         self._create_sge_pe()
@@ -511,17 +513,22 @@ class DefaultClusterSetup(ClusterSetup):
         uid, gid = user.pw_uid, user.pw_gid
         self._add_user_to_nodes(uid, gid, nodes=[node])
 
+    def _add_sge_submit_host(self, node):
+        mssh = self._master.ssh
+        mssh.execute('qconf -as %s' % node.alias, source_profile=True)
+
+    def _add_sge_administrative_host(self, node):
+        mssh = self._master.ssh
+        mssh.execute('qconf -ah %s' % node.alias, source_profile=True)
+
     def _add_to_sge(self, node):
         # generate /etc/profile.d/sge.sh
-        master = self._master
         sge_profile = node.ssh.remote_file("/etc/profile.d/sge.sh")
         arch = node.ssh.execute("/opt/sge6/util/arch")[0]
         print >> sge_profile, sge.sgeprofile_template % {'arch': arch}
         sge_profile.close()
-        master.ssh.execute('qconf -ah %s' % node.alias, source_profile=True)
-        master.ssh.execute('qconf -as %s' % node.alias, source_profile=True)
-        node.ssh.execute(('cd /opt/sge6 && TERM=rxvt ./inst_sge ' + \
-                          '-x -noremote -auto ./ec2_sge.conf'))
+        node.ssh.execute('cd /opt/sge6 && TERM=rxvt ./inst_sge -x -noremote '
+                         '-auto ./ec2_sge.conf')
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
@@ -537,5 +544,7 @@ class DefaultClusterSetup(ClusterSetup):
         self._setup_passwordless_ssh(nodes=[node])
         if not self._disable_queue:
             log.info("Adding %s to SGE" % node.alias)
+            self._add_sge_administrative_host(node)
+            self._add_sge_submit_host(node)
             self._add_to_sge(node)
             self._create_sge_pe()
