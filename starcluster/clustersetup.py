@@ -392,14 +392,13 @@ class DefaultClusterSetup(ClusterSetup):
         submit_list = admin_list
         ec2_sge_conf = mconn.remote_file("/opt/sge6/ec2_sge.conf")
         # TODO: add sge section to config values for some of the below
-        print >> ec2_sge_conf, sge.sgeinstall_template % \
-                (admin_list, exec_list, submit_list)
+        conf = sge.sgeinstall_template % (admin_list, exec_list, submit_list)
+        print >> ec2_sge_conf, conf
         ec2_sge_conf.close()
         # installs sge in /opt/sge6 and starts qmaster/schedd on master node
         log.info("Installing Sun Grid Engine...")
-        mconn.execute('cd /opt/sge6 && TERM=rxvt ./inst_sge -m -x  ' + \
-                      '-noremote -auto ./ec2_sge.conf',
-                      silent=True, only_printable=True)
+        mconn.execute('cd /opt/sge6 && TERM=rxvt ./inst_sge -m -x -noremote '
+                      '-auto ./ec2_sge.conf', silent=True, only_printable=True)
         # set all.q shell to bash
         mconn.execute('qconf -mattr queue shell "/bin/bash" all.q',
                       source_profile=True)
