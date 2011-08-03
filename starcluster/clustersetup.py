@@ -308,7 +308,6 @@ class DefaultClusterSetup(ClusterSetup):
                               (network_device, mount_path, node.alias))
                 else:
                     mount_paths.append(path)
-            log.info("Mounting shares for node %s" % node.alias)
             self.pool.simple_job(node.mount_nfs_shares, (master, mount_paths),
                                  jobid=node.alias)
         self.pool.wait(numtasks=len(nodes))
