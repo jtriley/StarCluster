@@ -431,11 +431,8 @@ class EasyEC2(EasyAWS):
 
     def get_instance(self, instance_id):
         try:
-            res = self.get_all_instances(filters={'instance-id': instance_id})
-            i = res[0].instances[0]
-            # set group info
-            i.groups = res[0].groups
-            return i
+            return self.get_all_instances(
+                filters={'instance-id': instance_id})[0]
         except boto.exception.EC2ResponseError, e:
             if e.error_code == "InvalidInstanceID.NotFound":
                 raise exception.InstanceDoesNotExist(instance_id)
