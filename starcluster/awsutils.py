@@ -63,7 +63,7 @@ class EasyEC2(EasyAWS):
     def __init__(self, aws_access_key_id, aws_secret_access_key,
                  aws_ec2_path='/', aws_s3_host=None, aws_s3_path='/',
                  aws_port=None, aws_region_name=None, aws_is_secure=True,
-                 aws_region_host=None, cache=False, **kwargs):
+                 aws_region_host=None, **kwargs):
         aws_region = None
         if aws_region_name and aws_region_host:
             aws_region = boto.ec2.regioninfo.RegionInfo(
@@ -75,23 +75,12 @@ class EasyEC2(EasyAWS):
         kwargs = dict(aws_s3_host=aws_s3_host,
                       aws_s3_path=aws_s3_path,
                       aws_port=aws_port,
-                      aws_is_secure=aws_is_secure,
-                      cache=cache)
+                      aws_is_secure=aws_is_secure)
         self.s3 = EasyS3(aws_access_key_id, aws_secret_access_key, **kwargs)
-        self.cache = cache
-        self._instance_response = None
-        self._keypair_response = None
-        self._images = None
-        self._executable_images = None
-        self._security_group_response = None
         self._regions = None
 
     def __repr__(self):
         return '<EasyEC2: %s (%s)>' % (self.region.name, self.region.endpoint)
-
-    def __check_for_auth_failure(self, e):
-        if e.error_code in ["AuthFailure", "SignatureDoesNotMatch"]:
-            raise e
 
     def connect_to_region(self, region_name):
         """
@@ -145,16 +134,11 @@ class EasyEC2(EasyAWS):
 
     @property
     def registered_images(self):
-        if not self.cache or self._images is None:
-            self._images = self.conn.get_all_images(owners=["self"])
-        return self._images
+        return self.conn.get_all_images(owners=["self"])
 
     @property
     def executable_images(self):
-        if not self.cache or self._images is None:
-            self._executable_images = self.conn.get_all_images(
-                executable_by=["self"])
-        return self._executable_images
+        return self.conn.get_all_images(executable_by=["self"])
 
     def get_registered_image(self, image_id):
         if not image_id.startswith('ami') or len(image_id) != 12:
@@ -188,37 +172,56 @@ class EasyEC2(EasyAWS):
 
     def get_all_security_groups(self, groupnames=[]):
         """
-        Returns group with name if it exists otherwise returns None
+        Returns all security groups
+
+        groupnames - optional list of group names to retrieve
         """
-        try:
-            return self.conn.get_all_security_groups(groupnames=groupnames)
-        except boto.exception.EC2ResponseError, e:
-            self.__check_for_auth_failure(e)
-        except IndexError, e:
-            pass
+        filters = {}
+        if groupnames:
+            filters = {'group-name': groupnames}
+        return self.get_security_groups(filters=filters)
 
     def get_group_or_none(self, name):
         """
         Returns group with name if it exists otherwise returns None
         """
-        sgs = self.get_all_security_groups(groupnames=[name])
-        if sgs:
-            return sgs[0]
+        try:
+            return self.get_security_group(name)
+        except exception.SecurityGroupDoesNotExist:
+            pass
 
     def get_or_create_group(self, name, description, auth_ssh=True,
                             auth_group_traffic=False):
         """
-        Try to return a security group by name.
-        If the group is not found, attempt to create it.
-        Description only applies to creation.
+        Try to return a security group by name. If the group is not found,
+        attempt to create it.  Description only applies to creation.
 
-        Authorizes all traffic between members of the group
+        auth_ssh - authorize ssh traffic from world
+        auth_group_traffic - authorizes all traffic between members of the
+                             group
         """
         sg = self.get_group_or_none(name)
         if not sg:
             sg = self.create_group(name, description, auth_ssh,
-                                     auth_group_traffic)
+                                   auth_group_traffic)
         return sg
+
+    def get_security_group(self, groupname):
+        try:
+            return self.get_security_groups(
+                filters={'group-name': groupname})[0]
+        except boto.exception.EC2ResponseError, e:
+            if e.error_code == "InvalidGroup.NotFound":
+                raise exception.SecurityGroupDoesNotExist(groupname)
+            raise
+        except IndexError:
+            raise exception.SecurityGroupDoesNotExist(groupname)
+
+    def get_security_groups(self, filters=None):
+        """
+        Returns all security groups on this EC2 account
+        """
+        return self.conn.get_all_security_groups(filters=filters)
 
     def has_permission(self, group, ip_protocol, from_port, to_port, cidr_ip):
         """
@@ -238,40 +241,50 @@ class EasyEC2(EasyAWS):
             return True
         return False
 
-    def get_placement_group_or_none(self, name):
-        """
-        Returns placement group with name if it exists otherwise returns None
-        """
-        try:
-            pg = self.conn.get_all_placement_groups(groupnames=[name])[0]
-            return pg
-        except boto.exception.EC2ResponseError, e:
-            self.__check_for_auth_failure(e)
-        except IndexError:
-            pass
-
     def create_placement_group(self, name):
         """
         Create a new placement group for your account.
         This will create the placement group within the region you
         are currently connected to.
         """
-        if not name:
-            return
         log.info("Creating placement group %s..." % name)
         success = self.conn.create_placement_group(name)
         if success:
             return self.get_placement_group_or_none(name)
+
+    def get_placement_groups(self, filters=None):
+        return self.conn.get_all_placement_groups(filters=filters)
+
+    def get_placement_group(self, groupname=None):
+        try:
+            return self.get_placement_groups(filters={'group-name':
+                                                      groupname})[0]
+        except boto.exception.EC2ResponseError, e:
+            if e.error_code == "InvalidPlacementGroup.Unknown":
+                raise exception.PlacementGroupDoesNotExist(groupname)
+            raise
+        except IndexError:
+            raise exception.PlacementGroupDoesNotExist(groupname)
+
+    def get_placement_group_or_none(self, name):
+        """
+        Returns placement group with name if it exists otherwise returns None
+        """
+        try:
+            return self.get_placement_group(name)
+        except exception.PlacementGroupDoesNotExist:
+            pass
 
     def get_or_create_placement_group(self, name):
         """
         Try to return a placement group by name.
         If the group is not found, attempt to create it.
         """
-        pg = self.get_placement_group_or_none(name)
-        if not pg:
+        try:
+            return self.get_placement_group(name)
+        except exception.PlacementGroupDoesNotExist:
             pg = self.create_placement_group(name)
-        return pg
+            return pg
 
     def request_instances(self, image_id, price=None, instance_type='m1.small',
                           min_count=1, max_count=1, count=1, key_name=None,
@@ -366,19 +379,23 @@ class EasyEC2(EasyAWS):
                 raise exception.BaseException(str(e))
         return kp
 
+    def get_keypairs(self, filters={}):
+        return self.conn.get_all_key_pairs(filters=filters)
+
     def get_keypair(self, keypair):
         try:
-            return self.conn.get_all_key_pairs(keynames=[keypair])[0]
+            return self.get_keypairs(filters={'key-name': keypair})[0]
         except boto.exception.EC2ResponseError, e:
-            self.__check_for_auth_failure(e)
-            raise exception.KeyPairDoesNotExist(keypair)
+            if e.error_code == "InvalidKeyPair.NotFound":
+                raise exception.KeyPairDoesNotExist(keypair)
+            raise
         except IndexError:
             raise exception.KeyPairDoesNotExist(keypair)
 
     def get_keypair_or_none(self, keypair):
         try:
             return self.get_keypair(keypair)
-        except:
+        except exception.KeyPairDoesNotExist:
             pass
 
     def __print_header(self, msg):
@@ -400,35 +417,6 @@ class EasyEC2(EasyAWS):
                 raise exception.InstanceDoesNotExist(instance_id)
             raise e
 
-    def get_instance(self, instance_id):
-        try:
-            res = self.conn.get_all_instances(
-                filters={'instance-id': instance_id})
-            i = res[0].instances[0]
-            # set group info
-            i.groups = res[0].groups
-            return i
-        except boto.exception.EC2ResponseError, e:
-            self.__check_for_auth_failure(e)
-            raise exception.InstanceDoesNotExist(instance_id)
-        except IndexError:
-            # for eucalyptus, invalid instance_id returns []
-            raise exception.InstanceDoesNotExist(instance_id)
-
-    def is_valid_conn(self):
-        try:
-            self.get_all_instances()
-            return True
-        except boto.exception.EC2ResponseError, e:
-            if e.status in [401, 403]:
-                return False
-            raise
-
-    def get_all_spot_requests(self, spot_ids=[], filters=None):
-        spots = self.conn.get_all_spot_instance_requests(spot_ids,
-                                                         filters=filters)
-        return spots
-
     def get_all_instances(self, instance_ids=[], filters=None):
         reservations = self.conn.get_all_instances(instance_ids,
                                                    filters=filters)
@@ -440,6 +428,32 @@ class EasyEC2(EasyAWS):
                 i.groups = res.groups
             instances.extend(insts)
         return instances
+
+    def get_instance(self, instance_id):
+        try:
+            return self.get_all_instances(
+                filters={'instance-id': instance_id})[0]
+        except boto.exception.EC2ResponseError, e:
+            if e.error_code == "InvalidInstanceID.NotFound":
+                raise exception.InstanceDoesNotExist(instance_id)
+            raise
+        except IndexError:
+            raise exception.InstanceDoesNotExist(instance_id)
+
+    def is_valid_conn(self):
+        try:
+            self.get_all_instances()
+            return True
+        except boto.exception.EC2ResponseError, e:
+            cred_errs = ['AuthFailure', 'SignatureDoesNotMatch']
+            if e.error_code in cred_errs:
+                return False
+            raise
+
+    def get_all_spot_requests(self, spot_ids=[], filters=None):
+        spots = self.conn.get_all_spot_instance_requests(spot_ids,
+                                                         filters=filters)
+        return spots
 
     def list_all_spot_instances(self, show_closed=False):
         s = self.conn.get_all_spot_instance_requests()
@@ -646,16 +660,19 @@ class EasyEC2(EasyAWS):
             print 'status: ', zone.state
             print
 
+    def get_zones(self, filters=None):
+        return self.conn.get_all_zones(filters=filters)
+
     def get_zone(self, zone):
         """
         Return zone object respresenting an EC2 availability zone
         Raises exception.ZoneDoesNotExist if not successful
         """
         try:
-            return self.conn.get_all_zones(zones=[zone])[0]
+            return self.get_zones(filters={'zone-name': zone})[0]
         except boto.exception.EC2ResponseError, e:
-            self.__check_for_auth_failure(e)
-            raise exception.ZoneDoesNotExist(zone, self.region.name)
+            if e.error_code == "InvalidZone.NotFound":
+                raise exception.ZoneDoesNotExist(zone, self.region.name)
         except IndexError:
             raise exception.ZoneDoesNotExist(zone, self.region.name)
 
@@ -702,16 +719,20 @@ class EasyEC2(EasyAWS):
                                          **kwargs)
         return icreator.create_image(size=root_vol_size)
 
+    def get_images(self, filters=None):
+        return self.conn.get_all_images(filters=filters)
+
     def get_image(self, image_id):
         """
         Return image object representing an AMI.
         Raises exception.AMIDoesNotExist if unsuccessful
         """
         try:
-            return self.conn.get_all_images(image_ids=[image_id])[0]
+            return self.get_images(filters={'image-id': image_id})[0]
         except boto.exception.EC2ResponseError, e:
-            self.__check_for_auth_failure(e)
-            raise exception.AMIDoesNotExist(image_id)
+            if e.error_code == "InvalidAMIID.NotFound":
+                raise exception.AMIDoesNotExist(image_id)
+            raise
         except IndexError:
             raise exception.AMIDoesNotExist(image_id)
 
@@ -722,12 +743,20 @@ class EasyEC2(EasyAWS):
         """
         try:
             return self.get_image(image_id)
-        except:
+        except exception.AMIDoesNotExist:
             pass
 
-    def _get_image_files(self, image, bucket):
+    def get_image_files(self, image):
         """
+        Returns a list of files on S3 for an EC2 instance-store (S3-backed)
+        image. This includes the image's manifest and part files.
         """
+        if not hasattr(image, 'id'):
+            image = self.get_image(image)
+        if image.root_device_type == 'ebs':
+            raise exception.AWSError(
+                "Image %s is an EBS image. No image files on S3." % image.id)
+        bucket = self.get_image_bucket(image)
         bname = re.escape(bucket.name)
         prefix = re.sub('^%s\/' % bname, '', image.location)
         prefix = re.sub('\.manifest\.xml$', '', prefix)
@@ -739,18 +768,6 @@ class EasyEC2(EasyAWS):
         files = [f for f in files if hasattr(f, 'delete') and
                  part_regex.match(f.name) or manifest_regex.match(f.name)]
         return files
-
-    def get_image_files(self, image_id):
-        """
-        Return list of files on S3 for image_id
-        The list includes the image's manifest and part files
-        """
-        image = self.get_image(image_id)
-        if image.root_device_type == 'ebs':
-            raise exception.AWSError(
-                "Image %s is an EBS image. No image files on S3." % image_id)
-        bucket = self.get_image_bucket(image)
-        return self._get_image_files(image, bucket)
 
     def get_image_bucket(self, image):
         bucket_name = image.location.split('/')[0]
@@ -781,8 +798,7 @@ class EasyEC2(EasyAWS):
             raise exception.AWSError(
                 "The image you wish to migrate is EBS-based. " +
                 "This method only works for instance-store images")
-        ibucket = self.get_image_bucket(image)
-        files = self._get_image_files(image, ibucket)
+        files = self.get_image_files(image)
         if not files:
             log.info("No files found for image: %s" % image_id)
             return
@@ -896,19 +912,11 @@ class EasyEC2(EasyAWS):
 
     @property
     def instances(self):
-        if not self.cache or self._instance_response is None:
-            log.debug('instance_response = %s, cache = %s' %
-            (self._instance_response, self.cache))
-            self._instance_response = self.conn.get_all_instances()
-        return self._instance_response
+        return self.get_all_instances()
 
     @property
     def keypairs(self):
-        if not self.cache or self._keypair_response is None:
-            log.debug('keypair_response = %s, cache = %s' %
-            (self._keypair_response, self.cache))
-            self._keypair_response = self.conn.get_all_key_pairs()
-        return self._keypair_response
+        return self.get_keypairs()
 
     def terminate_instances(self, instances=None):
         if instances:
@@ -918,10 +926,7 @@ class EasyEC2(EasyAWS):
         """
         Returns a list of all EBS volumes
         """
-        try:
-            return self.conn.get_all_volumes(filters=filters)
-        except boto.exception.EC2ResponseError, e:
-            self.__check_for_auth_failure(e)
+        return self.conn.get_all_volumes(filters=filters)
 
     def get_volume(self, volume_id):
         """
@@ -929,13 +934,23 @@ class EasyEC2(EasyAWS):
         Raises exception.VolumeDoesNotExist if unsuccessful
         """
         try:
-            return self.conn.get_all_volumes(
-                filters={'volume-id': volume_id})[0]
+            return self.get_volumes(filters={'volume-id': volume_id})[0]
         except boto.exception.EC2ResponseError, e:
-            self.__check_for_auth_failure(e)
-            raise exception.VolumeDoesNotExist(volume_id)
+            if e.error_code == "InvalidVolume.NotFound":
+                raise exception.VolumeDoesNotExist(volume_id)
+            raise
         except IndexError:
             raise exception.VolumeDoesNotExist(volume_id)
+
+    def get_volume_or_none(self, volume_id):
+        """
+        Returns EBS volume object representing volume_id.
+        Returns None if unsuccessful
+        """
+        try:
+            return self.get_volume(volume_id)
+        except exception.VolumeDoesNotExist:
+            pass
 
     def wait_for_snapshot(self, snapshot, refresh_interval=30):
         snap = snapshot
@@ -962,17 +977,14 @@ class EasyEC2(EasyAWS):
             self.wait_for_snapshot(snap, refresh_interval)
         return snap
 
-    def get_snapshots(self, volume_ids=[]):
+    def get_snapshots(self, volume_ids=[], filters=None):
         """
         Returns a list of all EBS volume snapshots for this account
         """
-        filters = {}
+        filters = filters or {}
         if volume_ids:
             filters['volume-id'] = volume_ids
-        try:
-            return self.conn.get_all_snapshots(owner='self', filters=filters)
-        except boto.exception.EC2ResponseError, e:
-            self.__check_for_auth_failure(e)
+        return self.conn.get_all_snapshots(owner='self', filters=filters)
 
     def get_snapshot(self, snapshot_id):
         """
@@ -980,22 +992,13 @@ class EasyEC2(EasyAWS):
         Raises exception.SnapshotDoesNotExist if unsuccessful
         """
         try:
-            return self.conn.get_all_snapshots(snapshot_ids=[snapshot_id])[0]
+            return self.get_snapshots(filters={'snapshot-id': snapshot_id})[0]
         except boto.exception.EC2ResponseError, e:
-            self.__check_for_auth_failure(e)
-            raise exception.SnapshotDoesNotExist(snapshot_id)
+            if e.error_code == "InvalidSnapshot.NotFound":
+                raise exception.SnapshotDoesNotExist(snapshot_id)
+            raise
         except IndexError:
             raise exception.SnapshotDoesNotExist(snapshot_id)
-
-    def get_volume_or_none(self, volume_id):
-        """
-        Returns EBS volume object representing volume_id.
-        Returns none if unsuccessful
-        """
-        try:
-            return self.get_volume(volume_id)
-        except:
-            pass
 
     def list_volumes(self, volume_id=None, status=None,
                      attach_status=None, size=None, zone=None,
@@ -1041,19 +1044,6 @@ class EasyEC2(EasyAWS):
                 print "create_time: %s" % lt
                 print
         print 'Total: %s' % len(vols)
-
-    def get_security_group(self, groupname):
-        try:
-            return self.conn.get_all_security_groups(filters={'group-name':
-                                                              groupname})[0]
-        except boto.exception.EC2ResponseError, e:
-            self.__check_for_auth_failure(e)
-            raise exception.SecurityGroupDoesNotExist(groupname)
-        except IndexError:
-            raise exception.SecurityGroupDoesNotExist(groupname)
-
-    def get_security_groups(self, filters=None):
-        return self.conn.get_all_security_groups(filters=filters)
 
     def get_spot_history(self, instance_type, start=None, end=None, plot=False,
                          plot_server_interface="localhost",
@@ -1128,7 +1118,7 @@ class EasyS3(EasyAWS):
 
     def __init__(self, aws_access_key_id, aws_secret_access_key,
                  aws_s3_path='/', aws_port=None, aws_is_secure=True,
-                 aws_s3_host=DefaultHost, cache=False, **kwargs):
+                 aws_s3_host=DefaultHost, **kwargs):
         kwargs = dict(is_secure=aws_is_secure,
                       host=aws_s3_host or self.DefaultHost,
                       port=aws_port,
@@ -1137,7 +1127,6 @@ class EasyS3(EasyAWS):
             kwargs.update(dict(calling_format=self._calling_format))
         super(EasyS3, self).__init__(aws_access_key_id, aws_secret_access_key,
                                      boto.connect_s3, **kwargs)
-        self.cache = cache
 
     def __repr__(self):
         return '<EasyS3: %s>' % self.conn.server_name()
