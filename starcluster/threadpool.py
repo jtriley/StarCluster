@@ -76,6 +76,7 @@ class ThreadPool(workerpool.WorkerPool):
                  disable_threads=False):
         self.disable_threads = disable_threads
         self._exception_queue = Queue.Queue()
+        self._results_queue = Queue.Queue()
         self._progress_bar = None
         if self.disable_threads:
             size = 0
@@ -102,16 +103,19 @@ class ThreadPool(workerpool.WorkerPool):
         else:
             return job.run()
 
+    def get_results(self):
+        results = []
+        for i in range(self._results_queue.qsize()):
+            results.append(self._results_queue.get())
+        return results
+
     def map(self, fn, *seq):
-        results = Queue.Queue()
+        if self._results_queue.qsize() > 0:
+            self.get_results()
         args = zip(*seq)
         for seq in args:
-            self.simple_job(fn, seq, results_queue=results)
-        self.wait(numtasks=len(args))
-        r = []
-        for i in xrange(len(args)):
-            r.append(results.get())
-        return r
+            self.simple_job(fn, seq)
+        return self.wait(numtasks=len(args))
 
     def store_exception(self, e):
         self._exception_queue.put(e)
@@ -121,7 +125,7 @@ class ThreadPool(workerpool.WorkerPool):
         workerpool.WorkerPool.shutdown(self)
         self.wait(numtasks=self.size())
 
-    def wait(self, numtasks=None):
+    def wait(self, numtasks=None, return_results=True):
         pbar = self.progress_bar.reset()
         pbar.maxval = self.unfinished_tasks
         if numtasks is not None:
@@ -137,6 +141,8 @@ class ThreadPool(workerpool.WorkerPool):
         if self._exception_queue.qsize() > 0:
             raise exception.ThreadPoolException(
                 "An error occured in ThreadPool", self._exception_queue.queue)
+        if return_results:
+            return self.get_results()
 
     def __del__(self):
         log.debug('del called in threadpool')
