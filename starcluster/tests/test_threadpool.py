@@ -41,6 +41,7 @@ class TestThreadPool(tests.StarClusterTest):
             for i in range(self._jobs):
                 pool.simple_job(self._no_args, jobid=i)
             results = pool.wait(numtasks=self._jobs)
+            print "no_args: %s" % results
             assert results.count(None) == self._jobs
         except exception.ThreadPoolException, e:
             raise Exception(e.format_excs())
@@ -51,6 +52,8 @@ class TestThreadPool(tests.StarClusterTest):
             for i in range(self._jobs):
                 pool.simple_job(self._args_only, i, jobid=i)
             results = pool.wait(numtasks=self._jobs)
+            results.sort()
+            print "args_only: %s" % results
             assert results == range(self._jobs)
         except exception.ThreadPoolException, e:
             raise Exception(e.format_excs())
@@ -62,6 +65,7 @@ class TestThreadPool(tests.StarClusterTest):
                 pool.simple_job(self._kwargs_only,
                                 kwargs=dict(mykw=self._mykw), jobid=i)
             results = pool.wait(numtasks=self._jobs)
+            print "kwargs_only: %s" % results
             assert results.count(self._mykw) == self._jobs
         except exception.ThreadPoolException, e:
             raise Exception(e.format_excs())
@@ -73,6 +77,8 @@ class TestThreadPool(tests.StarClusterTest):
                 pool.simple_job(self._args_and_kwargs, i,
                                 kwargs=dict(mykw=self._mykw), jobid=i)
             results = pool.wait(numtasks=self._jobs)
+            results.sort()
+            print "args_and_kwargs: %s" % results
             assert results == zip(range(self._jobs),
                                   [dict(mykw=self._mykw)] * self._jobs)
         except exception.ThreadPoolException, e:
@@ -83,11 +89,13 @@ class TestThreadPool(tests.StarClusterTest):
             r = 20
             ref = map(lambda x: x ** 2, range(r))
             calc = self.pool.map(lambda x: x ** 2, range(r))
+            calc.sort()
             assert ref == calc
             for i in range(r):
                 self.pool.simple_job(lambda x: x ** 2, i, jobid=i)
             self.pool.wait(return_results=False)
             calc = self.pool.map(lambda x: x ** 2, range(r))
+            calc.sort()
             assert ref == calc
         except exception.ThreadPoolException, e:
             raise Exception(e.format_excs())
