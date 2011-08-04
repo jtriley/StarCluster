@@ -915,7 +915,6 @@ class Cluster(object):
         given that Amazon *highly* recommends requesting all CCI in a single
         launch request.
         """
-        log.info("Launching a %d-node cluster..." % self.cluster_size)
         lmap = self._get_launch_map()
         zone = None
         master_map = None
