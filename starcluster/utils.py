@@ -36,7 +36,7 @@ try:
     set_trace = pudb.set_trace
 except ImportError:
 
-    def set_strace():
+    def set_trace():
         log.error("Unable to load PuDB")
         log.error("Please check that PuDB is installed and working.")
         log.error("If not, you can install it via: easy_install pudb")
