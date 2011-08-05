@@ -725,7 +725,7 @@ class Cluster(object):
         return self.create_nodes([alias], image_id=image_id,
                                  instance_type=instance_type, count=1,
                                  zone=zone, placement_group=placement_group,
-                                 spot_bid=spot_bid, force_flat=force_flat)
+                                 spot_bid=spot_bid, force_flat=force_flat)[0]
 
     def create_nodes(self, aliases, image_id=None, instance_type=None, count=1,
                      zone=None, placement_group=None, spot_bid=None,
@@ -743,19 +743,24 @@ class Cluster(object):
         instance_type = instance_type or self.node_instance_type
         if not placement_group and instance_type in static.CLUSTER_TYPES:
             placement_group = self.placement_group.name
-        response = self.ec2.request_instances(
-            image_id or self.node_image_id,
-            price=spot_bid,
-            instance_type=instance_type,
-            min_count=count, max_count=count, count=count,
-            key_name=self.keyname,
-            security_groups=[cluster_sg],
-            availability_zone_group=cluster_sg,
-            launch_group=cluster_sg,
-            placement=zone or self.zone,
-            user_data='|'.join(aliases),
-            placement_group=placement_group)
-        return response
+        image_id = image_id or self.node_image_id
+        kwargs = dict(price=spot_bid, instance_type=instance_type,
+                      min_count=count, max_count=count, count=count,
+                      key_name=self.keyname, security_groups=[cluster_sg],
+                      availability_zone_group=cluster_sg,
+                      launch_group=cluster_sg, placement=zone or self.zone,
+                      user_data='|'.join(aliases),
+                      placement_group=placement_group)
+        resvs = []
+        if spot_bid:
+            for alias in aliases:
+                kwargs['user_data'] = alias
+                resvs.extend(self.ec2.request_instances(image_id, **kwargs))
+        else:
+            resvs.append(self.ec2.request_instances(image_id, **kwargs))
+        for resv in resvs:
+            log.info(str(resv), extra=dict(__raw__=True))
+        return resvs
 
     def _get_next_node_num(self):
         nodes = self._nodes_in_states(['pending', 'running'])
@@ -803,7 +808,7 @@ class Cluster(object):
                     raise exception.ClusterValidationError(
                         "node with alias %s already exists" % node.alias)
             log.info("Launching node(s): %s" % ', '.join(aliases))
-            print self.create_nodes(aliases, count=len(aliases))
+            self.create_nodes(aliases, count=len(aliases))
         self.wait_for_cluster(msg="Waiting for node(s) to come up...")
         log.debug("Adding node(s): %s" % aliases)
         default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue,
@@ -928,9 +933,9 @@ class Cluster(object):
                              (alias, image, type))
                 master_response = self.create_nodes(aliases, image_id=image,
                                                     instance_type=type,
-                                                    count=len(aliases))
+                                                    count=len(aliases),
+                                                    force_flat=True)[0]
                 zone = master_response.instances[0].placement
-                print master_response
         lmap.pop(master_map)
         if self.cluster_size <= 1:
             return
@@ -939,10 +944,8 @@ class Cluster(object):
             for alias in aliases:
                 log.debug("Launching %s (ami: %s, type: %s)" % \
                           (alias, image, type))
-            node_response = self.create_nodes(aliases, image_id=image,
-                                              instance_type=type,
-                                              count=len(aliases), zone=zone)
-            print node_response
+            self.create_nodes(aliases, image_id=image, instance_type=type,
+                              count=len(aliases), zone=zone, force_flat=True)
 
     def _create_spot_cluster(self):
         """
@@ -961,14 +964,12 @@ class Cluster(object):
                                            force_flat=force_flat)
         zone = None
         if not force_flat and self.spot_bid:
-            master_response = master_response[0]
             # Make sure nodes are in same zone as master
             launch_spec = master_response.launch_specification
             zone = launch_spec.placement
         else:
             # Make sure nodes are in same zone as master
             zone = master_response.instances[0].placement
-        print master_response
         if self.cluster_size <= 1:
             return
         for id in range(1, self.cluster_size):
@@ -976,11 +977,8 @@ class Cluster(object):
             (ntype, nimage) = self._get_type_and_image_id(alias)
             log.info("Launching %s (ami: %s, type: %s)" % \
                      (alias, nimage, ntype))
-            node_response = self.create_node(alias,
-                                             image_id=nimage,
-                                             instance_type=ntype,
-                                             zone=zone)
-            print node_response[0]
+            self.create_node(alias, image_id=nimage, instance_type=ntype,
+                             zone=zone)
 
     def is_ebs_cluster(self):
         """
