@@ -467,3 +467,21 @@ def get_arg_spec(func):
     log.debug('kwargs = %s' % kwargs)
     log.debug('defaults = %s' % str(defaults))
     return args, kwargs
+
+
+def chunk_list(ls, items=8):
+    """
+    iterate through 'chunks' of a list. final chunk consists of remaining
+    elements if items does not divide len(ls) evenly.
+
+    items - size of 'chunks'
+    """
+    itms = []
+    for i, v in enumerate(ls):
+        if i >= items and i % items == 0:
+            yield itms
+            itms = [v]
+        else:
+            itms.append(v)
+    if itms:
+        yield itms

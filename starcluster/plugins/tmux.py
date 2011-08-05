@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from starcluster import utils
 from starcluster import exception
 from starcluster import clustersetup
 from starcluster.logger import log
@@ -22,19 +23,18 @@ class TmuxControlCenter(clustersetup.DefaultClusterSetup):
         self._user_shell = None
         self._volumes = None
 
-    def _select_layout(self, node, envname, window='', layout="main-vertical"):
+    def _supports_layout(self, node, envname, layout, window=''):
+        if layout not in self._layouts:
+            raise exception.PluginError("unknown layout (options: %s)" %
+                                        ", ".join(self._layouts))
+        return self._select_layout(node, envname, layout, window) == 0
+
+    def _select_layout(self, node, envname, layout="main-vertical", window=''):
         if layout not in self._layouts:
             raise exception.PluginError("unknown layout (options: %s)" %
                                           ", ".join(self._layouts))
         cmd = 'tmux select-layout -t %s:%s %s'
-        status = node.ssh.get_status(cmd % (envname, window, layout))
-        if status != 0 and layout != "main-vertical":
-            log.warn("failed to select layout '%s', defaulting to "
-                     "main-vertical" % (layout))
-            layout = "main-vertical"
-            status = node.ssh.get_status(cmd % (envname, window, layout))
-        if status != 0:
-            raise exception.PluginError("failed to set a layout")
+        return node.ssh.get_status(cmd % (envname, window, layout))
 
     def _resize_pane(self, node, envname, pane, units, up=False):
         upordown = '-D %s' % units
@@ -48,6 +48,10 @@ class TmuxControlCenter(clustersetup.DefaultClusterSetup):
         if vertical:
             cmd += ' -h'
         return node.ssh.execute('%s -t %s:%s' % (cmd, envname, window))
+
+    def _rename_window(self, node, envname, window, name):
+        cmd = 'tmux rename-window -t %s:%s %s' % (envname, window, name)
+        return node.ssh.execute(cmd)
 
     def _has_session(self, node, envname):
         status = node.ssh.get_status('tmux has-session -t %s' % envname)
@@ -80,7 +84,8 @@ class TmuxControlCenter(clustersetup.DefaultClusterSetup):
         for i in range(1, num_windows):
             self._new_window(node, envname, i)
 
-    def setup_tmuxcc(self, client=None, nodes=None, user='root'):
+    def setup_tmuxcc(self, client=None, nodes=None, user='root',
+                     layout='tiled'):
         log.info("Creating TMUX Control Center for user '%s'" % user)
         client = client or self._master
         nodes = nodes or self._nodes
@@ -88,20 +93,36 @@ class TmuxControlCenter(clustersetup.DefaultClusterSetup):
         orig_user = client.ssh._username
         if orig_user != user:
             client.ssh.connect(username=user)
-        self.create_session(client, envname, num_windows=1)
+        chunks = [chunk for chunk in utils.chunk_list(nodes, items=8)]
+        num_windows = len(chunks) + len(nodes)
+        if len(nodes) == 0:
+            log.error("Cluster has no nodes, exiting...")
+            return
+        self.create_session(client, envname, num_windows=num_windows)
         if len(nodes) == 1 and client == nodes[0]:
             return
+        if not self._supports_layout(client, envname, layout, window=0):
+            log.warn("failed to select layout '%s', defaulting to "
+                     "'main-vertical'" % layout)
+            layout = "main-vertical"
+            status = self._select_layout(client, envname, layout, window=0)
+            if status != 0:
+                raise exception.PluginError("failed to set a layout")
+        for i, chunk in enumerate(chunks):
+            self._rename_window(client, envname, i, 'all%s' % i)
+            for j, node in enumerate(chunk):
+                if j != 0:
+                    self._split_window(client, envname, i)
+                self._select_layout(client, envname, window=i, layout=layout)
+                if node.alias != client.alias:
+                    self._send_keys(client, envname, cmd='ssh %s' % node.alias,
+                                    window="%d.%d" % (i, j))
         for i, node in enumerate(nodes):
-            if node.alias != client.alias:
-                self._split_window(client, envname, 0)
-                self._send_keys(client, envname, cmd='ssh %s' % node.alias,
-                                window="0.%d" % i)
-        self._select_layout(client, envname, window=0, layout='tiled')
-        for i, node in enumerate(nodes):
-            self._new_window(client, envname, node.alias)
+            window = i + len(chunks)
+            self._rename_window(client, envname, window, node.alias)
             if node.alias != client.alias:
                 self._send_keys(client, envname, cmd='ssh %s' % node.alias,
-                                window=i + 1)
+                                window=window)
         self._select_window(client, envname, window=0)
         self._select_pane(client, envname, window=0, pane=0)
         if orig_user != user:
