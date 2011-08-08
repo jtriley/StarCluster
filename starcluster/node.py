@@ -104,9 +104,13 @@ class Node(object):
                 user_data = self._get_user_data(tries=5)
                 aliases = user_data.split('|')
                 index = self.ami_launch_index
-                alias = aliases[index]
+                try:
+                    alias = aliases[index]
+                except IndexError:
+                    log.debug(
+                        "invalid user_data: %s (index: %d)" % (aliases, index))
+                    alias = None
                 if not alias:
-                    # TODO: raise exception about old version
                     raise exception.BaseException(
                         "instance %s has no alias" % self.id)
                 self.add_tag('alias', alias)
@@ -839,13 +843,18 @@ class Node(object):
         ssh client. If the system does not have the ssh command it falls back
         to a pure-python ssh shell.
         """
-        if self.state != 'running':
+        if self.update() != 'running':
+            try:
+                alias = self.alias
+            except exception.BaseException:
+                alias = None
             label = 'instance'
-            if self.alias == "master":
-                label = "master node"
-            elif self.alias:
-                label = "node '%s'" % self.alias
-            raise exception.InstanceNotRunning(self.id, self.state,
+            if alias == "master":
+                label = "master"
+            elif alias:
+                label = "node"
+            instance_id = alias or self.id
+            raise exception.InstanceNotRunning(instance_id, self.state,
                                                label=label)
         user = user or self.user
         if utils.has_required(['ssh']):
