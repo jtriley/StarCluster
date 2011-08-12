@@ -359,7 +359,7 @@ class ClusterExists(BaseException):
 
 class CancelledStartRequest(BaseException):
     def __init__(self, tag):
-        self.msg = "Request to start cluster '%s' was cancelled" % tag
+        self.msg = "Request to start cluster '%s' was cancelled!!!" % tag
         self.msg += "\n\nPlease be aware that instances may still be running."
         self.msg += "\nYou can check this from the output of:"
         self.msg += "\n\n   $ starcluster listclusters"
@@ -370,21 +370,19 @@ class CancelledStartRequest(BaseException):
         self.msg += "\n\nAnother option is to use the AWS management console"
         self.msg += "\nto terminate the instances manually."
         self.msg += "\n\nIf you would like to re-use these instances, rerun"
-        self.msg += "\nthe same start command with the --no-create option"
+        self.msg += "\nthe same start command with the -x (--no-create) option"
 
 
 class CancelledCreateVolume(BaseException):
     def __init__(self):
-        self.msg = "Request to create volume was cancelled"
-        self.msg += "\n\nPlease be aware that the volume host instance"
+        self.msg = "Request to create a new volume was cancelled!!!"
+        self.msg += "\n\nPlease be aware that volume host instances"
         self.msg += " may still be running. "
-        self.msg += "\n\nTo destroy this instance please run:"
+        self.msg += "\n\nTo destroy these instances:"
         self.msg += "\n\n   $ starcluster terminate %s" % \
                 static.VOLUME_GROUP_NAME
-        self.msg += "\n\nand then use\n\n   $ starcluster listinstances"
-        self.msg += "\n\nto verify that this instance has been terminated."
-        self.msg += "\n\nAnother option is to use the AWS management console "
-        self.msg += "to terminate\nthis instance manually."
+        self.msg += "\n\nYou can then use\n\n   $ starcluster listinstances"
+        self.msg += "\n\nto verify that the volume hosts have been terminated."
 
 
 class CancelledCreateImage(BaseException):
@@ -395,13 +393,13 @@ class CancelledCreateImage(BaseException):
         self.msg += "around in /mnt on the instance."
         self.msg += "\n\nAlso, some of these intermediate files might "
         self.msg += "have been uploaded to \nS3 in the '%(bucket)s' bucket "
-        self.msg += "you specified. You can check this by running:"
+        self.msg += "you specified. You can check this using:"
         self.msg += "\n\n   $ starcluster showbucket %(bucket)s\n\n"
-        self.msg += "and looking for files like: "
+        self.msg += "Look for files like: "
         self.msg += "'%(iname)s.manifest.xml' or '%(iname)s.part.*'"
         self.msg += "\nRe-executing the same s3image command "
-        self.msg += "should take care of these \nintermediate files and "
-        self.msg += "will also automatically override any\npartially uploaded "
+        self.msg += "should clean up these \nintermediate files and "
+        self.msg += "also automatically override any\npartially uploaded "
         self.msg += "files in S3."
         self.msg = self.msg % {'bucket': bucket, 'iname': image_name}
 
