@@ -1212,16 +1212,19 @@ class Cluster(object):
             if spot.state not in ['cancelled', 'closed']:
                 log.info("Cancelling spot instance request: %s" % spot.id)
                 spot.cancel()
+        sg = self.ec2.get_group_or_none(self._security_group)
         pg = self.ec2.get_placement_group_or_none(self._security_group)
-        s = self.get_spinner("Waiting for cluster to terminate...")
-        while not self.is_cluster_terminated():
-            time.sleep(5)
-        s.stop()
+        if sg or pg:
+            s = self.get_spinner("Waiting for cluster to terminate...")
+            while not self.is_cluster_terminated():
+                time.sleep(5)
+            s.stop()
         if pg:
             log.info("Removing %s placement group" % pg.name)
             pg.delete()
-        log.info("Removing %s security group" % self._security_group)
-        self.cluster_group.delete()
+        if sg:
+            log.info("Removing %s security group" % sg.name)
+            sg.delete()
 
     def start(self, create=True, create_only=False, validate=True,
               validate_only=False, validate_running=False):
