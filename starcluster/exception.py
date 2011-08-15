@@ -370,11 +370,9 @@ class CancelledStartRequest(BaseException):
         self.msg += "\nYou can check this from the output of:"
         self.msg += "\n\n   $ starcluster listclusters"
         self.msg += "\n\nIf you wish to destroy these instances please run:"
-        self.msg += "\n\n   $ starcluster stop %s" % tag
-        self.msg += "\n\nYou can then use:\n\n   $ starcluster listinstances"
-        self.msg += "\n\nto verify that the instances have been terminated."
-        self.msg += "\n\nAnother option is to use the AWS management console"
-        self.msg += "\nto terminate the instances manually."
+        self.msg += "\n\n   $ starcluster terminate %s" % tag
+        self.msg += "\n\nYou can then use:\n\n   $ starcluster listclusters"
+        self.msg += "\n\nto verify that the cluster has been terminated."
         self.msg += "\n\nIf you would like to re-use these instances, rerun"
         self.msg += "\nthe same start command with the -x (--no-create) option"
 
