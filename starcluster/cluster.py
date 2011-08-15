@@ -652,6 +652,8 @@ class Cluster(object):
             for node in self.nodes:
                 if node.is_master():
                     self._master = node
+            if not self._master:
+                raise exception.MasterDoesNotExist()
         return self._master
 
     @property
@@ -1195,12 +1197,14 @@ class Cluster(object):
 
     def terminate_cluster(self):
         """
-        Stop this cluster by first detaching all volumes, shutting down all
-        instances, cancelling all spot requests (if any), removing this
-        cluster's placement group (if any), and removing this cluster's
-        security group.
+        Destroy this cluster by first detaching all volumes, shutting down all
+        instances, cancelling all spot requests (if any), removing its
+        placement group (if any), and removing its security group.
         """
-        self.run_plugins(method_name="on_shutdown", reverse=True)
+        try:
+            self.run_plugins(method_name="on_shutdown", reverse=True)
+        except exception.MasterDoesNotExist, e:
+            log.error("Cannot run plugins: %s" % e)
         self.detach_volumes()
         for node in self.nodes:
             node.terminate()
@@ -1244,6 +1248,7 @@ class Cluster(object):
         if create:
             self.create_cluster()
         else:
+            assert self.master_node is not None
             for node in self.stopped_nodes:
                 log.info("Starting stopped node: %s" % node.alias)
                 node.start()

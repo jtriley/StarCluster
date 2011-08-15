@@ -278,6 +278,12 @@ class ClusterValidationError(ValidationError):
     """Cluster validation related errors"""
 
 
+class MasterDoesNotExist(ClusterValidationError):
+    """Raised when no master node is available"""
+    def __init__(self):
+        self.msg = "No master node found!"
+
+
 class IncompatibleSettings(ClusterValidationError):
     """Raised when two or more settings conflict with each other"""
 
