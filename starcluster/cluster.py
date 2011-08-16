@@ -663,11 +663,12 @@ class Cluster(object):
                    'instance-state-name': states}
         nodes = self.ec2.get_all_instances(filters=filters)
         # remove any cached nodes not in the current node list from EC2
-        current_ids = map(lambda n: n.id, nodes)
-        remove_nodes = filter(lambda n: n.id not in current_ids, self._nodes)
-        map(lambda n: self._nodes.remove(n), remove_nodes)
+        current_ids = [n.id for n in nodes]
+        remove_nodes = [n for n in self._nodes if n.id not in current_ids]
+        for node in remove_nodes:
+            self._nodes.remove(node)
         # update node cache with latest instance data from EC2
-        existing_nodes = dict(map(lambda x: (x.id, x), self._nodes))
+        existing_nodes = dict([(n.id, n) for n in self._nodes])
         log.debug('existing nodes: %s' % existing_nodes)
         for node in nodes:
             if node.id in existing_nodes:
@@ -977,7 +978,7 @@ class Cluster(object):
         for id in range(1, self.cluster_size):
             alias = 'node%.3d' % id
             (ntype, nimage) = self._get_type_and_image_id(alias)
-            log.info("Launching %s (ami: %s, type: %s)" % \
+            log.info("Launching %s (ami: %s, type: %s)" %
                      (alias, nimage, ntype))
             self.create_node(alias, image_id=nimage, instance_type=ntype,
                              zone=zone)
@@ -1547,15 +1548,15 @@ class Cluster(object):
             if type in static.CLUSTER_TYPES:
                 img = self.ec2.get_image(image)
                 if img.virtualization_type != 'hvm':
-                    raise exception.ClusterValidationError((
-                        'Cluster Compute/GPU instance type %s ' +
-                        'can only be used with HVM images.\n' +
-                        'Image %s is NOT an HVM image.') % (type, image))
+                    raise exception.ClusterValidationError(
+                        'Cluster Compute/GPU instance type %s '
+                        'can only be used with HVM images.\n'
+                        'Image %s is NOT an HVM image.' % (type, image))
 
     def _validate_ebs_aws_settings(self):
         """
-        Verify EBS volumes exists on Amazon and that each volume's zone matches
-        this cluster's zone setting. Requires AWS credentials.
+        Verify EBS volumes exists and that each volume's zone matches this
+        cluster's zone setting.
         """
         for vol in self.volumes:
             v = self.volumes.get(vol)
