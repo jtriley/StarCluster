@@ -741,6 +741,9 @@ class Node(object):
     def is_spot(self):
         return self.spot_id is not None
 
+    def is_stoppable(self):
+        return self.is_ebs_backed() and not self.is_spot()
+
     def start(self):
         """
         Starts EBS-backed instance and puts it in the 'running' state.
@@ -785,7 +788,7 @@ class Node(object):
         instance-store instances and stop EBS-backed instances
         (ie not destroy EBS root dev)
         """
-        if self.is_ebs_backed() and not self.is_spot():
+        if self.is_stoppable():
             self.stop()
         else:
             self.terminate()
