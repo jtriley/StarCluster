@@ -983,6 +983,27 @@ class Cluster(object):
             self.create_node(alias, image_id=nimage, instance_type=ntype,
                              zone=zone)
 
+    def is_spot_cluster(self):
+        """
+        Returns True if all nodes are spot instances
+        """
+        nodes = self.nodes
+        if not nodes:
+            return False
+        for node in nodes:
+            if not node.is_master() and not node.is_spot():
+                return False
+        return True
+
+    def has_spot_nodes(self):
+        """
+        Returns True if any nodes are spot instances
+        """
+        for node in self.nodes:
+            if node.is_spot():
+                return True
+        return False
+
     def is_ebs_cluster(self):
         """
         Returns true if any instances in the cluster are EBS-backed
