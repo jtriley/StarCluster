@@ -1169,7 +1169,13 @@ class Cluster(object):
         """
         Check whether all nodes are in the 'stopped' state
         """
-        return len(self.stopped_nodes) == self.cluster_size
+        nodes = self.nodes
+        if not nodes:
+            return False
+        for node in nodes:
+            if node.state != 'stopped':
+                return False
+        return True
 
     def is_cluster_terminated(self):
         """
