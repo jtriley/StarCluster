@@ -1049,17 +1049,21 @@ class Cluster(object):
                 return True
         return False
 
-        If no instances are currently running, this method checks the
-        original settings used to launch this cluster and returns true
-        if any of the instance type settings specified Cluster Compute
-        instance types
+    def is_cluster_compute(self):
         """
+        Returns true if all instances are Cluster/GPU Compute type
+        """
+        nodes = self.nodes
+        if not nodes:
+            return False
+        for node in nodes:
+            if not node.is_cluster_compute():
+                return False
+        return True
+
+    def has_cluster_compute_nodes(self):
         for node in self.nodes:
             if node.is_cluster_compute():
-                return True
-        lmap = self._get_launch_map()
-        for (type, image) in lmap:
-            if type in static.CLUSTER_COMPUTE_TYPES:
                 return True
         return False
 
