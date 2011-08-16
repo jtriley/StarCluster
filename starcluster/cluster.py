@@ -1006,7 +1006,19 @@ class Cluster(object):
 
     def is_ebs_cluster(self):
         """
-        Returns true if any instances in the cluster are EBS-backed
+        Returns True if all nodes are EBS-backed
+        """
+        nodes = self.nodes
+        if not nodes:
+            return False
+        for node in nodes:
+            if not node.is_ebs_backed():
+                return False
+        return True
+
+    def has_ebs_nodes(self):
+        """
+        Returns True if any nodes are EBS-backed
         """
         for node in self.nodes:
             if node.is_ebs_backed():
