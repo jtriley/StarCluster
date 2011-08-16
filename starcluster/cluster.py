@@ -1025,9 +1025,29 @@ class Cluster(object):
                 return True
         return False
 
-    def is_cluster_compute(self):
+    def is_stoppable(self):
         """
-        Returns true if any instances are a Cluster Compute type
+        Returns True if all nodes are stoppable (i.e. non-spot and EBS-backed)
+        """
+        nodes = self.nodes
+        if not nodes:
+            return False
+        for node in self.nodes:
+            if not node.is_stoppable():
+                return False
+        return True
+
+    def has_stoppable_nodes(self):
+        """
+        Returns True if any nodes are stoppable (i.e. non-spot and EBS-backed)
+        """
+        nodes = self.nodes
+        if not nodes:
+            return False
+        for node in nodes:
+            if node.is_stoppable():
+                return True
+        return False
 
         If no instances are currently running, this method checks the
         original settings used to launch this cluster and returns true
