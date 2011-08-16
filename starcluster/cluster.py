@@ -1270,7 +1270,8 @@ class Cluster(object):
         except exception.MasterDoesNotExist, e:
             log.error("Cannot run plugins: %s" % e)
         self.detach_volumes()
-        for node in self.nodes:
+        nodes = self.nodes
+        for node in nodes:
             node.terminate()
         for spot in self.spot_requests:
             if spot.state not in ['cancelled', 'closed']:
@@ -1278,7 +1279,7 @@ class Cluster(object):
                 spot.cancel()
         sg = self.ec2.get_group_or_none(self._security_group)
         pg = self.ec2.get_placement_group_or_none(self._security_group)
-        if sg or pg:
+        if nodes and sg or pg:
             s = self.get_spinner("Waiting for cluster to terminate...")
             while not self.is_cluster_terminated():
                 time.sleep(5)
