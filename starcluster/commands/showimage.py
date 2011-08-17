@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
-#from base import CmdBase
-from downloadimage import CmdDownloadImage
+from completers import S3ImageCompleter
 
 
-class CmdShowImage(CmdDownloadImage):
+class CmdShowImage(S3ImageCompleter):
     """
     showimage <image_id>
 
