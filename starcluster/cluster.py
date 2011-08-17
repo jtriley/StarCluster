@@ -1306,10 +1306,19 @@ class Cluster(object):
     def start(self, create=True, create_only=False, validate=True,
               validate_only=False, validate_running=False):
         """
-        Handles creating and configuring a cluster.
-        Validates, creates, and configures a cluster.
-        Passing validate=False will ignore validate_only and validate_running
-        keywords and is effectively the same as running _start
+        Creates and configures a cluster from this cluster template's settings.
+
+        create - create new nodes when starting the cluster. set to False to
+                 use existing nodes
+        create_only - only create the cluster node instances, don't configure
+                      the cluster
+        validate - whether or not to validate the cluster settings used.
+                   False will ignore validate_only and validate_running
+                   keywords and is effectively the same as running _start
+        validate_only - only validate cluster settings, do not create or
+                        configure cluster
+        validate_running - whether or not to validate the existing instances
+                           being used against this cluster's settings
         """
         if validate:
             retval = self._validate(validate_running=validate_running)
@@ -1320,9 +1329,13 @@ class Cluster(object):
     @print_timing("Starting cluster")
     def _start(self, create=True, create_only=False):
         """
-        Start cluster from this cluster template's settings
-        Handles creating and configuring a cluster
-        Does not attempt to validate before running
+        Create and configure a cluster from this cluster template's settings
+        (Does not attempt to validate before running)
+
+        create - create new nodes when starting the cluster. set to False to
+                 use existing nodes
+        create_only - only create the cluster node instances, don't configure
+                      the cluster
         """
         log.info("Starting cluster...")
         if create:
