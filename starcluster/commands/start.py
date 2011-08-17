@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import sys
 import time
 
 from starcluster import config
@@ -202,11 +201,7 @@ class CmdStart(ClusterCompleter):
         if validate_only:
             return
         if self.opts.spot_bid is not None and not self.opts.no_create:
-            cmd = ' '.join(sys.argv[1:])
-            cmd = cmd.replace('--no-create', '').replace('-x', '')
-            cmd += ' -x'
-            msg = user_msgs.spotmsg % {'cmd': cmd,
-                                       'size': scluster.cluster_size,
+            msg = user_msgs.spotmsg % {'size': scluster.cluster_size,
                                        'tag': tag}
             self.warn_experimental(msg, num_secs=5)
         self.catch_ctrl_c()

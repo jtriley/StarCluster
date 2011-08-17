@@ -78,20 +78,17 @@ spotmsg = """SPOT INSTANCES ARE NOT GUARANTEED TO COME UP
 Spot instances can take a long time to come up and may not come up at all \
 depending on the current AWS load and your max spot bid price.
 
-StarCluster will wait indefinitely until all instances come up. If this takes \
-too long, you can cancel the start command using CTRL-C and manually wait for \
-the spot instances to come up by periodically checking the output of:
+StarCluster will wait indefinitely until all instances (%(size)s) come up. \
+If this takes too long, you can cancel the start command using CTRL-C. \
+You can then resume the start command later on using the --no-create (-x) \
+option:
 
-   $ starcluster listclusters %(tag)s
-
-Once all instances (%(size)d) show up in the output of the 'listclusters' \
-command above, re-execute this same start command with the \
---no-create (-x) option:
-
-   $ starcluster %(cmd)s
+   $ starcluster start -x %(tag)s
 
 This will use the existing spot instances launched previously and continue \
-starting the cluster.
+starting the cluster. If you don't wish to wait on the cluster any longer \
+after pressing CTRL-C simply terminate the cluster using the 'terminate' \
+command.\
 """
 
 version_mismatch = """\
