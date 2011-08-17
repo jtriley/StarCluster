@@ -658,7 +658,7 @@ class Cluster(object):
     @property
     def nodes(self):
         states = ['pending', 'running', 'stopping', 'stopped']
-        filters = {'group-id': self._security_group,
+        filters = {'group-name': self._security_group,
                    'instance-state-name': states}
         nodes = self.ec2.get_all_instances(filters=filters)
         # remove any cached nodes not in the current node list from EC2
@@ -1181,7 +1181,7 @@ class Cluster(object):
         Check whether all nodes are in a 'terminated' state
         """
         states = filter(lambda x: x != 'terminated', static.INSTANCE_STATES)
-        filters = {'group-id': self._security_group,
+        filters = {'group-name': self._security_group,
                    'instance-state-name': states}
         insts = self.ec2.get_all_instances(filters=filters)
         return len(insts) == 0

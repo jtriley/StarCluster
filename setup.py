@@ -11,7 +11,7 @@ try:
     from setuptools import setup, find_packages
     extra = dict(test_suite="starcluster.tests",
                  tests_require="nose",
-                 install_requires=["paramiko==1.7.7.1", "boto==2.0b4",
+                 install_requires=["paramiko==1.7.7.1", "boto==2.0",
                                    "workerpool==0.9.2", "Jinja2==2.5.5"],
                  zip_safe=False)
 except ImportError:
