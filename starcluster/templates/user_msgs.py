@@ -8,10 +8,8 @@ Either choose a different tag name, or stop the EBS cluster using:
 
 This command will put all nodes into a 'stopped' state and preserve their \
 local disks. The cluster can later be resumed by passing the -x option to \
-the start command. (NOTE: You pay for the local disks when the nodes are \
-not running)
-
-Another option is to terminate the existing EBS Cluster using:
+the start command. Another option is to terminate the existing EBS Cluster \
+using:
 
   $ starcluster terminate %(cluster_name)s
 
