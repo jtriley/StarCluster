@@ -991,7 +991,7 @@ class Cluster(object):
         if not nodes:
             return False
         for node in nodes:
-            if not node.is_master() and not node.is_spot():
+            if not node.is_spot():
                 return False
         return True
 
