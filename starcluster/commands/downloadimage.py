@@ -2,10 +2,10 @@
 
 from starcluster.logger import log
 
-from completers import ImageCompleter
+from completers import S3ImageCompleter
 
 
-class CmdDownloadImage(ImageCompleter):
+class CmdDownloadImage(S3ImageCompleter):
     """
     downloadimage [options] <image_id> <destination_directory>
 
