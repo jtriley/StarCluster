@@ -747,6 +747,9 @@ class Node(object):
     def is_stoppable(self):
         return self.is_ebs_backed() and not self.is_spot()
 
+    def is_stopped(self):
+        return self.state == "stopped"
+
     def start(self):
         """
         Starts EBS-backed instance and puts it in the 'running' state.
@@ -773,8 +776,11 @@ class Node(object):
         elif not self.is_ebs_backed():
             raise exception.InvalidOperation(
                 "Only EBS-backed instances can be stopped")
-        log.info("Stopping instance: %s (%s)" % (self.alias, self.id))
-        return self.instance.stop()
+        if not self.is_stopped():
+            log.info("Stopping node: %s (%s)" % (self.alias, self.id))
+            return self.instance.stop()
+        else:
+            log.info("Node '%s' is already stopped" % self.alias)
 
     def terminate(self):
         """
