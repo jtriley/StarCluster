@@ -154,13 +154,12 @@ class ClusterManager(managers.Manager):
         cl = self.get_cluster(cluster_name)
         cl.restart_cluster()
 
-    def stop_cluster(self, cluster_name):
+    def stop_cluster(self, cluster_name, terminate_unstoppable=False):
         """
-        Stops cluster_name if it's an EBS cluster, otherwise terminates the
-        cluster
+        Stop an EBS-backed cluster
         """
         cl = self.get_cluster(cluster_name)
-        cl.stop_cluster()
+        cl.stop_cluster(terminate_unstoppable)
 
     def terminate_cluster(self, cluster_name):
         """
@@ -1238,26 +1237,39 @@ class Cluster(object):
         time.sleep(sleep)
         self._setup_cluster()
 
-    def stop_cluster(self):
+    def stop_cluster(self, terminate_unstoppable=False):
         """
-        Stop this cluster by detaching all volumes, stopping/terminating
-        all instances, cancelling all spot requests (if any), and removing this
-        cluster's security group.
+        Shutdown this cluster by detaching all volumes and 'stopping' all nodes
 
-        If a node is a spot instance, it will be terminated. Spot
-        instances can not be 'stopped', they must be terminated.
+        In general, all nodes in the cluster must be 'stoppable' meaning all
+        nodes are backed by flat-rate EBS-backed instances. If any
+        'unstoppable' nodes are found an exception is raised. A node is
+        'unstoppable' if it is backed by either a spot or S3-backed instance.
+
+        If the cluster contains a mix of 'stoppable' and 'unstoppable' nodes
+        you can stop all stoppable nodes and terminate any unstoppable nodes by
+        setting terminate_unstoppable=True.
+
+        This will stop all nodes that can be stopped and terminate the rest.
         """
-        self.run_plugins(method_name="on_shutdown", reverse=True)
+        nodes = self.nodes
+        if not nodes:
+            raise exception.ClusterValidationError("No running nodes found")
+        if not self.is_stoppable():
+            has_stoppable_nodes = self.has_stoppable_nodes()
+            if not terminate_unstoppable and has_stoppable_nodes:
+                raise exception.InvalidOperation(
+                    "Cluster contains nodes that are not stoppable")
+            if not has_stoppable_nodes:
+                raise exception.InvalidOperation(
+                    "Cluster does not contain any stoppable nodes")
+        try:
+            self.run_plugins(method_name="on_shutdown", reverse=True)
+        except exception.MasterDoesNotExist, e:
+            log.error("Cannot run plugins: %s" % e)
         self.detach_volumes()
-        for node in self.nodes:
+        for node in nodes:
             node.shutdown()
-        for spot in self.spot_requests:
-            if spot.state not in ['cancelled', 'closed']:
-                log.info("Cancelling spot instance request: %s" % spot.id)
-                spot.cancel()
-        if self.spot_bid or not self.is_ebs_cluster():
-            log.info("Removing %s security group" % self._security_group)
-            self.cluster_group.delete()
 
     def terminate_cluster(self):
         """
@@ -1390,6 +1402,8 @@ class Cluster(object):
         except NotImplementedError:
             log.debug("method %s not implemented by plugin %s" % (method_name,
                                                                   plugin_name))
+        except exception.MasterDoesNotExist:
+            raise
         except Exception, e:
             log.error("Error occured while running plugin '%s':" % plugin_name)
             if isinstance(e, exception.ThreadPoolException):
