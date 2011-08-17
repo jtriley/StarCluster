@@ -114,6 +114,9 @@ class Node(object):
                     raise exception.BaseException(
                         "instance %s has no alias" % self.id)
                 self.add_tag('alias', alias)
+            name = self.tags.get('Name')
+            if not name:
+                self.add_tag('Name', alias)
             self._alias = alias
         return self._alias
 
