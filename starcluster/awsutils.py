@@ -573,42 +573,44 @@ class EasyEC2(EasyAWS):
             counter += 1
 
     def remove_image_files(self, image_name, pretend=True):
+        if pretend:
+            log.info("Pretending to remove image files...")
+        else:
+            log.info('Removing image files...')
         files = self.get_image_files(image_name)
-        for file in files:
+        for f in files:
             if pretend:
-                print file
+                log.info("Would remove file: %s" % f.name)
             else:
-                print 'removing file %s' % file
-                file.delete()
-
-        # recursive double check
-        files = self.get_image_files(image_name)
-        if len(files) != 0:
-            if pretend:
-                log.info('Not all files deleted, would recurse...exiting')
-                return
-            else:
-                log.info('Not all files deleted, recursing...')
+                log.info('Removing file %s' % f.name)
+                f.delete()
+        if not pretend:
+            files = self.get_image_files(image_name)
+            if len(files) != 0:
+                log.warn('Not all files deleted, recursing...')
                 self.remove_image_files(image_name, pretend)
 
     @print_timing("Removing image")
-    def remove_image(self, image_name, pretend=True):
+    def remove_image(self, image_name, pretend=True, keep_image_data=True):
         img = self.get_image(image_name)
         if pretend:
-            log.info("Pretending to remove AMI: %s" % image_name)
+            log.info('Pretending to deregister AMI: %s' % img.id)
         else:
-            log.info("Removing AMI: %s" % image_name)
-
-        # first remove image files
-        log.info('Removing image files...')
-        self.remove_image_files(image_name, pretend=pretend)
-
-        # then deregister ami
-        if pretend:
-            log.info('Would run deregister_image for ami: %s)' % img.id)
-        else:
-            log.info('Deregistering ami: %s' % img.id)
+            log.info('Deregistering AMI: %s' % img.id)
             img.deregister()
+        if img.root_device_type == "instance-store" and not keep_image_data:
+            self.remove_image_files(image_name, pretend=pretend)
+        elif img.root_device_type == "ebs" and not keep_image_data:
+            rootdevtype = img.block_device_mapping.get('/dev/sda1', None)
+            if rootdevtype:
+                snapid = rootdevtype.snapshot_id
+                if snapid:
+                    snap = self.get_snapshot(snapid)
+                    if pretend:
+                        log.info("Would remove snapshot: %s" % snapid)
+                    else:
+                        log.info("Removing snapshot: %s" % snapid)
+                        snap.delete()
 
     def list_starcluster_public_images(self):
         images = self.conn.get_all_images(owners=[static.STARCLUSTER_OWNER_ID])
