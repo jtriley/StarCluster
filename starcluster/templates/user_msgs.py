@@ -23,13 +23,13 @@ stopped_ebs_cluster = """Stopped EBS Cluster '%(cluster_name)s' already exists.
 
 Either choose a different tag name, or start the stopped EBS cluster using:
 
-  $ starcluster start %(cluster_name)s -x
+  $ starcluster start -x %(cluster_name)s
 
 Another option is to terminate the existing EBS Cluster using:
 
   $ starcluster terminate %(cluster_name)s
 
-NOTE: Terminating an EBS cluster will destroy the local disks (voluems) \
+NOTE: Terminating an EBS cluster will destroy the local disks (volumes) \
 backing the nodes.
 """
 
