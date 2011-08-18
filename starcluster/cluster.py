@@ -477,77 +477,40 @@ class Cluster(object):
 
     def _validate_running_instances(self):
         """
-        Validate existing instances against this template's settings
+        Validate existing instances against this cluster's settings
         """
-        self._validate_instance_types()
-        mtype = self.master_node.instance_type
-        mastertype = self.master_instance_type or self.node_instance_type
-        if mtype != mastertype:
-            raise exception.ClusterValidationError(
-                "The existing master node's instance type (%s) != %s" % \
-                (mtype, mastertype))
-        masterimage = self.master_image_id or self.node_image_id
-        mimage = self.master_node.image_id
-        if mimage != masterimage:
-            raise exception.ClusterValidationError(
-                "The existing master node's image id (%s) != %s" % \
-                (mimage, masterimage))
-        mkey = self.master_node.key_name
-        if mkey != self.keyname:
-            raise exception.ClusterValidationError(
-                "The existing master's keypair (%s) != %s" % \
-                (mkey, self.keyname))
-        try:
-            nodes = self.nodes[1:]
-        except IndexError:
-            raise exception.ClusterValidationError(
-                "Cluster has no running instances")
+        self.wait_for_active_spots()
+        nodes = self.nodes
+        if not nodes:
+            raise exception.ClusterValidationError("No existing nodes found!")
+        log.info("Validating existing instances...")
         mazone = self.master_node.placement
-        id_start = 0
-        for itype in self.node_instance_types:
-            size = itype['size']
-            image = itype['image'] or self.node_image_id
-            type = itype['type'] or self.node_instance_type
-            for i in range(id_start, id_start + size):
-                n = nodes[i]
-                ntype = n.instance_type
-                if ntype != type:
-                    raise exception.ClusterValidationError(
-                        "Running node's instance type (%s) != %s" % \
-                        (ntype, type))
-                nimage = n.image_id
-                if nimage != image:
-                    raise exception.ClusterValidationError(
-                        "Running node's image id (%s) != %s" % \
-                        (nimage, image))
-                id_start += 1
-        for n in nodes[id_start:]:
-            ntype = n.instance_type
-            if n.instance_type != self.node_instance_type:
+        rlmap = self._get_launch_map(reverse=True)
+        for node in nodes:
+            itype, image = rlmap.get(node.alias)
+            alias = node.alias
+            ntype = node.instance_type
+            if ntype != itype:
                 raise exception.ClusterValidationError(
-                    "Running node's instance type (%s) != %s" % \
-                    (ntype, self.node_instance_type))
-            nimage = n.image_id
-            if nimage != self.node_image_id:
+                    "%s's instance type (%s) != %s" % (alias, ntype, itype))
+            nimage = node.image_id
+            if nimage != image:
                 raise exception.ClusterValidationError(
-                    "Running node's image id (%s) != %s" % \
-                    (nimage, image))
-        for n in nodes:
-            if n.key_name != self.keyname:
+                    "%s's image id (%s) != %s" % (alias, nimage, image))
+            if node.key_name != self.keyname:
                 raise exception.ClusterValidationError(
-                    "Running node's key_name (%s) != %s" % \
-                    (n.key_name, self.keyname))
-            nazone = n.placement
+                    "%s's key_name (%s) != %s" % (alias, node.key_name,
+                                                  self.keyname))
+            nazone = node.placement
             if mazone != nazone:
                 raise exception.ClusterValidationError(
-                    ("Running master's zone (%s) " + \
-                     "does not match node zone (%s)") % \
-                    (mazone, nazone))
-        # reset zone
+                    "Node '%s' zone (%s) does not match master's zone (%s)" %
+                    (alias, nazone, mazone))
+        # reset zone cache
         self._zone = None
         if self.zone and self.zone != mazone:
             raise exception.ClusterValidationError(
-                "Running cluster's availability_zone (%s) != %s" % \
+                "Running cluster's availability_zone (%s) != %s" %
                 (mazone, self.zone))
 
     def get(self, name):
