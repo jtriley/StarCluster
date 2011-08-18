@@ -146,26 +146,21 @@ class CmdStart(ClusterCompleter):
         tag = self.tag = args[0]
         create = not self.opts.no_create
         create_only = self.opts.create_only
-        cluster_exists = self.cm.get_cluster_or_none(tag)
+        scluster = self.cm.get_cluster_or_none(tag)
         validate = self.opts.validate
         validate_running = self.opts.no_create
         validate_only = self.opts.validate_only
-        if cluster_exists and create:
-            stopped_ebs = cluster_exists.is_cluster_stopped()
+        if scluster and create:
+            stopped_ebs = scluster.is_cluster_stopped()
             is_ebs = False
             if not stopped_ebs:
-                is_ebs = cluster_exists.is_ebs_cluster()
+                is_ebs = scluster.is_ebs_cluster()
             raise exception.ClusterExists(tag, is_ebs=is_ebs,
                                           stopped_ebs=stopped_ebs)
-        if not cluster_exists and not create:
+        if not scluster and not create:
             raise exception.ClusterDoesNotExist(tag)
-        scluster = None
-        if cluster_exists:
+        elif scluster:
             validate_running = True
-            scluster = self.cm.get_cluster(tag)
-            log.info(
-                "Using original template used to launch cluster '%s'" %
-                scluster.cluster_tag)
         else:
             template = self.opts.cluster_template
             if not template:
@@ -187,24 +182,14 @@ class CmdStart(ClusterCompleter):
         if not self.opts.refresh_interval:
             interval = self.cfg.globals.get("refresh_interval")
             scluster.refresh_interval = interval
-        if validate:
-            try:
-                scluster._validate(validate_running=validate_running)
-            except exception.ClusterValidationError:
-                if not cluster_exists:
-                    log.error(
-                        'settings for cluster template "%s" are not valid:' % \
-                        template)
-                raise
-        else:
-            log.warn("SKIPPING VALIDATION - USE AT YOUR OWN RISK")
-        if validate_only:
-            return
         if self.opts.spot_bid is not None and not self.opts.no_create:
             msg = user_msgs.spotmsg % {'size': scluster.cluster_size,
                                        'tag': tag}
-            self.warn_experimental(msg, num_secs=5)
+            if not validate_only and not create_only:
+                self.warn_experimental(msg, num_secs=5)
         self.catch_ctrl_c()
-        scluster.start(create=create, create_only=create_only, validate=False)
+        scluster.start(create=create, create_only=create_only,
+                       validate=validate, validate_only=validate_only,
+                       validate_running=validate_running)
         if self.opts.login_master:
             scluster.ssh_to_master()

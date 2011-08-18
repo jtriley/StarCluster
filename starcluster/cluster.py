@@ -1331,10 +1331,21 @@ class Cluster(object):
                            being used against this cluster's settings
         """
         if validate:
-            retval = self._validate(validate_running=validate_running)
+            if not create and validate_running:
+                try:
+                    self._validate_running_instances()
+                except exception.ClusterValidationError, e:
+                    msg = "Existing nodes are not compatible with cluster "
+                    msg += "settings:\n"
+                    e.msg = msg + e.msg
+                    raise
+            elif create:
+                self._validate()
             if validate_only:
-                return retval
-        return self._start(create, create_only)
+                return
+        else:
+            log.warn("SKIPPING VALIDATION - USE AT YOUR OWN RISK")
+        return self._start(create=create, create_only=create_only)
 
     @print_timing("Starting cluster")
     def _start(self, create=True, create_only=False):
@@ -1448,37 +1459,31 @@ class Cluster(object):
             log.error(e.msg)
             return False
 
-    def _validate(self, validate_running=False):
+    def _validate(self):
         """
-        Checks that all cluster template settings are valid. Raises
-        a ClusterValidationError exception if not. Passing
-        validate_running=True will also check that the existing instances
-        properties match the configuration of this cluster template.
+        Checks that all cluster template settings are valid. Raises a
+        ClusterValidationError exception if not.
         """
         log.info("Validating cluster template settings...")
-        self._has_all_required_settings()
-        self._validate_spot_bid()
-        self._validate_cluster_size()
-        self._validate_shell_setting()
-        self._validate_permission_settings()
-        self._validate_credentials()
-        self._validate_keypair()
-        self._validate_zone()
-        self._validate_ebs_settings()
-        self._validate_ebs_aws_settings()
-        self._validate_image_settings()
-        self._validate_instance_types()
-        self._validate_cluster_compute()
-        if validate_running:
-            log.info("Validating existing instances...")
-            try:
-                self._validate_running_instances()
-            except exception.ClusterValidationError:
-                log.error('existing instances are not compatible with '
-                          'cluster template settings:')
-                raise
-        log.info('Cluster template settings are valid')
-        return True
+        try:
+            self._has_all_required_settings()
+            self._validate_spot_bid()
+            self._validate_cluster_size()
+            self._validate_shell_setting()
+            self._validate_permission_settings()
+            self._validate_credentials()
+            self._validate_keypair()
+            self._validate_zone()
+            self._validate_ebs_settings()
+            self._validate_ebs_aws_settings()
+            self._validate_image_settings()
+            self._validate_instance_types()
+            self._validate_cluster_compute()
+            log.info('Cluster template settings are valid')
+            return True
+        except exception.ClusterValidationError, e:
+            e.msg = 'Cluster settings are not valid:\n%s' % e.msg
+            raise
 
     def is_valid(self):
         """
