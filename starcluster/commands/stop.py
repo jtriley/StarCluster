@@ -80,8 +80,8 @@ class CmdStop(ClusterCompleter):
                     raise exception.BaseException(
                         "Cluster '%s' does not contain any 'stoppable' nodes "
                         "and can only be terminated. Please use the "
-                        "'terminate' command instead to destroy the cluster. "
-                        "Pass --help for more info" % cluster_name)
+                        "'terminate' command instead to destroy the cluster."
+                        "\n\nPass --help for more info" % cluster_name)
             if not self.opts.confirm:
                 resp = raw_input("Stop cluster %s (y/n)? " % cluster_name)
                 if resp not in ['y', 'Y', 'yes']:
