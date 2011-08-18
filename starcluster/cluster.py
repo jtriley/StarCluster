@@ -1128,6 +1128,74 @@ class Cluster(object):
             self._progress_bar = pbar
         return self._progress_bar
 
+    def wait_for_active_spots(self, spots=None):
+        """
+        Wait for all spot requests for this cluster to transition to 'active'.
+        """
+        spots = spots or self.spot_requests
+        open_spots = [spot for spot in spots if spot.state == "open"]
+        if open_spots:
+            pbar = self.progress_bar.reset()
+            log.info('Waiting for open spot requests to become active...')
+            pbar.maxval = len(spots)
+            pbar.update(0)
+            while not pbar.finished:
+                active_spots = filter(lambda x: x.state == "active", spots)
+                pbar.maxval = len(spots)
+                pbar.update(len(active_spots))
+                if not pbar.finished:
+                    time.sleep(self.refresh_interval)
+                    spots = self.spot_requests
+            pbar.reset()
+
+    def wait_for_active_instances(self, nodes=None):
+        """
+        Wait indefinitely for cluster nodes to show up.
+        """
+        nodes = nodes or self.nodes
+        if len(nodes) == 0:
+            s = self.get_spinner("Waiting for instances to activate...")
+            while len(nodes) == 0:
+                time.sleep(self.refresh_interval)
+                nodes = self.nodes
+            s.stop()
+
+    def wait_for_running_instances(self, nodes=None):
+        """
+        Wait until all cluster nodes are in a 'running' state
+        """
+        log.info("Waiting for all nodes to be in a 'running' state...")
+        nodes = nodes or self.nodes
+        pbar = self.progress_bar.reset()
+        pbar.maxval = len(nodes)
+        pbar.update(0)
+        while not pbar.finished:
+            running_nodes = filter(lambda x: x.state == "running", nodes)
+            pbar.maxval = len(nodes)
+            pbar.update(len(running_nodes))
+            if not pbar.finished:
+                time.sleep(self.refresh_interval)
+                nodes = self.nodes
+        pbar.reset()
+
+    def wait_for_ssh(self, nodes=None):
+        """
+        Wait until all cluster nodes are in a 'running' state
+        """
+        log.info("Waiting for SSH to come up on all nodes...")
+        nodes = nodes or self.nodes
+        pbar = self.progress_bar.reset()
+        pbar.maxval = len(nodes)
+        pbar.update(0)
+        while not pbar.finished:
+            active_nodes = filter(lambda n: n.is_up(), nodes)
+            pbar.maxval = len(nodes)
+            pbar.update(len(active_nodes))
+            if not pbar.finished:
+                time.sleep(self.refresh_interval)
+                nodes = self.nodes
+        pbar.finish()
+
     def wait_for_cluster(self, msg="Waiting for cluster to come up..."):
         """
         Wait for cluster to come up and display progress bar. Waits for all
@@ -1138,49 +1206,10 @@ class Cluster(object):
         """
         interval = self.refresh_interval
         log.info("%s %s" % (msg, "(updating every %ds)" % interval))
-        pbar = self.progress_bar.reset()
-        spots = self.spot_requests
-        if spots:
-            log.info('Waiting for open spot requests to become active...')
-            pbar.maxval = len(spots)
-            pbar.update(0)
-            while not pbar.finished:
-                active_spots = filter(lambda x: x.state == "active", spots)
-                pbar.maxval = len(spots)
-                pbar.update(len(active_spots))
-                if not pbar.finished:
-                    time.sleep(interval)
-                    spots = self.spot_requests
-            pbar.reset()
-        nodes = self.nodes
-        if len(nodes) == 0:
-            s = self.get_spinner("Waiting for instances to activate...")
-            while len(nodes) == 0:
-                time.sleep(interval)
-                nodes = self.nodes
-            s.stop()
-        log.info("Waiting for all nodes to be in a 'running' state...")
-        pbar.maxval = len(nodes)
-        pbar.update(0)
-        while not pbar.finished:
-            running_nodes = filter(lambda x: x.state == "running", nodes)
-            pbar.maxval = len(nodes)
-            pbar.update(len(running_nodes))
-            if not pbar.finished:
-                time.sleep(interval)
-                nodes = self.nodes
-        pbar.reset()
-        log.info("Waiting for SSH to come up on all nodes...")
-        pbar.maxval = len(nodes)
-        pbar.update(0)
-        while not pbar.finished:
-            active_nodes = filter(lambda n: n.is_up(), nodes)
-            pbar.maxval = len(nodes)
-            pbar.update(len(active_nodes))
-            if not pbar.finished:
-                time.sleep(interval)
-                nodes = self.nodes
-        pbar.finish()
+        self.wait_for_active_spots()
+        self.wait_for_active_instances()
+        self.wait_for_running_instances()
+        self.wait_for_ssh()
 
     def is_cluster_stopped(self):
         """
