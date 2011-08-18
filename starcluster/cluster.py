@@ -851,7 +851,7 @@ class Cluster(object):
                 node.get_spot_request().cancel()
             node.terminate()
 
-    def _get_launch_map(self):
+    def _get_launch_map(self, reverse=False):
         """
         Groups all node-aliases that have similar instance types/image ids
         Returns a dictionary that's used to launch all similar instance types
@@ -861,6 +861,17 @@ class Cluster(object):
          ('m1.large', 'ami-a5c02dcc'): ['node003'],
          ('m1.small', 'ami-17b15e7e'): ['master', 'node005', 'node006'],
          ('m1.small', 'ami-19e17a2b'): ['node004']}
+
+        Passing reverse=True will return the same information only keyed by
+        node aliases:
+
+        {'master': ('m1.small', 'ami-17b15e7e'),
+         'node001': ('c1.xlarge', 'ami-a5c02dcc'),
+         'node002': ('c1.xlarge', 'ami-a5c02dcc'),
+         'node003': ('m1.large', 'ami-a5c02dcc'),
+         'node004': ('m1.small', 'ami-19e17a2b'),
+         'node005': ('m1.small', 'ami-17b15e7e'),
+         'node006': ('m1.small', 'ami-17b15e7e')}
         """
         lmap = {}
         mtype = self.master_instance_type or self.node_instance_type
@@ -888,6 +899,13 @@ class Cluster(object):
             log.debug("Launch map: %s (ami: %s, type: %s)..." % \
                     (alias, nimage, ntype))
             lmap[(ntype, nimage)].append(alias)
+        if reverse:
+            rlmap = {}
+            for (itype, image_id) in lmap:
+                aliases = lmap.get((itype, image_id))
+                for alias in aliases:
+                    rlmap[alias] = (itype, image_id)
+            return rlmap
         return lmap
 
     def _get_type_and_image_id(self, alias):
