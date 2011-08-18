@@ -82,6 +82,7 @@ class SSHClient(object):
                 private_key=None, private_key_pass=None, port=22, timeout=30):
         host = host or self._host
         username = username or self._username
+        password = password or self._password
         pkey = self._pkey
         if private_key:
             pkey = self.load_private_key(private_key, private_key_pass)
