@@ -33,9 +33,15 @@ backing the nodes.
 
 cluster_exists = """Cluster with tag name %(cluster_name)s already exists.
 
-If you want to reconfigure the existing instances use the 'restart' command:
+If the cluster is a 'stopped' EBS cluster that you wish to 'start' or if you \
+have yet to configure the existing cluster nodes, pass the -x option to the \
+start command:
 
-  $ starcluster restart %(cluster_name)s
+    $ starcluster start -x %(cluster_name)s
+
+If you wish to reconfigure the existing instances use the 'restart' command:
+
+    $ starcluster restart %(cluster_name)s
 
 This will reboot all of the instances and configure the cluster starting from \
 scratch.
@@ -43,7 +49,7 @@ scratch.
 Otherwise either choose a different tag name, or terminate the existing \
 cluster using:
 
-  $ starcluster terminate %(cluster_name)s
+    $ starcluster terminate %(cluster_name)s
 
 """
 
