@@ -1369,12 +1369,6 @@ class Cluster(object):
         if create_only:
             return
         self._setup_cluster()
-        log.info(user_msgs.cluster_started_msg % {
-            'master': self.master_node.dns_name,
-            'user': self.cluster_user,
-            'key': self.key_location,
-            'tag': self.cluster_tag,
-        }, extra=dict(__textwrap__=True, __raw__=True))
 
     def _setup_cluster(self):
         """
