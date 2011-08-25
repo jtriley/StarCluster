@@ -10,6 +10,7 @@ import types
 import inspect
 import calendar
 import urlparse
+import decorator
 from datetime import datetime
 
 from starcluster import iptools
@@ -63,42 +64,34 @@ def print_timing(msg=None):
 
     @print_timing
     def myfunc():
-        print 'hi'
+        print 'Running myfunc'
     >>> myfunc()
-    hi
+    Running myfunc
     myfunc took 0.000 mins
 
     @print_timing('My function')
     def myfunc():
-        print 'hi'
+        print 'Running myfunc'
     >>> myfunc()
-    hi
+    Running myfunc
     My function took 0.000 mins
     """
+    prefix = msg
     if type(msg) == types.FunctionType:
-        func = msg
+        prefix = msg.func_name
 
-        def wrap_f(*arg, **kargs):
-            """Raw timing function """
-            time1 = time.time()
-            res = func(*arg, **kargs)
-            time2 = time.time()
-            prefix = func.func_name
-            log.info('%s took %0.3f mins' % (prefix, (time2 - time1) / 60.0))
-            return res
-        return wrap_f
+    def wrap_f(func, *arg, **kargs):
+        """Raw timing function """
+        time1 = time.time()
+        res = func(*arg, **kargs)
+        time2 = time.time()
+        log.info('%s took %0.3f mins' % (prefix, (time2 - time1) / 60.0))
+        return res
 
-    def wrap(func):
-        def wrap_f(*arg, **kargs):
-            """Raw timing function """
-            time1 = time.time()
-            res = func(*arg, **kargs)
-            time2 = time.time()
-            prefix = msg
-            log.info('%s took %0.3f mins' % (prefix, (time2 - time1) / 60.0))
-            return res
-        return wrap_f
-    return wrap
+    if type(msg) == types.FunctionType:
+        return decorator.decorator(wrap_f, msg)
+    else:
+        return decorator.decorator(wrap_f)
 
 
 def is_valid_device(dev):
