@@ -590,6 +590,7 @@ class Cluster(object):
     @property
     def cluster_group(self):
         if self._cluster_group is None:
+            ssh_port = static.DEFAULT_SSH_PORT
             desc = base64.b64encode(zlib.compress(cPickle.dumps(self)))
             desc = '-'.join([static.VERSION, desc])
             sg = self.ec2.get_or_create_group(self._security_group,
@@ -601,12 +602,15 @@ class Cluster(object):
                 ip_protocol = perm.get('ip_protocol', 'tcp')
                 from_port = perm.get('from_port')
                 to_port = perm.get('to_port')
-                cidr_ip = perm.get('cidr_ip', '0.0.0.0/0')
+                cidr_ip = perm.get('cidr_ip', static.WORLD_CIDRIP)
                 if not self.ec2.has_permission(sg, ip_protocol, from_port,
                                                to_port, cidr_ip):
                     log.info("Opening %s port range %s-%s for CIDR %s" %
                              (ip_protocol, from_port, to_port, cidr_ip))
                     sg.authorize(ip_protocol, from_port, to_port, cidr_ip)
+                if ip_protocol == 'tcp' and from_port <= ssh_port <= to_port:
+                    sg.revoke(ip_protocol, ssh_port, ssh_port,
+                              static.WORLD_CIDRIP)
             self._cluster_group = sg
         return self._cluster_group
 

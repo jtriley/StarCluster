@@ -73,6 +73,10 @@ CLUSTER_TYPES = CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES
 
 PROTOCOLS = ['tcp', 'udp', 'icmp']
 
+WORLD_CIDRIP = '0.0.0.0/0'
+
+DEFAULT_SSH_PORT = 22
+
 AVAILABLE_SHELLS = {
     "bash": True,
     "zsh": True,

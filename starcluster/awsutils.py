@@ -160,7 +160,8 @@ class EasyEC2(EasyAWS):
         log.info("Creating security group %s..." % name)
         sg = self.conn.create_security_group(name, description)
         if auth_ssh:
-            sg.authorize('tcp', 22, 22, '0.0.0.0/0')
+            ssh_port = static.DEFAULT_SSH_PORT
+            sg.authorize('tcp', ssh_port, ssh_port, static.WORLD_CIDRIP)
         if auth_group_traffic:
             sg.authorize('icmp', -1, -1,
                          src_group=self.get_group_or_none(name))
