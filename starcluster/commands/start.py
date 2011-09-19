@@ -191,8 +191,9 @@ class CmdStart(ClusterCompleter):
         scluster.start(create=create, create_only=create_only,
                        validate=validate, validate_only=validate_only,
                        validate_running=validate_running)
-        log.info(user_msgs.cluster_started_msg % {
-            'tag': scluster.cluster_tag,
-        }, extra=dict(__textwrap__=True, __raw__=True))
-        if self.opts.login_master:
-            scluster.ssh_to_master()
+        if not validate_only:
+            log.info(user_msgs.cluster_started_msg % {
+                'tag': scluster.cluster_tag,
+            }, extra=dict(__textwrap__=True, __raw__=True))
+            if self.opts.login_master:
+                scluster.ssh_to_master()
