@@ -96,6 +96,10 @@ NODE_INSTANCE_TYPE = m1.small
 # see "Configuring StarCluster Plugins" below on how to define plugin sections
 #PLUGINS = myplugin, myplugin2
 
+# list of permissions (or firewall rules) to apply to the cluster's security
+# group (OPTIONAL).
+#PERMISSIONS = ssh, http
+
 ###########################################
 ## Defining Additional Cluster Templates ##
 ###########################################
@@ -178,6 +182,23 @@ NODE_INSTANCE_TYPE = m1.small
 # SOME_PARAM_FOR_MY_PLUGIN = 1
 # SOME_OTHER_PARAM = 2
 
+############################################
+## Configuring Security Group Permissions ##
+############################################
+
+# [permission ssh]
+# protocol can be: tcp, udp, or icmp
+# protocol = tcp
+# from_port = 22
+# to_port = 22
+# cidr_ip = <your_ip>/32
+
+# example for opening port 80 on the cluster to a specific IP range
+# [permission http]
+# protocol = tcp
+# from_port = 80
+# to_port = 80
+# cidr_ip = 18.0.0.0/24
 """ % {
     'x86_ami': static.BASE_AMI_32,
     'x86_64_ami': static.BASE_AMI_64,
