@@ -399,18 +399,27 @@ class Cluster(object):
         etc for all volumes that do not include a device/partition setting
         """
         devices = ['/dev/sd%s' % s for s in string.lowercase]
+        devmap = {}
         for volname in vols:
             vol = vols.get(volname)
             dev = vol.get('device')
             if dev in devices:
                 #rm user-defined devices from the list of auto-assigned devices
                 devices.remove(dev)
+            volid = vol.get('volume_id')
+            if dev and not volid in devmap:
+                devmap[volid] = dev
         volumes = {}
         for volname in vols:
             vol = vols.get(volname)
+            vol_id = vol.get('volume_id')
             device = vol.get('device')
             if not device:
-                device = devices.pop()
+                if vol_id in devmap:
+                    device = devmap.get(vol_id)
+                else:
+                    device = devices.pop()
+                    devmap[vol_id] = device
             if not utils.is_valid_device(device):
                 raise exception.InvalidDevice(device)
             v = volumes[volname] = utils.AttributeDict()
@@ -1702,8 +1711,8 @@ class Cluster(object):
         Check EBS vols for missing/duplicate DEVICE/PARTITION/MOUNT_PATHs
         and validate these settings. Does not require AWS credentials.
         """
-        vol_ids = []
-        devices = []
+        volmap = {}
+        devmap = {}
         mount_paths = []
         for vol in self.volumes:
             vol_name = vol
@@ -1712,9 +1721,28 @@ class Cluster(object):
             device = vol.get('device')
             partition = vol.get('partition')
             mount_path = vol.get("mount_path")
+            vmap = volmap.get(vol_id, {})
+            devices = vmap.get('device', [])
+            partitions = vmap.get('partition', [])
+            if devices and device not in devices:
+                raise exception.ClusterValidationError(
+                    "Can't attach volume %s to more than one device" % vol_id)
+            elif partitions and partition in partitions:
+                raise exception.ClusterValidationError(
+                    "Multiple configurations for %s\n"
+                    "Either pick one or specify a separate partition for "
+                    "each configuration" % vol_id)
+            vmap['partition'] = partitions + [partition]
+            vmap['device'] = devices + [device]
+            volmap[vol_id] = vmap
+            dmap = devmap.get(device, {})
+            vol_ids = dmap.get('volume_id', [])
+            if vol_ids and vol_id not in vol_ids:
+                raise exception.ClusterValidationError(
+                    "Can't attach more than one volume on device %s" % device)
+            dmap['volume_id'] = vol_ids + [vol_id]
+            devmap[device] = dmap
             mount_paths.append(mount_path)
-            devices.append(device)
-            vol_ids.append(vol_id)
             if not device:
                 raise exception.ClusterValidationError(
                     'Missing DEVICE setting for volume %s' % vol_name)
@@ -1734,15 +1762,6 @@ class Cluster(object):
             if not mount_path.startswith('/'):
                 raise exception.ClusterValidationError(
                     "MOUNT_PATH for volume %s should start with /" % vol_name)
-        for vol_id in vol_ids:
-            if vol_ids.count(vol_id) > 1:
-                raise exception.ClusterValidationError(
-                    ("Multiple configurations for volume %s specified. " + \
-                    "Please choose one") % vol_id)
-        for dev in devices:
-            if devices.count(dev) > 1:
-                raise exception.ClusterValidationError(
-                    "Can't attach more than one volume on device %s" % dev)
         for path in mount_paths:
             if mount_paths.count(path) > 1:
                 raise exception.ClusterValidationError(

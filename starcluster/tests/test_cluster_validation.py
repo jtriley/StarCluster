@@ -93,7 +93,8 @@ class TestClusterValidation(StarClusterTest):
             cluster = cfg.get_cluster_template(cluster_name)
             try:
                 getattr(cluster, test)()
-            except exception.ClusterValidationError:
+            except exception.ClusterValidationError, e:
+                print "case: %s, error: %s" % (str(case), e)
                 continue
             else:
                 failed.append(case)
@@ -130,13 +131,6 @@ class TestClusterValidation(StarClusterTest):
                 failed)
 
     def test_ebs_validation(self):
-        cases = [
-            {'v1_mount_path': 'home'},
-        ]
-        failed = self.__test_cases_from_cfg(cases, '_validate_ebs_settings')
-        if failed:
-            raise Exception(
-                'cluster allows invalid ebs settings (cases: %s)' % failed)
         try:
             failed = self.__test_cases_from_cfg(
                 [{'v1_device': '/dev/asd'}], '_validate_ebs_settings')
@@ -151,6 +145,31 @@ class TestClusterValidation(StarClusterTest):
                 'cluster allows invalid ebs settings (cases: %s)' % failed)
         except exception.InvalidPartition:
             pass
+        cases = [
+            {'v1_mount_path': 'home'},
+            {'v1_mount_path': '/home', 'v2_mount_path': '/home'},
+            {'v4_id': 'vol-abcdefg', 'v5_id': 'vol-abcdefg',
+             'v4_partition': 2, 'v5_partition': 2, 'c1_vols': 'v4, v5'},
+            {'v1_id': 'vol-abcdefg', 'v2_id': 'vol-gfedcba',
+             'v1_device': '/dev/sdd', 'v2_device': '/dev/sdd',
+             'c1_vols': 'v1, v2'},
+            {'v1_id': 'vol-abcdefg', 'v2_id': 'vol-abcdefg',
+             'v1_device': '/dev/sdz', 'v2_device': '/dev/sdd',
+             'c1_vols': 'v1, v2'}
+        ]
+        failed = self.__test_cases_from_cfg(cases, '_validate_ebs_settings')
+        if failed:
+            raise Exception(
+                'cluster allows invalid ebs settings (cases: %s)' % failed)
+
+        cases = [
+            {'v4_id': 'vol-abcdefg', 'v5_id': 'vol-abcdefg',
+             'v4_partition': 1, 'v5_partition': 2, 'c1_vols': 'v4, v5'},
+        ]
+        passed = self.__test_cases_from_cfg(cases, '_validate_ebs_settings')
+        if len(passed) != len(cases):
+            raise Exception("validation fails on valid cases: %s" %
+                            str(passed))
 
     def test_permission_validation(self):
         assert self.config.permissions.s3.ip_protocol == 'tcp'
