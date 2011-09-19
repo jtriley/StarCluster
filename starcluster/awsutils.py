@@ -224,6 +224,25 @@ class EasyEC2(EasyAWS):
         """
         return self.conn.get_all_security_groups(filters=filters)
 
+    def get_permission_or_none(self, group, ip_protocol, from_port, to_port,
+                               cidr_ip=None):
+        """
+        Returns the rule with the specified port range permission (ip_protocol,
+        from_port, to_port, cidr_ip) defined or None if no such rule exists
+        """
+        for rule in group.rules:
+            if rule.ip_protocol != ip_protocol:
+                continue
+            if int(rule.from_port) != from_port:
+                continue
+            if int(rule.to_port) != to_port:
+                continue
+            if cidr_ip:
+                cidr_grants = [g for g in rule.grants if g.cidr_ip == cidr_ip]
+                if not cidr_grants:
+                    continue
+            return rule
+
     def has_permission(self, group, ip_protocol, from_port, to_port, cidr_ip):
         """
         Checks whether group has the specified port range permission
