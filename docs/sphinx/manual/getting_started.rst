@@ -1,5 +1,5 @@
-Getting Started with StarCluster
-================================
+Using the Cluster
+=================
 After you've created a StarCluster on Amazon, it's time to login and do some
 real work.  The sections below explain how to access the cluster, verify that
 everything's configured properly, and how to use OpenMPI and Sun Grid Engine on
