@@ -663,6 +663,12 @@ class Cluster(object):
         log.debug('returning self._nodes = %s' % self._nodes)
         return self._nodes
 
+    def get_nodes_or_raise(self):
+        nodes = self.nodes
+        if not nodes:
+            raise exception.NoClusterNodesFound
+        return nodes
+
     def get_node_by_dns_name(self, dns_name):
         for node in self.nodes:
             if node.dns_name == dns_name:
@@ -697,6 +703,12 @@ class Cluster(object):
         filters = {'launch.group-id': self.cluster_group.id,
                    'state': ['active', 'open']}
         return self.ec2.get_all_spot_requests(filters=filters)
+
+    def get_spot_requests_or_raise(self):
+        spots = self.spot_requests
+        if not spots:
+            raise exception.NoClusterSpotRequests
+        return spots
 
     def create_node(self, alias, image_id=None, instance_type=None, zone=None,
                     placement_group=None, spot_bid=None, force_flat=False):
@@ -1106,7 +1118,8 @@ class Cluster(object):
 
     def wait_for_active_spots(self, spots=None):
         """
-        Wait for all spot requests for this cluster to transition to 'active'.
+        Wait for all open spot requests for this cluster to transition to
+        'active'.
         """
         spots = spots or self.spot_requests
         open_spots = [spot for spot in spots if spot.state == "open"]
@@ -1121,7 +1134,7 @@ class Cluster(object):
                 pbar.update(len(active_spots))
                 if not pbar.finished:
                     time.sleep(self.refresh_interval)
-                    spots = self.spot_requests
+                    spots = self.get_spot_requests_or_raise()
             pbar.reset()
 
     def wait_for_active_instances(self, nodes=None):
@@ -1141,7 +1154,7 @@ class Cluster(object):
         Wait until all cluster nodes are in a 'running' state
         """
         log.info("Waiting for all nodes to be in a 'running' state...")
-        nodes = nodes or self.nodes
+        nodes = nodes or self.get_nodes_or_raise()
         pbar = self.progress_bar.reset()
         pbar.maxval = len(nodes)
         pbar.update(0)
@@ -1151,7 +1164,7 @@ class Cluster(object):
             pbar.update(len(running_nodes))
             if not pbar.finished:
                 time.sleep(self.refresh_interval)
-                nodes = self.nodes
+                nodes = self.get_nodes_or_raise()
         pbar.reset()
 
     def wait_for_ssh(self, nodes=None):
@@ -1159,7 +1172,7 @@ class Cluster(object):
         Wait until all cluster nodes are in a 'running' state
         """
         log.info("Waiting for SSH to come up on all nodes...")
-        nodes = nodes or self.nodes
+        nodes = nodes or self.get_nodes_or_raise()
         pbar = self.progress_bar.reset()
         pbar.maxval = len(nodes)
         pbar.update(0)
@@ -1169,7 +1182,7 @@ class Cluster(object):
             pbar.update(len(active_nodes))
             if not pbar.finished:
                 time.sleep(self.refresh_interval)
-                nodes = self.nodes
+                nodes = self.get_nodes_or_raise()
         pbar.finish()
 
     def wait_for_cluster(self, msg="Waiting for cluster to come up..."):

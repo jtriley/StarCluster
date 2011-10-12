@@ -278,6 +278,18 @@ class ClusterValidationError(ValidationError):
     """Cluster validation related errors"""
 
 
+class NoClusterNodesFound(ValidationError):
+    """Raised if no cluster nodes are found"""
+    def __init__(self):
+        self.msg = "No cluster nodes found!"
+
+
+class NoClusterSpotRequests(ValidationError):
+    """Raised if no spot requests belonging to a cluster are found"""
+    def __init__(self):
+        self.msg = "No cluster spot requests found!"
+
+
 class MasterDoesNotExist(ClusterValidationError):
     """Raised when no master node is available"""
     def __init__(self):
