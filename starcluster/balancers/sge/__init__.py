@@ -539,6 +539,8 @@ class SGELoadBalancer(LoadBalancer):
         durations (currently doesn't)
         """
         self._cluster = cluster
+        if self.max_nodes is None:
+            self.max_nodes = cluster.cluster_size
         use_default_stats_file = self.dump_stats and not self.stats_file
         use_default_plots_dir = self.plot_stats and not self.plot_output_dir
         if use_default_stats_file or use_default_plots_dir:
