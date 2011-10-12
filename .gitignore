@@ -1,8 +1,8 @@
+.*.sw*
 *.pyc
 *.pyo
 *.pkl
 *~
-.*.swp
 MANIFEST
 build
 dist
