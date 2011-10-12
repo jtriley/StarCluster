@@ -41,7 +41,7 @@ job that runs the *hostname* command on a given cluster node:
 
 .. code-block:: none
 
-        sgeadmin@domU-12-31-38-00-A0-61:~$ qsub -V -b y -cwd hostname
+        sgeadmin@master:~$ qsub -V -b y -cwd hostname
         Your job 1 ("hostname") has been submitted
 
 * The **-V** option to *qsub* states that the job should have the same
@@ -70,11 +70,11 @@ the queue using the command *qstat*:
 
 .. code-block:: none
 
-        sgeadmin@domU-12-31-38-00-A0-61:~$ qstat
+        sgeadmin@master:~$ qstat
         job-ID prior name user state submit/start at queue slots ja-task-ID
-        -----------------------------------------------------------------------------------------
+        -------------------------------------------------------------------
         1 0.00000 hostname sgeadmin qw 09/09/2009 14:58:00 1
-        sgeadmin@domU-12-31-38-00-A0-61:~$
+        sgeadmin@master:~$
 
 From this output, we can see that the job is in the **qw** state which stands for
 *queued and waiting*. After a few seconds, the job will transition into a **r**,
@@ -82,19 +82,19 @@ or *running*, state at which point the job will begin executing.
 
 .. code-block:: none
 
-        sgeadmin@domU-12-31-38-00-A0-61:~$ qstat
+        sgeadmin@master:~$ qstat
         job-ID  prior   name       user         state submit/start at     queue  slots ja-task-ID
         -----------------------------------------------------------------------------------------
         1 0.00000 hostname   sgeadmin     r     09/09/2009 14:58:14                1
-        sgeadmin@domU-12-31-38-00-A0-61:~$
+        sgeadmin@master:~$
 
 Once the job has finished, the job will be removed from the queue and will no
 longer appear in the output of *qstat*:
 
 .. code-block:: none
 
-        sgeadmin@domU-12-31-38-00-A0-61:~$ qstat
-        sgeadmin@domU-12-31-38-00-A0-61:~$
+        sgeadmin@master:~$ qstat
+        sgeadmin@master:~$
 
 Now that the job has finished let's move on to the next section to see how we view a job's output.
 
@@ -113,12 +113,12 @@ For the simple job submitted above we have:
 
 .. code-block:: none
 
-        sgeadmin@domU-12-31-38-00-A0-61:~$ ls hostname.*
+        sgeadmin@master:~$ ls hostname.*
         hostname.e1 hostname.o1
-        sgeadmin@domU-12-31-38-00-A0-61:~$ cat hostname.o1
-        domU-12-31-38-00-A2-43
-        sgeadmin@domU-12-31-38-00-A0-61:~$ cat hostname.e1
-        sgeadmin@domU-12-31-38-00-A0-61:~$
+        sgeadmin@master:~$ cat hostname.o1
+        node001
+        sgeadmin@master:~$ cat hostname.e1
+        sgeadmin@master:~$
 
 Notice that Sun Grid Engine automatically named the job *hostname* and created
 two output files: hostname.e1 and hostname.o1. The **e** stands for stderr and
@@ -137,12 +137,12 @@ this, we use the *qhost* command:
 
 .. code-block:: none
 
-        sgeadmin@domU-12-31-38-00-A0-61:~$ qhost
+        sgeadmin@master:~$ qhost
         HOSTNAME ARCH NCPU LOAD MEMTOT MEMUSE SWAPTO SWAPUS
         -------------------------------------------------------------------------------
         global - - - - - - -
-        domU-12-31-38-00-A0-61 lx24-x86 1 0.00 1.7G 62.7M 896.0M 0.0
-        domU-12-31-38-00-A2-43 lx24-x86 1 0.00 1.7G 47.8M 896.0M 0.0
+        master lx24-x86 1 0.00 1.7G 62.7M 896.0M 0.0
+        node001 lx24-x86 1 0.00 1.7G 47.8M 896.0M 0.0
 
 The output shows the architecture (**ARCH**), number of cpus (**NCPU**), the current
 load (**LOAD**), total memory (**MEMTOT**), and currently used memory (**MEMUSE**) and swap
@@ -152,13 +152,13 @@ You can also view the average load (load_avg) per node using the '-f' option to 
 
 .. code-block:: none
 
-        sgeadmin@domU-12-31-38-00-A0-61:~$ qstat -f
+        sgeadmin@master:~$ qstat -f
         queuename qtype resv/used/tot. load_avg arch states
         ---------------------------------------------------------------------------------
-        all.q@domU-12-31-38-00-A0-61.c BIP 0/0/1 0.00 lx24-x86
+        all.q@master.c BIP 0/0/1 0.00 lx24-x86
         ---------------------------------------------------------------------------------
-        all.q@domU-12-31-38-00-A2-43.c BIP 0/0/1 0.00 lx24-x86
-        sgeadmin@domU-12-31-38-00-A0-61:~$
+        all.q@node001.c BIP 0/0/1 0.00 lx24-x86
+        sgeadmin@master:~$
 
 Creating a Job Script
 ---------------------
@@ -191,7 +191,7 @@ the sgeadmin user:
 
 .. code-block:: none
 
-        sgeadmin@domU-12-31-38-00-A0-61:~$ qsub -V jobscript.sh
+        sgeadmin@master:~$ qsub -V jobscript.sh
         Your job 6 ("jobscript.sh") has been submitted
 
 Now that the job has been submitted, let's call *qstat* periodically until the
@@ -200,41 +200,41 @@ executed:
 
 .. code-block:: none
 
-        sgeadmin@domU-12-31-38-00-A0-61:~$ qstat
+        sgeadmin@master:~$ qstat
         job-ID prior name user state submit/start at queue slots ja-task-ID
-        -----------------------------------------------------------------------------------------
+        -------------------------------------------------------------------
         6 0.00000 jobscript. sgeadmin qw 09/09/2009 16:18:43 1
 
-        sgeadmin@domU-12-31-38-00-A0-61:~$ qstat
+        sgeadmin@master:~$ qstat
         job-ID prior name user state submit/start at queue slots ja-task-ID
-        -----------------------------------------------------------------------------------------
+        -------------------------------------------------------------------
         6 0.00000 jobscript. sgeadmin qw 09/09/2009 16:18:43 1
 
-        sgeadmin@domU-12-31-38-00-A0-61:~$ qstat
+        sgeadmin@master:~$ qstat
         job-ID prior name user state submit/start at queue slots ja-task-ID
-        -----------------------------------------------------------------------------------------
+        -------------------------------------------------------------------
         6 0.00000 jobscript. sgeadmin qw 09/09/2009 16:18:43 1
 
-        sgeadmin@domU-12-31-38-00-A0-61:~$ qstat
+        sgeadmin@master:~$ qstat
         job-ID prior name user state submit/start at queue slots ja-task-ID
-        -----------------------------------------------------------------------------------------
+        -------------------------------------------------------------------
         6 0.00000 jobscript. sgeadmin qw 09/09/2009 16:18:43 1
 
-        sgeadmin@domU-12-31-38-00-A0-61:~$ qstat
+        sgeadmin@master:~$ qstat
         job-ID prior name user state submit/start at queue slots ja-task-ID
-        -----------------------------------------------------------------------------------------
-        6 0.55500 jobscript. sgeadmin r 09/09/2009 16:18:57 all.q@domU-12-31-38-00-A2-43.c 1
+        -------------------------------------------------------------------
+        6 0.55500 jobscript. sgeadmin r 09/09/2009 16:18:57 all.q@node001.c 1
 
-        sgeadmin@domU-12-31-38-00-A0-61:~$ qstat
-        sgeadmin@domU-12-31-38-00-A0-61:~$
+        sgeadmin@master:~$ qstat
+        sgeadmin@master:~$
 
 Now that the job is finished, let's take a look at the output files:
 
 .. code-block:: none
 
-        sgeadmin@domU-12-31-38-00-A0-61:~$ ls jobscript.sh*
+        sgeadmin@master:~$ ls jobscript.sh*
         jobscript.sh jobscript.sh.e6 jobscript.sh.o6
-        sgeadmin@domU-12-31-38-00-A0-61:~$ cat jobscript.sh.o6
+        sgeadmin@master:~$ cat jobscript.sh.o6
         hello from job script!
         the date is Wed Sep 9 16:18:57 UTC 2009
         here's /etc/hosts contents:
@@ -243,8 +243,8 @@ Now that the job is finished, let's take a look at the output files:
         10.252.167.143 master
         10.252.165.173 node001
         finishing job :D
-        sgeadmin@domU-12-31-38-00-A0-61:~$ cat jobscript.sh.e6
-        sgeadmin@domU-12-31-38-00-A0-61:~$
+        sgeadmin@master:~$ cat jobscript.sh.e6
+        sgeadmin@master:~$
 
 We see from looking at the output that the stdout file contains the output of
 the echo, date, and cat statements in the job script and that the stderr file is
@@ -261,17 +261,17 @@ that sleeps for 10 seconds so that we can kill it using *qdel*:
 
 .. code-block:: none
 
-        sgeadmin@domU-12-31-38-00-A0-61:~$ qsub -b y -cwd sleep 10
+        sgeadmin@master:~$ qsub -b y -cwd sleep 10
         Your job 3 ("sleep") has been submitted
-        sgeadmin@domU-12-31-38-00-A0-61:~$ qdel 3
+        sgeadmin@master:~$ qdel 3
         sgeadmin has registered the job 3 for deletion
 
 After running *qdel* you'll notice the job is gone from the queue:
 
 .. code-block:: none
 
-        sgeadmin@domU-12-31-38-00-A0-61:~$ qstat
-        sgeadmin@domU-12-31-38-00-A0-61:~$
+        sgeadmin@master:~$ qstat
+        sgeadmin@master:~$
 
 OpenMPI and Sun Grid Engine
 ---------------------------

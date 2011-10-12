@@ -1,5 +1,5 @@
-Getting Started with StarCluster
-================================
+Using the Cluster
+=================
 After you've created a StarCluster on Amazon, it's time to login and do some
 real work.  The sections below explain how to access the cluster, verify that
 everything's configured properly, and how to use OpenMPI and Sun Grid Engine on
@@ -13,9 +13,7 @@ your **cluster_user** in the following sections.
 
 Logging into the master node
 ----------------------------
-To login to the master node as root:
-
-.. code-block:: none
+To login to the master node as root::
 
         $ starcluster sshmaster mycluster
         StarCluster - (http://web.mit.edu/starcluster)
@@ -45,7 +43,7 @@ To login to the master node as root:
         StarCluster EC2 AMI created by Justin Riley (MIT)
         url: http://web.mit.edu/stardev/cluster
         email: star 'at' mit 'dot' edu
-        root@domU-12-31-38-00-A0-61:~#
+        root@master:~#
 
 This command is used frequently in the sections below to ensure that you're
 logged into the master node of a StarCluster on Amazon's EC2 as root.
@@ -54,9 +52,7 @@ Logging into a worker node
 --------------------------
 You also have the option of logging into any particular worker node as root by
 using the **sshnode** command. First, run "starcluster listclusters" to list
-the nodes:
-
-.. code-block:: none
+the nodes::
 
         $ starcluster listclusters
         StarCluster - (http://web.mit.edu/starcluster)
@@ -78,9 +74,7 @@ the nodes:
             node003 i-77777777 running ec2-123-23-23-25.compute-1.amazonaws.com
             ....
 
-Then use "starcluster sshnode mycluster" to login to a node:
-
-.. code-block:: none
+Then use "starcluster sshnode mycluster" to login to a node::
 
         $ starcluster sshnode mycluster node001
         StarCluster - (http://web.mit.edu/starcluster)
@@ -114,16 +108,14 @@ Then use "starcluster sshnode mycluster" to login to a node:
         0 packages can be updated.
         0 updates are security updates.
 
-        root@domU-12-31-38-00-A2-44:~#
+        root@node001:~#
 
 Verify /etc/hosts
 -----------------
-Once StarCluster is up, the /etc/hosts file should look like:
-
-.. code-block:: none
+Once StarCluster is up, the /etc/hosts file should look like::
 
         $ starcluster sshmaster mycluster
-        root@domU-12-31-38-00-A2-43:~# cat /etc/hosts
+        root@master:~# cat /etc/hosts
         # Do not remove the following line or programs that require network functionality will fail
         127.0.0.1 localhost.localdomain localhost
         10.252.167.143 master
@@ -141,36 +133,31 @@ the CLUSTER_USER you specified.
 
 To test this out, let's login to the master node and attempt to run the
 hostname command via SSH on node001 without a password for both root and
-sgeadmin (ie CLUSTER_USER):
-
-.. code-block:: none
+sgeadmin (ie CLUSTER_USER)::
 
         $ starcluster sshmaster mycluster
-        root@domU-12-31-38-00-A0-61:~# ssh node001 hostname
-        domU-12-31-38-00-A2-43
-        root@domU-12-31-38-00-A0-61:~# su - sgeadmin
-        sgeadmin@domU-12-31-38-00-A0-61:~# ssh node001 hostname
-        domU-12-31-38-00-A2-43
-        sgeadmin@domU-12-31-38-00-A0-61:~# exit
-        root@domU-12-31-38-00-A0-61:~#
+        root@master:~# ssh node001 hostname
+        node001
+        root@master:~# su - sgeadmin
+        sgeadmin@master:~# ssh node001 hostname
+        node001
+        sgeadmin@master:~# exit
+        root@master:~#
 
 Verify /home is NFS Shared
 --------------------------
 The /home folder on all clusters launched by StarCluster should be NFS shared
-to each node. To check this, login to the master as root
-and run the mount command on each node to verify that /home is mounted from the
-master:
-
-.. code-block:: none
+to each node. To check this, login to the master as root and run the mount
+command on each node to verify that /home is mounted from the master::
 
         $ starcluster sshmaster mycluster
-        root@domU-12-31-38-00-A0-61:~# ssh node001 mount
+        root@master:~# ssh node001 mount
         /dev/sda1 on / type ext3 (rw)
         none on /proc type proc (rw)
         none on /sys type sysfs (rw)
         /dev/sda2 on /mnt type ext3 (rw)
         none on /proc/sys/fs/binfmt_misc type binfmt_misc (rw)
-        domU-12-31-38-00-A0-61.compute-1.internal:/home on /home type nfs (rw,user=root,nosuid,nodev,user,addr=10.215.42.81)
+        master:/home on /home type nfs (rw,user=root,nosuid,nodev,user,addr=10.215.42.81)
 
 The last line in the output above indicates that /home is mounted from the
 master node over NFS. Running this for the rest of the nodes (e.g. node002,
@@ -189,13 +176,11 @@ the config.
 
 The first thing we want to do is to make sure the device was actually attached
 to the master node as a device. To check that the device is attached on the
-master node, we login to the master and use "fdisk -l" to look for our volume:
-
-.. code-block:: none
+master node, we login to the master and use "fdisk -l" to look for our volume::
 
         $ starcluster sshmaster mycluster
 
-        root@domU-12-31-38-00-A0-61:~# fdisk -l
+        root@master:~# fdisk -l
 
         ...
 
@@ -214,11 +199,9 @@ From the output of fdisk above we see that there is indeed a 20GB device
 Next check the output of mount on the master node to ensure that the volume's
 *PARTITION* setting (which defaults to 1 if not specified) has been mounted to
 the volume's *MOUNT_PATH* setting specified in the config (/home for this
-example):
+example)::
 
-.. code-block:: none
-
-        root@domU-12-31-38-00-A0-61:~# mount
+        root@master:~# mount
         ...
         /dev/sdz1 on /home type ext3 (rw)
         ...
@@ -228,21 +211,19 @@ to /home on the master node as we specified in the config.
 
 Finally we check that the *MOUNT_PATH* specified in the config for this volume
 has been NFS shared to each cluster node by running mount on each node and
-examining the output:
-
-.. code-block:: none
+examining the output::
 
         $ starcluster sshmaster mycluster
-        root@domU-12-31-38-00-A0-61:~# ssh node001 mount
+        root@master:~# ssh node001 mount
         /dev/sda1 on / type ext3 (rw)
         none on /proc type proc (rw)
         none on /sys type sysfs (rw)
         /dev/sda2 on /mnt type ext3 (rw)
         none on /proc/sys/fs/binfmt_misc type binfmt_misc (rw)
-        domU-12-31-38-00-A0-61.compute-1.internal:/home on /home type nfs (rw,user=root,nosuid,nodev,user,addr=10.215.42.81)
-        root@domU-12-31-38-00-A0-61:~# ssh node002 mount
+        master:/home on /home type nfs (rw,user=root,nosuid,nodev,user,addr=10.215.42.81)
+        root@master:~# ssh node002 mount
         ...
-        domU-12-31-38-00-A0-61.compute-1.internal:/home on /home type nfs (rw,user=root,nosuid,nodev,user,addr=10.215.42.81)
+        master:/home on /home type nfs (rw,user=root,nosuid,nodev,user,addr=10.215.42.81)
         ...
 
 The last line in the output above indicates that *MOUNT_PATH* (/home for this
@@ -257,12 +238,10 @@ space for writing temporary files instead of storing temporary files on NFS.
 The location of the scratch space is /scratch/CLUSTER_USER. So, for this
 example the local scratch for CLUSTER_USER=sgeadmin is /scratch/sgeadmin.
 
-To verify this, login to the master and run ls -l /scratch.
-
-.. code-block:: none
+To verify this, login to the master and run "ls -l /scratch"::
 
         $ starcluster sshmaster mycluster
-        root@domU-12-31-38-00-A0-61:/# ls -l /scratch/
+        root@master:/# ls -l /scratch/
         total 0
         lrwxrwxrwx 1 root root 13 2009-09-09 14:34 sgeadmin -> /mnt/sgeadmin
 
@@ -270,16 +249,14 @@ From the output above we see that /scratch/sgeadmin has been symbolically
 linked to /mnt/sgeadmin
 
 Next we run the df command to verify that at least ~140GB is available on /mnt
-(and thus /mnt/sgeadmin)
+(and thus /mnt/sgeadmin)::
 
-.. code-block:: none
-
-        root@domU-12-31-38-00-A0-61:/# df -h
+        root@master:~# df -h
         Filesystem Size Used Avail Use% Mounted on
         ...
         /dev/sda2 147G 188M 140G 1% /mnt
         ...
-        sgeadmin@domU-12-31-38-00-A0-61:~$
+        root@master:~#
 
 Compile and run a "Hello World" OpenMPI program
 -------------------------------------------------
@@ -311,33 +288,27 @@ Below is a simple Hello World program in MPI (retrieved from here)
         }
 
 Save this code to a file called helloworldmpi.c in /home/sgeadmin. You can then
-compile and run the code across the cluster like so:
-
-.. code-block:: none
+compile and run the code across the cluster like so::
 
         $ starcluster sshmaster mycluster
-        root@domU-12-31-38-00-A0-61:~# su - sgeadmin
-        sgeadmin@domU-12-31-38-00-A0-61:~$ mpicc helloworldmpi.c -o helloworldmpi
-        sgeadmin@domU-12-31-38-00-A0-61:~$ mpirun -n 2 -host master,node001 ./helloworldmpi
-        domU-12-31-38-00-A0-61: hello world from process 0 of 2
-        domU-12-31-38-00-A2-43: hello world from process 1 of 2
-        sgeadmin@domU-12-31-38-00-A0-61:~$
+        root@master:~# su - sgeadmin
+        sgeadmin@master:~$ mpicc helloworldmpi.c -o helloworldmpi
+        sgeadmin@master:~$ mpirun -n 2 -host master,node001 ./helloworldmpi
+        master: hello world from process 0 of 2
+        node001: hello world from process 1 of 2
+        sgeadmin@master:~$
 
 Obviously if you have more nodes, the -host mater,node001 list specified will
 need to be extended. You can also create a hostfile instead of listing each
-node for OpenMPI to use that looks like:
+node for OpenMPI to use that looks like::
 
-.. code-block:: none
-
-        sgeadmin@domU-12-31-38-00-A0-61:~$ cat /home/sgeadmin/hostfile
+        sgeadmin@:~$ cat /home/sgeadmin/hostfile
         master
         node001
 
-After creating this hostfile, you can now call mpirun with less options:
+After creating this hostfile, you can now call mpirun with less options::
 
-.. code-block:: none
-
-        sgeadmin@domU-12-31-38-00-A0-61:~$ mpirun -n 2 -hostfile /home/sgeadmin/hostfile ./helloworldmpi
-        domU-12-31-38-00-A0-61: hello world from process 0 of 2
-        domU-12-31-38-00-A2-43: hello world from process 1 of 2
-        sgeadmin@domU-12-31-38-00-A0-61:~$
+        sgeadmin@master:~$ mpirun -n 2 -hostfile /home/sgeadmin/hostfile ./helloworldmpi
+        master: hello world from process 0 of 2
+        node001: hello world from process 1 of 2
+        sgeadmin@master:~$

@@ -163,7 +163,8 @@ html_additional_pages = {'index': 'index.html'}
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'StarClusterdoc'
 
-html_context = {'gatracker': 'yo'}
+# Google Analytics Tracker (theme must be GA-aware)
+#html_context = {'gatracker': 'your-ga-tracker-id'}
 
 # -- Options for LaTeX output --------------------------------------------------
 

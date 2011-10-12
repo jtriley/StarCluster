@@ -11,11 +11,12 @@ StarCluster User Manual
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
    configuration
    volumes
    launch
+   putget
    getting_started
    create_new_ami
    list_public_amis
@@ -23,5 +24,3 @@ Contents:
    plugins
    addremovenode
    load_balancer
-   hacking
-   features

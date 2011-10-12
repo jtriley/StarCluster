@@ -27,7 +27,7 @@ StarCluster-XXX.tar.gz to and execute the following in a terminal:
 
     $ tar xvzf StarCluster-XXX.tar.gz
     $ cd StarCluster-XXX
-    $ sudo python ez_setup.py install
+    $ sudo python distribute_setup.py
     $ sudo python setup.py install
 
 Assuming this command completes successfully you're now ready to create the configuration file.
@@ -55,7 +55,7 @@ After downloading the code, perform the following in a terminal to install:
 .. code-block:: ini
 
     $ cd StarCluster
-    $ sudo python ez_setup.py install
+    $ sudo python distribute_setup.py
     $ sudo python setup.py install
 
 Assuming this command completes successfully you're now ready to create the configuration file.
@@ -73,7 +73,7 @@ described above, or install the latest stable version from pypi.
 
     $ git clone git://github.com/jtriley/StarCluster.git
     $ cd StarCluster
-    $ sudo python ez_setup.py install
+    $ sudo python distribute_setup.py
     $ sudo python setup.py install
 
 After this is complete, you will need to setup the configuration file.
