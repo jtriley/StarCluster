@@ -23,5 +23,3 @@ Contents:
    plugins
    addremovenode
    load_balancer
-   hacking
-   features
