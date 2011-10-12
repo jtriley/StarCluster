@@ -7,10 +7,10 @@ AMI you can create a new AMI based on the StarCluster AMIs using the *s3image*
 and *ebsimage* commands.
 
 .. note::
-        In versions prior to 0.92rc1 it was strongly advised not to create new
-        AMIs from an instance/node started by StarCluster (e.g. master,
-        node001, etc). **This is no longer a limitation and should work fine**.
-        If it doesn't, please `report an issue on github`_.
+        In previous versions it was strongly advised not to create new AMIs
+        from an instance/node started by StarCluster (e.g. master, node001,
+        etc). **This is no longer a limitation and should work fine**.  If it
+        doesn't, please `report an issue on github`_.
 
 ***************************************
 Launching and Customizing an Image Host
