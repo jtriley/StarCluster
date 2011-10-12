@@ -39,35 +39,6 @@ to pick up the credentials::
 As you can see this removes the private sections from the main StarCluster
 config file which in turn makes the main config file much easier to share.
 
-Add 'put' and 'get' Commands
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-These commands should provide the same functionality as the *scp* command from
-OpenSSH and should be easier to use with StarCluster instances. Below are a
-couple example usage scenarios.
-
-.. note::
-        All of the examples below should automatically handle recursion without
-        requiring an extra command line flag.
-
-Copy a file or dir to the master as root
-########################################
-::
-
-        $ starcluster put mycluster /path/to/file/or/dir /path/on/remote/server
-
-Copy a file or dir to the master as normal user
-###############################################
-::
-
-        $ starcluster put mycluster --user myuser /local/path /remote/path
-
-Copy a file or dir to a node (node001 in this example)
-######################################################
-::
-
-        $ starcluster put mycluster --node node001 /local/path /remote/path
-
-
 Support for Amazon VPC
 ^^^^^^^^^^^^^^^^^^^^^^
 Add the ability to configure StarCluster to launch the cluster instances inside
