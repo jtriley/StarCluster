@@ -100,6 +100,7 @@ AMI. Below are some of the advantages and disadvantages of using S3 vs EBS:
 +--------------------------------+------------------------------------------------------------------------------------------------------------------+-----------------------------------+
 | Instance Usage Charge          | No charge for stopped instances. Charged full instance hour for *every* transition from stopped to running state | Not Applicable                    |
 +--------------------------------+------------------------------------------------------------------------------------------------------------------+-----------------------------------+
+
 (see `Amazon's summary of EBS vs S3 backed AMIs`_ for more details)
 
 If you're in doubt about which type of AMI to create, choose an EBS-backed AMI.
