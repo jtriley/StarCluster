@@ -151,6 +151,20 @@ or as user sgeadmin::
 
 The above commands will ssh to node001 of the *physicscluster*.
 
+Rebooting a Cluster
+-------------------
+Some times you might encounter an error while starting and setting up a new
+cluster or using an existing cluster. Rather than terminating the cluster and
+starting a new one to get around the errors, you can instead completely
+reconfigure the cluster without terminating instances and wasting
+instance-hours using the *reboot* command::
+
+    $ starcluster restart physicscluster
+
+This will reboot all of the instances, wait for them to come back up, and then
+completely reconfigure the cluster from scratch as if you had terminated and
+re-created the cluster.
+
 Shutting Down a Cluster
 -----------------------
 Once you've finished using the cluster and wish to stop paying for it, simply
