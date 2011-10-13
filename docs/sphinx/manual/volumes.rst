@@ -240,8 +240,8 @@ automatically after the new resized volume has been created, use the
 Otherwise, you will need to terminate the volume host manually after the
 *resizevolume* command completes.
 
-Moving EBS Volumes Across Availability Zones
-============================================
+Moving Volumes Across Availability Zones
+========================================
 In some cases you may need to replicate a given volume to another availability
 zone so that the data can be used with instances in a different data center.
 The *resizevolume* command supports creating a newly expanded volume within an
