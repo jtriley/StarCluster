@@ -20,7 +20,7 @@ Contents:
    getting_started
    create_new_ami
    list_public_amis
-   shell_completion
    plugins
    addremovenode
    load_balancer
+   shell_completion
