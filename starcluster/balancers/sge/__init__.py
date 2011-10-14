@@ -480,7 +480,7 @@ class SGELoadBalancer(LoadBalancer):
         limit the data set qacct returns.
         """
         if self.stat.is_jobstats_empty():
-            log.info("Jobstats cache is not full. Pulling full job history.")
+            log.info("Loading full job history.")
             temp_lookback_window = self.lookback_window * 60 * 60
         else:
             temp_lookback_window = self.polling_interval
@@ -564,24 +564,40 @@ class SGELoadBalancer(LoadBalancer):
                                               self.plot_output_dir)
             self._validate_dir(self.plot_output_dir,
                                msg_prefix="plot output destination")
+        raw = dict(__raw__=True)
+        log.info("Starting load balancer...\n")
+        log.info("Maximum cluster size: %d" % self.max_nodes,
+                 extra=raw)
+        log.info("Minimum cluster size: %d" % self.min_nodes,
+                 extra=raw)
+        log.info("Cluster growth rate: %d nodes/iteration\n" %
+                 self.add_nodes_per_iteration, extra=raw)
         if self.dump_stats:
             log.info("Writing stats to file: %s" % self.stats_file)
         if self.plot_stats:
             log.info("Plotting stats to directory: %s" % self.plot_output_dir)
         while(self._keep_polling):
             if not cluster.is_cluster_up():
-                log.info("Entire cluster is not up, nodes added/removed. "
-                         "No Action.")
+                log.info("Waiting for all nodes to come up...")
                 time.sleep(self.polling_interval)
                 continue
             if self.get_stats() == -1:
                 log.error("Failed to get stats. LoadBalancer is terminating.")
                 return
-            log.info("Oldest job is from %s. # queued jobs = %d. # hosts = %d."
-                     % (self.stat.oldest_queued_job_age(),
-                     len(self.stat.get_queued_jobs()), len(self.stat.hosts)))
-            log.info("Avg job duration = %d sec, Avg wait time = %d sec." %
-                     (self.stat.avg_job_duration(), self.stat.avg_wait_time()))
+            log.info("Cluster size: %d" % len(self.stat.hosts), extra=raw)
+            log.info("Queued jobs: %d" % len(self.stat.get_queued_jobs()),
+                     extra=raw)
+            oldest_queued_job_age = self.stat.oldest_queued_job_age()
+            if oldest_queued_job_age:
+                log.info("Oldest queued job: %s" % oldest_queued_job_age,
+                         extra=raw)
+            log.info("Avg job duration: %d secs" %
+                     self.stat.avg_job_duration(), extra=raw)
+            log.info("Avg job wait time: %d secs" % self.stat.avg_wait_time(),
+                     extra=raw)
+            log.info("Last cluster modification time: %s" %
+                     self.__last_cluster_mod_time.strftime("%Y-%m-%d %X"),
+                     extra=dict(__raw__=True))
             #evaluate if nodes need to be added
             self._eval_add_node()
             #evaluate if nodes need to be removed
@@ -595,7 +611,7 @@ class SGELoadBalancer(LoadBalancer):
                 except IOError, e:
                     raise exception.BaseException(str(e))
             #sleep for the specified number of seconds
-            log.info("Sleeping, looping again in %d seconds.\n" %
+            log.info("Sleeping...(looping again in %d secs)\n" %
                      self.polling_interval)
             time.sleep(self.polling_interval)
 
@@ -608,7 +624,7 @@ class SGELoadBalancer(LoadBalancer):
         """
         need_to_add = 0
         if len(self.stat.hosts) >= self.max_nodes:
-            log.info("Won't add another host, currently at max (%d)." %
+            log.info("Not adding nodes: already at or above maximum (%d)" %
                      self.max_nodes)
             return 0
         qlen = len(self.stat.get_queued_jobs())
@@ -681,12 +697,11 @@ class SGELoadBalancer(LoadBalancer):
                 #kill the nodes returned
                 for n in to_kill:
                     if n.update() == "running":
-                        log.info("***KILLING NODE: %s (%s)." % (n.id,
-                                                                n.dns_name))
+                        log.info("***REMOVING NODE: %s (%s)." % (n.id, n.dns_name))
                         try:
                             self._cluster.remove_node(n)
                         except Exception:
-                            log.error("Failed to terminate node %s" % n.alias)
+                            log.error("Failed to remove node %s" % n.alias)
                             log.debug(traceback.format_exc())
                             return -1
                         #successfully removed node
@@ -695,8 +710,8 @@ class SGELoadBalancer(LoadBalancer):
                     else:
                         log.error("Trying to kill dead node %s" % n.alias)
             else:
-                log.info("Can't remove a node, already at min (%d)." %
-                         self.min_nodes)
+                log.info("Not removing nodes: already at or below minimum (%d)"
+                         % self.min_nodes)
 
     def _find_node_for_removal(self):
         """
