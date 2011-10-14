@@ -130,17 +130,17 @@ class SGEStats(object):
             if l.find('jobnumber') != -1:
                 job_id = int(l[13:len(l)])
             if l.find('qsub_time') != -1:
-                    qd = self.qacct_to_datetime_tuple(l[13:len(l)])
+                qd = self.qacct_to_datetime_tuple(l[13:len(l)])
             if l.find('start_time') != -1:
-                    if l.find('-/-') > 0:
-                        start = dtnow
-                    else:
-                        start = self.qacct_to_datetime_tuple(l[13:len(l)])
+                if l.find('-/-') > 0:
+                    start = dtnow
+                else:
+                    start = self.qacct_to_datetime_tuple(l[13:len(l)])
             if l.find('end_time') != -1:
-                    if l.find('-/-') > 0:
-                        end = dtnow
-                    else:
-                        end = self.qacct_to_datetime_tuple(l[13:len(l)])
+                if l.find('-/-') > 0:
+                    end = dtnow
+                else:
+                    end = self.qacct_to_datetime_tuple(l[13:len(l)])
             if l.find('==========') != -1:
                 if qd != None:
                     self.max_job_id = job_id
@@ -152,7 +152,7 @@ class SGEStats(object):
                 counter = counter + 1
         log.debug("added %d new jobs." % counter)
         log.debug("There are %d items in the jobstats cache." %
-                 len(self.jobstats))
+                  len(self.jobstats))
         return self.jobstats
 
     def is_jobstats_empty(self):
