@@ -160,9 +160,7 @@ class SGEStats(object):
         This function will return True if half of the queue is empty, False if
         there are enough entries in it.
         """
-        if self.max_job_id < (self.jobstat_cachesize * 0.3):
-            return True
-        return False
+        return self.max_job_id < (self.jobstat_cachesize * 0.3)
 
     def get_running_jobs(self):
         """
