@@ -390,7 +390,7 @@ class SGELoadBalancer(LoadBalancer):
     lookback_window = 3
     """
 
-    def __init__(self, interval=60, max_nodes=5, wait_time=900,
+    def __init__(self, interval=60, max_nodes=None, wait_time=900,
                  add_pi=1, kill_after=45, stab=180, lookback_win=3,
                  min_nodes=1, allow_master_kill=False, plot_stats=False,
                  plot_output_dir=None, dump_stats=False, stats_file=None):
