@@ -157,7 +157,7 @@ Some times you might encounter an error while starting and setting up a new
 cluster or using an existing cluster. Rather than terminating the cluster and
 starting a new one to get around the errors, you can instead completely
 reconfigure the cluster without terminating instances and wasting
-instance-hours using the *reboot* command::
+instance-hours using the *restart* command::
 
     $ starcluster restart physicscluster
 
