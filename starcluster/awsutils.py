@@ -619,7 +619,7 @@ class EasyEC2(EasyAWS):
             log.info('Deregistering AMI: %s' % img.id)
             img.deregister()
         if img.root_device_type == "instance-store" and not keep_image_data:
-            self.remove_image_files(image_name, pretend=pretend)
+            self.remove_image_files(img, pretend=pretend)
         elif img.root_device_type == "ebs" and not keep_image_data:
             rootdevtype = img.block_device_mapping.get('/dev/sda1', None)
             if rootdevtype:
