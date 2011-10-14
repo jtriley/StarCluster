@@ -224,7 +224,10 @@ def get_elapsed_time(past_time):
     ptime = iso_to_localtime_tuple(past_time)
     now = datetime.now()
     delta = now - ptime
-    return time.strftime("%H:%M:%S", time.gmtime(delta.seconds))
+    timestr = time.strftime("%H:%M:%S", time.gmtime(delta.seconds))
+    if delta.days != -1:
+        timestr = "%d days, %s" % (delta.days, timestr)
+    return timestr
 
 
 def iso_to_unix_time(iso):
