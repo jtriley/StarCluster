@@ -613,6 +613,16 @@ class SGELoadBalancer(LoadBalancer):
                      self.polling_interval)
             time.sleep(self.polling_interval)
 
+    def has_cluster_stabilized(self):
+        now = datetime.datetime.utcnow()
+        elapsed = (now - self.__last_cluster_mod_time).seconds
+        is_stabilized = not (elapsed < self.stabilization_time)
+        if not is_stabilized:
+            log.info("Cluster was modified less than %d seconds ago" %
+                     self.stabilization_time)
+            log.info("Waiting for cluster to stabilize...")
+        return is_stabilized
+
     def _eval_add_node(self):
         """
         This function uses the metrics available to it to decide whether to
@@ -633,13 +643,7 @@ class SGELoadBalancer(LoadBalancer):
         #calculate estimated time to completion
         ettc = avg_duration * qlen / len(self.stat.hosts)
         if qlen > ts:
-            now = datetime.datetime.utcnow()
-            mod_delta = (now - self.__last_cluster_mod_time).seconds
-            if mod_delta < self.stabilization_time:
-                log.info("Cluster change made less than %d seconds ago (%s)." %
-                         (self.stabilization_time,
-                          self.__last_cluster_mod_time))
-                log.info("Not changing cluster size until cluster stabilizes.")
+            if not self.has_cluster_stabilized():
                 return 0
             #there are more jobs queued than will be consumed with one
             #cycle of job processing from all nodes
@@ -678,13 +682,7 @@ class SGELoadBalancer(LoadBalancer):
         """
         qlen = len(self.stat.get_queued_jobs())
         if qlen == 0:
-            now = datetime.datetime.utcnow()
-            elapsed = (now - self.__last_cluster_mod_time).seconds
-            if elapsed < self.stabilization_time:
-                log.info("Cluster change made less than %d seconds ago (%s)." %
-                         (self.stabilization_time,
-                          self.__last_cluster_mod_time))
-                log.info("Not changing cluster size until cluster stabilizes.")
+            if not self.has_cluster_stabilized():
                 return 0
             #if at 0, remove all nodes but master
             if len(self.stat.hosts) > self.min_nodes:
