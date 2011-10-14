@@ -18,7 +18,7 @@ from starcluster import logger
 from starcluster import commands
 from starcluster import exception
 from starcluster import optcomplete
-from starcluster.logger import log, console
+from starcluster.logger import log, console, session
 from starcluster import __version__
 
 __description__ = """
@@ -121,11 +121,13 @@ class StarClusterCLI(object):
         return gparser
 
     def bug_found(self):
+        crashfile = open(static.CRASH_FILE, 'w')
+        crashfile.write(session.stream.getvalue())
+        crashfile.close()
         log.error("Oops! Looks like you've found a bug in StarCluster")
-        log.error("Debug file written to: %s" % static.DEBUG_FILE)
-        log.error("Look for lines starting with PID: %s" % static.PID)
-        log.error("Please submit this file, minus any private information,")
-        log.error("to starcluster@mit.edu")
+        log.error("Crash report written to: %s" % static.CRASH_FILE)
+        log.error("Please remove any sensitive data from the crash report")
+        log.error("and submit it to starcluster@mit.edu")
         sys.exit(1)
 
     def main(self):
