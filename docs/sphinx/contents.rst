@@ -12,6 +12,7 @@ Contents:
    manual/index
    plugins/index
    faq
+   support
    contribute
    hacking
    features
