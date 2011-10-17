@@ -49,8 +49,8 @@ Issues and Questions
 ********************
 For all other issues, questions, feature requests, etc. you can either:
 
-.. note:: It's highly preferred that bug reports go to the `StarCluster github
-          issue tracker`_.
+.. note:: It's highly preferred that bug reports are submitted to the `github
+          issue tracker`_ if possible.
 
 #. Submit a new issue to the StarCluster `github issue tracker`_ (recommended)
 #. Send a report via email to the `user mailing list`_ (**please join
