@@ -1,6 +1,5 @@
 Launching a StarCluster on Amazon EC2
 =====================================
-
 Use the **start** command in StarCluster to launch a new cluster on Amazon EC2.
 The start command takes two arguments: the cluster template and a tagname for
 cluster identification.
@@ -97,16 +96,11 @@ cluster template.
 
 Managing Multiple Clusters
 --------------------------
-
-To list all of your StarClusters on Amazon EC2 run the following command:
-
-.. code-block:: none
+To list all of your StarClusters on Amazon EC2 run the following command::
 
     $ starcluster listclusters
 
-The output should look something like:
-
-.. code-block:: none
+The output should look something like::
 
     $ starcluster listclusters
     StarCluster - (http://web.mit.edu/starcluster)

@@ -1,9 +1,10 @@
 ####################
 What is StarCluster?
 ####################
-StarCluster is an open source cluster-computing toolkit for Amazon's Elastic Compute
-Cloud (EC2). StarCluster has been designed to simplify the process of building,
-configuring, and managing clusters of virtual machines on Amazon's EC2 cloud.
+StarCluster is an open source cluster-computing toolkit for Amazon's Elastic
+Compute Cloud (EC2). StarCluster has been designed to simplify the process of
+building, configuring, and managing clusters of virtual machines on Amazon's
+EC2 cloud.
 
 .. image:: _static/scoverview.png
 
@@ -28,10 +29,10 @@ via the :ref:`permissions configuration options <config_permissions>`
 User-friendly Hostnames
 =======================
 StarCluster uses a simple naming convention for all of the nodes in the
-cluster. The head node's hostname is set to *master*. Each worker node is
-then labeled *node001*, *node002*, etc. StarCluster uses these user-friendly
-hostnames instead of the random *ec2-123-123-123.compute-aws.com* EC2 dns
-names making it easier for you to manage the nodes::
+cluster. The head node's hostname is set to *master*. Each worker node is then
+labeled *node001*, *node002*, etc. StarCluster uses these user-friendly
+hostnames instead of the random *ec2-123-123-123.compute-aws.com* EC2 dns names
+making it easier for you to manage the nodes::
 
     $ starcluster listclusters
     StarCluster - (http://web.mit.edu/starcluster)
@@ -68,7 +69,8 @@ This means you can simply login to the master node of a cluster::
 
     $ starcluster sshmaster mycluster
 
-and connect to any of the nodes (e.g. node001, node002, etc) simply by running::
+and connect to any of the nodes (e.g. node001, node002, etc) simply by
+running::
 
     $ ssh node001
 
@@ -276,7 +278,8 @@ displaying an interactive graph of the spot price over the last 30 days:
 ***********
 And more...
 ***********
-StarCluster has a lot of features. For all the details, please see the full :ref:`starcluster-user-manual`.
+StarCluster has a lot of features. For all the details, please see the full
+:ref:`starcluster-user-manual`.
 
 .. _OpenMPI: http://www.open-mpi.org
 .. _ATLAS: http://math-atlas.sourceforge.net

@@ -37,12 +37,12 @@ volume.
 
 .. warning::
 
-    The **createvolume** command *only* supports formatting the *entire
-    volume* using all of the space on the device. If you need multiple
-    partitions you're probably better off creating multiple volumes
-    instead. If this is not the case and you have a use-case for
-    partitioning EBS volumes please send a note to the StarCluster mailing
-    list (starcluster 'at' mit 'dot' edu).
+    The **createvolume** command *only* supports formatting the *entire volume*
+    using all of the space on the device. If you need multiple partitions
+    you're probably better off creating multiple volumes instead. If this is
+    not the case and you have a use-case for partitioning EBS volumes please
+    send a note to the StarCluster mailing list (starcluster 'at' mit 'dot'
+    edu).
 
 To create and format a new volume simply specify a volume size (in GB) and the
 zone you want to create the volume in::
@@ -61,12 +61,12 @@ volume host::
 .. warning::
 
     In previous versions the **createvolume** command used to terminate the
-    host instance after creating the volume. **The latest version does not
-    do this by default** in order to allow multiple volumes to be created
-    in the same zone with a *single* host instance. You can pass the
+    host instance after creating the volume. **The latest version does not do
+    this by default** in order to allow multiple volumes to be created in the
+    same zone with a *single* host instance. You can pass the
     *--shutdown-volume-host* option to the *createvolume* command to have
-    StarCluster automatically shutdown the volume host after creating the
-    new volume.
+    StarCluster automatically shutdown the volume host after creating the new
+    volume.
 
 Let's look at an example::
 
@@ -147,9 +147,9 @@ see the volume hosts simply run the *listclusters* command::
     Total nodes: 1
 
 From the above example we see that we have a volume-host in us-east-1c called
-*volhost-us-east-1c*. Any volumes that were created will still be attached to the
-volume host until you terminate the *volumecreator* cluster. If you'd rather
-detach the volume after it's been successfully created use the
+*volhost-us-east-1c*. Any volumes that were created will still be attached to
+the volume host until you terminate the *volumecreator* cluster. If you'd
+rather detach the volume after it's been successfully created use the
 *--detach-volume* (-d) option::
 
     $ starcluster createvolume --detach-volume 20 us-east-1c

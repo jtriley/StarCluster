@@ -2,9 +2,9 @@
 Copying Data to and from a Cluster
 ##################################
 StarCluster now supports conveniently copying data to and from a running
-cluster via the new **put** and **get** commands. These commands provide
-the same functionality as the *scp* command from OpenSSH only without the need
-to specify SSH keypairs or EC2 dns names.
+cluster via the new **put** and **get** commands. These commands provide the
+same functionality as the *scp* command from OpenSSH only without the need to
+specify SSH keypairs or EC2 dns names.
 
 ****************************
 Enable Experimental Features
@@ -19,8 +19,8 @@ config in order to use them::
 Below are a few examples of how to use the **put** and **get** command
 
 .. note::
-    All of the examples below automatically handle recursion without
-    requiring any extra command line options
+    All of the examples below automatically handle recursion without requiring
+    any extra command line options
 
 *******************************
 Copying Data to a Cluster (put)
@@ -33,15 +33,15 @@ command. Recursion will be handled automatically if necessary. By default the
 
 Copy a file or directory to the master as a normal user
 =======================================================
-By default the **put** command copies files as the root user. To
-copy files as a different cluster user, use the *--user* option::
+By default the **put** command copies files as the root user. To copy files as
+a different cluster user, use the *--user* option::
 
     $ starcluster put mycluster --user myuser /local/path /remote/path
 
 Copy a file or directory to a cluster node
 ==========================================
-By default the **put** command copies files to the master node. To
-copy files to a different cluster node, use the *--node* option::
+By default the **put** command copies files to the master node. To copy files
+to a different cluster node, use the *--node* option::
 
     $ starcluster put mycluster --node node001 /local/path /remote/path
 

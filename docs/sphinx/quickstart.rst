@@ -19,7 +19,7 @@ or to install StarCluster manually::
     $ sudo python setup.py install
 
 After the software has been installed, the next step is to setup the
-configuration file: ::
+configuration file::
 
     $ starcluster help
     StarCluster - (http://web.mit.edu/starcluster) (v. 0.9999)
@@ -39,7 +39,7 @@ configuration file: ::
 Select the second option by typing *2* and pressing enter. This will give you a
 template to use to create a configuration file containing your AWS credentials,
 cluster settings, etc.  The next step is to customize this file using your
-favorite text-editor: ::
+favorite text-editor::
 
     $ vi ~/.starcluster/config
 
@@ -57,7 +57,7 @@ keypair info:
     aws_user_id = #your 12-digit aws user id here
 
 The next step is to fill in your keypair information. If you don't already have
-a keypair you can create one from StarCluster using: ::
+a keypair you can create one from StarCluster using::
 
     $ starcluster createkey mykey -o ~/.ssh/mykey.rsa
 
@@ -95,21 +95,22 @@ For example, the *smallcluster* template would be updated to look like:
 
 Now that the config file has been set up we're ready to start using
 StarCluster. Next we start a cluster named "mycluster" using the default
-cluster template *smallcluster* in the example config: ::
+cluster template *smallcluster* in the example config::
 
     $ starcluster start mycluster
 
-The *default_template* setting in the **[global]** section of the config specifies
-the default cluster template and is automatically set to *smallcluster* in the
-example config.
+The *default_template* setting in the **[global]** section of the config
+specifies the default cluster template and is automatically set to
+*smallcluster* in the example config.
 
-After the **start** command completes you should now have a working cluster. You
-can login to the master node as root by running: ::
+After the **start** command completes you should now have a working cluster.
+You can login to the master node as root by running::
 
     $ starcluster sshmaster mycluster
 
-You can also copy files to/from the cluster using the **put** and **get** commands.
-To copy a file or entire directory from your local computer to the cluster::
+You can also copy files to/from the cluster using the **put** and **get**
+commands.  To copy a file or entire directory from your local computer to the
+cluster::
 
     $ starcluster put /path/to/local/file/or/dir /remote/path/
 

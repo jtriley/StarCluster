@@ -106,8 +106,9 @@ file::
     $ starcluster loadbalance -d mycluster
 
 The above command will run the load balancer and output stats to a csv file. By
-default the stats are written to $HOME/.starcluster/sge/<cluster_tag>/sge-stats.csv,
-however, this can be changed using the *-D* option::
+default the stats are written to
+$HOME/.starcluster/sge/<cluster_tag>/sge-stats.csv, however, this can be
+changed using the *-D* option::
 
     $ starcluster loadbalance -d -D /path/to/statsfile.csv mycluster
 
@@ -244,7 +245,8 @@ happen.
 
 Learning More
 =============
-To learn more about the design and development of the load balancer please see `Rajat Banerjee's master's thesis`_.
+To learn more about the design and development of the load balancer please see
+`Rajat Banerjee's master's thesis`_.
 
 .. _pull request 20: https://github.com/jtriley/StarCluster/pull/20
 .. _Rajat Banerjee's master's thesis: http://www.hindoogle.com/thesis/BanerjeeR_Thesis0316.pdf

@@ -7,10 +7,10 @@ AMI you can create a new AMI based on the StarCluster AMIs using the *s3image*
 and *ebsimage* commands.
 
 .. note::
-        In previous versions it was strongly advised not to create new AMIs
-        from an instance/node started by StarCluster (e.g. master, node001,
-        etc). **This is no longer a limitation and should work fine**.  If it
-        doesn't, please `report an issue on github`_.
+    In previous versions it was strongly advised not to create new AMIs
+    from an instance/node started by StarCluster (e.g. master, node001,
+    etc). **This is no longer a limitation and should work fine**.  If it
+    doesn't, please `report an issue on github`_.
 
 ***************************************
 Launching and Customizing an Image Host
@@ -26,16 +26,16 @@ Launching a New Image Host
 When launching a new *image host* it is recommended that you start a new
 cluster called *imagehost* using the following command::
 
-        $ starcluster start -o -s 1 -i <INSTANCE-TYPE> -n <BASE-AMI-ID> imagehost
+    $ starcluster start -o -s 1 -i <INSTANCE-TYPE> -n <BASE-AMI-ID> imagehost
 
 .. note::
 
-        Replace **<INSTANCE-TYPE>** with an instance type that is compatible with your
-        **<BASE-AMI-ID>**. If you're not creating a new Cluster/GPU Compute
-        AMI, you can use m1.small (32bit) or m1.large (64bit) to minimize costs
-        when creating the image. If you *are* creating a new Cluster/GPU Compute
-        AMI the you'll need to launch the *image host* with a Cluster/GPU
-        Compute instance type.
+    Replace **<INSTANCE-TYPE>** with an instance type that is compatible with
+    your **<BASE-AMI-ID>**. If you're not creating a new Cluster/GPU Compute
+    AMI, you can use m1.small (32bit) or m1.large (64bit) to minimize costs
+    when creating the image. If you *are* creating a new Cluster/GPU Compute
+    AMI the you'll need to launch the *image host* with a Cluster/GPU Compute
+    instance type.
 
 This command will create a single node (-s 1) cluster called *imagehost* using
 the AMI you wish to customize (*-n <BASE-AMI-ID>*) and a compatible instance
@@ -46,17 +46,17 @@ This way you start with a *clean* version of the AMI you're extending.
 You can also use a spot instance (via the **-b** or **--bid** flag) for the
 image host::
 
-        $ starcluster start -o -s 1 -b 0.50 -i <INSTANCE-TYPE> -n <BASE-AMI-ID>
+    $ starcluster start -o -s 1 -b 0.50 -i <INSTANCE-TYPE> -n <BASE-AMI-ID>
 
 If you used the *-o* option you'll need to periodically run the *listclusters*
 command to check whether or not the  *image host* is up::
 
-        $ starcluster listclusters imagehost
+    $ starcluster listclusters imagehost
 
 Once the *image host* is up, login and customize the instance's software
 environment to your liking::
 
-        $ starcluster sshmaster imagehost
+    $ starcluster sshmaster imagehost
 
 The above command will log you in as *root* at which point you can install new
 software using either *apt-get* or by manually installing the software from
@@ -118,7 +118,7 @@ This section assumes you want to create an *EBS-backed* AMI. See the next
 section if you'd prefer to create an S3-backed AMI instead. To create a new
 EBS-backed AMI, use the **ebsimage** command::
 
-        $ starcluster ebsimage i-9999999 my-new-image
+    $ starcluster ebsimage i-9999999 my-new-image
 
 In the above example, *i-99999999* is the instance id of the instance you wish
 to create a new image from. If the instance is a part of a cluster, such as
@@ -128,8 +128,8 @@ node, launched by StarCluster or not, via the *listinstances* command. The
 argument after the instance id is the name you wish to give to your new AMI.
 
 After the **ebsimage** command completes successfully it will print out the new
-AMI id that you then can use in the *node_image_id*/*master_image_id* settings in
-your *cluster templates*.
+AMI id that you then can use in the *node_image_id*/*master_image_id* settings
+in your *cluster templates*.
 
 Creating an S3-backed (instance-store) AMI
 ==========================================
@@ -137,7 +137,7 @@ This section assumes you want to create an *S3-backed* AMI. See the previous
 section if you'd prefer to create an EBS AMI instead. To create a new S3-backed
 AMI, use the **s3image** command::
 
-        $ starcluster s3image i-9999999 my-new-image mybucket
+    $ starcluster s3image i-9999999 my-new-image mybucket
 
 In the above example, *i-99999999* is the instance id of the instance you wish
 to create a new image from. If the instance is a part of a cluster, such as
