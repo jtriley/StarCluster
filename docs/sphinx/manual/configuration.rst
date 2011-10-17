@@ -251,20 +251,17 @@ The above example sets the 'smallcluster' *cluster template* as the default.
 
 Amazon EBS Volumes
 ------------------
-.. note::
-
-   Using EBS volumes with StarCluster is completely optional. If you do not wish to use EBS volumes with StarCluster, simply do not
-   define any **[volume]** sections and remove or comment-out the **volumes** setting from your *cluster template(s)*.
 
 .. warning::
-   If you do not use an EBS volume with StarCluster, any data that you
-   wish to keep around after shutdown must be manually copied somewhere outside
-   of the cluster (e.g. download the data locally or move it to S3 manually).
-   This is because local instance storage on EC2 is ephemeral and does not
-   persist after an instance has been shutdown. The advantage of using EBS
-   volumes with StarCluster is that when you shutdown a particular cluster, any
-   data saved on an EBS volume attached to that cluster will be available the
-   next time the volume is attached to another cluster or EC2 instance.
+   Using EBS volumes with StarCluster is completely optional, however, if you
+   do not use an EBS volume with StarCluster, any data that you wish to keep
+   around after shutdown must be manually copied somewhere outside of the
+   cluster (e.g. download the data locally or move it to S3 manually).  This is
+   because local instance storage on EC2 is ephemeral and does not persist
+   after an instance has been terminated. The advantage of using EBS volumes
+   with StarCluster is that when you shutdown a particular cluster, any data
+   saved on an EBS volume attached to that cluster will be available the next
+   time the volume is attached to another cluster or EC2 instance.
 
 StarCluster has the ability to use Amazon EBS volumes to provide persistent data storage on a given cluster. If you wish to use 
 EBS volumes with StarCluster you will need to define a **[volume]** section in the configuration file for each volume you wish to 
