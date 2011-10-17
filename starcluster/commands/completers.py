@@ -75,6 +75,34 @@ class ImageCompleter(Completer):
             log.error('something went wrong fix me: %s' % e)
 
 
+class EBSImageCompleter(Completer):
+    """
+    Returns a list of all registered EBS image ids as completion options
+    """
+    def _completer(self):
+        try:
+            rimages = self.ec2.registered_images
+            completion_list = [i.id for i in rimages if
+                               i.root_device_type == "ebs"]
+            return optcomplete.ListCompleter(completion_list)
+        except Exception, e:
+            log.error('something went wrong fix me: %s' % e)
+
+
+class S3ImageCompleter(Completer):
+    """
+    Returns a list of all registered S3 image ids as completion options
+    """
+    def _completer(self):
+        try:
+            rimages = self.ec2.registered_images
+            completion_list = [i.id for i in rimages if
+                               i.root_device_type == "instance-store"]
+            return optcomplete.ListCompleter(completion_list)
+        except Exception, e:
+            log.error('something went wrong fix me: %s' % e)
+
+
 class InstanceCompleter(Completer):
     """
     Returns a list of all instance ids as completion options

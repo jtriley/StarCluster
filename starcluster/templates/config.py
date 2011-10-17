@@ -15,6 +15,8 @@ DEFAULT_TEMPLATE=smallcluster
 ENABLE_EXPERIMENTAL=False
 # number of seconds to wait when polling instances (default: 30s)
 #REFRESH_INTERVAL=15
+# specify a web browser to launch when viewing spot history plots
+#WEB_BROWSER=chromium
 
 [aws info]
 # This is the AWS credentials section.
@@ -93,6 +95,10 @@ NODE_INSTANCE_TYPE = m1.small
 # list of plugins to load after StarCluster's default setup routines (OPTIONAL)
 # see "Configuring StarCluster Plugins" below on how to define plugin sections
 #PLUGINS = myplugin, myplugin2
+
+# list of permissions (or firewall rules) to apply to the cluster's security
+# group (OPTIONAL).
+#PERMISSIONS = ssh, http
 
 ###########################################
 ## Defining Additional Cluster Templates ##
@@ -176,6 +182,23 @@ NODE_INSTANCE_TYPE = m1.small
 # SOME_PARAM_FOR_MY_PLUGIN = 1
 # SOME_OTHER_PARAM = 2
 
+############################################
+## Configuring Security Group Permissions ##
+############################################
+
+# [permission ssh]
+# protocol can be: tcp, udp, or icmp
+# protocol = tcp
+# from_port = 22
+# to_port = 22
+# cidr_ip = <your_ip>/32
+
+# example for opening port 80 on the cluster to a specific IP range
+# [permission http]
+# protocol = tcp
+# from_port = 80
+# to_port = 80
+# cidr_ip = 18.0.0.0/24
 """ % {
     'x86_ami': static.BASE_AMI_32,
     'x86_64_ami': static.BASE_AMI_64,
@@ -184,5 +207,6 @@ NODE_INSTANCE_TYPE = m1.small
 }
 
 DASHES = '-' * 10
-copy_paste_template = DASHES + ' COPY BELOW THIS LINE ' + DASHES + '\n' + \
-        config_template + '\n' + DASHES + ' END COPY ' + DASHES + '\n'
+copy_below = ' '.join([DASHES, 'COPY BELOW THIS LINE', DASHES])
+end_copy = ' '.join([DASHES, 'END COPY', DASHES])
+copy_paste_template = '\n'.join([copy_below, config_template, end_copy]) + '\n'

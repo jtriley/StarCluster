@@ -10,8 +10,10 @@ import os
 import re
 import sys
 import stat
+import glob
 import string
 import socket
+import fnmatch
 import paramiko
 import posixpath
 
@@ -23,7 +25,9 @@ try:
 except ImportError:
     HAS_TERMIOS = False
 
+from starcluster import scp
 from starcluster import exception
+from starcluster import progressbar
 from starcluster.logger import log
 
 
@@ -50,11 +54,14 @@ class SSHClient(object):
         self._password = password
         self._timeout = timeout
         self._sftp = None
+        self._scp = None
         self._transport = None
+        self._progress_bar = None
         if private_key:
             self._pkey = self.load_private_key(private_key, private_key_pass)
         elif not password:
             raise exception.SSHNoCredentialsError()
+        self._glob = SSHGlob(self)
 
     def load_private_key(self, private_key, private_key_pass=None):
         # Use Private Key.
@@ -75,6 +82,7 @@ class SSHClient(object):
                 private_key=None, private_key_pass=None, port=22, timeout=30):
         host = host or self._host
         username = username or self._username
+        password = password or self._password
         pkey = self._pkey
         if private_key:
             pkey = self.load_private_key(private_key, private_key_pass)
@@ -164,6 +172,15 @@ class SSHClient(object):
             log.debug("creating sftp connection")
             self._sftp = paramiko.SFTPClient.from_transport(self.transport)
         return self._sftp
+
+    @property
+    def scp(self):
+        """Initialize the SCP client."""
+        if not self._scp:
+            log.debug("creating scp connection")
+            self._scp = scp.SCPClient(self.transport,
+                                      progress=self._file_transfer_progress)
+        return self._scp
 
     def generate_rsa_key(self):
         return paramiko.RSAKey.generate(2048)
@@ -278,6 +295,17 @@ class SSHClient(object):
         except IOError:
             return False
 
+    def lpath_exists(self, path):
+        """
+        Test whether a remote path exists.
+        Returns True for broken symbolic links
+        """
+        try:
+            self.lstat(path)
+            return True
+        except IOError:
+            return False
+
     def chown(self, uid, gid, remote_file):
         """
         Apply permissions (mode) to remote_file
@@ -299,6 +327,9 @@ class SSHClient(object):
         Return a list containing the names of the entries in the remote path.
         """
         return [os.path.join(path, f) for f in self.sftp.listdir(path)]
+
+    def glob(self, pattern):
+        return self._glob.glob(pattern)
 
     def isdir(self, path):
         """
@@ -326,58 +357,111 @@ class SSHClient(object):
         """
         return self.sftp.stat(path)
 
-    def get(self, remotepath, localpath=None):
+    def lstat(self, path):
         """
-        Copies a file between the remote host and the local host.
+        Same as stat but doesn't follow symlinks
         """
-        if not localpath:
-            localpath = os.path.split(remotepath)[1]
-        self.sftp_connect()
-        self.sftp.get(remotepath, localpath)
+        return self.sftp.lstat(path)
 
-    def put(self, localpath, remotepath=None):
-        """
-        Copies a file between the local host and the remote host.
-        """
-        if not remotepath:
-            remotepath = os.path.split(localpath)[1]
-        self.sftp.put(localpath, remotepath)
+    @property
+    def progress_bar(self):
+        if not self._progress_bar:
+            widgets = ['FileTransfer: ', ' ', progressbar.Percentage(), ' ',
+                       progressbar.Bar(marker=progressbar.RotatingMarker()),
+                       ' ', progressbar.ETA(), ' ',
+                       progressbar.FileTransferSpeed()]
+            pbar = progressbar.ProgressBar(widgets=widgets,
+                                           maxval=1,
+                                           force_update=True)
+            self._progress_bar = pbar
+        return self._progress_bar
 
-    def execute_async(self, command):
-        """
-        Executes a remote command without blocking
+    def _file_transfer_progress(self, filename, size, sent):
+        pbar = self.progress_bar
+        pbar.widgets[0] = filename
+        pbar.maxval = size
+        pbar.update(sent)
+        if pbar.finished:
+            pbar.reset()
 
-        NOTE: this method will not block, however, if your process does not
-        complete or background itself before the python process executing this
-        code exits, it will not persist on the remote machine
-        """
+    def _make_list(self, obj):
+        if not isinstance(obj, (list, tuple)):
+            return [obj]
+        return obj
 
+    def get(self, remotepaths, localpath=''):
+        """
+        Copies one or more files from the remote host to the local host.
+        """
+        remotepaths = self._make_list(remotepaths)
+        localpath = localpath or os.getcwd()
+        globs = []
+        noglobs = []
+        for rpath in remotepaths:
+            if glob.has_magic(rpath):
+                globs.append(rpath)
+            else:
+                noglobs.append(rpath)
+        globresults = [self.glob(g) for g in globs]
+        remotepaths = noglobs
+        for globresult in globresults:
+            remotepaths.extend(globresult)
+        recursive = False
+        for rpath in remotepaths:
+            if not self.path_exists(rpath):
+                raise exception.BaseException(
+                    "Remote file or directory does not exist: %s" % rpath)
+        for rpath in remotepaths:
+            if self.isdir(rpath):
+                recursive = True
+                break
+        self.scp.get(remotepaths, localpath, recursive=recursive)
+
+    def put(self, localpaths, remotepath='.'):
+        """
+        Copies one or more files from the local host to the remote host.
+        """
+        localpaths = self._make_list(localpaths)
+        recursive = False
+        for lpath in localpaths:
+            if os.path.isdir(lpath):
+                recursive = True
+                break
+        self.scp.put(localpaths, remote_path=remotepath, recursive=recursive)
+
+    def execute_async(self, command, source_profile=False):
+        """
+        Executes a remote command so that it continues running even after this
+        SSH connection closes. The remote process will be put into the
+        background via nohup. Does not return output or check for non-zero exit
+        status.
+        """
+        return self.execute(command, detach=True,
+                            source_profile=source_profile)
+
+    def get_status(self, command, source_profile=False):
+        """
+        Execute a remote command and return the exit status
+        """
         channel = self.transport.open_session()
+        if source_profile:
+            command = "source /etc/profile && %s" % command
         channel.exec_command(command)
+        return channel.recv_exit_status()
 
-    def execute(self, command, silent=True, only_printable=False,
-                ignore_exit_status=False, log_output=True):
+    def _get_output(self, channel, silent=True, only_printable=False):
         """
-        Execute a remote command and return stdout/stderr
-
-        NOTE: this function blocks until the process finishes
-
-        kwargs:
-        silent - do not print output
-        only_printable - filter the command's output to allow only printable
-                        characters
-        returns List of output lines
+        Returns the stdout/stderr output from a paramiko channel as a list of
+        strings (non-interactive only)
         """
-        channel = self.transport.open_session()
-        channel.exec_command(command)
         #stdin = channel.makefile('wb', -1)
         stdout = channel.makefile('rb', -1)
         stderr = channel.makefile_stderr('rb', -1)
-        output = []
-        line = None
         if silent:
             output = stdout.readlines() + stderr.readlines()
         else:
+            output = []
+            line = None
             while line != '':
                 line = stdout.readline()
                 if only_printable:
@@ -392,14 +476,48 @@ class SSHClient(object):
             output = map(lambda line: ''.join(c for c in line if c in
                                               string.printable), output)
         output = map(lambda line: line.strip(), output)
+        return output
+
+    def execute(self, command, silent=True, only_printable=False,
+                ignore_exit_status=False, log_output=True, detach=False,
+                source_profile=False):
+        """
+        Execute a remote command and return stdout/stderr
+
+        NOTE: this function blocks until the process finishes
+
+        kwargs:
+        silent - do not log output to console
+        only_printable - filter the command's output to allow only printable
+                        characters
+        ignore_exit_status - don't warn about non-zero exit status
+        log_output - log output to debug file
+        detach - detach the remote process so that it continues to run even
+                 after the SSH connection closes (does NOT return output or
+                 check for non-zero exit status if detach=True)
+        source_profile - if True prefix the command with "source /etc/profile"
+        returns List of output lines
+        """
+        channel = self.transport.open_session()
+        if detach:
+            command = "nohup %s &" % command
+            if source_profile:
+                command = "source /etc/profile && %s" % command
+            channel.exec_command(command)
+            channel.close()
+            return
+        if source_profile:
+            command = "source /etc/profile && %s" % command
+        channel.exec_command(command)
+        output = self._get_output(channel, silent=silent,
+                                  only_printable=only_printable)
         exit_status = channel.recv_exit_status()
         if exit_status != 0:
+            msg = "command '%s' failed with status %d" % (command, exit_status)
             if not ignore_exit_status:
-                log.error("command '%s' failed with status %d" % (command,
-                                                                  exit_status))
+                log.error(msg)
             else:
-                log.debug("command %s failed with status %d" % (command,
-                                                                exit_status))
+                log.debug(msg)
         if log_output:
             for line in output:
                 log.debug(line.strip())
@@ -447,13 +565,17 @@ class SSHClient(object):
         if self._transport:
             self._transport.close()
 
+    def _invoke_shell(self, term='screen', cols=80, lines=24):
+        chan = self.transport.open_session()
+        chan.get_pty(term, cols, lines)
+        chan.invoke_shell()
+        return chan
+
     def interactive_shell(self, user='root'):
         if user and self.transport.get_username() != user:
             self.connect(username=user)
         try:
-            chan = self.transport.open_session()
-            chan.get_pty()
-            chan.invoke_shell()
+            chan = self._invoke_shell()
             log.info('Starting interactive shell...')
             if HAS_TERMIOS:
                 self._posix_shell(chan)
@@ -539,6 +661,67 @@ class SSHClient(object):
 
 # for backwards compatibility
 Connection = SSHClient
+
+
+class SSHGlob(object):
+
+    def __init__(self, ssh_client):
+        self.ssh = ssh_client
+
+    def glob(self, pathname):
+        return list(self.iglob(pathname))
+
+    def iglob(self, pathname):
+        """
+        Return an iterator which yields the paths matching a pathname pattern.
+        The pattern may contain simple shell-style wildcards a la fnmatch.
+        """
+        if not glob.has_magic(pathname):
+            if self.ssh.lpath_exists(pathname):
+                yield pathname
+            return
+        dirname, basename = posixpath.split(pathname)
+        if not dirname:
+            for name in self.glob1(posixpath.curdir, basename):
+                yield name
+            return
+        if glob.has_magic(dirname):
+            dirs = self.iglob(dirname)
+        else:
+            dirs = [dirname]
+        if glob.has_magic(basename):
+            glob_in_dir = self.glob1
+        else:
+            glob_in_dir = self.glob0
+        for dirname in dirs:
+            for name in glob_in_dir(dirname, basename):
+                yield posixpath.join(dirname, name)
+
+    def glob0(self, dirname, basename):
+        if basename == '':
+            # `os.path.split()` returns an empty basename for paths ending with
+            # a directory separator.  'q*x/' should match only directories.
+            if self.ssh.isdir(dirname):
+                return [basename]
+        else:
+            if self.ssh.lexists(posixpath.join(dirname, basename)):
+                return [basename]
+        return []
+
+    def glob1(self, dirname, pattern):
+        if not dirname:
+            dirname = posixpath.curdir
+        if isinstance(pattern, unicode) and not isinstance(dirname, unicode):
+            #encoding = sys.getfilesystemencoding() or sys.getdefaultencoding()
+            #dirname = unicode(dirname, encoding)
+            dirname = unicode(dirname, 'UTF-8')
+        try:
+            names = [os.path.basename(n) for n in self.ssh.ls(dirname)]
+        except os.error:
+            return []
+        if pattern[0] != '.':
+            names = filter(lambda x: x[0] != '.', names)
+        return fnmatch.filter(names, pattern)
 
 
 def main():

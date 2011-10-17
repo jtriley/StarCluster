@@ -6,7 +6,7 @@ import os
 import getpass
 import tempfile
 
-VERSION = "0.92rc2"
+VERSION = "0.92"
 PID = os.getpid()
 TMP_DIR = tempfile.gettempdir()
 if os.path.exists("/tmp"):
@@ -17,9 +17,6 @@ try:
 except:
     pass
 SSH_TEMPLATE = 'ssh -i %s %s@%s'
-DEBUG_FILE = os.path.join(TMP_DIR, 'starcluster-debug-%s.log' % CURRENT_USER)
-SSH_DEBUG_FILE = os.path.join(TMP_DIR, 'starcluster-ssh-%s.log' % CURRENT_USER)
-AWS_DEBUG_FILE = os.path.join(TMP_DIR, 'starcluster-aws-%s.log' % CURRENT_USER)
 
 STARCLUSTER_CFG_DIR = os.path.join(os.path.expanduser('~'), '.starcluster')
 STARCLUSTER_CFG_FILE = os.path.join(STARCLUSTER_CFG_DIR, 'config')
@@ -27,6 +24,11 @@ STARCLUSTER_PLUGIN_DIR = os.path.join(STARCLUSTER_CFG_DIR, 'plugins')
 STARCLUSTER_RECEIPT_DIR = "/var/run/starcluster"
 STARCLUSTER_RECEIPT_FILE = os.path.join(STARCLUSTER_RECEIPT_DIR, "receipt.pkl")
 STARCLUSTER_OWNER_ID = 342652561657
+
+DEBUG_FILE = os.path.join(TMP_DIR, 'starcluster-debug-%s.log' % CURRENT_USER)
+SSH_DEBUG_FILE = os.path.join(TMP_DIR, 'starcluster-ssh-%s.log' % CURRENT_USER)
+AWS_DEBUG_FILE = os.path.join(TMP_DIR, 'starcluster-aws-%s.log' % CURRENT_USER)
+CRASH_FILE = os.path.join(STARCLUSTER_CFG_DIR, 'crash-report-%d.txt' % PID)
 
 # StarCluster BASE AMIs (i386/x86_64)
 BASE_AMI_32 = "ami-8cf913e5"
@@ -73,6 +75,10 @@ CLUSTER_TYPES = CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES
 
 PROTOCOLS = ['tcp', 'udp', 'icmp']
 
+WORLD_CIDRIP = '0.0.0.0/0'
+
+DEFAULT_SSH_PORT = 22
+
 AVAILABLE_SHELLS = {
     "bash": True,
     "zsh": True,
@@ -86,6 +92,7 @@ GLOBAL_SETTINGS = {
     'default_template': (str, False, None, None, None),
     'enable_experimental': (bool, False, False, None, None),
     'refresh_interval': (int, False, 30, None, None),
+    'web_browser': (str, False, None, None, None),
 }
 
 AWS_SETTINGS = {
@@ -148,4 +155,5 @@ CLUSTER_SETTINGS = {
     'plugins': (list, False, [], None, None),
     'permissions': (list, False, [], None, None),
     'disable_queue': (bool, False, False, None, None),
+    'force_spot_master': (bool, False, False, None, None),
 }

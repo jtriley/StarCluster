@@ -7,13 +7,40 @@ import os
 import re
 import time
 import types
+import inspect
 import calendar
 import urlparse
+import decorator
 from datetime import datetime
 
 from starcluster import iptools
 from starcluster import exception
 from starcluster.logger import log
+
+try:
+    import IPython
+    if IPython.__version__ < '0.11':
+        from IPython.Shell import IPShellEmbed
+        ipy_shell = IPShellEmbed(argv=[])
+    else:
+        from IPython import embed
+        ipy_shell = lambda local_ns=None: embed(user_ns=local_ns)
+except ImportError:
+
+    def ipy_shell(local_ns=None):
+        log.error("Unable to load IPython.")
+        log.error("Please check that IPython is installed and working.")
+        log.error("If not, you can install it via: easy_install ipython")
+
+try:
+    import pudb
+    set_trace = pudb.set_trace
+except ImportError:
+
+    def set_trace():
+        log.error("Unable to load PuDB")
+        log.error("Please check that PuDB is installed and working.")
+        log.error("If not, you can install it via: easy_install pudb")
 
 
 class AttributeDict(dict):
@@ -37,42 +64,34 @@ def print_timing(msg=None):
 
     @print_timing
     def myfunc():
-        print 'hi'
+        print 'Running myfunc'
     >>> myfunc()
-    hi
+    Running myfunc
     myfunc took 0.000 mins
 
     @print_timing('My function')
     def myfunc():
-        print 'hi'
+        print 'Running myfunc'
     >>> myfunc()
-    hi
+    Running myfunc
     My function took 0.000 mins
     """
+    prefix = msg
     if type(msg) == types.FunctionType:
-        func = msg
+        prefix = msg.func_name
 
-        def wrap_f(*arg, **kargs):
-            """Raw timing function """
-            time1 = time.time()
-            res = func(*arg, **kargs)
-            time2 = time.time()
-            prefix = func.func_name
-            log.info('%s took %0.3f mins' % (prefix, (time2 - time1) / 60.0))
-            return res
-        return wrap_f
+    def wrap_f(func, *arg, **kargs):
+        """Raw timing function """
+        time1 = time.time()
+        res = func(*arg, **kargs)
+        time2 = time.time()
+        log.info('%s took %0.3f mins' % (prefix, (time2 - time1) / 60.0))
+        return res
 
-    def wrap(func):
-        def wrap_f(*arg, **kargs):
-            """Raw timing function """
-            time1 = time.time()
-            res = func(*arg, **kargs)
-            time2 = time.time()
-            prefix = msg
-            log.info('%s took %0.3f mins' % (prefix, (time2 - time1) / 60.0))
-            return res
-        return wrap_f
-    return wrap
+    if type(msg) == types.FunctionType:
+        return decorator.decorator(wrap_f, msg)
+    else:
+        return decorator.decorator(wrap_f)
 
 
 def is_valid_device(dev):
@@ -205,24 +224,31 @@ def get_elapsed_time(past_time):
     ptime = iso_to_localtime_tuple(past_time)
     now = datetime.now()
     delta = now - ptime
-    return time.strftime("%H:%M:%S", time.gmtime(delta.seconds))
+    timestr = time.strftime("%H:%M:%S", time.gmtime(delta.seconds))
+    if delta.days != -1:
+        timestr = "%d days, %s" % (delta.days, timestr)
+    return timestr
+
+
+def iso_to_unix_time(iso):
+    dtup = iso_to_datetime_tuple(iso)
+    secs = calendar.timegm(dtup.timetuple())
+    return secs
+
+
+def iso_to_javascript_timestamp(iso):
+    """
+    Convert dates to Javascript timestamps (number of milliseconds since
+    January 1st 1970 UTC)
+    """
+    secs = iso_to_unix_time(iso)
+    return secs * 1000
 
 
 def iso_to_localtime_tuple(iso):
-    dtup = iso_to_datetime_tuple(iso)
-    secs = calendar.timegm(dtup.timetuple())
+    secs = iso_to_unix_time(iso)
     t = time.mktime(time.localtime(secs))
     return datetime.fromtimestamp(t)
-
-try:
-    import IPython.Shell
-    ipy_shell = IPython.Shell.IPShellEmbed(argv=[])
-except ImportError:
-
-    def ipy_shell(local_ns=None):
-        log.error("Unable to load IPython.")
-        log.error("Please check that IPython is installed and working.")
-        log.error("If not, you can install it via: easy_install ipython")
 
 
 def permute(a):
@@ -410,3 +436,48 @@ def test_version_to_float():
     assert program_version_greater("0.92", "0.92b1")
     assert program_version_greater("0.9999", "0.92b3")
     print("All tests passed")
+
+
+def get_arg_spec(func):
+    """
+    Convenience wrapper around inspect.getargspec
+
+    Returns a tuple whose first element is a list containing the names of all
+    required arguments and whose second element is a list containing the names
+    of all keyword (optional) arguments.
+    """
+    allargs, varargs, keywords, defaults = inspect.getargspec(func)
+    if 'self' in allargs:
+        allargs.remove('self')  # ignore self
+    nargs = len(allargs)
+    ndefaults = 0
+    if defaults:
+        ndefaults = len(defaults)
+    nrequired = nargs - ndefaults
+    args = allargs[:nrequired]
+    kwargs = allargs[nrequired:]
+    log.debug('nargs = %s' % nargs)
+    log.debug('ndefaults = %s' % ndefaults)
+    log.debug('nrequired = %s' % nrequired)
+    log.debug('args = %s' % args)
+    log.debug('kwargs = %s' % kwargs)
+    log.debug('defaults = %s' % str(defaults))
+    return args, kwargs
+
+
+def chunk_list(ls, items=8):
+    """
+    iterate through 'chunks' of a list. final chunk consists of remaining
+    elements if items does not divide len(ls) evenly.
+
+    items - size of 'chunks'
+    """
+    itms = []
+    for i, v in enumerate(ls):
+        if i >= items and i % items == 0:
+            yield itms
+            itms = [v]
+        else:
+            itms.append(v)
+    if itms:
+        yield itms

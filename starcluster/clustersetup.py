@@ -233,10 +233,16 @@ class DefaultClusterSetup(ClusterSetup):
             if not (vol_id and device and mount_path):
                 log.error("missing required settings for vol %s" % vol)
                 continue
-            if not master.ssh.path_exists(device):
-                log.warn("Cannot find device %s for volume %s" % (device, vol))
+            dev_exists = master.ssh.path_exists(device)
+            if not dev_exists and device.startswith('/dev/sd'):
+                # check for "correct" device in unpatched kernels
+                device = device.replace('/dev/sd', '/dev/xvd')
+                dev_exists = master.ssh.path_exists(device)
+            if not dev_exists:
+                log.warn("Cannot find device %s for volume %s" %
+                         (device, vol_id))
                 log.warn("Not mounting %s on %s" % (vol_id, mount_path))
-                log.warn("This usually means there was a problem" + \
+                log.warn("This usually means there was a problem "
                          "attaching the EBS volume to the master node")
                 continue
             if not volume_partition:
@@ -247,8 +253,9 @@ class DefaultClusterSetup(ClusterSetup):
                     volume_partition = device + '1'
                 else:
                     log.error(
-                        "volume has more than one partition, must specify" + \
-                        "a partition to use in the config")
+                        "volume has more than one partition, please specify "
+                        "which partition to use (e.g. partition=0, "
+                        "partition=1, etc) in the volume's config")
                     continue
             elif not master.ssh.path_exists(volume_partition):
                 log.warn("Cannot find partition %s on volume %s" % \
@@ -301,12 +308,11 @@ class DefaultClusterSetup(ClusterSetup):
                               (network_device, mount_path, node.alias))
                 else:
                     mount_paths.append(path)
-            log.info("Mounting shares for node %s" % node.alias)
             self.pool.simple_job(node.mount_nfs_shares, (master, mount_paths),
                                  jobid=node.alias)
         self.pool.wait(numtasks=len(nodes))
 
-    @print_timing
+    @print_timing("Setting up NFS")
     def _setup_nfs(self, nodes=None, start_server=True):
         """
         Share /home, /opt/sge6, and all EBS mount paths via NFS to all nodes
@@ -325,6 +331,38 @@ class DefaultClusterSetup(ClusterSetup):
             master.start_nfs_server()
         master.export_fs_to_nodes(nodes, export_paths)
         self._mount_nfs_shares(nodes)
+
+    def _create_sge_pe(self, name="orte", nodes=None, queue="all.q"):
+        """
+        Create or update an SGE parallel environment
+
+        name - name of parallel environment
+        nodes - list of nodes to include in the parallel environment
+                (default: all)
+        queue - configure queue to use the new parallel environment
+        """
+        mssh = self._master.ssh
+        pe_exists = mssh.get_status('qconf -sp %s' % name, source_profile=True)
+        pe_exists = pe_exists == 0
+        if not pe_exists:
+            log.info("Creating SGE parallel environment '%s'" % name)
+        else:
+            log.info("Updating SGE parallel environment '%s'" % name)
+        # iterate through each machine and count the number of processors
+        nodes = nodes or self._nodes
+        num_processors = sum(self.pool.map(lambda n: n.num_processors, nodes))
+        penv = mssh.remote_file("/tmp/pe.txt")
+        print >> penv, sge.sge_pe_template % (name, num_processors)
+        penv.close()
+        if not pe_exists:
+            mssh.execute("qconf -Ap %s" % penv.name, source_profile=True)
+        else:
+            mssh.execute("qconf -Mp %s" % penv.name, source_profile=True)
+        if queue:
+            log.info("Adding parallel environment '%s' to queue '%s'" %
+                     (name, queue))
+            mssh.execute('qconf -mattr queue pe_list "%s" %s' % (name, queue),
+                         source_profile=True)
 
     def _setup_sge(self):
         """
@@ -353,35 +391,22 @@ class DefaultClusterSetup(ClusterSetup):
         submit_list = admin_list
         ec2_sge_conf = mconn.remote_file("/opt/sge6/ec2_sge.conf")
         # TODO: add sge section to config values for some of the below
-        print >> ec2_sge_conf, sge.sgeinstall_template % \
-                (admin_list, exec_list, submit_list)
+        conf = sge.sgeinstall_template % (admin_list, exec_list, submit_list)
+        print >> ec2_sge_conf, conf
         ec2_sge_conf.close()
         # installs sge in /opt/sge6 and starts qmaster/schedd on master node
         log.info("Installing Sun Grid Engine...")
-        mconn.execute('cd /opt/sge6 && TERM=rxvt ./inst_sge -m -x  ' + \
-                      '-noremote -auto ./ec2_sge.conf',
-                      silent=True, only_printable=True)
+        mconn.execute('cd /opt/sge6 && TERM=rxvt ./inst_sge -m -x -noremote '
+                      '-auto ./ec2_sge.conf', silent=True, only_printable=True)
         # set all.q shell to bash
-        mconn.execute('source /etc/profile && ' + \
-                      'qconf -mattr queue shell "/bin/bash" all.q')
+        mconn.execute('qconf -mattr queue shell "/bin/bash" all.q',
+                      source_profile=True)
         for node in self.nodes:
-            master.ssh.execute('source /etc/profile && qconf -ah %s' %
-                               node.alias)
-            master.ssh.execute('source /etc/profile && qconf -as %s' %
-                               node.alias)
+            self._add_sge_administrative_host(node)
+            self._add_sge_submit_host(node)
             self.pool.simple_job(self._add_to_sge, (node,), jobid=node.alias)
         self.pool.wait(numtasks=len(self.nodes))
-
-        # create sge parallel environment
-        # first iterate through each machine and count the number of processors
-        num_processors = sum(map(lambda n: n.num_processors, self._nodes))
-        parallel_environment = mconn.remote_file("/tmp/pe.txt")
-        print >> parallel_environment, sge.sge_pe_template % num_processors
-        parallel_environment.close()
-        mconn.execute("source /etc/profile && qconf -Ap %s" % \
-                      parallel_environment.name)
-        mconn.execute(
-            'source /etc/profile && qconf -mattr queue pe_list "orte" all.q')
+        self._create_sge_pe()
 
     def run(self, nodes, master, user, user_shell, volumes):
         """Start cluster configuration"""
@@ -419,8 +444,8 @@ class DefaultClusterSetup(ClusterSetup):
 
     def _remove_from_sge(self, node):
         master = self._master
-        master.ssh.execute(
-            'source /etc/profile && qconf -shgrp @allhosts > /tmp/allhosts')
+        master.ssh.execute('qconf -shgrp @allhosts > /tmp/allhosts',
+                           source_profile=True)
         hgrp_file = master.ssh.remote_file('/tmp/allhosts', 'r')
         contents = hgrp_file.read().splitlines()
         hgrp_file.close()
@@ -431,10 +456,9 @@ class DefaultClusterSetup(ClusterSetup):
         hgrp_file = master.ssh.remote_file('/tmp/allhosts_new', 'w')
         hgrp_file.writelines('\n'.join(c))
         hgrp_file.close()
-        master.ssh.execute(
-            'source /etc/profile && qconf -Mhgrp /tmp/allhosts_new')
-        master.ssh.execute(
-            'source /etc/profile && qconf -sq all.q > /tmp/allq')
+        master.ssh.execute('qconf -Mhgrp /tmp/allhosts_new',
+                           source_profile=True)
+        master.ssh.execute('qconf -sq all.q > /tmp/allq', source_profile=True)
         allq_file = master.ssh.remote_file('/tmp/allq', 'r')
         contents = allq_file.read()
         allq_file.close()
@@ -458,11 +482,12 @@ class DefaultClusterSetup(ClusterSetup):
             allq[-1] = allq[-1][:-1]
         f.write('\n'.join(allq))
         f.close()
-        master.ssh.execute('source /etc/profile && qconf -Mq /tmp/allq_new')
-        master.ssh.execute(
-            'source /etc/profile && qconf -de %s' % node.alias)
-        master.ssh.execute(
-            'source /etc/profile && qconf -dconf %s' % node.alias)
+        master.ssh.execute('qconf -Mq /tmp/allq_new', source_profile=True)
+        master.ssh.execute('qconf -dconf %s' % node.alias, source_profile=True)
+        master.ssh.execute('qconf -de %s' % node.alias, source_profile=True)
+        node.ssh.execute('pkill -9 sge_execd')
+        nodes = filter(lambda n: n.alias != node.alias, self._nodes)
+        self._create_sge_pe(nodes=nodes)
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
@@ -486,19 +511,22 @@ class DefaultClusterSetup(ClusterSetup):
         uid, gid = user.pw_uid, user.pw_gid
         self._add_user_to_nodes(uid, gid, nodes=[node])
 
+    def _add_sge_submit_host(self, node):
+        mssh = self._master.ssh
+        mssh.execute('qconf -as %s' % node.alias, source_profile=True)
+
+    def _add_sge_administrative_host(self, node):
+        mssh = self._master.ssh
+        mssh.execute('qconf -ah %s' % node.alias, source_profile=True)
+
     def _add_to_sge(self, node):
         # generate /etc/profile.d/sge.sh
-        master = self._master
         sge_profile = node.ssh.remote_file("/etc/profile.d/sge.sh")
         arch = node.ssh.execute("/opt/sge6/util/arch")[0]
         print >> sge_profile, sge.sgeprofile_template % {'arch': arch}
         sge_profile.close()
-        master.ssh.execute('source /etc/profile && qconf -ah %s' % \
-                           node.alias)
-        master.ssh.execute('source /etc/profile && qconf -as %s' % \
-                           node.alias)
-        node.ssh.execute(('cd /opt/sge6 && TERM=rxvt ./inst_sge ' + \
-                          '-x -noremote -auto ./ec2_sge.conf'))
+        node.ssh.execute('cd /opt/sge6 && TERM=rxvt ./inst_sge -x -noremote '
+                         '-auto ./ec2_sge.conf')
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
@@ -514,4 +542,7 @@ class DefaultClusterSetup(ClusterSetup):
         self._setup_passwordless_ssh(nodes=[node])
         if not self._disable_queue:
             log.info("Adding %s to SGE" % node.alias)
+            self._add_sge_administrative_host(node)
+            self._add_sge_submit_host(node)
             self._add_to_sge(node)
+            self._create_sge_pe()

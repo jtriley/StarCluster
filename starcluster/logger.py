@@ -7,6 +7,7 @@ import types
 import logging
 import logging.handlers
 import textwrap
+import StringIO
 
 from starcluster import static
 
@@ -19,8 +20,10 @@ FATAL = logging.FATAL
 
 RAW_FORMAT = "%(message)s\n"
 INFO_FORMAT = " ".join(['>>>', "%(message)s\n"])
-DEBUG_FORMAT = "%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n"
-DEBUG_FORMAT_PID = ("PID: %s " % str(static.PID)) + DEBUG_FORMAT
+_DEBUG_FORMAT = "%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n"
+DEBUG_FORMAT = "%(asctime)s " + _DEBUG_FORMAT
+DEBUG_FORMAT_PID = ' '.join(["%(asctime)s", "PID: %s" % str(static.PID),
+                             _DEBUG_FORMAT])
 DEFAULT_CONSOLE_FORMAT = "%(levelname)s - %(message)s\n"
 ERROR_CONSOLE_FORMAT = " ".join(['!!!', DEFAULT_CONSOLE_FORMAT])
 WARN_CONSOLE_FORMAT = " ".join(['***', DEFAULT_CONSOLE_FORMAT])
@@ -100,6 +103,7 @@ def get_starcluster_logger():
 
 log = get_starcluster_logger()
 console = ConsoleLogger()
+session = logging.StreamHandler(StringIO.StringIO())
 
 
 def configure_sc_logging(use_syslog=False):
@@ -125,6 +129,9 @@ def configure_sc_logging(use_syslog=False):
     log.addHandler(rfh)
     console.setLevel(logging.INFO)
     log.addHandler(console)
+    session.setLevel(logging.DEBUG)
+    session.setFormatter(formatter)
+    log.addHandler(session)
     syslog_device = '/dev/log'
     if use_syslog and os.path.exists(syslog_device):
         log.debug("Logging to %s" % syslog_device)

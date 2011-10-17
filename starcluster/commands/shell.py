@@ -30,7 +30,8 @@ class CmdShell(CmdBase):
         local_ns.update(dict(starcluster=starcluster))
         modules = [(starcluster.__name__ + '.' + i, i) \
                    for i in starcluster.__all__]
-        modules += [('boto', 'boto'), ('paramiko', 'paramiko')]
+        modules += [('boto', 'boto'), ('paramiko', 'paramiko'),
+                    ('workerpool', 'workerpool'), ('jinja2', 'jinja2')]
         for fullname, modname in modules:
             log.info('Importing module %s' % modname)
             try:

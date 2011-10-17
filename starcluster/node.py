@@ -76,6 +76,21 @@ class Node(object):
     def __repr__(self):
         return '<Node: %s (%s)>' % (self.alias, self.id)
 
+    def _get_user_data(self, tries=5):
+        tries = range(tries)
+        last_try = tries[-1]
+        for i in tries:
+            try:
+                user_data = self.ec2.get_instance_user_data(self.id)
+                return user_data
+            except exception.InstanceDoesNotExist:
+                if i == last_try:
+                    log.debug("failed fetching user data")
+                    raise
+                log.debug("InvalidInstanceID.NotFound: "
+                          "retrying fetching user data (tries: %s)" % (i + 1))
+                time.sleep(5)
+
     @property
     def alias(self):
         """
@@ -86,15 +101,22 @@ class Node(object):
         if not self._alias:
             alias = self.tags.get('alias')
             if not alias:
-                user_data = self.ec2.get_instance_user_data(self.id)
+                user_data = self._get_user_data(tries=5)
                 aliases = user_data.split('|')
                 index = self.ami_launch_index
-                alias = aliases[index]
+                try:
+                    alias = aliases[index]
+                except IndexError:
+                    log.debug(
+                        "invalid user_data: %s (index: %d)" % (aliases, index))
+                    alias = None
                 if not alias:
-                    # TODO: raise exception about old version
                     raise exception.BaseException(
                         "instance %s has no alias" % self.id)
                 self.add_tag('alias', alias)
+            name = self.tags.get('Name')
+            if not name:
+                self.add_tag('Name', alias)
             self._alias = alias
         return self._alias
 
@@ -236,6 +258,22 @@ class Node(object):
     def root_device_type(self):
         return self.instance.root_device_type
 
+    def add_user_to_group(self, user, group):
+        """
+        Add user (if exists) to group (if exists)
+        """
+        if not user in self.get_user_map():
+            raise exception.BaseException("user %s does not exist" % user)
+        if group in self.get_group_map():
+            if self.ssh._username != 'root':
+                orig_user = self.ssh._username
+                self.ssh.connect(username='root')
+            self.ssh.execute('gpasswd -a %s %s' % (user, 'utmp'))
+            if self.ssh._username != 'root':
+                self.ssh.connect(username=orig_user)
+        else:
+            raise exception.BaseException("group %s does not exist" % group)
+
     def get_group_map(self, key_by_gid=False):
         """
         Returns dictionary where keys are remote group names and values are
@@ -249,7 +287,6 @@ class Node(object):
         grp_file.close()
         grp_map = {}
         for group in groups:
-            print grp
             name, passwd, gid, mems = group
             gid = int(gid)
             mems = mems.split(',')
@@ -707,6 +744,12 @@ class Node(object):
     def is_spot(self):
         return self.spot_id is not None
 
+    def is_stoppable(self):
+        return self.is_ebs_backed() and not self.is_spot()
+
+    def is_stopped(self):
+        return self.state == "stopped"
+
     def start(self):
         """
         Starts EBS-backed instance and puts it in the 'running' state.
@@ -733,8 +776,11 @@ class Node(object):
         elif not self.is_ebs_backed():
             raise exception.InvalidOperation(
                 "Only EBS-backed instances can be stopped")
-        log.info("Stopping instance: %s (%s)" % (self.alias, self.id))
-        return self.instance.stop()
+        if not self.is_stopped():
+            log.info("Stopping node: %s (%s)" % (self.alias, self.id))
+            return self.instance.stop()
+        else:
+            log.info("Node '%s' is already stopped" % self.alias)
 
     def terminate(self):
         """
@@ -751,7 +797,7 @@ class Node(object):
         instance-store instances and stop EBS-backed instances
         (ie not destroy EBS root dev)
         """
-        if self.is_ebs_backed() and not self.is_spot():
+        if self.is_stoppable():
             self.stop()
         else:
             self.terminate()
@@ -809,13 +855,18 @@ class Node(object):
         ssh client. If the system does not have the ssh command it falls back
         to a pure-python ssh shell.
         """
-        if self.state != 'running':
+        if self.update() != 'running':
+            try:
+                alias = self.alias
+            except exception.BaseException:
+                alias = None
             label = 'instance'
-            if self.alias == "master":
-                label = "master node"
-            elif self.alias:
-                label = "node '%s'" % self.alias
-            raise exception.InstanceNotRunning(self.id, self.state,
+            if alias == "master":
+                label = "master"
+            elif alias:
+                label = "node"
+            instance_id = alias or self.id
+            raise exception.InstanceNotRunning(instance_id, self.state,
                                                label=label)
         user = user or self.user
         if utils.has_required(['ssh']):

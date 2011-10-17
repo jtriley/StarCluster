@@ -1,8 +1,10 @@
 StarCluster
 ===========
-| Homepage: http://web.mit.edu/starcluster
-| Author: Justin Riley (justin.t.riley@gmail.com)
-| Team: Software Tools for Academics and Researchers (http://web.mit.edu/star)
+:StarCluster: Amazon EC2 Cluster Manager
+:Author: Justin Riley <justin.t.riley@gmail.com>
+:Team: Software Tools for Academics and Researchers (http://web.mit.edu/star)
+:Homepage: http://web.mit.edu/starcluster
+:License: LGPL
 
 Description:
 ------------

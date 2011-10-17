@@ -82,7 +82,7 @@ class CmdLoadBalance(ClusterCompleter):
 
     def execute(self, args):
         if not self.cfg.globals.enable_experimental:
-            raise exception.ExperimentalFeature("The loadbalance command")
+            raise exception.ExperimentalFeature("The 'loadbalance' command")
         if len(args) != 1:
             self.parser.error("please specify a <cluster_tag>")
         cluster_tag = args[0]

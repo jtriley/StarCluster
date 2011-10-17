@@ -30,7 +30,7 @@ class CmdTerminate(ClusterCompleter):
     def addopts(self, parser):
         parser.add_option("-c", "--confirm", dest="confirm",
                           action="store_true", default=False,
-                          help="Do not prompt for confirmation, " + \
+                          help="Do not prompt for confirmation, "
                           "just terminate the cluster")
 
     def terminate_cluster(self, cluster_name):
