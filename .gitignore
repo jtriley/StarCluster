@@ -9,4 +9,7 @@ dist
 StarCluster.egg-info
 docs/sphinx/_build
 docs/epydoc/apidocs
+docs/apidocs
+docs/html
+docs/pdf
 src
