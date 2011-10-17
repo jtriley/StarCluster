@@ -42,9 +42,11 @@ Dependencies:
 -------------
 * Amazon AWS Account
 * Python 2.5+
-* Boto 2.0b4
+* Boto 2.0
 * Paramiko 1.7.7.1
 * WorkerPool 0.9.2
+* Jinja2 2.5.5
+* decorator 3.3.1
 
 Getting Started:
 ----------------
