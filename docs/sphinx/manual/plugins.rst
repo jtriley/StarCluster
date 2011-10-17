@@ -1,3 +1,5 @@
+.. _plugin_system:
+
 StarCluster Plugin System
 =========================
 StarCluster has support for user contributed plugins. Plugins allow developers

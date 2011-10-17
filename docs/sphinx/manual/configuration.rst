@@ -311,6 +311,8 @@ myvoldata1 and myvoldata2 from the above example in a *cluster template* called 
 Now any time a cluster is started using the *smallcluster* template, myvoldata1 will be mounted to /home on the master, myvoldata2 will
 be mounted to /scratch on the master, and both /home and /scratch will be NFS shared to the rest of the cluster nodes. 
 
+.. _config_permissions:
+
 Amazon Security Group Permissions
 ---------------------------------
 When starting a cluster each node is added to a common security group. This security group is created by StarCluster and has  
