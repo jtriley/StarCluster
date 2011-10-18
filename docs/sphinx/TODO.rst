@@ -91,3 +91,14 @@ http://code.google.com/p/boto/wiki/BotoConfig
 
 Need to add a *[proxy]* section to the starcluster config that gets passed on
 to the boto connection.
+
+Use PyStun to Restrict Cluster Acccess to User's IP-address
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+StarCluster should support restricting ssh access to the user's current
+ip-address when creating a new cluster. This feature will need to use the
+`pystun`_ project to correctly determine the user's public ip behind firewalls
+and NAT. StarCluster's ssh* commands will also need to be modified to check
+that the user's current ip has been allowed to access the cluster in the case
+that they use StarCluster from multiple machines.
+
+.. _pystun: http://pypi.python.org/pypi/pystun
