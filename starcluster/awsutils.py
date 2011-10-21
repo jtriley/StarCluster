@@ -655,7 +655,11 @@ class EasyEC2(EasyAWS):
         vol.delete()
 
     def list_keypairs(self):
-        max_length = max([len(key.name) for key in self.keypairs])
+        keypairs = self.keypairs
+        if not keypairs:
+            log.info("No keypairs found...")
+            return
+        max_length = max([len(key.name) for key in keypairs])
         templ = "%" + str(max_length) + "s  %s"
         for key in self.keypairs:
             print templ % (key.name, key.fingerprint)
