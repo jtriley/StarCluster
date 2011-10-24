@@ -126,10 +126,12 @@ class EasyEC2(EasyAWS):
         """
         Print name/endpoint for all AWS regions
         """
-        for r in self.regions:
-            region = self.regions.get(r)
-            print 'name: ', region.name
-            print 'endpoint: ', region.endpoint
+        regions = self.regions.items()
+        regions.sort(reverse=True)
+        for region in regions:
+            name, endpoint = region
+            print 'name: ', name
+            print 'endpoint: ', endpoint
             print
 
     @property
