@@ -1302,7 +1302,7 @@ class Cluster(object):
         try:
             self.run_plugins(method_name="on_shutdown", reverse=True)
         except exception.MasterDoesNotExist, e:
-            log.error("Cannot run plugins: %s" % e)
+            log.warn("Cannot run plugins: %s" % e)
         self.detach_volumes()
         for node in nodes:
             node.shutdown()
@@ -1316,7 +1316,7 @@ class Cluster(object):
         try:
             self.run_plugins(method_name="on_shutdown", reverse=True)
         except exception.MasterDoesNotExist, e:
-            log.error("Cannot run plugins: %s" % e)
+            log.warn("Cannot run plugins: %s" % e)
         self.detach_volumes()
         nodes = self.nodes
         for node in nodes:
