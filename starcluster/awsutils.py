@@ -528,7 +528,6 @@ class EasyEC2(EasyAWS):
         dns_name = instance.dns_name or 'N/A'
         private_dns_name = instance.private_dns_name or 'N/A'
         state = instance.state or 'N/A'
-        reason = instance.reason or 'N/A'
         private_ip = instance.private_ip_address or 'N/A'
         public_ip = instance.ip_address or 'N/A'
         zone = instance.placement or 'N/A'
@@ -539,7 +538,10 @@ class EasyEC2(EasyAWS):
         print "id: %s" % id
         print "dns_name: %s" % dns_name
         print "private_dns_name: %s" % private_dns_name
-        print "state: %s (%s)" % (state, reason)
+        if instance.reason:
+            print "state: %s (%s)" % (state, instance.reason)
+        else:
+            print "state: %s" % state
         print "public_ip: %s" % public_ip
         print "private_ip: %s" % private_ip
         print "zone: %s" % zone
