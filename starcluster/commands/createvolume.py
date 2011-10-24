@@ -56,6 +56,10 @@ class CmdCreateVolume(CmdBase):
             choices=static.INSTANCE_TYPES.keys(),
             help="The instance type to use when launching volume " + \
             "host instance")
+        parser.add_option(
+            "-t", "--tag", dest="tags", action="callback", type="string",
+            default={}, callback=self._build_dict,
+            help="One or more tags to apply to the new volume (key=value)")
 
     def cancel_command(self, signum, frame):
         raise exception.CancelledCreateVolume()
@@ -124,7 +128,7 @@ class CmdCreateVolume(CmdBase):
         if host_instance:
             vc._validate_host_instance(host_instance, zone)
         self.catch_ctrl_c()
-        volid = vc.create(size, zone)
+        volid = vc.create(size, zone, tags=self.opts.tags)
         if volid:
             self.log.info(
                 "Your new %sGB volume %s has been created successfully" % \

@@ -233,13 +233,21 @@ class VolumeCreator(cluster.Cluster):
                      host.id)
 
     @print_timing("Creating volume")
-    def create(self, volume_size, volume_zone):
+    def create(self, volume_size, volume_zone, tags=None):
         try:
             self.validate(volume_size, volume_zone, self._device)
             instance = self._request_instance(volume_zone)
             self._validate_required_progs([self._mkfs_cmd.split()[0]])
             self._determine_device()
             vol = self._create_volume(volume_size, volume_zone)
+            if tags:
+                for tag in tags:
+                    tagval = tags.get(tag)
+                    tagmsg = "Adding volume tag: %s" % tag
+                    if tagval:
+                        tagmsg += "=%s" % tagval
+                    log.info(tagmsg)
+                    vol.add_tag(tag, tagval)
             self._attach_volume(self._volume, instance.id, self._device)
             self._format_volume()
             self.shutdown()
