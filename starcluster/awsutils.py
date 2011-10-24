@@ -520,45 +520,43 @@ class EasyEC2(EasyAWS):
         if not spots:
             log.info("No spot instance requests found...")
 
+    def show_instance(self, instance):
+        id = instance.id or 'N/A'
+        groups = ', '.join([g.name for g in instance.groups])
+        dns_name = instance.dns_name or 'N/A'
+        private_dns_name = instance.private_dns_name or 'N/A'
+        state = instance.state or 'N/A'
+        reason = instance.reason or 'N/A'
+        private_ip = instance.private_ip_address or 'N/A'
+        public_ip = instance.ip_address or 'N/A'
+        zone = instance.placement or 'N/A'
+        ami = instance.image_id or 'N/A'
+        instance_type = instance.instance_type or 'N/A'
+        keypair = instance.key_name or 'N/A'
+        uptime = utils.get_elapsed_time(instance.launch_time) or 'N/A'
+        print "id: %s" % id
+        print "dns_name: %s" % dns_name
+        print "private_dns_name: %s" % private_dns_name
+        print "state: %s (%s)" % (state, reason)
+        print "public_ip: %s" % public_ip
+        print "private_ip: %s" % private_ip
+        print "zone: %s" % zone
+        print "ami: %s" % ami
+        print "type: %s" % instance_type
+        print "groups: %s" % groups
+        print "keypair: %s" % keypair
+        print "uptime: %s" % uptime
+        print
+
     def list_all_instances(self, show_terminated=False):
-        reservations = self.conn.get_all_instances()
-        if not reservations:
+        insts = self.get_all_instances()
+        if not insts:
             log.info("No instances found")
             return
-        instances = []
-        for res in reservations:
-            groups = ', '.join([g.id for g in res.groups]) or 'N/A'
-            for instance in res.instances:
-                if instance.state in ['shutting-down', 'terminated'] \
-                   and not show_terminated:
-                    continue
-                id = instance.id or 'N/A'
-                instances.append(id)
-                dns_name = instance.dns_name or 'N/A'
-                private_dns_name = instance.private_dns_name or 'N/A'
-                state = instance.state or 'N/A'
-                private_ip = instance.private_ip_address or 'N/A'
-                public_ip = instance.ip_address or 'N/A'
-                zone = instance.placement or 'N/A'
-                ami = instance.image_id or 'N/A'
-                instance_type = instance.instance_type or 'N/A'
-                keypair = instance.key_name or 'N/A'
-                uptime = utils.get_elapsed_time(instance.launch_time) or 'N/A'
-                print "id: %s" % id
-                print "dns_name: %s" % dns_name
-                print "private_dns_name: %s" % private_dns_name
-                print "state: %s" % state
-                print "public_ip: %s" % public_ip
-                print "private_ip: %s" % private_ip
-                print "zone: %s" % zone
-                print "ami: %s" % ami
-                print "type: %s" % instance_type
-                print "groups: %s" % groups
-                print "keypair: %s" % keypair
-                print "uptime: %s" % uptime
-                print
-        if not instances:
-            log.info("No instances found")
+        tstates = ['shutting-down', 'terminated']
+        for instance in insts:
+            if not instance.state in tstates or show_terminated:
+                self.show_instance(instance)
 
     def list_images(self, images, sort_key=None, reverse=False):
         def get_key(obj):
