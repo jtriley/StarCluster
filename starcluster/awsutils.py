@@ -1034,7 +1034,7 @@ class EasyEC2(EasyAWS):
 
     def list_volumes(self, volume_id=None, status=None,
                      attach_status=None, size=None, zone=None,
-                     snapshot_id=None, show_deleted=False):
+                     snapshot_id=None, show_deleted=False, tags=None):
         """
         Print a list of volumes to the screen
         """
@@ -1055,6 +1055,16 @@ class EasyEC2(EasyAWS):
             filters['availability-zone'] = zone
         if snapshot_id:
             filters['snapshot-id'] = snapshot_id
+        if tags:
+            tagkeys = []
+            for tag in tags:
+                val = tags.get(tag)
+                if val:
+                    filters["tag:%s" % tag] = val
+                elif tag:
+                    tagkeys.append(tag)
+            if tagkeys:
+                filters['tag-key'] = tagkeys
         vols = self.get_volumes(filters=filters)
         vols.sort(key=lambda x: x.create_time)
         if vols:
@@ -1074,6 +1084,15 @@ class EasyEC2(EasyAWS):
                 if vol.create_time:
                     lt = utils.iso_to_localtime_tuple(vol.create_time)
                 print "create_time: %s" % lt
+                tags = []
+                for tag in vol.tags:
+                    val = vol.tags.get(tag)
+                    if val:
+                        tags.append("%s=%s" % (tag, val))
+                    else:
+                        tags.append(tag)
+                if tags:
+                    print "tags: %s" % ', '.join(tags)
                 print
         print 'Total: %s' % len(vols)
 

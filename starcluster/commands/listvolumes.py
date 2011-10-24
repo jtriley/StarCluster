@@ -36,6 +36,10 @@ class CmdListVolumes(CmdBase):
         parser.add_option("-i", "--snapshot-id", dest="snapshot_id",
                           action="store", type="string", default=None,
                           help="show all volumes created from snapshot")
+        parser.add_option("-t", "--tag", dest="tags", type="string",
+                          default={}, action="callback",
+                          callback=self._build_dict,
+                          help="show all volumes with a given tag")
 
     def execute(self, args):
         self.ec2.list_volumes(**self.options_dict)
