@@ -162,3 +162,24 @@ class CmdBase(optcomplete.CmdComplete):
         if value <= 0:
             parser.error("option %s must be a positive integer" % opt_str)
         setattr(parser.values, option.dest, value)
+
+    def _build_dict(self, option, opt_str, value, parser):
+        tagdict = getattr(parser.values, option.dest)
+        tags = value.split(',')
+        for tag in tags:
+            tagparts = tag.split('=')
+            key = tagparts[0]
+            if not key:
+                continue
+            value = None
+            if len(tagparts) == 2:
+                value = tagparts[1]
+            tagstore = tagdict.get(key)
+            if isinstance(tagstore, basestring) and value:
+                tagstore = [tagstore, value]
+            elif isinstance(tagstore, list) and value:
+                tagstore.append(value)
+            else:
+                tagstore = value
+            tagdict[key] = tagstore
+        setattr(parser.values, option.dest, tagdict)
