@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import os
 import urllib
+import StringIO
 import ConfigParser
 
 from starcluster import utils
@@ -121,11 +122,16 @@ class StarClusterConfig(object):
                 raise exception.ConfigError(
                     'config %s exists but is not a regular file' % cfg_file)
         else:
-            raise exception.ConfigNotFound(
-                ("config file %s does not exist\n") %
-                cfg_file, cfg_file,
-            )
+            raise exception.ConfigNotFound("config file %s does not exist\n" %
+                                           cfg_file, cfg_file)
         return open(cfg_file)
+
+    def _get_cfg_fp(self, cfg_file=None):
+        cfg = cfg_file or self.cfg_file
+        if utils.is_url(cfg):
+            return self._get_urlfp(cfg)
+        else:
+            return self._get_fp(cfg)
 
     def _get_bool(self, config, section, option):
         try:
@@ -185,14 +191,34 @@ class StarClusterConfig(object):
         """
         Populates self._config with a new ConfigParser instance
         """
-        cfg = self.cfg_file
-        if utils.is_url(cfg):
-            cfg = self._get_urlfp(cfg)
-        else:
-            cfg = self._get_fp(cfg)
+        cfg = self._get_cfg_fp()
         try:
             cp = ConfigParser.ConfigParser()
             cp.readfp(cfg)
+            self._config = cp
+            try:
+                self.globals = self._load_section('global',
+                                                  self.global_settings)
+                includes = self.globals.get('include')
+                if not includes:
+                    return cp
+                mashup = StringIO.StringIO()
+                cfg = self._get_cfg_fp()
+                mashup.write(cfg.read() + '\n')
+                for include in includes:
+                    include = os.path.expanduser(include)
+                    try:
+                        contents = self._get_cfg_fp(include).read()
+                        mashup.write(contents + '\n')
+                    except exception.ConfigNotFound:
+                        raise exception.ConfigError("include %s not found" %
+                                                    include)
+                mashup.seek(0)
+                cp = ConfigParser.ConfigParser()
+                cp.readfp(mashup)
+                self._config = cp
+            except exception.ConfigSectionMissing:
+                pass
             return cp
         except ConfigParser.MissingSectionHeaderError:
             raise exception.ConfigHasNoSections(cfg.name)
@@ -203,7 +229,7 @@ class StarClusterConfig(object):
         """
         Reloads the configuration file
         """
-        self._config = self.__load_config()
+        self.__load_config()
         return self.load()
 
     @property

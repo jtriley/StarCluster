@@ -95,6 +95,7 @@ GLOBAL_SETTINGS = {
     'enable_experimental': (bool, False, False, None, None),
     'refresh_interval': (int, False, 30, None, None),
     'web_browser': (str, False, None, None, None),
+    'include': (list, False, [], None, None),
 }
 
 AWS_SETTINGS = {
