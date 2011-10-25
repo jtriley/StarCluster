@@ -185,7 +185,10 @@ def open_browser(url, browser_cmd=None):
     else:
         # use 'default' browser from webbrowser module
         browser = webbrowser.get()
-    log.info("Browsing %s using '%s'..." % (url, browser.name))
+    browser_name = getattr(browser, 'name', None)
+    if not browser_name:
+        browser_name = getattr(browser, '_name', 'UNKNOWN')
+    log.info("Browsing %s using '%s'..." % (url, browser_name))
     return browser.open(url)
 
 
