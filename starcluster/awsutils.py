@@ -1011,22 +1011,24 @@ class EasyEC2(EasyAWS):
             self.wait_for_snapshot(snap, refresh_interval)
         return snap
 
-    def get_snapshots(self, volume_ids=[], filters=None):
+    def get_snapshots(self, volume_ids=[], filters=None, owner='self'):
         """
-        Returns a list of all EBS volume snapshots for this account
+        Returns a list of all EBS volume snapshots
         """
         filters = filters or {}
         if volume_ids:
             filters['volume-id'] = volume_ids
-        return self.conn.get_all_snapshots(owner='self', filters=filters)
+        return self.conn.get_all_snapshots(owner=owner, filters=filters)
 
-    def get_snapshot(self, snapshot_id):
+    def get_snapshot(self, snapshot_id, owner='self'):
         """
-        Returns EBS snapshot object representing snapshot_id.
+        Returns EBS snapshot object for snapshot_id.
+
         Raises exception.SnapshotDoesNotExist if unsuccessful
         """
         try:
-            return self.get_snapshots(filters={'snapshot-id': snapshot_id})[0]
+            return self.get_snapshots(filters={'snapshot-id': snapshot_id},
+                                      owner=owner)[0]
         except boto.exception.EC2ResponseError, e:
             if e.error_code == "InvalidSnapshot.NotFound":
                 raise exception.SnapshotDoesNotExist(snapshot_id)
