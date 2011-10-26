@@ -9,6 +9,7 @@ import sys
 import shlex
 import socket
 import optparse
+import platform
 import traceback
 
 from boto.exception import BotoServerError, EC2ResponseError, S3ResponseError
@@ -130,9 +131,34 @@ class StarClusterCLI(object):
         gparser.disable_interspersed_args()
         return gparser
 
+    def __write_module_version(self, modname, fp):
+        """
+        Write module version information to a file
+        """
+        try:
+            mod = __import__(modname)
+            fp.write("%s: %s\n" % (mod.__name__, mod.__version__))
+        except Exception, e:
+            print "error getting version for '%s' module: %s" % (modname, e)
+
     def bug_found(self):
+        """
+        Builds a crash-report when StarCluster encounters an unhandled
+        exception. Report includes system info, python version, dependency
+        versions, and a full debug log and stack-trace of the crash.
+        """
+        dashes = '-' * 10
+        header = dashes + ' %s ' + dashes + '\n'
         crashfile = open(static.CRASH_FILE, 'w')
+        crashfile.write(header % "CRASH DETAILS")
         crashfile.write(session.stream.getvalue())
+        crashfile.write(header % "SYSTEM INFO")
+        crashfile.write("StarCluster: %s\n" % __version__)
+        crashfile.write("Python: %s\n" % sys.version.replace('\n', ' '))
+        crashfile.write("Platform: %s\n" % platform.platform())
+        dependencies = ['boto', 'paramiko', 'Crypto', 'jinja2', 'decorator']
+        for dep in dependencies:
+            self.__write_module_version(dep, crashfile)
         crashfile.close()
         log.error("Oops! Looks like you've found a bug in StarCluster")
         log.error("Crash report written to: %s" % static.CRASH_FILE)
