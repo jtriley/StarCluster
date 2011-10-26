@@ -80,7 +80,6 @@ class StarClusterCLI(object):
             log.error(e.msg)
             sys.exit(1)
         gopts.CONFIG = cfg
-
         # Parse command arguments and invoke command.
         subcmdname, subargs = args[0], args[1:]
         try:
@@ -120,11 +119,11 @@ class StarClusterCLI(object):
                     self.subcmds_map[n] = sc
         gparser.add_option("-d", "--debug", dest="DEBUG",
                            action="store_true", default=False,
-                           help="print debug messages " + \
-                           "(useful for diagnosing problems)")
+                           help="print debug messages (useful for "
+                           "diagnosing problems)")
         gparser.add_option("-c", "--config", dest="CONFIG", action="store",
                            metavar="FILE",
-                           help="use alternate config file (default: %s)" % \
+                           help="use alternate config file (default: %s)" %
                            static.STARCLUSTER_CFG_FILE)
         gparser.add_option("-r", "--region", dest="REGION", action="store",
                            help="specify a region to use (default: us-east-1)")

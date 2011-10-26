@@ -70,8 +70,7 @@ class CmdStart(ClusterCompleter):
                           "instance when a spot cluster is requested.")
         opt = parser.add_option("-c", "--cluster-template", action="store",
                                 dest="cluster_template", choices=templates,
-                                default=None,
-                                help="cluster template to use " + \
+                                default=None, help="cluster template to use "
                                 "from the config file")
         if optcomplete:
             opt.completer = optcomplete.ListCompleter(opt.choices)

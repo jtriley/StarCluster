@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import sys
 
+import starcluster
 from starcluster import utils
 from starcluster.logger import log
 
@@ -25,11 +26,10 @@ class CmdShell(CmdBase):
     names = ['shell', 'sh']
 
     def execute(self, args):
-        local_ns = dict(cfg=self.cfg, ec2=self.ec2, s3=self.s3, cm=self.cm)
-        import starcluster
-        local_ns.update(dict(starcluster=starcluster))
-        modules = [(starcluster.__name__ + '.' + i, i) \
-                   for i in starcluster.__all__]
+        local_ns = dict(cfg=self.cfg, ec2=self.ec2, s3=self.s3, cm=self.cm,
+                        starcluster=starcluster)
+        modules = [(starcluster.__name__ + '.' + module, module) \
+                   for module in starcluster.__all__]
         modules += [('boto', 'boto'), ('paramiko', 'paramiko'),
                     ('workerpool', 'workerpool'), ('jinja2', 'jinja2')]
         for fullname, modname in modules:
