@@ -11,9 +11,12 @@ try:
     from setuptools import setup, find_packages
     extra = dict(test_suite="starcluster.tests",
                  tests_require="nose",
+                 # pycrypto should eventually be removed from install_requires
+                 # once installing 2.4+ via easy_install/pypi is fixed (see
+                 # https://bugs.launchpad.net/pycrypto/+bug/881130)
                  install_requires=["paramiko==1.7.7.1", "boto==2.0",
                                    "workerpool==0.9.2", "Jinja2==2.5.5",
-                                   "decorator==3.3.1"],
+                                   "decorator==3.3.1", "pycrypto==2.3"],
                  include_package_data=True,
                  zip_safe=False)
 except ImportError:
