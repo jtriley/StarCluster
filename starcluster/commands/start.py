@@ -2,7 +2,6 @@
 
 import time
 
-from starcluster import config
 from starcluster import static
 from starcluster import exception
 from starcluster import optcomplete
@@ -38,8 +37,9 @@ class CmdStart(ClusterCompleter):
     tag = None
 
     def addopts(self, parser):
-        cfg = config.StarClusterConfig().load()
-        templates = cfg.get_cluster_names().keys()
+        templates = []
+        if self.cfg:
+            templates = self.cfg.get_cluster_names().keys()
         parser.add_option("-x", "--no-create", dest="no_create",
                           action="store_true", default=False,
                           help="do not launch new EC2 instances when " + \
@@ -73,6 +73,8 @@ class CmdStart(ClusterCompleter):
                                 default=None,
                                 help="cluster template to use " + \
                                 "from the config file")
+        if optcomplete:
+            opt.completer = optcomplete.ListCompleter(opt.choices)
         parser.add_option("-r", "--refresh-interval", dest="refresh_interval",
                           type="int", action="callback", default=None,
                           callback=self._positive_int,
@@ -83,8 +85,6 @@ class CmdStart(ClusterCompleter):
                           help="requests spot instances instead of flat " + \
                           "rate instances. Uses SPOT_BID as max bid for " + \
                           "the request.")
-        if optcomplete:
-            opt.completer = optcomplete.ListCompleter(opt.choices)
         parser.add_option("-d", "--description", dest="cluster_description",
                           action="store", type="string",
                           default="Cluster requested at %s" % \
