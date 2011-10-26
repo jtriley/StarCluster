@@ -6,6 +6,7 @@ starcluster [global-opts] action [action-opts] [<action-args> ...]
 """
 import os
 import sys
+import shlex
 import socket
 import optparse
 import traceback
@@ -32,17 +33,23 @@ class StarClusterCLI(object):
     """
     StarCluster Command Line Interface
     """
+    def __init__(self):
+        self._gparser = None
+        self.subcmds_map = {}
 
-    gparser = None
-    subcmds_map = {}
+    @property
+    def gparser(self):
+        if not self._gparser:
+            self._gparser = self.create_global_parser()
+        return self._gparser
 
-    def get_description(self):
-        return __description__.replace('\n', '', 1)
+    def print_header(self):
+        print __description__.replace('\n', '', 1)
 
-    def parse_subcommands(self, gparser, subcmds):
+    def parse_subcommands(self, gparser=None):
         """
-        Parse given global arguments, find subcommand from given list of
-        subcommand objects, parse local arguments and return a tuple of
+        Parse global arguments, find subcommand from list of subcommand
+        objects, parse local subcommand arguments and return a tuple of
         global options, selected command object, command options, and
         command arguments.
 
@@ -51,31 +58,12 @@ class StarClusterCLI(object):
         respectively, you don't need to call execute with those but you could
         if you wanted to.
         """
-        print self.get_description()
-
-        # Build map of name -> command and docstring.
-        cmds_header = 'Available Commands:'
-        gparser.usage += '\n\n%s\n' % cmds_header
-        gparser.usage += '%s\n' % ('-' * len(cmds_header))
-        gparser.usage += "NOTE: Pass --help to any command for a list of its "
-        gparser.usage += 'options and detailed usage information\n\n'
-        for sc in subcmds:
-            helptxt = sc.__doc__.splitlines()[3].strip()
-            gparser.usage += '- %s: %s\n' % (', '.join(sc.names),
-                                           helptxt)
-            for n in sc.names:
-                assert n not in self.subcmds_map
-                self.subcmds_map[n] = sc
-
-        # Declare and parse global options.
-        gparser.disable_interspersed_args()
-
+        gparser = gparser or self.gparser
+        # parse global options.
         gopts, args = gparser.parse_args()
         if not args:
             gparser.print_help()
             raise SystemExit("\nError: you must specify an action.")
-        subcmdname, subargs = args[0], args[1:]
-
         # set debug level if specified
         if gopts.DEBUG:
             console.setLevel(logger.DEBUG)
@@ -93,21 +81,42 @@ class StarClusterCLI(object):
         gopts.CONFIG = cfg
 
         # Parse command arguments and invoke command.
+        subcmdname, subargs = args[0], args[1:]
         try:
             sc = self.subcmds_map[subcmdname]
             lparser = optparse.OptionParser(sc.__doc__.strip())
-            sc.addopts(lparser)
-            sc.parser = lparser
-            sc.gparser = self.gparser
-            sc.subcmds_map = self.subcmds_map
             sc.gopts = gopts
+            sc.parser = lparser
+            sc.gparser = gparser
+            sc.subcmds_map = self.subcmds_map
+            sc.addopts(lparser)
             sc.opts, subsubargs = lparser.parse_args(subargs)
         except KeyError:
             raise SystemExit("Error: invalid command '%s'" % subcmdname)
         return gopts, sc, sc.opts, subsubargs
 
-    def create_global_parser(self):
-        gparser = optparse.OptionParser(__doc__.strip(), version=__version__)
+    def create_global_parser(self, subcmds=None, no_usage=False,
+                             add_help=True):
+        if no_usage:
+            gparser = optparse.OptionParser(usage=optparse.SUPPRESS_USAGE,
+                                            add_help_option=add_help)
+        else:
+            gparser = optparse.OptionParser(__doc__.strip(),
+                                            version=__version__,
+                                            add_help_option=add_help)
+            # Build map of name -> command and docstring.
+            cmds_header = 'Available Commands:'
+            gparser.usage += '\n\n%s\n' % cmds_header
+            gparser.usage += '%s\n' % ('-' * len(cmds_header))
+            gparser.usage += "NOTE: Pass --help to any command for a list of "
+            gparser.usage += 'its options and detailed usage information\n\n'
+            subcmds = subcmds or commands.all_cmds
+            for sc in subcmds:
+                helptxt = sc.__doc__.splitlines()[3].strip()
+                gparser.usage += '- %s: %s\n' % (', '.join(sc.names), helptxt)
+                for n in sc.names:
+                    assert n not in self.subcmds_map
+                    self.subcmds_map[n] = sc
         gparser.add_option("-d", "--debug", dest="DEBUG",
                            action="store_true", default=False,
                            help="print debug messages " + \
@@ -118,6 +127,7 @@ class StarClusterCLI(object):
                            static.STARCLUSTER_CFG_FILE)
         gparser.add_option("-r", "--region", dest="REGION", action="store",
                            help="specify a region to use (default: us-east-1)")
+        gparser.disable_interspersed_args()
         return gparser
 
     def bug_found(self):
@@ -130,29 +140,89 @@ class StarClusterCLI(object):
         log.error("and submit it to starcluster@mit.edu")
         sys.exit(1)
 
-    def main(self):
-        # Create global options parser.
-        self.gparser = gparser = self.create_global_parser()
-        # Declare subcommands.
-        subcmds = commands.all_cmds
-        # subcommand completions
-        scmap = {}
-        for sc in subcmds:
-            for n in sc.names:
-                scmap[n] = sc
+    def get_global_opts(self):
+        """
+        Parse and return global options. This method will silently return None
+        if any errors are encountered during parsing.
+        """
+        gparser = self.create_global_parser(no_usage=True, add_help=False)
+        try:
+            sys.stdout = open(os.devnull, 'w')
+            sys.stderr = open(os.devnull, 'w')
+            gopts, _ = gparser.parse_args()
+            return gopts
+        except SystemExit:
+            pass
+        finally:
+            sys.stdout = sys.__stdout__
+            sys.stderr = sys.__stderr__
 
-        if optcomplete:
+    def is_completion_active(self):
+        return 'OPTPARSE_AUTO_COMPLETE' in os.environ
+
+    def _init_completion(self):
+        """
+        Restore original sys.argv from COMP_LINE in the case that starcluster
+        is being called by Bash/ZSH for completion options. Bash/ZSH will
+        simply call 'starcluster' with COMP_LINE environment variable set to
+        the current (partial) argv for completion.
+
+        StarCluster's Bash/ZSH completion code needs to read the global config
+        option in case an alternate config is specified at the command line
+        when completing options. StarCluster's comletion code uses the config
+        to generate completion options. Setting sys.argv to $COMP_LINE in this
+        case allows the global option parser to be used to extract the global
+        -c option (if specified) and load the proper config in the completion
+        code.
+        """
+        if 'COMP_LINE' in os.environ:
+            newargv = shlex.split(os.environ.get('COMP_LINE'))
+            for i, arg in enumerate(newargv):
+                arg = os.path.expanduser(arg)
+                newargv[i] = os.path.expandvars(arg)
+            sys.argv = newargv
+
+    def handle_completion(self):
+        if self.is_completion_active():
+            gparser = self.create_global_parser(no_usage=True, add_help=False)
+            # set sys.path to COMP_LINE if it exists
+            self._init_completion()
+            # fetch the global options
+            gopts = self.get_global_opts()
+            # try to load StarClusterConfig into global options
+            if gopts:
+                try:
+                    cfg = config.StarClusterConfig(gopts.CONFIG)
+                    cfg.load()
+                except exception.ConfigError:
+                    cfg = None
+                gopts.CONFIG = cfg
+            scmap = {}
+            for sc in commands.all_cmds:
+                sc.gopts = gopts
+                for n in sc.names:
+                    scmap[n] = sc
             listcter = optcomplete.ListCompleter(scmap.keys())
             subcter = optcomplete.NoneCompleter()
-            optcomplete.autocomplete(
-                gparser, listcter, None, subcter, subcommands=scmap)
-        elif 'COMP_LINE' in os.environ:
-            return -1
+            optcomplete.autocomplete(gparser, listcter, None, subcter,
+                                     subcommands=scmap)
+            sys.exit(1)
 
-        gopts, sc, opts, args = self.parse_subcommands(gparser, subcmds)
+    def main(self):
+        """
+        StarCluster main
+        """
+        # Handle Bash/ZSH completion if necessary
+        self.handle_completion()
+        # Show StarCluster header
+        self.print_header()
+        # Parse subcommand options and args
+        gopts, sc, opts, args = self.parse_subcommands()
         if args and args[0] == 'help':
+            # make 'help' subcommand act like --help option
             sc.parser.print_help()
             sys.exit(0)
+        # run the subcommand and handle exceptions
         try:
             sc.execute(args)
         except (EC2ResponseError, S3ResponseError, BotoServerError), e:
