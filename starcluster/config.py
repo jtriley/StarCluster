@@ -116,8 +116,6 @@ class StarClusterConfig(object):
                 "error loading config from url %s\n%s" % (url, e))
 
     def _get_fp(self, cfg_file):
-        if not os.path.isdir(static.STARCLUSTER_CFG_DIR):
-            os.makedirs(static.STARCLUSTER_CFG_DIR)
         log.debug("Loading file: %s" % cfg_file)
         if os.path.exists(cfg_file):
             if not os.path.isfile(cfg_file):
