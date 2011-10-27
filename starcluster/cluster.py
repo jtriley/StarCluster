@@ -666,7 +666,9 @@ class Cluster(object):
     def get_nodes_or_raise(self):
         nodes = self.nodes
         if not nodes:
-            raise exception.NoClusterNodesFound
+            filters = {'group-name': self._security_group}
+            terminated_nodes = self.ec2.get_all_instances(filters=filters)
+            raise exception.NoClusterNodesFound(terminated_nodes)
         return nodes
 
     def get_node_by_dns_name(self, dns_name):
