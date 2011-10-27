@@ -6,6 +6,11 @@ import os
 import getpass
 import tempfile
 
+
+def __makedirs(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+
 VERSION = "0.9999"
 PID = os.getpid()
 TMP_DIR = tempfile.gettempdir()
@@ -19,9 +24,12 @@ except:
 SSH_TEMPLATE = 'ssh -i %s %s@%s'
 
 STARCLUSTER_CFG_DIR = os.path.join(os.path.expanduser('~'), '.starcluster')
+__makedirs(STARCLUSTER_CFG_DIR)
 STARCLUSTER_CFG_FILE = os.path.join(STARCLUSTER_CFG_DIR, 'config')
 STARCLUSTER_PLUGIN_DIR = os.path.join(STARCLUSTER_CFG_DIR, 'plugins')
+__makedirs(STARCLUSTER_PLUGIN_DIR)
 STARCLUSTER_LOG_DIR = os.path.join(STARCLUSTER_CFG_DIR, 'logs')
+__makedirs(STARCLUSTER_LOG_DIR)
 STARCLUSTER_RECEIPT_DIR = "/var/run/starcluster"
 STARCLUSTER_RECEIPT_FILE = os.path.join(STARCLUSTER_RECEIPT_DIR, "receipt.pkl")
 STARCLUSTER_OWNER_ID = 342652561657
