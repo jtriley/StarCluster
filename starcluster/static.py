@@ -3,13 +3,29 @@
 Module for storing static data structures
 """
 import os
+import sys
 import getpass
 import tempfile
 
 
-def __makedirs(path):
+def __makedirs(path, exit_on_failure=False):
     if not os.path.exists(path):
-        os.makedirs(path)
+        try:
+            os.makedirs(path)
+        except OSError:
+            if exit_on_failure:
+                sys.stderr.write("!!! ERROR - %s *must* be a directory\n" %
+                                 path)
+    elif not os.path.isdir(path) and exit_on_failure:
+        sys.stderr.write("!!! ERROR - %s *must* be a directory\n" % path)
+        sys.exit(1)
+
+
+def create_sc_config_dirs():
+    __makedirs(STARCLUSTER_CFG_DIR, exit_on_failure=True)
+    __makedirs(STARCLUSTER_PLUGIN_DIR)
+    __makedirs(STARCLUSTER_LOG_DIR)
+
 
 VERSION = "0.9999"
 PID = os.getpid()
@@ -24,12 +40,9 @@ except:
 SSH_TEMPLATE = 'ssh -i %s %s@%s'
 
 STARCLUSTER_CFG_DIR = os.path.join(os.path.expanduser('~'), '.starcluster')
-__makedirs(STARCLUSTER_CFG_DIR)
 STARCLUSTER_CFG_FILE = os.path.join(STARCLUSTER_CFG_DIR, 'config')
 STARCLUSTER_PLUGIN_DIR = os.path.join(STARCLUSTER_CFG_DIR, 'plugins')
-__makedirs(STARCLUSTER_PLUGIN_DIR)
 STARCLUSTER_LOG_DIR = os.path.join(STARCLUSTER_CFG_DIR, 'logs')
-__makedirs(STARCLUSTER_LOG_DIR)
 STARCLUSTER_RECEIPT_DIR = "/var/run/starcluster"
 STARCLUSTER_RECEIPT_FILE = os.path.join(STARCLUSTER_RECEIPT_DIR, "receipt.pkl")
 STARCLUSTER_OWNER_ID = 342652561657
