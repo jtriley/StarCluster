@@ -233,7 +233,7 @@ class VolumeCreator(cluster.Cluster):
                      host.id)
 
     @print_timing("Creating volume")
-    def create(self, volume_size, volume_zone, tags=None):
+    def create(self, volume_size, volume_zone, name=None, tags=None):
         try:
             self.validate(volume_size, volume_zone, self._device)
             instance = self._request_instance(volume_zone)
@@ -248,12 +248,17 @@ class VolumeCreator(cluster.Cluster):
                         tagmsg += "=%s" % tagval
                     log.info(tagmsg)
                     vol.add_tag(tag, tagval)
+            if name:
+                vol.add_tag("Name", name)
             self._attach_volume(self._volume, instance.id, self._device)
             self._format_volume()
             self.shutdown()
             self._warn_about_volume_hosts()
-            return vol.id
+            self.log.info("Your new %sGB volume %s has been created "
+                          "successfully" % (volume_size, vol.id))
+            return vol
         except Exception:
+            self.log.error("failed to create new volume")
             if self._volume:
                 log.error(
                     "Error occured. Detaching, and deleting volume: %s" % \
