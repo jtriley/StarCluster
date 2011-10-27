@@ -286,8 +286,25 @@ class StarClusterCLI(object):
             self.bug_found()
 
 
+def warn_debug_file_moved():
+    old_file = os.path.join(static.TMP_DIR, 'starcluster-debug-%s.log' %
+                            static.CURRENT_USER)
+    if os.path.exists(old_file):
+        stars = '*' * 50
+        log.warn(stars)
+        log.warn("The default log file location is now:")
+        log.warn("")
+        log.warn(static.DEBUG_FILE)
+        log.warn("")
+        log.warn("Please delete or move the old log file located at:")
+        log.warn("")
+        log.warn(old_file)
+        log.warn(stars)
+
+
 def main():
     logger.configure_sc_logging()
+    warn_debug_file_moved()
     StarClusterCLI().main()
 
 if __name__ == '__main__':
