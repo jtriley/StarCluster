@@ -1036,9 +1036,9 @@ class EasyEC2(EasyAWS):
         except IndexError:
             raise exception.SnapshotDoesNotExist(snapshot_id)
 
-    def list_volumes(self, volume_id=None, status=None,
-                     attach_status=None, size=None, zone=None,
-                     snapshot_id=None, show_deleted=False, tags=None):
+    def list_volumes(self, volume_id=None, status=None, attach_status=None,
+                     size=None, zone=None, snapshot_id=None,
+                     show_deleted=False, tags=None, name=None):
         """
         Print a list of volumes to the screen
         """
@@ -1069,6 +1069,8 @@ class EasyEC2(EasyAWS):
                     tagkeys.append(tag)
             if tagkeys:
                 filters['tag-key'] = tagkeys
+        if name:
+            filters['tag:Name'] = name
         vols = self.get_volumes(filters=filters)
         vols.sort(key=lambda x: x.create_time)
         if vols:

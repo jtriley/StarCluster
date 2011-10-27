@@ -14,6 +14,9 @@ class CmdListVolumes(CmdBase):
     names = ['listvolumes', 'lv']
 
     def addopts(self, parser):
+        parser.add_option("-n", "--name", dest="name", type="string",
+                          default=None, action="store",
+                          help="show all volumes with a given 'Name' tag")
         parser.add_option("-d", "--show-deleted", dest="show_deleted",
                           action="store_true", default=False,
                           help="show volumes that are being deleted")
