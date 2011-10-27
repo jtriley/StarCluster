@@ -21,14 +21,15 @@ SSH_TEMPLATE = 'ssh -i %s %s@%s'
 STARCLUSTER_CFG_DIR = os.path.join(os.path.expanduser('~'), '.starcluster')
 STARCLUSTER_CFG_FILE = os.path.join(STARCLUSTER_CFG_DIR, 'config')
 STARCLUSTER_PLUGIN_DIR = os.path.join(STARCLUSTER_CFG_DIR, 'plugins')
+STARCLUSTER_LOG_DIR = os.path.join(STARCLUSTER_CFG_DIR, 'logs')
 STARCLUSTER_RECEIPT_DIR = "/var/run/starcluster"
 STARCLUSTER_RECEIPT_FILE = os.path.join(STARCLUSTER_RECEIPT_DIR, "receipt.pkl")
 STARCLUSTER_OWNER_ID = 342652561657
 
-DEBUG_FILE = os.path.join(STARCLUSTER_CFG_DIR, 'debug.log')
-SSH_DEBUG_FILE = os.path.join(STARCLUSTER_CFG_DIR, 'ssh-debug.log')
-AWS_DEBUG_FILE = os.path.join(STARCLUSTER_CFG_DIR, 'aws-debug.log')
-CRASH_FILE = os.path.join(STARCLUSTER_CFG_DIR, 'crash-report-%d.txt' % PID)
+DEBUG_FILE = os.path.join(STARCLUSTER_LOG_DIR, 'debug.log')
+SSH_DEBUG_FILE = os.path.join(STARCLUSTER_LOG_DIR, 'ssh-debug.log')
+AWS_DEBUG_FILE = os.path.join(STARCLUSTER_LOG_DIR, 'aws-debug.log')
+CRASH_FILE = os.path.join(STARCLUSTER_LOG_DIR, 'crash-report-%d.txt' % PID)
 
 # StarCluster BASE AMIs (i386/x86_64)
 BASE_AMI_32 = "ami-8cf913e5"

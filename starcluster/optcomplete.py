@@ -97,7 +97,9 @@ from pprint import pformat
 
 from optparse import OptionParser
 
-debugfn = '/tmp/completion-debug.log'  # for debugging only
+from starcluster import static
+
+debugfn = os.path.join(static.STARCLUSTER_LOG_DIR, 'completion-debug.log')
 
 
 class AllCompleter(object):
