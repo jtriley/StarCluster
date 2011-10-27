@@ -133,7 +133,7 @@ class CmdStart(ClusterCompleter):
         parser.add_option("-K", "--key-location", dest="key_location",
                           action="store", type="string", default=None,
                           metavar="FILE",
-                          help="path to an ssh private key that matches the"
+                          help="path to an ssh private key that matches the "
                           "cluster keypair")
 
     def cancel_command(self, signum, frame):

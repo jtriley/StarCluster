@@ -222,8 +222,8 @@ class ConfigNotFound(ConfigError):
         cfg_file = open(self.cfg, 'w')
         cfg_file.write(config.config_template)
         cfg_file.close()
-        log.info("Config template written to %s. Please customize this file." %
-                 self.cfg)
+        log.info("Config template written to %s" % self.cfg)
+        log.info("Please customize the config template")
 
     def display_options(self):
         print 'Options:'

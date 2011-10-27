@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from starcluster import static
 
-config_template = """
+config_template = """\
 ####################################
 ## StarCluster Configuration File ##
 ####################################
