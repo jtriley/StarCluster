@@ -8,6 +8,12 @@ import getpass
 import tempfile
 
 
+def __expand_all(path):
+    path = os.path.expanduser(path)
+    path = os.path.expandvars(path)
+    return path
+
+
 def __makedirs(path, exit_on_failure=False):
     if not os.path.exists(path):
         try:
@@ -136,7 +142,7 @@ AWS_SETTINGS = {
 }
 
 KEY_SETTINGS = {
-    'key_location': (str, True, None, None, os.path.expanduser),
+    'key_location': (str, True, None, None, __expand_all),
 }
 
 EBS_VOLUME_SETTINGS = {
