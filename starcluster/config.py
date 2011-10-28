@@ -207,6 +207,7 @@ class StarClusterConfig(object):
                 mashup.write(cfg.read() + '\n')
                 for include in includes:
                     include = os.path.expanduser(include)
+                    include = os.path.expandvars(include)
                     try:
                         contents = self._get_cfg_fp(include).read()
                         mashup.write(contents + '\n')
