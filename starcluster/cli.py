@@ -253,7 +253,7 @@ class StarClusterCLI(object):
         except (EC2ResponseError, S3ResponseError, BotoServerError), e:
             log.error("%s: %s" % (e.error_code, e.error_message))
             sys.exit(1)
-        except (socket.gaierror, socket.error), e:
+        except socket.error, e:
             log.error("Unable to connect: %s" % e)
             log.error("Check your internet connection?")
             sys.exit(1)
