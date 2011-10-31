@@ -265,12 +265,7 @@ class Node(object):
         if not user in self.get_user_map():
             raise exception.BaseException("user %s does not exist" % user)
         if group in self.get_group_map():
-            if self.ssh._username != 'root':
-                orig_user = self.ssh._username
-                self.ssh.connect(username='root')
             self.ssh.execute('gpasswd -a %s %s' % (user, 'utmp'))
-            if self.ssh._username != 'root':
-                self.ssh.connect(username=orig_user)
         else:
             raise exception.BaseException("group %s does not exist" % group)
 
