@@ -62,6 +62,7 @@ class SSHClient(object):
         elif not password:
             raise exception.SSHNoCredentialsError()
         self._glob = SSHGlob(self)
+        self.__last_status = None
 
     def load_private_key(self, private_key, private_key_pass=None):
         # Use Private Key.
@@ -439,6 +440,9 @@ class SSHClient(object):
         return self.execute(command, detach=True,
                             source_profile=source_profile)
 
+    def get_last_status(self):
+        return self.__last_status
+
     def get_status(self, command, source_profile=False):
         """
         Execute a remote command and return the exit status
@@ -447,7 +451,8 @@ class SSHClient(object):
         if source_profile:
             command = "source /etc/profile && %s" % command
         channel.exec_command(command)
-        return channel.recv_exit_status()
+        self.__last_status = channel.recv_exit_status()
+        return self.__last_status
 
     def _get_output(self, channel, silent=True, only_printable=False):
         """
@@ -505,6 +510,7 @@ class SSHClient(object):
                 command = "source /etc/profile && %s" % command
             channel.exec_command(command)
             channel.close()
+            self.__last_status = None
             return
         if source_profile:
             command = "source /etc/profile && %s" % command
@@ -512,6 +518,7 @@ class SSHClient(object):
         output = self._get_output(channel, silent=silent,
                                   only_printable=only_printable)
         exit_status = channel.recv_exit_status()
+        self.__last_status = exit_status
         if exit_status != 0:
             msg = "command '%s' failed with status %d" % (command, exit_status)
             if not ignore_exit_status:
