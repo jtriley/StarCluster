@@ -100,6 +100,11 @@ NODE_INSTANCE_TYPE = m1.small
 # group (OPTIONAL).
 #PERMISSIONS = ssh, http
 
+# Uncomment to always create a spot cluster when creating a new cluster from
+# this template. The following example will place a $0.50 bid for each spot
+# request.
+#SPOT_BID = 0.50
+
 ###########################################
 ## Defining Additional Cluster Templates ##
 ###########################################
