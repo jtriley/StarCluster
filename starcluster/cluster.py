@@ -254,6 +254,18 @@ class ClusterManager(managers.Manager):
                                 (vol_id, node_id, dev, status)
             else:
                 print 'EBS volumes: N/A'
+            spot_reqs = cl.spot_requests
+            if spot_reqs:
+                active = len([s for s in spot_reqs if s.state == 'active'])
+                opn = len([s for s in spot_reqs if s.state == 'open'])
+                msg = ''
+                if active != 0:
+                    msg += '%d active' % active
+                if opn != 0:
+                    if msg:
+                        msg += ', '
+                    msg += '%d open' % opn
+                print 'Spot requests: %s' % msg
             if nodes:
                 print 'Cluster nodes:'
                 for node in nodes:
