@@ -578,9 +578,24 @@ class SSHClient(object):
         chan.invoke_shell()
         return chan
 
-    def interactive_shell(self, user='root'):
-        if user and self.transport.get_username() != user:
+    def get_current_user(self):
+        if not self.is_active():
+            return
+        return self.transport.get_username()
+
+    def switch_user(self, user):
+        """
+        Reconnect, if necessary, to host as user
+        """
+        if not self.is_active() or user and self.get_current_user() != user:
             self.connect(username=user)
+        else:
+            user = user or self._username
+            log.debug("already connected as user %s" % user)
+
+    def interactive_shell(self, user='root'):
+        if user:
+            self.switch_user(user)
         try:
             chan = self._invoke_shell()
             log.info('Starting interactive shell...')
