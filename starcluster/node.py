@@ -20,9 +20,16 @@ class NodeManager(managers.Manager):
     """
     Manager class for Node objects
     """
-    def ssh_to_node(self, node_id, user='root'):
+    def ssh_to_node(self, node_id, user='root', command=None):
         node = self.get_node(node_id, user=user)
-        node.shell(user=user)
+        if command:
+            current_user = node.ssh.get_current_user()
+            node.ssh.switch_user(user)
+            node.ssh.execute(command, silent=False)
+            node.ssh.switch_user(current_user)
+            return node.ssh.get_last_status()
+        else:
+            node.shell(user=user)
 
     def get_node(self, node_id, user='root'):
         """Factory for Node class"""

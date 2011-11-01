@@ -98,16 +98,17 @@ class ClusterManager(managers.Manager):
         """
         return self.get_cluster_or_none(tag_name) is not None
 
-    def ssh_to_master(self, cluster_name, user='root'):
+    def ssh_to_master(self, cluster_name, user='root', command=None):
         """
         ssh to master node of cluster_name
 
         user keyword specifies an alternate user to login as
         """
         cluster = self.get_cluster(cluster_name)
-        cluster.ssh_to_master(user=user)
+        return cluster.ssh_to_master(user=user, command=command)
 
-    def ssh_to_cluster_node(self, cluster_name, node_id, user='root'):
+    def ssh_to_cluster_node(self, cluster_name, node_id, user='root',
+                            command=None):
         """
         ssh to a node in cluster_name that has either an id,
         dns name, or alias matching node_id
@@ -115,7 +116,7 @@ class ClusterManager(managers.Manager):
         user keyword specifies an alternate user to login as
         """
         cluster = self.get_cluster(cluster_name)
-        cluster.ssh_to_node(node_id, user=user)
+        return cluster.ssh_to_node(node_id, user=user, command=command)
 
     def _get_cluster_name(self, cluster_name):
         """
@@ -1842,16 +1843,23 @@ class Cluster(object):
                     (keyname, z.region))
         return True
 
-    def ssh_to_master(self, user='root'):
-        self.ssh_to_node('master', user=user)
+    def ssh_to_master(self, user='root', command=None):
+        return self.ssh_to_node('master', user=user, command=command)
 
-    def ssh_to_node(self, alias, user='root'):
+    def ssh_to_node(self, alias, user='root', command=None):
         node = self.get_node_by_alias(alias)
         node = node or self.get_node_by_dns_name(alias)
         node = node or self.get_node_by_id(alias)
         if not node:
             raise exception.InstanceDoesNotExist(alias, label='node')
-        node.shell(user=user)
+        if command:
+            orig_user = node.ssh.get_current_user()
+            node.ssh.switch_user(user)
+            node.ssh.execute(command, silent=False)
+            node.ssh.switch_user(orig_user)
+            return node.ssh.get_last_status()
+        else:
+            node.shell(user=user)
 
 if __name__ == "__main__":
     from starcluster.config import StarClusterConfig
