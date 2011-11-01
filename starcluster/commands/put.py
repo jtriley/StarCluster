@@ -52,7 +52,7 @@ class CmdPut(ClusterCompleter):
         cl = self.cm.get_cluster(ctag)
         node = cl.get_node_by_alias(self.opts.node)
         if self.opts.user:
-            node.ssh.connect(username=self.opts.user)
+            node.ssh.switch_user(self.opts.user)
         if len(lpaths) > 1 and not node.ssh.isdir(rpath):
             raise exception.BaseException("Remote path does not exist: %s" %
                                           rpath)
