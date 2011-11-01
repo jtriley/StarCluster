@@ -595,8 +595,7 @@ class SSHClient(object):
 
     def interactive_shell(self, user='root'):
         orig_user = self.get_current_user()
-        if user:
-            self.switch_user(user)
+        self.switch_user(user)
         try:
             chan = self._invoke_shell()
             log.info('Starting interactive shell...')
@@ -609,8 +608,7 @@ class SSHClient(object):
             import traceback
             print '*** Caught exception: %s: %s' % (e.__class__, e)
             traceback.print_exc()
-        if user and orig_user and user != orig_user:
-            self.switch_user(orig_user)
+        self.switch_user(orig_user)
 
     def _posix_shell(self, chan):
         import select
