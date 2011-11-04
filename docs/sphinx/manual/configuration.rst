@@ -32,7 +32,7 @@ will see the following::
     [2] Write config template to /home/user/.starcluster/config
     [q] Quit
 
-    Plase enter your selection:
+    Please enter your selection:
 
 Selecting 1 will print the example configuration file template to standard
 output.
@@ -69,7 +69,7 @@ the specified path::
     [2] Write config template to /path/to/nonexistent/config
     [q] Quit
 
-    Plase enter your selection:
+    Please enter your selection:
 
 The config can also be loaded from the web, however, if you choose to do so you
 should be *very* careful not to publicly host AWS credentials, keys, and
