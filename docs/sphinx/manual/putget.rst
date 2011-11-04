@@ -10,15 +10,16 @@ specify SSH keypairs or EC2 dns names.
 Enable Experimental Features
 ****************************
 For now the **put** and **get** commands are experimental which means you will
-need to set *enable_experimental* to *True* in the **[global]** section of the
-config in order to use them::
+need to set ``enable_experimental`` to ``True`` in the **[global]** section of
+the config in order to use them::
 
     [global]
     enable_experimental=True
 
-Below are a few examples of how to use the **put** and **get** command
+Below are a few examples of how to use the **put** and **get** commands.
 
 .. note::
+
     All of the examples below automatically handle recursion without requiring
     any extra command line options
 
@@ -34,14 +35,14 @@ command. Recursion will be handled automatically if necessary. By default the
 Copy a file or directory to the master as a normal user
 =======================================================
 By default the **put** command copies files as the root user. To copy files as
-a different cluster user, use the *--user* option::
+a different cluster user, use the ``--user`` (``-u``) option::
 
     $ starcluster put mycluster --user myuser /local/path /remote/path
 
 Copy a file or directory to a cluster node
 ==========================================
 By default the **put** command copies files to the master node. To copy files
-to a different cluster node, use the *--node* option::
+to a different cluster node, use the ``--node`` (``-n``) option::
 
     $ starcluster put mycluster --node node001 /local/path /remote/path
 
@@ -57,13 +58,13 @@ command. Recursion will be handled automatically if necessary. By default the
 Copy a file or directory from the master as a normal user
 =========================================================
 By default the **get** command copies files as the root user. To copy files as
-a different cluster user, use the *--user* option::
+a different cluster user, use the ``--user`` (``-u``) option::
 
     $ starcluster get mycluster --user myuser /remote/path /local/path
 
 Copy a file or directory from a cluster node
 ============================================
 By default the **get** command copies files from the master node. To copy files
-from a different cluster node, use the *--node* option::
+from a different cluster node, use the ``--node`` (``-n``) option::
 
     $ starcluster get mycluster --node node001 /remote/path /local/path
