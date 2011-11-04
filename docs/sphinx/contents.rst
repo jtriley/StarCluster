@@ -17,3 +17,4 @@ Contents:
    hacking
    features
    TODO
+   license
