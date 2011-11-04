@@ -333,14 +333,17 @@ example in a *cluster template* called *smallcluster*:
 .. code-block:: ini
 
     [cluster smallcluster]
-    #...
     volumes = myvoldata1, myvoldata2
-    #...
 
 Now any time a cluster is started using the *smallcluster* template, myvoldata1
 will be mounted to /home on the master, myvoldata2 will be mounted to /scratch
 on the master, and both /home and /scratch will be NFS shared to the rest of
 the cluster nodes.
+
+.. seealso::
+
+   See the :doc:`volumes` documentation for more details on creating,
+   formatting, and configuring new EBS volumes.
 
 .. _config_permissions:
 
