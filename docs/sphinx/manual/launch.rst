@@ -159,8 +159,15 @@ This will reboot all of the instances, wait for them to come back up, and then
 completely reconfigure the cluster from scratch as if you had terminated and
 re-created the cluster.
 
-Shutting Down a Cluster
------------------------
+Terminating a Cluster
+---------------------
+
+.. warning::
+
+    Once a cluster has been terminated, any data that was not saved either to
+    S3 or an external EBS volume will be lost. Make sure you save any data you
+    care to keep to S3 or to an external EBS volume.
+
 Once you've finished using the cluster and wish to stop paying for it, simply
 run the **terminate** command providing the cluster tag name you gave when
 starting::
@@ -177,6 +184,7 @@ This command will prompt for confirmation before destroying the cluster::
     Terminate cluster physicscluster (y/n)? y
     >>> Shutting down i-99999999
     >>> Shutting down i-88888888
+    >>> Waiting for cluster to terminate...
     >>> Removing cluster security group @sc-physicscluster
 
 This will terminate all instances in the cluster tagged "physicscluster" and
