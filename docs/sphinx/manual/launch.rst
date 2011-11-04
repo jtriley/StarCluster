@@ -189,3 +189,55 @@ This command will prompt for confirmation before destroying the cluster::
 
 This will terminate all instances in the cluster tagged "physicscluster" and
 removes the @sc-physicscluster security group.
+
+Stopping an EBS-backed Cluster
+------------------------------
+.. note::
+
+    You can not ``stop`` S3-backed clusters - they can only be terminated.
+
+If you used EBS-backed AMIs when creating a cluster, the cluster can optionally
+be ``stopped`` instead of terminated::
+
+    $ starcluster stop myebscluster
+
+This will shutdown the entire cluster by putting all instances in a ``stopped``
+state rather than terminating them. This allows you to preserve the local root
+volumes backing the nodes which would normally be destroyed if you used the
+**terminate** command. The cluster will continue to show up in the output of
+the **listclusters** command after being stopped, however, you will not be
+charged for ``stopped`` instance hours, only for the EBS volume storage backing
+the nodes::
+
+    $ starcluster listclusters
+    StarCluster - (http://web.mit.edu/starcluster)
+    Software Tools for Academics and Researchers (STAR)
+    Please submit bug reports to starcluster@mit.edu
+
+    -------------------------------------------------
+    myebscluster (security group: @sc-physicscluster)
+    -------------------------------------------------
+    Launch time: 2011-10-22T20:55:20.000Z
+    Uptime: 00:29:42
+    Zone: us-east-1c
+    Keypair: gsg-keypair
+    Cluster nodes:
+         master stopped i-99999999
+        node001 stopped i-88888888
+    Total nodes: 2
+
+A stopped EBS-backed cluster can be ``started`` later on using::
+
+    $ starcluster start -x myebscluster
+
+This will ``start`` all ``stopped`` nodes in the cluster and reconfigure the
+cluster. Once the cluster comes up all data previously stored on the root
+volumes backing the nodes before shutdown will be available.
+
+To *completely* destroy an EBS-backed cluster use the **terminate** command::
+
+    $ starcluster terminate myebscluster
+
+This will completely destroy the cluster nodes including the root volumes
+backing the nodes. As always, before terminating the cluster you should move
+any data you wish to keep either to an external EBS volume or to S3.
