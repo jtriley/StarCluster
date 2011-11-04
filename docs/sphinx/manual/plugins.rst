@@ -154,11 +154,11 @@ This launches you into an IPython_ shell with all of the StarCluster modules
 automatically loaded. You'll also notice that you have the following variables
 available to you automagically:
 
-1. **cm** - manager object for clusters (*starcluster.cluster.ClusterManager*)
+1. **cm** - manager object for clusters (``starcluster.cluster.ClusterManager``)
 2. **cfg** - object for retrieving values from the config file
-   (*starcluster.config.StarClusterConfig*)
-3. **ec2** - object for interacting with EC2 (*starcluster.awsutils.EasyEC2*)
-4. **s3** - object for interacting with S3 (*starcluster.awsutils.EasyS3*)
+   (``starcluster.config.StarClusterConfig``)
+3. **ec2** - object for interacting with EC2 (``starcluster.awsutils.EasyEC2``)
+4. **s3** - object for interacting with S3 (``starcluster.awsutils.EasyS3``)
 
 Plugin Development Workflow
 ---------------------------
@@ -181,14 +181,18 @@ this:
 
 4. Add your plugin to the StarCluster configuration file
 
-5. Launch the development shell and test your plugin on your small test
-   cluster::
+5. Test your plugin on your small test cluster using the **runplugin** command::
+
+    $ starcluster runplugin myplugin testcluster
+
+   Alternatively, you can also run your plugin using the development shell
+   (requires IPython_)::
 
     $ starcluster shell
-    [~]|1> cm.run_plugin('myplugin', 'testcluster')
+    [~]> cm.run_plugin('myplugin', 'testcluster')
 
 6. Fix any coding errors in order to get the plugin to run from start to finish
-   using the run_plugin() method
+   using the **runplugin** command.
 
 7. Login to the master node and verify that the plugin was successful::
 
