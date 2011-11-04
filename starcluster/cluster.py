@@ -1200,6 +1200,7 @@ class Cluster(object):
                 nodes = self.get_nodes_or_raise()
         pbar.finish()
 
+    @print_timing("Waiting for cluster to come up")
     def wait_for_cluster(self, msg="Waiting for cluster to come up..."):
         """
         Wait for cluster to come up and display progress bar. Waits for all
@@ -1411,6 +1412,7 @@ class Cluster(object):
             return
         self._setup_cluster()
 
+    @print_timing("Configuring cluster")
     def _setup_cluster(self):
         """
         This method waits for all nodes to come up and then runs the default
