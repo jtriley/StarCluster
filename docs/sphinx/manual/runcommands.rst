@@ -1,10 +1,11 @@
 ######################################################
 Running Remote Commands on a Cluster from Command Line
 ######################################################
-StarCluster's **sshmaster** and **sshnode** commands now support executing
-remote commands on a cluster node without logging in interactively. To do so
-simply pass the command you wish to run remotely as an additional quoted
-argument to the **sshmaster** and **sshnode** commands.
+StarCluster's **sshmaster**, **sshnode**, and **sshinstance** commands now
+support executing remote commands on a cluster node without logging in
+interactively. To do so simply pass the command you wish to run remotely as an
+additional quoted argument to any of the **sshmaster**, **sshnode**, and
+**sshinstance** commands.
 
 For example, to check which hosts are listed in the master node's
 ``/etc/hosts`` file::
@@ -32,11 +33,11 @@ or to quickly check the files in a given directory on ``node001``::
 
 *Any* command you can run while logged into a cluster interactively can be
 executed remotely from your local command line simply by quoting the remote
-command and passing it as an additional argument to the **sshmaster** and
-**sshnode** commands as in the above examples.
+command and passing it as an additional argument to any of the **sshmaster**,
+**sshnode**, and **sshinstance**  commands as in the above examples.
 
-If the remote command is successful the exit code of either the **sshmaster**
-or **sshnode** command will be 0::
+If the remote command is successful the exit code of either the **sshmaster**,
+**sshnode**, or **sshinstance** command will be 0::
 
     $ starcluster sshmaster mycluster 'uptime'
     StarCluster - (http://web.mit.edu/starcluster)
@@ -61,5 +62,6 @@ exit code::
     $ echo $?
     127
 
-This allows you to use the **sshmaster** and **sshnode** commands in scripts
-and check whether or not the remote command finished successfully.
+This allows you to use the **sshmaster**, **sshnode**, and **sshinstance**
+commands in scripts and check whether or not the remote command finished
+successfully.
