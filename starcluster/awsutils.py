@@ -126,10 +126,12 @@ class EasyEC2(EasyAWS):
         """
         Print name/endpoint for all AWS regions
         """
-        for r in self.regions:
-            region = self.regions.get(r)
-            print 'name: ', region.name
-            print 'endpoint: ', region.endpoint
+        regions = self.regions.items()
+        regions.sort(reverse=True)
+        for region in regions:
+            name, endpoint = region
+            print 'name: ', name
+            print 'endpoint: ', endpoint
             print
 
     @property
@@ -290,6 +292,12 @@ class EasyEC2(EasyAWS):
         """
         Returns placement group with name if it exists otherwise returns None
         """
+        region = self.conn.region.name
+        if not region in static.CLUSTER_REGIONS:
+            region_list = ', '.join(static.CLUSTER_REGIONS)
+            log.debug("region %s not in CLUSTER_REGIONS (%s)" % (region,
+                                                                 region_list))
+            return
         try:
             return self.get_placement_group(name)
         except exception.PlacementGroupDoesNotExist:
@@ -514,45 +522,45 @@ class EasyEC2(EasyAWS):
         if not spots:
             log.info("No spot instance requests found...")
 
+    def show_instance(self, instance):
+        id = instance.id or 'N/A'
+        groups = ', '.join([g.name for g in instance.groups])
+        dns_name = instance.dns_name or 'N/A'
+        private_dns_name = instance.private_dns_name or 'N/A'
+        state = instance.state or 'N/A'
+        private_ip = instance.private_ip_address or 'N/A'
+        public_ip = instance.ip_address or 'N/A'
+        zone = instance.placement or 'N/A'
+        ami = instance.image_id or 'N/A'
+        instance_type = instance.instance_type or 'N/A'
+        keypair = instance.key_name or 'N/A'
+        uptime = utils.get_elapsed_time(instance.launch_time) or 'N/A'
+        print "id: %s" % id
+        print "dns_name: %s" % dns_name
+        print "private_dns_name: %s" % private_dns_name
+        if instance.reason:
+            print "state: %s (%s)" % (state, instance.reason)
+        else:
+            print "state: %s" % state
+        print "public_ip: %s" % public_ip
+        print "private_ip: %s" % private_ip
+        print "zone: %s" % zone
+        print "ami: %s" % ami
+        print "type: %s" % instance_type
+        print "groups: %s" % groups
+        print "keypair: %s" % keypair
+        print "uptime: %s" % uptime
+        print
+
     def list_all_instances(self, show_terminated=False):
-        reservations = self.conn.get_all_instances()
-        if not reservations:
+        insts = self.get_all_instances()
+        if not insts:
             log.info("No instances found")
             return
-        instances = []
-        for res in reservations:
-            groups = ', '.join([g.id for g in res.groups]) or 'N/A'
-            for instance in res.instances:
-                if instance.state in ['shutting-down', 'terminated'] \
-                   and not show_terminated:
-                    continue
-                id = instance.id or 'N/A'
-                instances.append(id)
-                dns_name = instance.dns_name or 'N/A'
-                private_dns_name = instance.private_dns_name or 'N/A'
-                state = instance.state or 'N/A'
-                private_ip = instance.private_ip_address or 'N/A'
-                public_ip = instance.ip_address or 'N/A'
-                zone = instance.placement or 'N/A'
-                ami = instance.image_id or 'N/A'
-                instance_type = instance.instance_type or 'N/A'
-                keypair = instance.key_name or 'N/A'
-                uptime = utils.get_elapsed_time(instance.launch_time) or 'N/A'
-                print "id: %s" % id
-                print "dns_name: %s" % dns_name
-                print "private_dns_name: %s" % private_dns_name
-                print "state: %s" % state
-                print "public_ip: %s" % public_ip
-                print "private_ip: %s" % private_ip
-                print "zone: %s" % zone
-                print "ami: %s" % ami
-                print "type: %s" % instance_type
-                print "groups: %s" % groups
-                print "keypair: %s" % keypair
-                print "uptime: %s" % uptime
-                print
-        if not instances:
-            log.info("No instances found")
+        tstates = ['shutting-down', 'terminated']
+        for instance in insts:
+            if not instance.state in tstates or show_terminated:
+                self.show_instance(instance)
 
     def list_images(self, images, sort_key=None, reverse=False):
         def get_key(obj):
@@ -655,7 +663,11 @@ class EasyEC2(EasyAWS):
         vol.delete()
 
     def list_keypairs(self):
-        max_length = max([len(key.name) for key in self.keypairs])
+        keypairs = self.keypairs
+        if not keypairs:
+            log.info("No keypairs found...")
+            return
+        max_length = max([len(key.name) for key in keypairs])
         templ = "%" + str(max_length) + "s  %s"
         for key in self.keypairs:
             print templ % (key.name, key.fingerprint)
@@ -999,22 +1011,24 @@ class EasyEC2(EasyAWS):
             self.wait_for_snapshot(snap, refresh_interval)
         return snap
 
-    def get_snapshots(self, volume_ids=[], filters=None):
+    def get_snapshots(self, volume_ids=[], filters=None, owner='self'):
         """
-        Returns a list of all EBS volume snapshots for this account
+        Returns a list of all EBS volume snapshots
         """
         filters = filters or {}
         if volume_ids:
             filters['volume-id'] = volume_ids
-        return self.conn.get_all_snapshots(owner='self', filters=filters)
+        return self.conn.get_all_snapshots(owner=owner, filters=filters)
 
-    def get_snapshot(self, snapshot_id):
+    def get_snapshot(self, snapshot_id, owner='self'):
         """
-        Returns EBS snapshot object representing snapshot_id.
+        Returns EBS snapshot object for snapshot_id.
+
         Raises exception.SnapshotDoesNotExist if unsuccessful
         """
         try:
-            return self.get_snapshots(filters={'snapshot-id': snapshot_id})[0]
+            return self.get_snapshots(filters={'snapshot-id': snapshot_id},
+                                      owner=owner)[0]
         except boto.exception.EC2ResponseError, e:
             if e.error_code == "InvalidSnapshot.NotFound":
                 raise exception.SnapshotDoesNotExist(snapshot_id)
@@ -1022,9 +1036,9 @@ class EasyEC2(EasyAWS):
         except IndexError:
             raise exception.SnapshotDoesNotExist(snapshot_id)
 
-    def list_volumes(self, volume_id=None, status=None,
-                     attach_status=None, size=None, zone=None,
-                     snapshot_id=None, show_deleted=False):
+    def list_volumes(self, volume_id=None, status=None, attach_status=None,
+                     size=None, zone=None, snapshot_id=None,
+                     show_deleted=False, tags=None, name=None):
         """
         Print a list of volumes to the screen
         """
@@ -1045,6 +1059,18 @@ class EasyEC2(EasyAWS):
             filters['availability-zone'] = zone
         if snapshot_id:
             filters['snapshot-id'] = snapshot_id
+        if tags:
+            tagkeys = []
+            for tag in tags:
+                val = tags.get(tag)
+                if val:
+                    filters["tag:%s" % tag] = val
+                elif tag:
+                    tagkeys.append(tag)
+            if tagkeys:
+                filters['tag-key'] = tagkeys
+        if name:
+            filters['tag:Name'] = name
         vols = self.get_volumes(filters=filters)
         vols.sort(key=lambda x: x.create_time)
         if vols:
@@ -1064,6 +1090,15 @@ class EasyEC2(EasyAWS):
                 if vol.create_time:
                     lt = utils.iso_to_localtime_tuple(vol.create_time)
                 print "create_time: %s" % lt
+                tags = []
+                for tag in vol.tags:
+                    val = vol.tags.get(tag)
+                    if val:
+                        tags.append("%s=%s" % (tag, val))
+                    else:
+                        tags.append(tag)
+                if tags:
+                    print "tags: %s" % ', '.join(tags)
                 print
         print 'Total: %s' % len(vols)
 

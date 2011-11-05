@@ -20,6 +20,10 @@ class CmdCreateVolume(CmdBase):
 
     def addopts(self, parser):
         parser.add_option(
+            "-n", "--name", dest="name", action="store", type="string",
+            default=None, help="Give the volume a user-friendly name "
+            "(displayed in listvolumes command and in AWS console)")
+        parser.add_option(
             "-b", "--bid", dest="spot_bid", action="store", type="float",
             default=None, help="Requests spot instances instead of flat "
             "rate instances. Uses SPOT_BID as max bid for the request.")
@@ -56,6 +60,10 @@ class CmdCreateVolume(CmdBase):
             choices=static.INSTANCE_TYPES.keys(),
             help="The instance type to use when launching volume " + \
             "host instance")
+        parser.add_option(
+            "-t", "--tag", dest="tags", action="callback", type="string",
+            default={}, callback=self._build_dict,
+            help="One or more tags to apply to the new volume (key=value)")
 
     def cancel_command(self, signum, frame):
         raise exception.CancelledCreateVolume()
@@ -124,10 +132,4 @@ class CmdCreateVolume(CmdBase):
         if host_instance:
             vc._validate_host_instance(host_instance, zone)
         self.catch_ctrl_c()
-        volid = vc.create(size, zone)
-        if volid:
-            self.log.info(
-                "Your new %sGB volume %s has been created successfully" % \
-                (size, volid))
-        else:
-            self.log.error("failed to create new volume")
+        vc.create(size, zone, name=self.opts.name, tags=self.opts.tags)

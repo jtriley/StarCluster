@@ -98,16 +98,17 @@ class ClusterManager(managers.Manager):
         """
         return self.get_cluster_or_none(tag_name) is not None
 
-    def ssh_to_master(self, cluster_name, user='root'):
+    def ssh_to_master(self, cluster_name, user='root', command=None):
         """
         ssh to master node of cluster_name
 
         user keyword specifies an alternate user to login as
         """
         cluster = self.get_cluster(cluster_name)
-        cluster.ssh_to_master(user=user)
+        return cluster.ssh_to_master(user=user, command=command)
 
-    def ssh_to_cluster_node(self, cluster_name, node_id, user='root'):
+    def ssh_to_cluster_node(self, cluster_name, node_id, user='root',
+                            command=None):
         """
         ssh to a node in cluster_name that has either an id,
         dns name, or alias matching node_id
@@ -115,7 +116,7 @@ class ClusterManager(managers.Manager):
         user keyword specifies an alternate user to login as
         """
         cluster = self.get_cluster(cluster_name)
-        cluster.ssh_to_node(node_id, user=user)
+        return cluster.ssh_to_node(node_id, user=user, command=command)
 
     def _get_cluster_name(self, cluster_name):
         """
@@ -254,6 +255,18 @@ class ClusterManager(managers.Manager):
                                 (vol_id, node_id, dev, status)
             else:
                 print 'EBS volumes: N/A'
+            spot_reqs = cl.spot_requests
+            if spot_reqs:
+                active = len([s for s in spot_reqs if s.state == 'active'])
+                opn = len([s for s in spot_reqs if s.state == 'open'])
+                msg = ''
+                if active != 0:
+                    msg += '%d active' % active
+                if opn != 0:
+                    if msg:
+                        msg += ', '
+                    msg += '%d open' % opn
+                print 'Spot requests: %s' % msg
             if nodes:
                 print 'Cluster nodes:'
                 for node in nodes:
@@ -666,7 +679,9 @@ class Cluster(object):
     def get_nodes_or_raise(self):
         nodes = self.nodes
         if not nodes:
-            raise exception.NoClusterNodesFound
+            filters = {'group-name': self._security_group}
+            terminated_nodes = self.ec2.get_all_instances(filters=filters)
+            raise exception.NoClusterNodesFound(terminated_nodes)
         return nodes
 
     def get_node_by_dns_name(self, dns_name):
@@ -1185,6 +1200,7 @@ class Cluster(object):
                 nodes = self.get_nodes_or_raise()
         pbar.finish()
 
+    @print_timing("Waiting for cluster to come up")
     def wait_for_cluster(self, msg="Waiting for cluster to come up..."):
         """
         Wait for cluster to come up and display progress bar. Waits for all
@@ -1271,7 +1287,7 @@ class Cluster(object):
         sleep = 20
         log.info("Sleeping for %d seconds..." % sleep)
         time.sleep(sleep)
-        self._setup_cluster()
+        self.setup_cluster()
 
     def stop_cluster(self, terminate_unstoppable=False):
         """
@@ -1302,7 +1318,7 @@ class Cluster(object):
         try:
             self.run_plugins(method_name="on_shutdown", reverse=True)
         except exception.MasterDoesNotExist, e:
-            log.error("Cannot run plugins: %s" % e)
+            log.warn("Cannot run plugins: %s" % e)
         self.detach_volumes()
         for node in nodes:
             node.shutdown()
@@ -1316,7 +1332,7 @@ class Cluster(object):
         try:
             self.run_plugins(method_name="on_shutdown", reverse=True)
         except exception.MasterDoesNotExist, e:
-            log.error("Cannot run plugins: %s" % e)
+            log.warn("Cannot run plugins: %s" % e)
         self.detach_volumes()
         nodes = self.nodes
         for node in nodes:
@@ -1394,15 +1410,23 @@ class Cluster(object):
                 node.start()
         if create_only:
             return
-        self._setup_cluster()
+        self.setup_cluster()
 
-    def _setup_cluster(self):
+    def setup_cluster(self):
         """
-        This method waits for all nodes to come up and then runs the default
+        Waits for all nodes to come up and then runs the default
         StarCluster setup routines followed by any additional plugin setup
         routines
         """
         self.wait_for_cluster()
+        self._setup_cluster()
+
+    @print_timing("Configuring cluster")
+    def _setup_cluster(self):
+        """
+        Runs the default StarCluster setup routines followed by any additional
+        plugin setup routines. Does not wait for nodes to come up.
+        """
         log.info("The master node is %s" % self.master_node.dns_name)
         log.info("Setting up the cluster...")
         if self.volumes:
@@ -1828,16 +1852,23 @@ class Cluster(object):
                     (keyname, z.region))
         return True
 
-    def ssh_to_master(self, user='root'):
-        self.ssh_to_node('master', user=user)
+    def ssh_to_master(self, user='root', command=None):
+        return self.ssh_to_node('master', user=user, command=command)
 
-    def ssh_to_node(self, alias, user='root'):
+    def ssh_to_node(self, alias, user='root', command=None):
         node = self.get_node_by_alias(alias)
         node = node or self.get_node_by_dns_name(alias)
         node = node or self.get_node_by_id(alias)
         if not node:
             raise exception.InstanceDoesNotExist(alias, label='node')
-        node.shell(user=user)
+        if command:
+            orig_user = node.ssh.get_current_user()
+            node.ssh.switch_user(user)
+            node.ssh.execute(command, silent=False)
+            node.ssh.switch_user(orig_user)
+            return node.ssh.get_last_status()
+        else:
+            node.shell(user=user)
 
 if __name__ == "__main__":
     from starcluster.config import StarClusterConfig

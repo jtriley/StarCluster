@@ -3,14 +3,8 @@ Customizing the StarCluster AMI
 ###############################
 The StarCluster base AMIs are meant to be fairly minimal in terms of the
 software installed. If you'd like to customize the software installed on the
-AMI you can create a new AMI based on the StarCluster AMIs using the *s3image*
-and *ebsimage* commands.
-
-.. note::
-    In previous versions it was strongly advised not to create new AMIs
-    from an instance/node started by StarCluster (e.g. master, node001,
-    etc). **This is no longer a limitation and should work fine**.  If it
-    doesn't, please `report an issue on github`_.
+AMI you can create a new AMI based on the StarCluster AMIs using the
+**s3image** and **ebsimage** commands.
 
 ***************************************
 Launching and Customizing an Image Host
@@ -37,21 +31,22 @@ cluster called *imagehost* using the following command::
     AMI the you'll need to launch the *image host* with a Cluster/GPU Compute
     instance type.
 
-This command will create a single node (-s 1) cluster called *imagehost* using
-the AMI you wish to customize (*-n <BASE-AMI-ID>*) and a compatible instance
-type (*-i <INSTANCE-TYPE>*). The *-o* option tells StarCluster to only create
-the instance(s) and not to setup and configure the instance(s) as a cluster.
-This way you start with a *clean* version of the AMI you're extending.
+This command will create a single node (``-s 1``) cluster called *imagehost*
+using the AMI you wish to customize (``-n <BASE-AMI-ID>``) and a compatible
+instance type (``-i <INSTANCE-TYPE>``). The ``-o`` option tells StarCluster to
+only create the instance(s) and not to setup and configure the instance(s) as a
+cluster.  This way you start with a *clean* version of the AMI you're
+extending.
 
-You can also use a spot instance (via the **-b** or **--bid** flag) for the
-image host::
+You can also use a spot instance as the image host by passing ``--bid``
+(``-b``) option::
 
-    $ starcluster start -o -s 1 -b 0.50 -i <INSTANCE-TYPE> -n <BASE-AMI-ID>
+    $ starcluster start -o -s 1 -b 0.50 -i <INSTANCE-TYPE> -n <BASE-AMI-ID> imagehost
 
-If you used the *-o* option you'll need to periodically run the *listclusters*
-command to check whether or not the  *image host* is up::
+If you used the ``-o`` option you'll need to periodically run the
+**listclusters** command to check whether or not the  *image host* is up::
 
-    $ starcluster listclusters imagehost
+    $ starcluster listclusters --show-ssh-status imagehost
 
 Once the *image host* is up, login and customize the instance's software
 environment to your liking::
@@ -71,9 +66,11 @@ have to be started with StarCluster. The only requirement is that you must have
 the keypair that was used to launch the instance defined in your StarCluster
 configuration file.
 
-In previous versions it was strongly recommended *not* to use nodes launched by
-StarCluster as *image hosts*. **This is no longer the case and you can now
-safely use any node/instance started by StarCluster as an image host.**
+.. note::
+
+    In previous versions it was strongly recommended *not* to use nodes
+    launched by StarCluster as *image hosts*. This is no longer the case and
+    you can now use any node/instance started by StarCluster as an image host.
 
 *************************************
 Creating a New AMI from an Image Host
@@ -123,9 +120,10 @@ EBS-backed AMI, use the **ebsimage** command::
 In the above example, *i-99999999* is the instance id of the instance you wish
 to create a new image from. If the instance is a part of a cluster, such as
 *imagehost* in the sections above, you can get the instance id from the output
-of the *listclusters* command. Otherwise, you can get the instance id of *any*
-node, launched by StarCluster or not, via the *listinstances* command. The
-argument after the instance id is the name you wish to give to your new AMI.
+of the **listclusters** command. Otherwise, you can get the instance id of
+*any* node, launched by StarCluster or not, via the **listinstances** command.
+The argument after the instance id is the name you wish to give to your new
+AMI.
 
 After the **ebsimage** command completes successfully it will print out the new
 AMI id that you then can use in the *node_image_id*/*master_image_id* settings
@@ -142,9 +140,9 @@ AMI, use the **s3image** command::
 In the above example, *i-99999999* is the instance id of the instance you wish
 to create a new image from. If the instance is a part of a cluster, such as
 *imagehost* in the sections above, you can get the instance id from the output
-of the *listclusters* command. The arguments after the instance id are the name
-you wish to give the AMI and the name of a bucket in S3 to store the new AMI's
-files in. The bucket will be created if it doesn't exist.
+of the **listclusters** command. The arguments after the instance id are the
+name you wish to give the AMI and the name of a bucket in S3 to store the new
+AMI's files in. The bucket will be created if it doesn't exist.
 
 After the **s3image** command completes successfully it will print out the new
 AMI id that you can then use in the *node_image_id*/*master_image_id* settings

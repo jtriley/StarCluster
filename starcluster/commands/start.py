@@ -2,7 +2,6 @@
 
 import time
 
-from starcluster import config
 from starcluster import static
 from starcluster import exception
 from starcluster import optcomplete
@@ -38,8 +37,9 @@ class CmdStart(ClusterCompleter):
     tag = None
 
     def addopts(self, parser):
-        cfg = config.StarClusterConfig().load()
-        templates = cfg.get_cluster_names().keys()
+        templates = []
+        if self.cfg:
+            templates = self.cfg.get_cluster_names().keys()
         parser.add_option("-x", "--no-create", dest="no_create",
                           action="store_true", default=False,
                           help="do not launch new EC2 instances when " + \
@@ -70,9 +70,10 @@ class CmdStart(ClusterCompleter):
                           "instance when a spot cluster is requested.")
         opt = parser.add_option("-c", "--cluster-template", action="store",
                                 dest="cluster_template", choices=templates,
-                                default=None,
-                                help="cluster template to use " + \
+                                default=None, help="cluster template to use "
                                 "from the config file")
+        if optcomplete:
+            opt.completer = optcomplete.ListCompleter(opt.choices)
         parser.add_option("-r", "--refresh-interval", dest="refresh_interval",
                           type="int", action="callback", default=None,
                           callback=self._positive_int,
@@ -83,8 +84,6 @@ class CmdStart(ClusterCompleter):
                           help="requests spot instances instead of flat " + \
                           "rate instances. Uses SPOT_BID as max bid for " + \
                           "the request.")
-        if optcomplete:
-            opt.completer = optcomplete.ListCompleter(opt.choices)
         parser.add_option("-d", "--description", dest="cluster_description",
                           action="store", type="string",
                           default="Cluster requested at %s" % \
@@ -134,7 +133,7 @@ class CmdStart(ClusterCompleter):
         parser.add_option("-K", "--key-location", dest="key_location",
                           action="store", type="string", default=None,
                           metavar="FILE",
-                          help="path to an ssh private key that matches the"
+                          help="path to an ssh private key that matches the "
                           "cluster keypair")
 
     def cancel_command(self, signum, frame):
@@ -193,8 +192,9 @@ class CmdStart(ClusterCompleter):
                        validate_running=validate_running)
         if validate_only:
             return
-        log.info(user_msgs.cluster_started_msg % {
-            'tag': scluster.cluster_tag,
-        }, extra=dict(__textwrap__=True, __raw__=True))
+        if not create_only and not self.opts.login_master:
+            log.info(user_msgs.cluster_started_msg %
+                     dict(tag=scluster.cluster_tag),
+                     extra=dict(__textwrap__=True, __raw__=True))
         if self.opts.login_master:
             scluster.ssh_to_master()

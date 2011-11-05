@@ -258,7 +258,7 @@ class SCPClient(object):
             self.channel.send('\x01')
             raise exception.SCPException('Bad time format')
         # save for later
-        self._utime = (mtime, atime)
+        self._utime = (atime, mtime)
 
     def _recv_file(self, cmd):
         chan = self.channel

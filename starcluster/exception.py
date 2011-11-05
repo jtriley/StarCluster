@@ -222,8 +222,8 @@ class ConfigNotFound(ConfigError):
         cfg_file = open(self.cfg, 'w')
         cfg_file.write(config.config_template)
         cfg_file.close()
-        log.info("Config template written to %s. Please customize this file." %
-                 self.cfg)
+        log.info("Config template written to %s" % self.cfg)
+        log.info("Please customize the config template")
 
     def display_options(self):
         print 'Options:'
@@ -280,8 +280,16 @@ class ClusterValidationError(ValidationError):
 
 class NoClusterNodesFound(ValidationError):
     """Raised if no cluster nodes are found"""
-    def __init__(self):
-        self.msg = "No cluster nodes found!"
+    def __init__(self, terminated=None):
+        self.msg = "No active cluster nodes found!"
+        if not terminated:
+            return
+        self.msg += "\n\nBelow is a list of terminated instances:\n"
+        for tnode in terminated:
+            id = tnode.id
+            reason = tnode.reason or 'N/A'
+            state = tnode.state or 'N/A'
+            self.msg += "\n%s (state: %s, reason: %s)" % (id, state, reason)
 
 
 class NoClusterSpotRequests(ValidationError):

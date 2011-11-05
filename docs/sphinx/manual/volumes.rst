@@ -1,19 +1,20 @@
 ########################################
 Using EBS Volumes for Persistent Storage
 ########################################
-StarCluster utilizes Amazon's Elastic Block Storage (EBS) volumes for
+StarCluster supports using Amazon's Elastic Block Storage (EBS) volumes for
 persistent storage. These volumes can be anywhere from 1GB to 1TB in size.
-StarCluster will mount each volume specified in a cluster template to the
-**MOUNT_PATH** specified in the volume's configuration section on the master
-node. This **MOUNT_PATH** is then shared on all nodes using the network file
-system (NFS).
+StarCluster will attach each volume specified in a cluster template to the
+master node and then share the volume(s) to the rest of the nodes in the
+cluster via the network file system (NFS). Each volume will be mounted to the
+path specified by the ``MOUNT_PATH`` setting in the volume's configuration
+section.
 
-For example, suppose we have the following (abbreviated) configuration defined:
+For example, suppose we have the following configuration defined:
 
 .. code-block:: ini
 
     [vol myvol]
-    volume_id = vol-v99999
+    volume_id = vol-v9999999
     mount_path = /data
 
     [cluster smallcluster]
@@ -23,9 +24,35 @@ For example, suppose we have the following (abbreviated) configuration defined:
     node_image_id=ami-8cf913e5
     volumes=myvol
 
-In this case, whenever a cluster is launched using the *smallcluster* template
-StarCluster will attach the EBS volume *vol-v99999* to the *master* node on
-*/data* and then NFS-share */data* to all the nodes in the cluster.
+In this case, whenever a cluster is launched using the ``smallcluster`` template
+StarCluster will attach the EBS volume ``vol-v9999999`` to the ``master`` node on
+``/data`` and then NFS-share ``/data`` to all the nodes in the cluster.
+
+It's also possible to use multiple EBS volumes by specifying a list of volumes
+in a cluster template:
+
+.. note::
+    Each volume specified in a cluster template *must* have a unique
+    ``MOUNT_PATH`` otherwise an error will be raised.
+
+.. code-block:: ini
+
+    [vol cancerdata]
+    volume_id = vol-v8888888
+    mount_path = /data/cancer
+
+    [vol genomedata]
+    volume_id = vol-v9999999
+    mount_path = /data/genome
+
+    [cluster smallcluster]
+    cluster_size=3
+    keyname=mykey
+    node_instance_type=m1.small
+    node_image_id=ami-8cf913e5
+    volumes=cancerdata, genomedata
+
+.. _create-and-format-ebs-volumes:
 
 **********************************
 Create and Format a new EBS Volume
@@ -35,42 +62,51 @@ creating a new EBS volume. This includes launching a host instance in the
 target zone, attaching the new volume to the host, and formatting the entire
 volume.
 
-.. warning::
+.. note::
 
-    The **createvolume** command *only* supports formatting the *entire volume*
-    using all of the space on the device. If you need multiple partitions
-    you're probably better off creating multiple volumes instead. If this is
-    not the case and you have a use-case for partitioning EBS volumes please
-    send a note to the StarCluster mailing list (starcluster 'at' mit 'dot'
-    edu).
+    The **createvolume** command simply formats the *entire volume* using all
+    of the space on the device rather than creating partitions. This makes it
+    easier to resize the volume and expand the filesystem later on if you run
+    out of diskspace.
 
-To create and format a new volume simply specify a volume size (in GB) and the
-zone you want to create the volume in::
+To create and format a new volume simply specify a volume size in GB and the
+availability zone to create the volume in::
 
-    $ starcluster createvolume 20 us-east-1c
+    $ starcluster createvolume --name=my-data 20 us-east-1c
 
-This command will launch a host instance in the us-east-1c availability zone,
-create a 20GB volume in us-east-1c, attach the new volume to the host instance,
-and format the entire volume.
+.. _AWS web console: http://aws.amazon.com/console
 
-You can also use the --bid option to request a spot instance when creating the
-volume host::
+The above command will launch a host instance in the us-east-1c availability
+zone, create a 20GB volume in us-east-1c, attach the new volume to the host
+instance, and format the entire volume. The ``--name`` option allows you name
+the volume for easy reference later on when using the **listvolumes** command
+or the `AWS web console`_.
+
+If you wish to apply an arbitrary tag to the new volume use the ``--tag``
+option::
+
+    $ starcluster createvolume --tag=mytag 20 us-east-1c
+
+If you want to create a key/value tag::
+
+    $ starcluster createvolume --tag mytag=myvalue 20 us-east-1c
+
+You can also use the ``--bid`` option to request a spot instance when creating
+the volume host::
 
     $ starcluster createvolume 20 us-east-1c --bid 0.50
 
 .. warning::
 
-    In previous versions the **createvolume** command used to terminate the
-    host instance after creating the volume. **The latest version does not do
-    this by default** in order to allow multiple volumes to be created in the
-    same zone with a *single* host instance. You can pass the
-    *--shutdown-volume-host* option to the *createvolume* command to have
-    StarCluster automatically shutdown the volume host after creating the new
-    volume.
+    StarCluster does not terminate the host instance after creating a volume.
+    This allows multiple volumes to be created in the same zone using a
+    *single* host instance. You can pass the ``--shutdown-volume-host`` option
+    to the **createvolume** command to if you'd rather automatically shutdown
+    the volume host after creating the new volume.
 
-Let's look at an example::
+Let's look at an example of creating a 20GB volume in ``us-east-1c``::
 
-    $ starcluster createvolume 20 us-east-1c
+    $ starcluster createvolume --name=myvol --bid=0.50 20 us-east-1c
     StarCluster - (http://web.mit.edu/starcluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
@@ -123,11 +159,12 @@ Let's look at an example::
     >>> Creating volume took 7.396 mins
     >>> Your new 1GB volume vol-2f3a5344 has been created successfully
 
-Notice the warning at the bottom of the above output. StarCluster will leave
-the host instance running with the new volume attached after creating and
-formatting the new volume. This allows multiple volumes to be created in a
-given availability zone without launching a new instance for each volume. To
-see the volume hosts simply run the *listclusters* command::
+In the above example we name the volume ``myvol`` and use a spot instance for
+the volume host. Notice the warning at the bottom of the above output.
+StarCluster will leave the host instance running with the new volume attached
+after creating and formatting the new volume. This allows multiple volumes to
+be created in a given availability zone without launching a new instance for
+each volume. To see the volume hosts simply run the **listclusters** command::
 
     $ starcluster listclusters volumecreator
     StarCluster - (http://web.mit.edu/starcluster)
@@ -146,11 +183,11 @@ see the volume hosts simply run the *listclusters* command::
         volhost-us-east-1c running i-fd9clb9z  (spot sir-2a8zb4lr)
     Total nodes: 1
 
-From the above example we see that we have a volume-host in us-east-1c called
-*volhost-us-east-1c*. Any volumes that were created will still be attached to
-the volume host until you terminate the *volumecreator* cluster. If you'd
-rather detach the volume after it's been successfully created use the
-*--detach-volume* (-d) option::
+From the above example we see that we have a volume-host in ``us-east-1c``
+called ``volhost-us-east-1c``. Any volumes that were created will still be
+attached to the volume host until you terminate the ``volumecreator`` cluster.
+If you'd rather detach the volume after it's been successfully created use the
+``--detach-volume`` (``-d``) option::
 
     $ starcluster createvolume --detach-volume 20 us-east-1c
 
@@ -164,11 +201,13 @@ done using the volumecreator cluster don't forget to terminate it::
     $ starcluster terminate volumecreator
 
 If you'd rather avoid having to terminate the volumecreator each time you can
-pass the *--shutdown-volume-host (-s)* option to the *createvolume* command to
-have StarCluster automatically terminate the host-instance after successfully
-creating the new volume::
+pass the ``--shutdown-volume-host`` (``-s``) option to the **createvolume**
+command to have StarCluster automatically terminate the host-instance after
+successfully creating the new volume::
 
     $ starcluster createvolume --shutdown-volume-host 20 us-east-1c
+
+.. _managing-ebs-volumes:
 
 *************************************
 Managing EBS Volumes with StarCluster
@@ -182,16 +221,44 @@ To get a list of all your volumes as well as their current status use the
 **listvolumes** command::
 
     $ starcluster listvolumes
+    StarCluster - (http://web.mit.edu/starcluster)
+    Software Tools for Academics and Researchers (STAR)
+    Please submit bug reports to starcluster@mit.edu
 
-If you'd like to see details for a single volume::
+    volume_id: vol-be279s08
+    size: 5GB
+    status: available
+    availability_zone: us-east-1d
+    create_time: 2011-10-22 16:18:57
+
+    Total: 1
+
+To list details for a single volume by name use the ``--name`` (``-n``)
+option::
+
+    $ starcluster listvolumes --name my-big-data
+
+To list details for a single volume by id use the ``--volume-id``
+(``-v``)::
 
     $ starcluster listvolumes -v vol-99999999
 
-You can also filter the results by status::
+If you'd like to see details for all volumes with a given tag use the ``--tag``
+(``-t``) option::
+
+    $ starcluster listvolumes -t my-big-data
+    $ starcluster listvolumes -t mytag=myvalue
+
+You can also filter the volumes by status using the ``--status`` (``-S``)
+flag::
 
     $ starcluster listvolumes -S available
 
-and also by attachment state::
+and by volume size (in GB) using the ``--size`` (``-s``) option::
+
+    $ starcluster listvolumes -s 20
+
+and also by attachment state using the ``--attach-status`` (``-a``) option::
 
     $ starcluster listvolumes -a attached
 
@@ -203,7 +270,7 @@ Removing Volumes
 ================
 .. warning:: This process cannot be reversed!
 
-To **permanently** remove an EBS volume use the *removevolume* command::
+To **permanently** remove an EBS volume use the **removevolume** command::
 
     $ starcluster removevolume vol-99999999
 
@@ -213,15 +280,15 @@ After you've created and used an EBS volume over time you may find that you
 need to add additional disk space to the EBS volume. Normally you would need to
 snapshot the volume, create a new, larger, volume from the snapshot, attach the
 new volume to an instance, and expand the filesystem to fit the new volume.
-Fortunately, StarCluster's *resizevolume* command streamlines this process for
-you.
+Fortunately, StarCluster's **resizevolume** command streamlines this process
+for you.
 
 .. note::
 
      The EBS volume must either be unpartitioned or contain only a single
      partition. Any other configuration will be aborted.
 
-For example, to resize a 10GB volume, say vol-99999999, to 20GB::
+For example, to resize a 10GB volume, say ``vol-99999999``, to 20GB::
 
     $ starcluster resizevolume vol-99999999 20
 
@@ -229,26 +296,26 @@ The above command will create a *new*, larger, 20GB volume containing the data
 from the original volume vol-99999999. The new volume's filesystem will also be
 expanded to fit the new volume size.
 
-Just like the *createvolume* command, the *resizevolume* command will also
+Just like the **createvolume** command, the **resizevolume** command will also
 launch a host instance in order to attach the new volume and expand the
 volume's filesystem. Similarly, if you wish to shutdown the host instance
 automatically after the new resized volume has been created, use the
-*--shutdown-volume-host* option::
+``--shutdown-volume-host`` option::
 
     $ starcluster resizevolume --shutdown-volume-host vol-99999999 20
 
 Otherwise, you will need to terminate the volume host manually after the
-*resizevolume* command completes.
+**resizevolume** command completes.
 
 Moving Volumes Across Availability Zones
 ========================================
 In some cases you may need to replicate a given volume to another availability
 zone so that the data can be used with instances in a different data center.
-The *resizevolume* command supports creating a newly expanded volume within an
-alternate availability zone via the *-z*, or *--zone*, flag::
+The **resizevolume** command supports creating a newly expanded volume within
+an alternate availability zone via the ``--zone`` (``-z``), flag::
 
     $ starcluster resizevolume -z us-east-1d vol-9999999 20
 
-The above command will create a new 20GB volume in us-east-1d containing the
-data in vol-99999999. If you only want to move the volume data without resizing
-simply specify the same size as the original volume.
+The above command will create a new 20GB volume in ``us-east-1d`` containing
+the data in ``vol-99999999``. If you only want to move the volume data without
+resizing simply specify the same size as the original volume.

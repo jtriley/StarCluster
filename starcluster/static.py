@@ -3,10 +3,37 @@
 Module for storing static data structures
 """
 import os
+import sys
 import getpass
 import tempfile
 
-VERSION = "0.92"
+
+def __expand_all(path):
+    path = os.path.expanduser(path)
+    path = os.path.expandvars(path)
+    return path
+
+
+def __makedirs(path, exit_on_failure=False):
+    if not os.path.exists(path):
+        try:
+            os.makedirs(path)
+        except OSError:
+            if exit_on_failure:
+                sys.stderr.write("!!! ERROR - %s *must* be a directory\n" %
+                                 path)
+    elif not os.path.isdir(path) and exit_on_failure:
+        sys.stderr.write("!!! ERROR - %s *must* be a directory\n" % path)
+        sys.exit(1)
+
+
+def create_sc_config_dirs():
+    __makedirs(STARCLUSTER_CFG_DIR, exit_on_failure=True)
+    __makedirs(STARCLUSTER_PLUGIN_DIR)
+    __makedirs(STARCLUSTER_LOG_DIR)
+
+
+VERSION = "0.92.1"
 PID = os.getpid()
 TMP_DIR = tempfile.gettempdir()
 if os.path.exists("/tmp"):
@@ -21,14 +48,15 @@ SSH_TEMPLATE = 'ssh -i %s %s@%s'
 STARCLUSTER_CFG_DIR = os.path.join(os.path.expanduser('~'), '.starcluster')
 STARCLUSTER_CFG_FILE = os.path.join(STARCLUSTER_CFG_DIR, 'config')
 STARCLUSTER_PLUGIN_DIR = os.path.join(STARCLUSTER_CFG_DIR, 'plugins')
+STARCLUSTER_LOG_DIR = os.path.join(STARCLUSTER_CFG_DIR, 'logs')
 STARCLUSTER_RECEIPT_DIR = "/var/run/starcluster"
 STARCLUSTER_RECEIPT_FILE = os.path.join(STARCLUSTER_RECEIPT_DIR, "receipt.pkl")
 STARCLUSTER_OWNER_ID = 342652561657
 
-DEBUG_FILE = os.path.join(TMP_DIR, 'starcluster-debug-%s.log' % CURRENT_USER)
-SSH_DEBUG_FILE = os.path.join(TMP_DIR, 'starcluster-ssh-%s.log' % CURRENT_USER)
-AWS_DEBUG_FILE = os.path.join(TMP_DIR, 'starcluster-aws-%s.log' % CURRENT_USER)
-CRASH_FILE = os.path.join(STARCLUSTER_CFG_DIR, 'crash-report-%d.txt' % PID)
+DEBUG_FILE = os.path.join(STARCLUSTER_LOG_DIR, 'debug.log')
+SSH_DEBUG_FILE = os.path.join(STARCLUSTER_LOG_DIR, 'ssh-debug.log')
+AWS_DEBUG_FILE = os.path.join(STARCLUSTER_LOG_DIR, 'aws-debug.log')
+CRASH_FILE = os.path.join(STARCLUSTER_LOG_DIR, 'crash-report-%d.txt' % PID)
 
 # StarCluster BASE AMIs (i386/x86_64)
 BASE_AMI_32 = "ami-8cf913e5"
@@ -73,6 +101,8 @@ CLUSTER_GPU_TYPES = ['cg1.4xlarge']
 
 CLUSTER_TYPES = CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES
 
+CLUSTER_REGIONS = ['us-east-1']
+
 PROTOCOLS = ['tcp', 'udp', 'icmp']
 
 WORLD_CIDRIP = '0.0.0.0/0'
@@ -93,6 +123,7 @@ GLOBAL_SETTINGS = {
     'enable_experimental': (bool, False, False, None, None),
     'refresh_interval': (int, False, 30, None, None),
     'web_browser': (str, False, None, None, None),
+    'include': (list, False, [], None, None),
 }
 
 AWS_SETTINGS = {
@@ -111,7 +142,7 @@ AWS_SETTINGS = {
 }
 
 KEY_SETTINGS = {
-    'key_location': (str, True, None, None, os.path.expanduser),
+    'key_location': (str, True, None, None, __expand_all),
 }
 
 EBS_VOLUME_SETTINGS = {

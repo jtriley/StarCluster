@@ -14,6 +14,9 @@ class CmdListVolumes(CmdBase):
     names = ['listvolumes', 'lv']
 
     def addopts(self, parser):
+        parser.add_option("-n", "--name", dest="name", type="string",
+                          default=None, action="store",
+                          help="show all volumes with a given 'Name' tag")
         parser.add_option("-d", "--show-deleted", dest="show_deleted",
                           action="store_true", default=False,
                           help="show volumes that are being deleted")
@@ -36,6 +39,10 @@ class CmdListVolumes(CmdBase):
         parser.add_option("-i", "--snapshot-id", dest="snapshot_id",
                           action="store", type="string", default=None,
                           help="show all volumes created from snapshot")
+        parser.add_option("-t", "--tag", dest="tags", type="string",
+                          default={}, action="callback",
+                          callback=self._build_dict,
+                          help="show all volumes with a given tag")
 
     def execute(self, args):
         self.ec2.list_volumes(**self.options_dict)

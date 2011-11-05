@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from starcluster import config
 from starcluster import optcomplete
 from starcluster.logger import log
 
@@ -11,15 +10,9 @@ class Completer(CmdBase):
     """
     Base class for all completer classes
     """
-    _cfg = None
-
-    def _prep_for_completion(self):
-        self._cfg = config.StarClusterConfig().load()
-        self._ec2 = self._cfg.get_easy_ec2()
 
     @property
     def completer(self):
-        self._prep_for_completion()
         return self._completer()
 
 

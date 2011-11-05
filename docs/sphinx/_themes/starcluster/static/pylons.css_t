@@ -14,7 +14,7 @@
 /* -- page layout ----------------------------------------------------------- */
  
 body {
-    font-family: "Nobile", sans-serif;
+    font-family: "NobileRegular", sans-serif;
     font-size: 14px;
     background-color: #393939;
     color: #ffffff;

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from starcluster import static
 
-config_template = """
+config_template = """\
 ####################################
 ## StarCluster Configuration File ##
 ####################################
@@ -99,6 +99,11 @@ NODE_INSTANCE_TYPE = m1.small
 # list of permissions (or firewall rules) to apply to the cluster's security
 # group (OPTIONAL).
 #PERMISSIONS = ssh, http
+
+# Uncomment to always create a spot cluster when creating a new cluster from
+# this template. The following example will place a $0.50 bid for each spot
+# request.
+#SPOT_BID = 0.50
 
 ###########################################
 ## Defining Additional Cluster Templates ##

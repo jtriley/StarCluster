@@ -20,9 +20,16 @@ class NodeManager(managers.Manager):
     """
     Manager class for Node objects
     """
-    def ssh_to_node(self, node_id, user='root'):
+    def ssh_to_node(self, node_id, user='root', command=None):
         node = self.get_node(node_id, user=user)
-        node.shell(user=user)
+        if command:
+            current_user = node.ssh.get_current_user()
+            node.ssh.switch_user(user)
+            node.ssh.execute(command, silent=False)
+            node.ssh.switch_user(current_user)
+            return node.ssh.get_last_status()
+        else:
+            node.shell(user=user)
 
     def get_node(self, node_id, user='root'):
         """Factory for Node class"""
@@ -265,12 +272,7 @@ class Node(object):
         if not user in self.get_user_map():
             raise exception.BaseException("user %s does not exist" % user)
         if group in self.get_group_map():
-            if self.ssh._username != 'root':
-                orig_user = self.ssh._username
-                self.ssh.connect(username='root')
             self.ssh.execute('gpasswd -a %s %s' % (user, 'utmp'))
-            if self.ssh._username != 'root':
-                self.ssh.connect(username=orig_user)
         else:
             raise exception.BaseException("group %s does not exist" % group)
 

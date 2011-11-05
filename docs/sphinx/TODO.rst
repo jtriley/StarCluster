@@ -3,42 +3,6 @@ StarCluster TODOs
 Below are the current feature requests for the StarCluster project that need
 implementing:
 
-Config Includes
-^^^^^^^^^^^^^^^
-Allow including multiple files in the StarCluster config file. This would allow
-users to separate their *private* credentials from their cluster templates.
-This is really useful if you want to, say, share a common config between
-members of a group. Each member would have their credentials stored in a
-separate credentials file, say *$HOME/.starcluster/creds*, and could then
-easily pull in the latest config updates from the web, git, etc. For example::
-
-    [include ~/.starcluster/creds]
-
-This line would pull in any config sections defined in *$HOME/.starcluster/creds*.
-Here's an example *creds* file::
-
-    [aws info]
-    aws_access_key_id = #your aws access key id
-    aws_secret_access_key = #your aws secret access key
-    aws_user_id = #your aws user id
-
-The main config file, *$HOME/.starcluster/config*, would then include this file
-to pick up the credentials::
-
-    [global]
-    default_template = smallcluster
-
-    [include ~/.starcluster/creds]
-
-    [cluster smallcluster]
-    cluster_size = 4
-    keypair = mykey
-    node_instance_type = m1.large
-    node_image_id = ami-0af31963
-
-As you can see this removes the private sections from the main StarCluster
-config file which in turn makes the main config file much easier to share.
-
 Support for Amazon VPC
 ^^^^^^^^^^^^^^^^^^^^^^
 Add the ability to configure StarCluster to launch the cluster instances inside
@@ -91,3 +55,14 @@ http://code.google.com/p/boto/wiki/BotoConfig
 
 Need to add a *[proxy]* section to the starcluster config that gets passed on
 to the boto connection.
+
+Use PyStun to Restrict Cluster Acccess to User's IP-address
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+StarCluster should support restricting ssh access to the user's current
+ip-address when creating a new cluster. This feature will need to use the
+`pystun`_ project to correctly determine the user's public ip behind firewalls
+and NAT. StarCluster's ssh* commands will also need to be modified to check
+that the user's current ip has been allowed to access the cluster in the case
+that they use StarCluster from multiple machines.
+
+.. _pystun: http://pypi.python.org/pypi/pystun
