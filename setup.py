@@ -94,10 +94,13 @@ setup(
         'License (LGPL)',
         'Natural Language :: English',
         'Programming Language :: Python',
+        'Operating System :: OS Independent',
+        'Operating System :: POSIX',
         'Topic :: Education',
         'Topic :: Scientific/Engineering',
         'Topic :: System :: Distributed Computing',
         'Topic :: System :: Clustering',
+        'Topic :: Software Development :: Libraries :: Python Modules',
     ],
     **extra
 )
