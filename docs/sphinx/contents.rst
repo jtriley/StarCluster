@@ -17,4 +17,5 @@ Contents:
    hacking
    features
    TODO
+   changelog
    license
