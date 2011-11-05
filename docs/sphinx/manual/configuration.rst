@@ -44,11 +44,12 @@ out-of-the-box after filling in your Amazon Web Services credentials and
 setting up a keypair. This example config provides a simple *cluster template*
 called ``smallcluster`` that is set as the default *cluster template*.
 
-Using an alternate config location
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-If you wish to store your StarCluster config in an alternate location you will
-need to specify the global ``--config`` (``-c``) option with every StarCluster
-command you use. For example::
+Storing the config in an alternate location
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+If you wish to store your StarCluster config in a location other than the
+default (``~/.starcluster/config``) you will need to specify the global
+``--config`` (``-c``) option with every StarCluster command you use. For
+example::
 
     $ starcluster -c /path/to/starcluster/config listclusters
 
@@ -71,8 +72,10 @@ the specified path::
 
     Please enter your selection:
 
-The config can also be loaded from the web, however, if you choose to do so you
-should be *very* careful not to publicly host AWS credentials, keys, and
+Loading the config from the web
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The config can also be loaded from a web url, however, if you choose to do so
+you should be *very* careful not to publicly host AWS credentials, keys, and
 other private information::
 
     $ starcluster -c http://localhost/starcluster.cfg listclusters
