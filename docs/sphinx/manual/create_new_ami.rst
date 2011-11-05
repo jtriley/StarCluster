@@ -43,10 +43,10 @@ type (*-i <INSTANCE-TYPE>*). The *-o* option tells StarCluster to only create
 the instance(s) and not to setup and configure the instance(s) as a cluster.
 This way you start with a *clean* version of the AMI you're extending.
 
-You can also use a spot instance (via the **-b** or **--bid** flag) for the
-image host::
+You can also use a spot instance as the image host by passing ``--bid``
+(``-b``) option::
 
-    $ starcluster start -o -s 1 -b 0.50 -i <INSTANCE-TYPE> -n <BASE-AMI-ID>
+    $ starcluster start -o -s 1 -b 0.50 -i <INSTANCE-TYPE> -n <BASE-AMI-ID> imagehost
 
 If you used the *-o* option you'll need to periodically run the *listclusters*
 command to check whether or not the  *image host* is up::
