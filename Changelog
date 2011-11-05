@@ -15,7 +15,7 @@ Version History
 
 Features
 --------
-* Support splitting config into arbitrary set of files::
+* Support for splitting the config into an arbitrary set of files::
 
     [global]
     include=~/.starcluster/awscreds, ~/.starcluster/myconf
