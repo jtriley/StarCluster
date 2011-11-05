@@ -81,9 +81,7 @@ This file is commented with example "cluster templates". A cluster template
 defines a set of configuration settings used to start a new cluster. The
 example config provides a *smallcluster* template that is ready to go
 out-of-the-box. However, first, you must fill in your AWS credentials and
-keypair info:
-
-.. code-block:: ini
+keypair info::
 
     [aws info]
     aws_access_key_id = #your aws access key id here
@@ -97,32 +95,24 @@ a keypair you can create one from StarCluster using::
 
 This will create a keypair called *mykey* on Amazon EC2 and save the private
 key to ~/.ssh/mykey.rsa.  Once you have a key the next step is to fill-in your
-keypair info in the StarCluster config file:
-
-.. code-block:: ini
+keypair info in the StarCluster config file::
 
     [key key-name-here]
     key_location = /path/to/your/keypair.rsa
 
 For example, the section for the keypair created above using the **createkey**
-command would look like:
-
-.. code-block:: ini
+command would look like::
 
     [key mykey]
     key_location = ~/.ssh/mykey.rsa
 
 After defining your keypair in the config, the next step is to update the
-default cluster template *smallcluster* with the name of your keypair on EC2:
-
-.. code-block:: ini
+default cluster template *smallcluster* with the name of your keypair on EC2::
 
     [cluster smallcluster]
     keyname = key-name-here
 
-For example, the *smallcluster* template would be updated to look like:
-
-.. code-block:: ini
+For example, the *smallcluster* template would be updated to look like::
 
     [cluster smallcluster]
     keyname = mykey
@@ -200,7 +190,7 @@ Features
 
     $ starcluster createvolume --name mynewvol 30 us-east-1d
 
-  See `Create and Format a new EBS Volume` for more details
+  See `Create and Format a new EBS Volume`_ for more details
 
 * listvolumes: add support for filtering by tags::
 
