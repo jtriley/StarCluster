@@ -48,10 +48,10 @@ You can also use a spot instance as the image host by passing ``--bid``
 
     $ starcluster start -o -s 1 -b 0.50 -i <INSTANCE-TYPE> -n <BASE-AMI-ID> imagehost
 
-If you used the *-o* option you'll need to periodically run the *listclusters*
-command to check whether or not the  *image host* is up::
+If you used the ``-o`` option you'll need to periodically run the
+**listclusters** command to check whether or not the  *image host* is up::
 
-    $ starcluster listclusters imagehost
+    $ starcluster listclusters --show-ssh-status imagehost
 
 Once the *image host* is up, login and customize the instance's software
 environment to your liking::
