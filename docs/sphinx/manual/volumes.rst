@@ -52,6 +52,7 @@ in a cluster template:
     node_image_id=ami-8cf913e5
     volumes=cancerdata, genomedata
 
+.. _create-and-format-ebs-volumes:
 
 **********************************
 Create and Format a new EBS Volume
@@ -205,6 +206,8 @@ command to have StarCluster automatically terminate the host-instance after
 successfully creating the new volume::
 
     $ starcluster createvolume --shutdown-volume-host 20 us-east-1c
+
+.. _managing-ebs-volumes:
 
 *************************************
 Managing EBS Volumes with StarCluster

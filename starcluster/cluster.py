@@ -1287,7 +1287,7 @@ class Cluster(object):
         sleep = 20
         log.info("Sleeping for %d seconds..." % sleep)
         time.sleep(sleep)
-        self._setup_cluster()
+        self.setup_cluster()
 
     def stop_cluster(self, terminate_unstoppable=False):
         """
@@ -1410,16 +1410,23 @@ class Cluster(object):
                 node.start()
         if create_only:
             return
+        self.setup_cluster()
+
+    def setup_cluster(self):
+        """
+        Waits for all nodes to come up and then runs the default
+        StarCluster setup routines followed by any additional plugin setup
+        routines
+        """
+        self.wait_for_cluster()
         self._setup_cluster()
 
     @print_timing("Configuring cluster")
     def _setup_cluster(self):
         """
-        This method waits for all nodes to come up and then runs the default
-        StarCluster setup routines followed by any additional plugin setup
-        routines
+        Runs the default StarCluster setup routines followed by any additional
+        plugin setup routines. Does not wait for nodes to come up.
         """
-        self.wait_for_cluster()
         log.info("The master node is %s" % self.master_node.dns_name)
         log.info("Setting up the cluster...")
         if self.volumes:

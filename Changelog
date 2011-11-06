@@ -1,0 +1,188 @@
+===============
+Version History
+===============
+
+.. contents::
+    :local:
+
+.. _version-0.92.1:
+
+0.92.1
+======
+:release-date: 11-05-2011
+
+.. _v0921-features:
+
+Features
+--------
+* Support for splitting the config into an arbitrary set of files::
+
+    [global]
+    include=~/.starcluster/awscreds, ~/.starcluster/myconf
+
+  See :ref:`splitting-the-config` for more details
+
+* createvolume: support naming/tagging newly created volumes::
+
+    $ starcluster createvolume --name mynewvol 30 us-east-1d
+
+  See :ref:`create-and-format-ebs-volumes` for more details
+
+* listvolumes: add support for filtering by tags::
+
+    $ starcluster listvolumes --name mynewvol
+    $ starcluster listvolumes --tag mykey=myvalue
+
+  See :ref:`managing-ebs-volumes` for more details
+
+* sshmaster, sshnode, sshinstance: support for running remote
+  commands from command line::
+
+    $ starcluster sshmaster mycluster 'cat /etc/fstab'
+    $ starcluster sshnode mycluster node001 'cat /etc/fstab'
+    $ starcluster sshinstance i-99999999 'cat /etc/hosts'
+
+  See :doc:`manual/runcommands` for more details
+
+.. _v0921-fixes:
+
+Bug Fixes
+---------
+The following bugs were fixed in this release:
+
+**spothistory command**
+
+* add package_data to sdist in order to include the necessary web media and
+  templates needed for the ``--plot`` feature. The previous 0.92 version left
+  these out and thus the ``--plot`` feature was broken. This should be fixed.
+
+* fix bug when launching default browser on mac
+
+**start command**
+
+* fix bug in option completion when using the start command's
+  ``--cluster-template`` option
+
+**terminate command**
+
+* fix bug in terminate cmd when region != us-east-1
+
+**listkeypairs command**
+
+* fix bug in list_keypairs when no keys exist
+
+Improvements
+------------
+* listinstances: add 'state_reason' msg to output if available
+* add system info, Python info, and package versions to crash-report
+* listregions: sort regions by name
+* improved bash/zsh completion support. completion will read from the correct
+  config file, if possible, in the case that the global -c option is specified
+  while completing.
+* separate the timing of cluster setup into time spent on waiting for EC2
+  instances to come up and time spent configuring the cluster after all
+  instances are up and running. this is useful when profiling StarCluster's
+  performance on large (100+ node) clusters.
+
+.. _version-0.92:
+
+0.92
+====
+:release-date: 10-17-2011
+
+.. _v092-news:
+
+News
+----
+.. note::
+
+    Before upgrading please be aware that rc1 does not support clusters created
+    with previous versions and will print a warning along with instructions on
+    how to proceed if it finds old clusters. With that said, it's best not to
+    upgrade until you've terminated any currently running clusters created with
+    an old version. Also, the @sc-masters group is no longer needed and can be
+    removed after upgrading by running "starcluster terminate masters"
+
+You can find the new docs for 0.92rc1 here:
+
+http://web.mit.edu/stardev/cluster/docs/0.92rc1/
+
+NOTE: these docs are still very much a work in progress. If anyone is
+interested in helping to improve the docs, please fork the project on github
+and submit pull requests. Here's a guide to get you started:
+
+http://web.mit.edu/stardev/cluster/docs/0.92rc1/contribute.html
+
+Please upgrade at your leisure, test the new release candidate, and submit any
+bug reports preferably on StarCluster's github issue tracker or this mailing
+list.
+
+.. _v092-features:
+
+Features
+--------
+* Cluster Compute/GPU Instances- Added support for the new Cluster
+  Compute/GPU instance types. Thanks to Fred Rotbart for his contributions
+
+* EBS-Backed Clusters- Added support for starting/stopping EBS-backed
+  clusters on EC2. The ``stop`` command now stops (instead of terminate)
+  an EBS-backed cluster and terminates an S3-backed cluster. Added a
+  terminate command that terminates *any* cluster
+
+* Improved performance - using workerpool library
+  (http://pypi.python.org/pypi/StarCluster) to configure nodes concurrently
+
+* New ``ebsimage`` and ``s3image`` commands for easily creating new EBS-backed
+  AMIs. Each command supports creating a new AMI from S3 and EBS-backed image
+  hosts respectively. (NOTE: ``createimage`` has been renamed to s3image. you can
+  still call ``createimage`` but this will go away in future releases)
+
+* Add/Remove Nodes - added new ``addnode`` and ``removenode`` commands for
+  adding/removing nodes to a cluster and removing existing nodes from a cluster
+
+* Restart command - Added new restart command that reboots the cluster and
+  reconfigures the cluster
+
+* Create Keypairs - Added ability to add/list/remove keypairs
+
+* Elastic Load Balancing - Support for shrinking/expanding clusters based on Sun
+  Grid Engine queue statistics. This allow the user to start a single-node
+  cluster (or larger) and scale the number of instances needed to meet the
+  current SGE queue load. For example, a single-node cluster can be launched and
+  as the queue load increases new EC2 instances are launched, added to the
+  cluster, used for computation, and then removed when they're idle. This
+  minimizes the cost of using EC2 for an unknown and on-demand workload. Thanks
+  to Rajat Banerjee (rqbanerjee)
+
+* Security Group Permissions - Added ability to specify permission settings to
+  be applied automatically to a cluster's security group after it's been started
+
+* Multiple Instance Types - Added support for specifying instance types on a
+  per-node basis. Thanks to Dan Yamins for his contributions
+
+* Unpartitioned Volumes- StarCluster now supports both partitioned and
+  unpartitioned EBS volumes
+
+* New Plugin Hooks - Plugins can now play a part when adding or removing a node as
+  well as when restarting or shutting down the entire cluster by implementing the
+  ``on_remove_node``, ``on_add_node``, ``on_shutdown``, and ``on_reboot``
+  methods respectively
+
+* Added a ``runplugin`` command and fixed the run_plugin() method in the
+  development shell. You can now run a plugin in the dev shell like so::
+
+    ~[1]> cm.run_plugin('myplugin', 'mycluster')
+
+* Added support for easily switching regions (without config changes)
+  using a global -z option. For example::
+
+    $ starcluster -r eu-west-1 listclusters
+    StarCluster - (http://web.mit.edu/starcluster) (v. 0.92rc1)
+    Software Tools for Academics and Researchers (STAR)
+    Please submit bug reports to starcluster@mit.edu
+
+    >>> No clusters found...
+
+* Added new ``resizevolume`` command for easily resizing existing EBS volumes
+
+* Added listregions/listzones commands

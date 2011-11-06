@@ -129,21 +129,21 @@ To login to the master node as root::
 
     $ starcluster sshmaster physicscluster
 
-or as user sgeadmin::
+You can also login as a different user using the ``--user`` (``-u``) option.
+For example, to login as the ``sgeadmin`` user::
 
     $ starcluster sshmaster -u sgeadmin physicscluster
 
 Logging into the worker nodes
 -----------------------------
-To login to a worker node as root::
+To login to a worker node, say ``node001`` for example, as root::
 
     $ starcluster sshnode physicscluster node001
 
-or as user sgeadmin::
+You can also login as a different user using the ``--user`` (``-u``) option.
+For example, to login as the ``sgeadmin`` user::
 
     $ starcluster sshnode -u sgeadmin physicscluster node001
-
-The above commands will ssh to node001 of the *physicscluster*.
 
 Rebooting a Cluster
 -------------------

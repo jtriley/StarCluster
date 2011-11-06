@@ -16,6 +16,7 @@ Contents:
    configuration
    volumes
    launch
+   runcommands
    putget
    getting_started
    create_new_ami

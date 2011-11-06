@@ -33,7 +33,7 @@ def create_sc_config_dirs():
     __makedirs(STARCLUSTER_LOG_DIR)
 
 
-VERSION = "0.9999"
+VERSION = "0.92.1"
 PID = os.getpid()
 TMP_DIR = tempfile.gettempdir()
 if os.path.exists("/tmp"):
