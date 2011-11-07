@@ -569,18 +569,21 @@ class Node(object):
         Example:
         # export /home and /opt/sge6 to each node in nodes
         $ node.start_nfs_server()
-        $ node.export_fs_to_nodes(\
-                nodes=[node1,node2], export_paths=['/home', '/opt/sge6']
+        $ node.export_fs_to_nodes(nodes=[node1,node2],
+                                  export_paths=['/home', '/opt/sge6'])
         """
         # setup /etc/exports
         nfs_export_settings = "(async,no_root_squash,no_subtree_check,rw)"
-        regex = '|'.join([n.alias for n in nodes])
-        self.ssh.remove_lines_from_file('/etc/exports', regex)
+        etc_exports = self.ssh.remote_file('/etc/exports', 'r')
+        contents = etc_exports.read()
+        etc_exports.close()
         etc_exports = self.ssh.remote_file('/etc/exports', 'a')
         for node in nodes:
             for path in export_paths:
-                etc_exports.write(' '.join([path, node.alias +
-                                            nfs_export_settings + '\n']))
+                export_line = ' '.join(
+                    [path, node.alias + nfs_export_settings + '\n'])
+                if export_line not in contents:
+                    etc_exports.write(export_line)
         etc_exports.close()
         self.ssh.execute('exportfs -fra')
 
