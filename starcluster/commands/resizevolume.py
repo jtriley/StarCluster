@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 from starcluster import node
 from starcluster import volume
 from starcluster import static

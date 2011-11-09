@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 active_ebs_cluster = """EBS Cluster '%(cluster_name)s' already exists.
 
 Either choose a different tag name, or stop the EBS cluster using:

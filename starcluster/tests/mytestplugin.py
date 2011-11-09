@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 from starcluster.logger import log
 from starcluster.clustersetup import ClusterSetup
 

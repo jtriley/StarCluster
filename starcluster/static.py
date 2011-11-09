@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Module for storing static data structures
 """

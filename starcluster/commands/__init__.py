@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 from start import CmdStart
 from addnode import CmdAddNode
 from removenode import CmdRemoveNode

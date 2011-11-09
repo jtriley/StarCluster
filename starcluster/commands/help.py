@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import optparse
 
 from base import CmdBase

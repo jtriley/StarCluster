@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 EC2/S3 Utility Classes
 """

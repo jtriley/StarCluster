@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from starcluster import optcomplete
 from starcluster.logger import log
 

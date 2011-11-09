@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 default_config = {
     'default': 'smallcluster',
     'enable_experimental': 'False',

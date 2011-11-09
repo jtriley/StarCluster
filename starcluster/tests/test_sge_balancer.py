@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import datetime
 
 from starcluster.balancers import sge

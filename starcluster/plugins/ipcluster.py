@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import posixpath
 
 from starcluster.clustersetup import ClusterSetup

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Utils module for StarCluster
 """

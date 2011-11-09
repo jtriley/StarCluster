@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 StarCluster logging module
 """

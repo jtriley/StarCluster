@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 ThreadPool module for StarCluster based on WorkerPool
 """
