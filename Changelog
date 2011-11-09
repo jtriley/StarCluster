@@ -5,6 +5,17 @@ Version History
 .. contents::
     :local:
 
+.. _version-0.92.2:
+
+0.92.2
+======
+
+.. _v0922-fixes:
+
+Bug Fixes
+---------
+* Raise an error if placement group creation fails
+
 .. _version-0.92.1:
 
 0.92.1

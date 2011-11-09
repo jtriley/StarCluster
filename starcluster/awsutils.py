@@ -270,8 +270,13 @@ class EasyEC2(EasyAWS):
         """
         log.info("Creating placement group %s..." % name)
         success = self.conn.create_placement_group(name)
-        if success:
-            return self.get_placement_group_or_none(name)
+        if not success:
+            log.debug(
+                "failed to create placement group '%s' (error = %s)" %
+                (name, success))
+            raise exception.AWSError(
+                "failed to create placement group '%s'" % name)
+        return self.get_placement_group_or_none(name)
 
     def get_placement_groups(self, filters=None):
         return self.conn.get_all_placement_groups(filters=filters)
