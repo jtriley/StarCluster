@@ -432,7 +432,7 @@ class DefaultClusterSetup(ClusterSetup):
         log.info("Removing node %s (%s)..." % (node.alias, node.id))
         if not self._disable_queue:
             log.info("Removing %s from SGE" % node.alias)
-            self._remove_from_sge(node)
+            #self._remove_from_sge(node)
         log.info("Removing %s from known_hosts files" % node.alias)
         self._remove_from_known_hosts(node)
         log.info("Removing %s from /etc/hosts" % node.alias)
