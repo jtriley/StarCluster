@@ -89,12 +89,13 @@ INSTANCE_TYPES = {
     'm2.2xlarge': ['x86_64'],
     'm2.4xlarge': ['x86_64'],
     'cc1.4xlarge': ['x86_64'],
+    'cc2.8xlarge': ['x86_64'],
     'cg1.4xlarge': ['x86_64'],
 }
 
 MICRO_INSTANCE_TYPES = ['t1.micro']
 
-CLUSTER_COMPUTE_TYPES = ['cc1.4xlarge']
+CLUSTER_COMPUTE_TYPES = ['cc1.4xlarge', 'cc2.8xlarge']
 
 CLUSTER_GPU_TYPES = ['cg1.4xlarge']
 
