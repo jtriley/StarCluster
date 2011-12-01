@@ -1711,9 +1711,11 @@ class Cluster(object):
             vol_id = v.get('volume_id')
             vol = self.ec2.get_volume(vol_id)
             if vol.status != 'available':
-                if self.master_node:
+                try:
                     if vol.attach_data.instance_id == self.master_node.id:
                         continue
+                except exception.MasterDoesNotExist:
+                    pass
                 msg = "volume %s is not available (status: %s)" % (vol_id,
                                                                    vol.status)
                 raise exception.ClusterValidationError(msg)
