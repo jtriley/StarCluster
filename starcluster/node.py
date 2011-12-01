@@ -461,14 +461,15 @@ class Node(object):
         known_hosts_file = posixpath.join(user.pw_dir, '.ssh', 'known_hosts')
         self.remove_from_known_hosts(username, nodes)
         khosts = []
+        if add_self and self not in nodes:
+            nodes.append(self)
         for node in nodes:
             server_pkey = node.ssh.get_server_public_key()
-            khosts.append(' '.join([node.alias, server_pkey.get_name(),
-                                    base64.b64encode(str(server_pkey))]))
-        if add_self and self not in nodes:
-            server_pkey = self.ssh.get_server_public_key()
-            khosts.append(' '.join([self.alias, server_pkey.get_name(),
-                                    base64.b64encode(str(server_pkey))]))
+            node_names = [node.alias, node.private_dns_name,
+                          node.private_dns_name_short, node.public_dns_name]
+            for name in node_names:
+                khosts.append(' '.join([name, server_pkey.get_name(),
+                                        base64.b64encode(str(server_pkey))]))
         khostsf = self.ssh.remote_file(known_hosts_file, 'a')
         khostsf.write('\n'.join(khosts) + '\n')
         khostsf.chown(user.pw_uid, user.pw_gid)
@@ -481,7 +482,10 @@ class Node(object):
         """
         user = self.getpwnam(username)
         known_hosts_file = posixpath.join(user.pw_dir, '.ssh', 'known_hosts')
-        hostnames = map(lambda n: n.alias, nodes)
+        hostnames = []
+        for node in nodes:
+            hostnames += [node.alias, node.private_dns_name,
+                          node.private_dns_name_short, node.public_dns_name]
         if self.ssh.isfile(known_hosts_file):
             regex = '|'.join(hostnames)
             self.ssh.remove_lines_from_file(known_hosts_file, regex)
