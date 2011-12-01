@@ -144,7 +144,7 @@ class Node(object):
     @property
     def groups(self):
         if not self._groups:
-            groups = map(lambda x: x.id, self.instance.groups)
+            groups = map(lambda x: x.name, self.instance.groups)
             self._groups = self.ec2.get_all_security_groups(groupnames=groups)
         return self._groups
 
