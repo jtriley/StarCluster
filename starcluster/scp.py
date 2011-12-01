@@ -173,6 +173,7 @@ class SCPClient(object):
                 self._progress(basename, 1, 1)
             chan.sendall('\x00')
             file_hdl.close()
+            self._recv_confirm()
 
     def _send_recursive(self, files):
         single_files = []
