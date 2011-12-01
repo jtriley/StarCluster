@@ -568,7 +568,7 @@ class Node(object):
                 etc_exports.write(' '.join([path, node.alias + \
                                             nfs_export_settings + '\n']))
         etc_exports.close()
-        self.ssh.execute('exportfs -a')
+        self.ssh.execute('exportfs -fra')
 
     def stop_exporting_fs_to_nodes(self, nodes):
         """
@@ -581,14 +581,14 @@ class Node(object):
         """
         regex = '|'.join(map(lambda x: x.alias, nodes))
         self.ssh.remove_lines_from_file('/etc/exports', regex)
-        self.ssh.execute('exportfs -a')
+        self.ssh.execute('exportfs -fra')
 
     def start_nfs_server(self):
         self.ssh.execute('/etc/init.d/portmap start')
         self.ssh.execute('mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs/',
                          ignore_exit_status=True)
         self.ssh.execute('/etc/init.d/nfs start')
-        self.ssh.execute('/usr/sbin/exportfs -r')
+        self.ssh.execute('/usr/sbin/exportfs -fra')
 
     def mount_nfs_shares(self, server_node, remote_paths):
         """
