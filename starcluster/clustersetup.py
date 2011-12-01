@@ -382,7 +382,7 @@ class DefaultClusterSetup(ClusterSetup):
         if master.ssh.isdir(default_cell):
             log.info("Removing previous SGE installation...")
             master.ssh.execute('rm -rf %s' % default_cell)
-            master.ssh.execute('exportfs -fr')
+            master.ssh.execute('exportfs -fra')
         mconn = master.ssh
         admin_list = ' '.join(map(lambda n: n.alias, self._nodes))
         exec_list = admin_list
