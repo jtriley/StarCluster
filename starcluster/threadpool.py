@@ -139,7 +139,7 @@ class ThreadPool(workerpool.WorkerPool):
         self.join()
         if self._exception_queue.qsize() > 0:
             raise exception.ThreadPoolException(
-                "An error occured in ThreadPool", self._exception_queue.queue)
+                "An error occurred in ThreadPool", self._exception_queue.queue)
         if return_results:
             return self.get_results()
 

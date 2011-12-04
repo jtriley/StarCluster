@@ -1,7 +1,7 @@
 **********************
 Installing StarCluster
 **********************
-StarCluster is available via the Python Package Index (PyPI) and comes with two
+StarCluster is available via the PYthon Package Index (PyPI) and comes with two
 public Amazon EC2 AMIs (i386 and x86_64).  Below are instructions for
 installing the latest stable release of StarCluster via PyPI (**recommended**).
 There are also instructions for installing the latest development version from

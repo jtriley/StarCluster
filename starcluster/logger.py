@@ -111,7 +111,7 @@ def configure_sc_logging(use_syslog=False):
 
     By default StarCluster's logger has no formatters and a NullHandler so that
     other developers using StarCluster as a library can configure logging as
-    they see fit. This method is used in StarCluster's application code (ie the
+    they see fit. This method is used in StarCluster's application code (i.e. the
     'starcluster' command) to toggle StarCluster's application specific
     formatters/handlers
 

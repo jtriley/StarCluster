@@ -212,7 +212,7 @@ class EBSImageCreator(ImageCreator):
                 return self._create_image_from_ebs(size)
             return self._create_image_from_instance_store(size)
         except:
-            log.error("Error occured while creating image")
+            log.error("Error occurred while creating image")
             if self._snap:
                 log.error("Removing generated snapshot '%s'" % self._snap)
                 self._snap.delete()

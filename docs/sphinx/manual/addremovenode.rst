@@ -82,7 +82,7 @@ tag* representing the cluster you want to remove nodes from and a node *alias*::
     >>> Removing node001 from known_hosts files
     >>> Removing node001 from /etc/hosts
     >>> Removing node001 from NFS
-    >>> Cancelling spot request sir-3567ba14
+    >>> Canceling spot request sir-3567ba14
     >>> Terminating node: node001 (i-8bec7ce5)
 
 The above command takes care to properly remove the node from the cluster by

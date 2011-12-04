@@ -133,7 +133,7 @@ the CLUSTER_USER you specified.
 
 To test this out, let's login to the master node and attempt to run the
 hostname command via SSH on node001 without a password for both root and
-sgeadmin (ie CLUSTER_USER)::
+sgeadmin (i.e. CLUSTER_USER)::
 
     $ starcluster sshmaster mycluster
     root@master:~# ssh node001 hostname

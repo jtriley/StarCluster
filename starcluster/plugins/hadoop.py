@@ -173,7 +173,7 @@ class Hadoop(ClusterSetup):
     def _setup_dumbo(self, node):
         if not node.ssh.isfile('/etc/dumbo.conf'):
             f = node.ssh.remote_file('/etc/dumbo.conf')
-            f.write('[hadoops]\nstarcluster: %s\n' % self.hadoop_home)
+            f.write('[hadoop]\nstarcluster: %s\n' % self.hadoop_home)
             f.close()
 
     def _configure_hadoop(self, master, nodes, user):

@@ -37,7 +37,7 @@ class CmdRemoveImage(ImageCompleter):
     def addopts(self, parser):
         parser.add_option("-p", "--pretend", dest="pretend",
                           action="store_true", default=False,
-                          help="pretend run, dont actually remove anything")
+                          help="pretend run, do not actually remove anything")
         parser.add_option("-c", "--confirm", dest="confirm",
                           action="store_true", default=False,
                           help="do not prompt for confirmation, "
