@@ -35,14 +35,14 @@
 This module provide automatic bash completion support for programs that use the
 optparse module.  The premise is that the optparse options parser specifies
 enough information (and more) for us to be able to generate completion strings
-esily.  Another advantage of this over traditional completion schemes where the
+easily.  Another advantage of this over traditional completion schemes where the
 completion strings are hard-coded in a separate bash source file, is that the
 same code that parses the options is used to generate the completions, so the
 completions is always up-to-date with the program itself.
 
 In addition, we allow you specify a list of regular expressions or code that
 define what kinds of files should be proposed as completions to this file if
-needed.  If you want to implement more complex behaviour, you can instead
+needed.  If you want to implement more complex behavior, you can instead
 specify a function, which will be called with the current directory as an
 argument.
 

@@ -77,7 +77,7 @@ list of suggestions::
     -i                      mediumcluster           -x
     -I                      molsim
 
-In the example above, *smallcluster*, *mediumcluster*, *largecluster*, etc are
+In the example above, *smallcluster*, *mediumcluster*, *largecluster*, etc. are
 all cluster templates defined in ~/.starcluster/config. Typing an **s**
 character after the *start* action will autocomplete the first argument to
 *smallcluster*
