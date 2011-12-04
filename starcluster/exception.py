@@ -117,7 +117,7 @@ class SnapshotDoesNotExist(AWSError):
 class BucketAlreadyExists(AWSError):
     def __init__(self, bucket_name):
         self.msg = "bucket with name '%s' already exists on S3\n" % bucket_name
-        self.msg += "(NOTE: S3's bucket namepsace is shared by all AWS users)"
+        self.msg += "(NOTE: S3's bucket namespace is shared by all AWS users)"
 
 
 class BucketDoesNotExist(AWSError):
@@ -471,7 +471,7 @@ class ThreadPoolException(BaseException):
         excs = []
         for exception in self.exceptions:
             e, tb_msg, jobid = exception
-            excs.append('error occured in job (id=%s): %s' % (jobid, str(e)))
+            excs.append('error occurred in job (id=%s): %s' % (jobid, str(e)))
             excs.append(tb_msg)
         return '\n'.join(excs)
 

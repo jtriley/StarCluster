@@ -86,7 +86,7 @@ Load Balancer Statistics
 ========================
 The *loadbalance* command supports outputting various load balancing stats over
 time such as the number of nodes, number of running jobs, number of queued
-jobs, etc while it's running:
+jobs, etc. while it's running:
 
 .. image:: ../_static/balancer_visualizer.png
 
@@ -205,7 +205,7 @@ complete the maximum workload from the queue, and use 75% of the hour you have
 already paid for.
 
 Leaving a node up for this amount of time also increases the stability of the
-cluster. It is detrimental to the cluster and wasteful to be continuosly adding
+cluster. It is detrimental to the cluster and wasteful to be continuously adding
 and removing nodes.
 
 The Process of Adding a Node
@@ -223,7 +223,7 @@ Adding a new node is a multi-stage process:
    the master, and then exportfs so the shares are open to the slave nodes.
 #. Mount the NFS shares on the new node.
 #. Configure SGE: inform the master of the new host's address, and inform the
-   new host of the master, and excute the sge commands to establish
+   new host of the master, and execute the sge commands to establish
    communications.
 
 The Process of Removing a Node

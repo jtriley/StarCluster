@@ -112,6 +112,6 @@ do
 done
 
 # Record packages on Master
-# assuming that /home/ is a persistant EBS volume
+# assuming that /home/ is a persistent EBS volume
 dpkg --get-selections > $PACKAGE_FILE || die "Failed to save packages"
 """
