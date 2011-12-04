@@ -4,7 +4,7 @@ from starcluster.logger import log
 
 class XvfbSetup(ClusterSetup):
     """
-    Installs, configures, and sets up an Xvfb server
+    Installs, configures, and sets up a Xvfb server
     Thanks to Adam Marsh for his contribution
     """
     def run(self, nodes, master, user, user_shell, volumes):

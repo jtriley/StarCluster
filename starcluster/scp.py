@@ -38,7 +38,7 @@ class SCPClient(object):
     halted after too many levels of symlinks are detected.
     The put method uses os.walk for recursion, and sends files accordingly.
     Since scp doesn't support symlinks, we send file symlinks as the file
-    (matching scp behaviour), but we make no attempt at symlinked directories.
+    (matching scp behavior), but we make no attempt at symlinked directories.
     """
     def __init__(self, transport, buff_size=16384, socket_timeout=5.0,
                  progress=None):
