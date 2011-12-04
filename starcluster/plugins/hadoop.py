@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import posixpath
 
 from starcluster import threadpool
@@ -86,8 +87,7 @@ class Hadoop(ClusterSetup):
         self.empty_conf = '/etc/hadoop-0.20/conf.empty'
         self.centos_java_home = '/usr/lib/jvm/java'
         self.centos_alt_cmd = 'alternatives'
-        self.ubuntu_javas = ['/usr/lib/jvm/java-6-sun/jre',
-                             '/usr/lib/jvm/java-6-openjdk/jre']
+        self.ubuntu_java_home = '/usr/lib/jvm/java-6-sun/jre'
         self.ubuntu_alt_cmd = 'update-alternatives'
         self._pool = None
 
@@ -101,10 +101,7 @@ class Hadoop(ClusterSetup):
         # check for CentOS, otherwise default to Ubuntu 10.04's JAVA_HOME
         if node.ssh.isfile('/etc/redhat-release'):
             return self.centos_java_home
-        for java in self.ubuntu_javas:
-            if node.ssh.isdir(java):
-                return java
-        raise Exception("Cant find JAVA jre")
+        return self.ubuntu_java_home
 
     def _get_alternatives_cmd(self, node):
         # check for CentOS, otherwise default to Ubuntu 10.04
@@ -173,7 +170,7 @@ class Hadoop(ClusterSetup):
     def _setup_dumbo(self, node):
         if not node.ssh.isfile('/etc/dumbo.conf'):
             f = node.ssh.remote_file('/etc/dumbo.conf')
-            f.write('[hadoops]\nstarcluster: %s\n' % self.hadoop_home)
+            f.write('[hadoopsF]\nstarcluster: %s\n' % self.hadoop_home)
             f.close()
 
     def _configure_hadoop(self, master, nodes, user):
