@@ -22,7 +22,7 @@
 # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
-"""Utitlities for dealing with ip addresses.
+"""Utilities for dealing with ip addresses.
 
   Functions:
     - validate_ip: Validate a dotted-quad ip address.
@@ -89,7 +89,7 @@ def validate_ip(s):
     """Validate a dotted-quad ip address.
 
     The string is considered a valid dotted-quad address if it consists of
-    one to four octets (0-255) seperated by periods (.).
+    one to four octets (0-255) separated by periods (.).
 
 
     >>> validate_ip('127.0.0.1')
@@ -128,7 +128,7 @@ def validate_cidr(s):
     """Validate a CIDR notation ip address.
 
     The string is considered a valid CIDR address if it consists of one to
-    four octets (0-255) seperated by periods (.) followed by a forward slash
+    four octets (0-255) separated by periods (.) followed by a forward slash
     (/) and a bit mask length (1-32).
 
 

@@ -69,7 +69,7 @@ This means you can simply login to the master node of a cluster::
 
     $ starcluster sshmaster mycluster
 
-and connect to any of the nodes (e.g. node001, node002, etc) simply by
+and connect to any of the nodes (e.g. node001, node002, etc.) simply by
 running::
 
     $ ssh node001

@@ -703,7 +703,7 @@ class EasyEC2(EasyAWS):
 
     def get_zone(self, zone):
         """
-        Return zone object respresenting an EC2 availability zone
+        Return zone object representing an EC2 availability zone
         Raises exception.ZoneDoesNotExist if not successful
         """
         try:
@@ -716,7 +716,7 @@ class EasyEC2(EasyAWS):
 
     def get_zone_or_none(self, zone):
         """
-        Return zone object respresenting an EC2 availability zone
+        Return zone object representing an EC2 availability zone
         Returns None if unsuccessful
         """
         try:

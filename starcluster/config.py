@@ -311,7 +311,7 @@ class StarClusterConfig(object):
         step is a group of settings for a section in the form of a dictionary.
         A 'master' dictionary is updated with the settings at each step. This
         causes the next group of settings to override the previous, and so on.
-        The 'section_name' settings are at the top of the dep tree.
+        The 'section_name' settings are at the top of the dependency tree.
         """
         section = store[section_name]
         extends = section.get('extends')
@@ -522,7 +522,7 @@ class StarClusterConfig(object):
     def _load_cluster_sections(self, cluster_sections):
         """
         Loads all cluster sections. Similar to _load_sections but also handles
-        populating specified keypair,volume,plugins,permissions,etc settings
+        populating specified keypair, volume, plugins, permissions, etc. settings
         """
         clusters = cluster_sections
         cluster_store = AttributeDict()

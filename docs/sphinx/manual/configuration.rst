@@ -441,7 +441,7 @@ world for the ``smallcluster`` template:
 
 A permission section specifies a port range to open to a given network range
 (cidr_ip). By default, the network range is set to ``0.0.0.0/0`` which
-represents any ip address (ie the "world"). In the above example, we created a
+represents any ip address (i.e. the "world"). In the above example, we created a
 permission section called ``www`` that opens port 80 to the "world" by setting
 the from_port and to_port both to be 80.  You can restrict the ip addresses
 that the rule applies to by specifying the proper cidr_ip setting. In the above
@@ -624,13 +624,13 @@ Finally, to (optionally) create new EBS volumes in the target region::
 Given that a *cluster template* references these region-specific items you must
 either override the relevant settings at the command line using the *start*
 command's option flags or create separate *cluster templates* configured for
-each region you use. To override the releveant settings at the command line::
+each region you use. To override the relevant settings at the command line::
 
     $ starcluster -r us-west-1 start -k myuswestkey -n ami-99999999
 
 If you often use multiple regions you will most likely want to create separate
 *cluster templates* for each region by extending a common template,
-*smallcluster* for examle, and overriding the relevant settings:
+*smallcluster* for example, and overriding the relevant settings:
 
 .. code-block:: ini
 

@@ -67,7 +67,7 @@ volume.
     The **createvolume** command simply formats the *entire volume* using all
     of the space on the device rather than creating partitions. This makes it
     easier to resize the volume and expand the filesystem later on if you run
-    out of diskspace.
+    out of disk space.
 
 To create and format a new volume simply specify a volume size in GB and the
 availability zone to create the volume in::
