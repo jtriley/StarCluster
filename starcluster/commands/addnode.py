@@ -55,7 +55,7 @@ class CmdAddNode(ClusterCompleter):
         parser.add_option("-a", "--alias", dest="alias",
                           action="append", type="string", default=[],
                           help=("alias to give to the new node " + \
-                                "(e.g. node007, mynode, etc)"))
+                                "(e.g. node007, mynode, etc.)"))
         parser.add_option("-n", "--num-nodes", dest="num_nodes",
                           action="store", type="int", default=1,
                           help=("number of new nodes to launch"))

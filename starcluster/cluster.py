@@ -408,7 +408,7 @@ class Cluster(object):
         not specified.
 
         This method assigns the first volume to /dev/sdz, second to /dev/sdy,
-        etc for all volumes that do not include a device/partition setting
+        etc. for all volumes that do not include a device/partition setting
         """
         devices = ['/dev/sd%s' % s for s in string.lowercase]
         devmap = {}

@@ -96,7 +96,7 @@ will also modify your current shell's environment to work with the StarCluster
 virtual environment. As you can see from the *echo $PATH* command above your
 PATH environment variable has been modified to include the virtual
 environment's *bin* directory at the front of the path. This means when you
-type *python* or other Python-related commands (e.g. easy_install, pip, etc)
+type *python* or other Python-related commands (e.g. easy_install, pip, etc.)
 you will be using the virtual environment's isolated Python installation.
 
 To see a list of your virtual environments:

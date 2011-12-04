@@ -53,7 +53,7 @@ class Node(object):
     This class represents a single compute node in a StarCluster.
 
     It contains all useful metadata for the node such as the internal/external
-    hostnames, ips, etc as well as a paramiko ssh object for executing
+    hostnames, ips, etc. as well as a paramiko ssh object for executing
     commands, creating/modifying files on the node.
 
     'instance' arg must be an instance of boto.ec2.instance.Instance
@@ -800,7 +800,7 @@ class Node(object):
         """
         Shutdown this instance. This method will terminate traditional
         instance-store instances and stop EBS-backed instances
-        (ie not destroy EBS root dev)
+        (i.e. not destroy EBS root dev)
         """
         if self.is_stoppable():
             self.stop()

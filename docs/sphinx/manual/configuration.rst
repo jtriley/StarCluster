@@ -441,7 +441,7 @@ world for the ``smallcluster`` template:
 
 A permission section specifies a port range to open to a given network range
 (cidr_ip). By default, the network range is set to ``0.0.0.0/0`` which
-represents any ip address (ie the "world"). In the above example, we created a
+represents any ip address (i.e. the "world"). In the above example, we created a
 permission section called ``www`` that opens port 80 to the "world" by setting
 the from_port and to_port both to be 80.  You can restrict the ip addresses
 that the rule applies to by specifying the proper cidr_ip setting. In the above

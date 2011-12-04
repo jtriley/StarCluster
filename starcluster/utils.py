@@ -371,7 +371,7 @@ def version_to_float(v):
     # and is placed in public domain.
     """
     Convert a Mozilla-style version string into a floating-point number
-    1.2.3.4, 1.2a5, 2.3.4b1pre, 3.0rc2, etc
+    1.2.3.4, 1.2a5, 2.3.4b1pre, 3.0rc2, etc.
     """
     version = [
         0, 0, 0, 0,  # 4-part numerical revision

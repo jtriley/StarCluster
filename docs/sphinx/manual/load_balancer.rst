@@ -86,7 +86,7 @@ Load Balancer Statistics
 ========================
 The *loadbalance* command supports outputting various load balancing stats over
 time such as the number of nodes, number of running jobs, number of queued
-jobs, etc while it's running:
+jobs, etc. while it's running:
 
 .. image:: ../_static/balancer_visualizer.png
 

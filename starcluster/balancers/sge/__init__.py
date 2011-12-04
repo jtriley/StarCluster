@@ -87,7 +87,7 @@ class SGEStats(object):
 
     def job_multiply(self, hash):
         """
-        this function deals with sge jobs with a task range, ie qsub -t 1-20:1
+        this function deals with sge jobs with a task range, i.e. qsub -t 1-20:1
         makes 20 jobs. self.jobs needs to represent that it is 20 jobs instead
         of just 1.
         """
@@ -494,7 +494,7 @@ class SGELoadBalancer(LoadBalancer):
         it will feed these stats to SGEStats, which parses the XML.
         it will return two arrays: one of hosts, each host has a hash with its
         host information inside. The job array contains a hash for every job,
-        containing statistics about the job name, priority, etc
+        containing statistics about the job name, priority, etc.
         """
         log.debug("starting get_stats")
         master = self._cluster.master_node
@@ -518,7 +518,7 @@ class SGELoadBalancer(LoadBalancer):
                                                  ignore_exit_status=True,
                                                  source_profile=True))
         except Exception, e:
-            log.error("Error occured getting SGE stats via ssh. "
+            log.error("Error occurred getting SGE stats via ssh. "
                       "Cluster terminated?")
             log.error(e)
             return -1
