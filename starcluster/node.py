@@ -712,7 +712,7 @@ class Node(object):
         vol_id = root_vol.volume_id
         vol = self.ec2.get_volume(vol_id)
         vol.detach()
-        while vol.update() != 'availabile':
+        while vol.update() != 'available':
             time.sleep(5)
         log.info("Deleting node %s's root volume" % self.alias)
         root_vol.delete()

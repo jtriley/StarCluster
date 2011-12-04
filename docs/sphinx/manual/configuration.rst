@@ -624,13 +624,13 @@ Finally, to (optionally) create new EBS volumes in the target region::
 Given that a *cluster template* references these region-specific items you must
 either override the relevant settings at the command line using the *start*
 command's option flags or create separate *cluster templates* configured for
-each region you use. To override the releveant settings at the command line::
+each region you use. To override the relevant settings at the command line::
 
     $ starcluster -r us-west-1 start -k myuswestkey -n ami-99999999
 
 If you often use multiple regions you will most likely want to create separate
 *cluster templates* for each region by extending a common template,
-*smallcluster* for examle, and overriding the relevant settings:
+*smallcluster* for example, and overriding the relevant settings:
 
 .. code-block:: ini
 

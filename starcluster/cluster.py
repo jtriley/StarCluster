@@ -377,7 +377,7 @@ class Cluster(object):
         availability zone between those volumes. If an availability zone
         is explicitly specified in the config and does not match the common
         availability zone of the volumes, an exception is raised. If all
-        volumes are not in the same availabilty zone an exception is raised.
+        volumes are not in the same availability zone an exception is raised.
         If no volumes are specified, returns the user specified availability
         zone if it exists.
         """
@@ -574,7 +574,7 @@ class Cluster(object):
                 self.plugins = self.load_plugins(self._plugins)
             except exception.PluginError, e:
                 log.warn(e)
-                log.warn("An error occured while loading plugins")
+                log.warn("An error occurred while loading plugins")
                 log.warn("Not running any plugins")
             except Exception, e:
                 raise exception.ClusterReceiptError(
@@ -849,7 +849,7 @@ class Cluster(object):
             if not terminate:
                 continue
             if node.spot_id:
-                log.info("Cancelling spot request %s" % node.spot_id)
+                log.info("Canceling spot request %s" % node.spot_id)
                 node.get_spot_request().cancel()
             node.terminate()
 
@@ -1325,7 +1325,7 @@ class Cluster(object):
     def terminate_cluster(self):
         """
         Destroy this cluster by first detaching all volumes, shutting down all
-        instances, cancelling all spot requests (if any), removing its
+        instances, canceling all spot requests (if any), removing its
         placement group (if any), and removing its security group.
         """
         try:
@@ -1338,7 +1338,7 @@ class Cluster(object):
             node.terminate()
         for spot in self.spot_requests:
             if spot.state not in ['cancelled', 'closed']:
-                log.info("Cancelling spot instance request: %s" % spot.id)
+                log.info("Canceling spot instance request: %s" % spot.id)
                 spot.cancel()
         sg = self.ec2.get_group_or_none(self._security_group)
         pg = self.ec2.get_placement_group_or_none(self._security_group)
@@ -1481,7 +1481,7 @@ class Cluster(object):
         except exception.MasterDoesNotExist:
             raise
         except Exception, e:
-            log.error("Error occured while running plugin '%s':" % plugin_name)
+            log.error("Error occurred while running plugin '%s':" % plugin_name)
             if isinstance(e, exception.ThreadPoolException):
                 e.print_excs()
                 log.debug(e.format_excs())

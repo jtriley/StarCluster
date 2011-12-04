@@ -5,7 +5,7 @@ class CmdRunPlugin(CmdBase):
     """
     runplugin <plugin_name> <cluster_tag>
 
-    Run a StarCluster plugin on a runnning cluster
+    Run a StarCluster plugin on a running cluster
 
     plugin_name - name of plugin section defined in the config
     cluster_tag - tag name of a running StarCluster

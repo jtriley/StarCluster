@@ -39,7 +39,7 @@ Setup a virtualenv for StarCluster development
 When developing a Python project it's useful to work inside an isolated Python
 environment that lives inside your *$HOME* folder.  This helps to avoid
 dependency version mismatches between projects and also removes the need to
-obtain root priviliges to install Python modules/packages for development.
+obtain root privileges to install Python modules/packages for development.
 
 Fortunately there exists a couple of projects that make creating and managing
 isolated Python environments quick and easy:
