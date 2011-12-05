@@ -1481,7 +1481,8 @@ class Cluster(object):
         except exception.MasterDoesNotExist:
             raise
         except Exception, e:
-            log.error("Error occurred while running plugin '%s':" % plugin_name)
+            log.error("Error occurred while running plugin '%s':" %
+                      plugin_name)
             if isinstance(e, exception.ThreadPoolException):
                 e.print_excs()
                 log.debug(e.format_excs())

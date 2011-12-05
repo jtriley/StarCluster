@@ -87,9 +87,9 @@ class SGEStats(object):
 
     def job_multiply(self, hash):
         """
-        this function deals with sge jobs with a task range, i.e. qsub -t 1-20:1
-        makes 20 jobs. self.jobs needs to represent that it is 20 jobs instead
-        of just 1.
+        This function deals with sge jobs with a task range.  For example,
+        'qsub -t 1-20:1' makes 20 jobs. self.jobs needs to represent that it is
+        20 jobs instead of just 1.
         """
         sz_range = hash['tasks']
         dashpos = sz_range.find('-')

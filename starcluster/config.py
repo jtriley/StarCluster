@@ -522,7 +522,8 @@ class StarClusterConfig(object):
     def _load_cluster_sections(self, cluster_sections):
         """
         Loads all cluster sections. Similar to _load_sections but also handles
-        populating specified keypair, volume, plugins, permissions, etc. settings
+        populating specified keypair, volume, plugins, permissions, etc.
+        settings
         """
         clusters = cluster_sections
         cluster_store = AttributeDict()
