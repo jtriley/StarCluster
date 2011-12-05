@@ -27,10 +27,10 @@ visual clue that processing is underway.
 
 The ProgressBar class manages the progress, and the format of the line
 is given by a number of widgets. A widget is an object that may
-display diferently depending on the state of the progress. There are
+display differently depending on the state of the progress. There are
 three types of widget:
 - a string, which always shows itself;
-- a ProgressBarWidget, which may return a diferent value every time
+- a ProgressBarWidget, which may return a different value every time
 it's update method is called; and
 - a ProgressBarWidgetHFill, which is like ProgressBarWidget, except it
 expands to fill the remaining width of the line.
@@ -78,7 +78,7 @@ class ProgressBarWidget(object):
         where one can access attributes of the class for knowing how
         the update must be made.
 
-        At least this function must be overriden."""
+        At least this function must be overridden."""
         pass
 
 
@@ -99,7 +99,7 @@ class ProgressBarWidgetHFill(object):
         the update must be made. The parameter width is the total
         horizontal width the widget must have.
 
-        At least this function must be overriden."""
+        At least this function must be overridden."""
         pass
 
 
@@ -164,7 +164,7 @@ class Fraction(ProgressBarWidget):
 
 
 class Bar(ProgressBarWidgetHFill):
-    "The bar of progress. It will strech to fill the line."
+    "The bar of progress. It will stretch to fill the line."
     def __init__(self, marker='#', left='|', right='|'):
         self.marker = marker
         self.left = left

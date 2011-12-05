@@ -93,7 +93,7 @@ class TemplateHandler(DocrootHandler):
     under the starcluster.templates package. You can set the _root_template_pkg
     attribute on this class before passing to BaseHTTPServer to specify a
     starcluster.templates subpackage to render templates from. Defaults to
-    rendering starcluster.templates (ie '/')
+    rendering starcluster.templates (i.e. '/')
     """
     _root_template_pkg = '/'
     _tmpl_context = {}

@@ -260,7 +260,7 @@ class VolumeCreator(cluster.Cluster):
             self.log.error("failed to create new volume")
             if self._volume:
                 log.error(
-                    "Error occured. Detaching, and deleting volume: %s" % \
+                    "Error occurred. Detaching, and deleting volume: %s" % \
                     self._volume.id)
                 self._volume.detach(force=True)
                 time.sleep(5)
@@ -279,7 +279,7 @@ class VolumeCreator(cluster.Cluster):
         Resize EBS volume
 
         vol - boto volume object
-        size - new volume sze
+        size - new volume size
         dest_zone - zone to create the new resized volume in. this must be
         within the original volume's region otherwise a manual copy (rsync)
         is required. this is currently not implemented.

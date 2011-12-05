@@ -39,7 +39,7 @@ Setup a virtualenv for StarCluster development
 When developing a Python project it's useful to work inside an isolated Python
 environment that lives inside your *$HOME* folder.  This helps to avoid
 dependency version mismatches between projects and also removes the need to
-obtain root priviliges to install Python modules/packages for development.
+obtain root privileges to install Python modules/packages for development.
 
 Fortunately there exists a couple of projects that make creating and managing
 isolated Python environments quick and easy:
@@ -96,7 +96,7 @@ will also modify your current shell's environment to work with the StarCluster
 virtual environment. As you can see from the *echo $PATH* command above your
 PATH environment variable has been modified to include the virtual
 environment's *bin* directory at the front of the path. This means when you
-type *python* or other Python-related commands (e.g. easy_install, pip, etc)
+type *python* or other Python-related commands (e.g. easy_install, pip, etc.)
 you will be using the virtual environment's isolated Python installation.
 
 To see a list of your virtual environments:

@@ -6,7 +6,7 @@ Features
     clusters on EC2
   * Support for attaching and NFS-sharing Amazon Elastic Block Storage (EBS)
     volumes for persistent storage across a cluster
-  * Comes with a publicly avilable Amazon Machine Image (AMI) configured for
+  * Comes with a publicly available Amazon Machine Image (AMI) configured for
     scientific computing
   * AMI includes OpenMPI, ATLAS, Lapack, NumPy, SciPy, and other useful
     libraries
@@ -38,7 +38,7 @@ Features
     started.
   * Multiple Instance Types - Added support for specifying instance types on a
     per-node basis. Thanks to Dan Yamins for his contributions.
-  * Unpartitioned Volumes - StarCluster now supportsboth partitioned and
+  * Unpartitioned Volumes - StarCluster now supports both partitioned and
     unpartitioned EBS volumes.
   * New Plugin Hooks - Plugins can now play a part when adding/removing a node
     as well as when restarting/shutting down the entire cluster by implementing
