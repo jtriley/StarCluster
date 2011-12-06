@@ -176,6 +176,9 @@ class CmdStart(ClusterCompleter):
                 log.info("Using default cluster template: %s" % template)
             scluster = self.cm.get_cluster_template(template, tag)
         scluster.update(self.specified_options_dict)
+        if self.opts.keyname and not self.opts.key_location:
+            key = self.cfg.get_key(self.opts.keyname)
+            scluster.key_location = key.key_location
         if not self.opts.refresh_interval:
             interval = self.cfg.globals.get("refresh_interval")
             scluster.refresh_interval = interval

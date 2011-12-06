@@ -60,7 +60,7 @@ class CmdStop(ClusterCompleter):
                 msg = " ".join([msg, '(options:', opts, ')'])
             self.parser.error(msg)
         for cluster_name in args:
-            cl = self.cm.get_cluster(cluster_name)
+            cl = self.cm.get_cluster(cluster_name, require_keys=False)
             is_stoppable = cl.is_stoppable()
             if not is_stoppable:
                 has_stoppable_nodes = cl.has_stoppable_nodes()

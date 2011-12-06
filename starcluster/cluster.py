@@ -30,7 +30,7 @@ class ClusterManager(managers.Manager):
         return "<ClusterManager: %s>" % self.ec2.region.name
 
     def get_cluster(self, cluster_name, group=None, load_receipt=True,
-                    load_plugins=True):
+                    load_plugins=True, require_keys=True):
         """
         Returns a Cluster object representing an active cluster
         """
@@ -46,8 +46,10 @@ class ClusterManager(managers.Manager):
             try:
                 key_location = self.cfg.get_key(cl.keyname).get('key_location')
                 cl.key_location = key_location
-            except (exception.KeyNotFound, Exception):
-                pass
+            except exception.KeyNotFound:
+                if require_keys:
+                    raise
+                cl.key_location = None
             return cl
         except exception.SecurityGroupDoesNotExist:
             raise exception.ClusterDoesNotExist(cluster_name)
@@ -158,14 +160,14 @@ class ClusterManager(managers.Manager):
         """
         Stop an EBS-backed cluster
         """
-        cl = self.get_cluster(cluster_name)
+        cl = self.get_cluster(cluster_name, require_keys=False)
         cl.stop_cluster(terminate_unstoppable)
 
     def terminate_cluster(self, cluster_name):
         """
         Terminates cluster_name
         """
-        cl = self.get_cluster(cluster_name)
+        cl = self.get_cluster(cluster_name, require_keys=False)
         cl.terminate_cluster()
 
     def get_cluster_security_group(self, group_name):
@@ -215,7 +217,8 @@ class ClusterManager(managers.Manager):
         for scg in cluster_groups:
             tag = self.get_tag_from_sg(scg.name)
             try:
-                cl = self.get_cluster(tag, group=scg, load_plugins=False)
+                cl = self.get_cluster(tag, group=scg, load_plugins=False,
+                                      require_keys=False)
             except exception.IncompatibleCluster, e:
                 sep = '*' * 60
                 log.error('\n'.join([sep, e.msg, sep]),
@@ -1325,8 +1328,8 @@ class Cluster(object):
     def terminate_cluster(self):
         """
         Destroy this cluster by first detaching all volumes, shutting down all
-        instances, canceling all spot requests (if any), removing its
-        placement group (if any), and removing its security group.
+        instances, canceling all spot requests (if any), removing its placement
+        group (if any), and removing its security group.
         """
         try:
             self.run_plugins(method_name="on_shutdown", reverse=True)
