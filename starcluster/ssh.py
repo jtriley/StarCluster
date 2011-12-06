@@ -753,15 +753,6 @@ class SSHGlob(object):
         return fnmatch.filter(names, pattern)
 
 
-def main():
-    """Little test when called directly."""
-    # Set these to your own details.
-    myssh = SSHClient('somehost.domain.com')
-    print myssh.execute('hostname')
-    #myssh.put('ssh.py')
-    myssh.close()
-
-
 RSA_OID = univ.ObjectIdentifier('1.2.840.113549.1.1.1')
 RSA_PARAMS = ['n', 'e', 'd', 'p', 'q', 'dp', 'dq', 'invq']
 
@@ -794,7 +785,11 @@ def get_private_rsa_fingerprint(key_location):
     characters separated every 2 characters by a ':'). The fingerprint is
     computed using a SHA1 digest of the DER encoded RSA private key.
     """
-    k = RSAKey.from_private_key_file(key_location)
+    try:
+        k = RSAKey.from_private_key_file(key_location)
+    except paramiko.SSHException:
+        raise exception.SSHError("Invalid RSA private key file: %s" %
+                                 key_location)
     params = dict(invq=util.mod_inverse(k.q, k.p), dp=k.d % (k.p - 1),
                   dq=k.d % (k.q - 1), d=k.d, n=k.n, p=k.p, q=k.q, e=k.e)
     assert len(params) == 8
@@ -805,7 +800,11 @@ def get_private_rsa_fingerprint(key_location):
 
 
 def get_public_rsa_fingerprint(pubkey_location):
-    k = RSAKey.from_private_key_file(pubkey_location)
+    try:
+        k = RSAKey.from_private_key_file(pubkey_location)
+    except paramiko.SSHException:
+        raise exception.SSHError("Invalid RSA private key file: %s" %
+                                 pubkey_location)
     md5digest = hashlib.md5(str(k)).hexdigest()
     return insert_char_every_n_chars(md5digest, ':', 2)
 
@@ -840,7 +839,3 @@ def test_import_keypair_fingerprint(keypair):
     print 'local fingerprint: %s' % localfprint
     print '  ec2 fingerprint: %s' % ec2fprint
     assert localfprint == ec2fprint
-
-
-if __name__ == "__main__":
-    main()

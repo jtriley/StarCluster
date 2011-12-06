@@ -8,6 +8,7 @@ import base64
 import cPickle
 import traceback
 
+from starcluster import ssh
 from starcluster import utils
 from starcluster import static
 from starcluster import spinner
@@ -1837,22 +1838,33 @@ class Cluster(object):
                 "no key_location specified for key '%s'" % self.keyname)
         if not os.path.exists(key_location):
             raise exception.ClusterValidationError(
-                'key_location=%s does not exist.' % \
-                key_location)
+                'key_location=%s does not exist' % key_location)
         elif not os.path.isfile(key_location):
             raise exception.ClusterValidationError(
-                'key_location=%s is not a file.' % \
-                key_location)
+                'key_location=%s is not a file' % key_location)
         keyname = self.keyname
         keypair = self.ec2.get_keypair_or_none(keyname)
         if not keypair:
             raise exception.ClusterValidationError(
-                'Account does not contain a key with keyname = %s. ' % keyname)
+                'Account does not contain a key with keyname = %s' % keyname)
+        fingerprint = keypair.fingerprint
+        if len(fingerprint) == 59:
+            localfingerprint = ssh.get_private_rsa_fingerprint(key_location)
+            if localfingerprint != fingerprint:
+                raise exception.ClusterValidationError(
+                    'key_location %s does not have correct fingerprint' %
+                    key_location)
+        else:
+            # Skip fingerprint validation for keys created using EC2 import
+            # keys until I can figure out the mystery behind the import keys
+            # fingerprint. I'm able to match ssh-keygen's public key
+            # fingerprint, however, Amazon doesn't for some reason...
+            log.warn("Skipping keypair fingerprint validation...")
         if self.zone:
             z = self.ec2.get_zone(self.zone)
             if keypair.region != z.region:
                 raise exception.ClusterValidationError(
-                    'Keypair %s not in availability zone region %s' % \
+                    'Keypair %s not in availability zone region %s' %
                     (keyname, z.region))
         return True
 
