@@ -159,6 +159,7 @@ Dependencies:
 * WorkerPool 0.9.2
 * Jinja2 2.5.5
 * decorator 3.3.1
+* pyasn1 0.0.13b
 
 Learn more...
 =============
