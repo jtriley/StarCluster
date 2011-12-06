@@ -1852,8 +1852,9 @@ class Cluster(object):
             localfingerprint = ssh.get_private_rsa_fingerprint(key_location)
             if localfingerprint != fingerprint:
                 raise exception.ClusterValidationError(
-                    'key_location %s does not have correct fingerprint' %
-                    key_location)
+                    "Incorrect fingerprint for key_location '%s'\n\n"
+                    "local fingerprint: %s\n\nkeypair fingerprint: %s"
+                    % (key_location, localfingerprint, fingerprint))
         else:
             # Skip fingerprint validation for keys created using EC2 import
             # keys until I can figure out the mystery behind the import keys
