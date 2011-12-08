@@ -1,5 +1,3 @@
-import re
-
 from starcluster import clustersetup
 from starcluster.templates import sge
 from starcluster.logger import log
@@ -36,14 +34,14 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         mssh = self._master.ssh
         pe_exists = mssh.get_status('qconf -sp %s' % name, source_profile=True)
         pe_exists = pe_exists == 0
+        verb = 'Updating'
         if not pe_exists:
-            log.info("Creating SGE parallel environment '%s'" % name)
-        else:
-            log.info("Updating SGE parallel environment '%s'" % name)
+            verb = 'Creating'
+        log.info("%s SGE parallel environment '%s'" % (verb, name))
         # iterate through each machine and count the number of processors
         nodes = nodes or self._nodes
         num_processors = sum(self.pool.map(lambda n: n.num_processors, nodes))
-        penv = mssh.remote_file("/tmp/pe.txt")
+        penv = mssh.remote_file("/tmp/pe.txt", "w")
         print >> penv, sge.sge_pe_template % (name, num_processors)
         penv.close()
         if not pe_exists:
@@ -108,45 +106,10 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
 
     def _remove_from_sge(self, node):
         master = self._master
-        master.ssh.execute('qconf -shgrp @allhosts > /tmp/allhosts',
+        master.ssh.execute('qconf -dattr hostgroup hostlist %s @allhosts' %
+                           node.alias, source_profile=True)
+        master.ssh.execute('qconf -purge queue slots all.q@%s' % node.alias,
                            source_profile=True)
-        hgrp_file = master.ssh.remote_file('/tmp/allhosts', 'r')
-        contents = hgrp_file.read().splitlines()
-        hgrp_file.close()
-        c = []
-        for line in contents:
-            line = line.replace(node.alias, '')
-            c.append(line)
-        hgrp_file = master.ssh.remote_file('/tmp/allhosts_new', 'w')
-        hgrp_file.writelines('\n'.join(c))
-        hgrp_file.close()
-        master.ssh.execute('qconf -Mhgrp /tmp/allhosts_new',
-                           source_profile=True)
-        master.ssh.execute('qconf -sq all.q > /tmp/allq', source_profile=True)
-        allq_file = master.ssh.remote_file('/tmp/allq', 'r')
-        contents = allq_file.read()
-        allq_file.close()
-        c = [l.strip() for l in contents.splitlines()]
-        s = []
-        allq = []
-        for l in c:
-            if l.startswith('slots') or l.startswith('['):
-                s.append(l)
-            else:
-                allq.append(l)
-        regex = re.compile(r"\[%s=\d+\],?" % node.alias)
-        slots = []
-        for line in s:
-            line = line.replace('\\', '')
-            slots.append(regex.sub('', line))
-        allq.append(''.join(slots))
-        f = master.ssh.remote_file('/tmp/allq_new', 'w')
-        allq[-1] = allq[-1].strip()
-        if allq[-1].endswith(','):
-            allq[-1] = allq[-1][:-1]
-        f.write('\n'.join(allq))
-        f.close()
-        master.ssh.execute('qconf -Mq /tmp/allq_new', source_profile=True)
         master.ssh.execute('qconf -dconf %s' % node.alias, source_profile=True)
         master.ssh.execute('qconf -de %s' % node.alias, source_profile=True)
         node.ssh.execute('pkill -9 sge_execd')
