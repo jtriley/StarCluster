@@ -253,14 +253,14 @@ class VolumeCreator(cluster.Cluster):
             self._format_volume()
             self.shutdown()
             self._warn_about_volume_hosts()
-            self.log.info("Your new %sGB volume %s has been created "
-                          "successfully" % (volume_size, vol.id))
+            log.info("Your new %sGB volume %s has been created successfully" %
+                     (volume_size, vol.id))
             return vol
         except Exception:
-            self.log.error("failed to create new volume")
+            log.error("failed to create new volume")
             if self._volume:
                 log.error(
-                    "Error occurred. Detaching, and deleting volume: %s" % \
+                    "Error occurred. Detaching, and deleting volume: %s" %
                     self._volume.id)
                 self._volume.detach(force=True)
                 time.sleep(5)
