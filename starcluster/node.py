@@ -154,6 +154,16 @@ class Node(object):
         return filter(lambda x: x.name.startswith(sg_prefix), self.groups)
 
     @property
+    def parent_cluster(self):
+        cluster_tag = "--UNKNOWN--"
+        try:
+            cg = self.cluster_groups[0].name
+            cluster_tag = cg.replace(static.SECURITY_GROUP_PREFIX + '-', '')
+        except IndexError:
+            pass
+        return cluster_tag
+
+    @property
     def num_processors(self):
         if not self._num_procs:
             self._num_procs = int(
