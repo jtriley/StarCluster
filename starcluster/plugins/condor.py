@@ -14,7 +14,7 @@ class CondorPlugin(clustersetup.DefaultClusterSetup):
             daemon_list += ", COLLECTOR, NEGOTIATOR"
         condorcfg.write(condor.condor_tmpl % dict(DAEMON_LIST=daemon_list))
         condorcfg.close()
-        node.ssh.execute('pkill condor', ignore_failure=True)
+        node.ssh.execute('pkill condor', ignore_exit_status=True)
         node.ssh.execute('/etc/init.d/condor start')
 
     def _setup_condor(self, master=None, nodes=None):
@@ -57,4 +57,4 @@ class CondorPlugin(clustersetup.DefaultClusterSetup):
         self._volumes = volumes
         log.info("Removing %s from Condor peacefully..." % node.alias)
         master.ssh.execute("condor_off -peaceful %s" % node.alias)
-        node.ssh.execute("pkill condor" % node.alias)
+        node.ssh.execute("pkill condor" % node.alias, ignore_exit_status=True)
