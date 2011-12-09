@@ -267,6 +267,10 @@ class Node(object):
         return self.instance.placement
 
     @property
+    def region(self):
+        return self.instance.region
+
+    @property
     def root_device_name(self):
         return self.instance.root_device_name
 
