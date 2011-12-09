@@ -4,6 +4,7 @@ import pkg_resources
 __all__ = [
     'config',
     'sge',
+    'condor',
     'user_msgs',
 ]
 
