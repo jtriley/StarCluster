@@ -26,10 +26,10 @@ class CmdShell(CmdBase):
     All StarCluster modules are automatically imported in the IPython session
     along with all StarCluster dependencies (e.g. boto, paramiko, etc.)
 
-    If the --ipcluster=CLUSTER (-p) is passed the IPython session will be
-    automatically be configured to connect to the remote cluster using
-    IPython's parallel mode (requires IPython 0.11+). In this mode you will
-    have the following additional objects available at the prompt:
+    If the --ipcluster=CLUSTER (-p) is passed, the IPython session will be
+    automatically be configured to connect to the remote CLUSTER using
+    IPython's parallel interface (requires IPython 0.11+). In this mode you
+    will have the following additional objects available at the prompt:
 
         ipcluster - starcluster.cluster.Cluster instance for the cluster
         ipclient - IPython.parallel.Client instance for the cluster
@@ -52,16 +52,17 @@ class CmdShell(CmdBase):
          22539340290692258087863249L]
 
     See IPython parallel docs for more details
-    (http://ipython.org/ipython-doc/stable/parallel/)
+    (http://ipython.org/ipython-doc/stable/parallel)
     """
 
     names = ['shell', 'sh']
 
     def _add_to_known_hosts(self, node):
+        log.info("Configuring local known_hosts file")
         user_home = os.path.expanduser('~')
         khosts = os.path.join(user_home, '.ssh', 'known_hosts')
         if not os.path.isfile(khosts):
-            log.warn("known_hosts file does not exist!")
+            log.warn("Unable to configure known_hosts: file does not exist")
             return
         contents = open(khosts).read()
         if node.dns_name not in contents:
@@ -83,6 +84,32 @@ class CmdShell(CmdBase):
     def execute(self, args):
         local_ns = dict(cfg=self.cfg, ec2=self.ec2, s3=self.s3, cm=self.cm,
                         starcluster=starcluster)
+        if self.opts.ipcluster:
+            log.info("Loading parallel IPython library")
+            try:
+                from IPython.parallel import Client
+            except ImportError, e:
+                self.parser.error(
+                    "Error loading parallel IPython:"
+                    "\n\n%s\n\n"
+                    "NOTE: IPython 0.11+ must be installed to use -p" % e)
+            tag = self.opts.ipcluster
+            cl = self.cm.get_cluster(tag)
+            region = cl.master_node.region.name
+            local_json = os.path.join(static.STARCLUSTER_CFG_DIR, 'ipcluster',
+                                      "%s-%s.json" % (tag, region))
+            if not os.path.exists(local_json):
+                self.parser.error(
+                    "IPython json file %s does not exist - make sure the ipcluster "
+                    "plugin has been executed and completed successfully.")
+            key_location = cl.master_node.key_location
+            self._add_to_known_hosts(cl.master_node)
+            log.info("Loading parallel IPython client and view")
+            rc = Client(local_json, sshkey=key_location, packer='pickle')
+            local_ns['Client'] = Client
+            local_ns['ipcluster'] = cl
+            local_ns['ipclient'] = rc
+            local_ns['ipview'] = rc[:]
         modules = [(starcluster.__name__ + '.' + module, module)
                    for module in starcluster.__all__]
         modules += [('boto', 'boto'), ('paramiko', 'paramiko'),
@@ -94,19 +121,4 @@ class CmdShell(CmdBase):
                 local_ns[modname] = sys.modules[fullname]
             except ImportError, e:
                 log.error("Error loading module %s: %s" % (modname, e))
-        if self.opts.ipcluster:
-            tag = self.opts.ipcluster
-            cl = self.cm.get_cluster(tag)
-            region = cl.master_node.region.name
-            local_json = os.path.join(static.STARCLUSTER_CFG_DIR, 'ipcluster',
-                                      "%s-%s.json" % (tag, region))
-            if os.path.exists(local_json):
-                from IPython.parallel import Client
-                key_location = cl.master_node.key_location
-                self._add_to_known_hosts(cl.master_node)
-                rc = Client(local_json, sshkey=key_location, packer='pickle')
-                local_ns['Client'] = Client
-                local_ns['ipcluster'] = cl
-                local_ns['ipclient'] = rc
-                local_ns['ipview'] = rc[:]
         utils.ipy_shell(local_ns=local_ns)
