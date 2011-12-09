@@ -8,11 +8,14 @@ import os
 import time
 import posixpath
 
+from starcluster import static
 from starcluster import spinner
 from starcluster.utils import print_timing
 from starcluster.clustersetup import ClusterSetup
 
 from starcluster.logger import log
+
+IPCLUSTER_CACHE = os.path.join(static.STARCLUSTER_CFG_DIR, 'ipcluster')
 
 
 class IPCluster10(ClusterSetup):
@@ -68,7 +71,8 @@ You will need this file in order to interact with the cluster from an IPython
 0.11 session on your local computer, e.g.:
 
     from IPython.parallel import Client
-    rc = Client('starcluster.json', sshkey='/path/to/your/keypair',
+    rc = Client('%(connector_file)s',
+                sshkey='%(key_location)s',
                 packer='pickle')
     view = rc[:]
     results = view.map_async(lambda x: x**30, range(50))
@@ -159,10 +163,17 @@ class IPCluster11(ClusterSetup):
             time.sleep(1)
         s.stop()
         # retrieve JSON connection info
-        local_json = 'starcluster.json'
+        if not os.path.isdir(IPCLUSTER_CACHE):
+            log.info("Creating IPCluster cache directory: %s" %
+                     IPCLUSTER_CACHE)
+            os.makedirs(IPCLUSTER_CACHE)
+        local_json = os.path.join(IPCLUSTER_CACHE,
+                                  '%s-%s.json' % (master.parent_cluster,
+                                                  master.region.name))
         log.info("Saving JSON connector file to '%s'" %
                  os.path.abspath(local_json))
         master.ssh.get(json, local_json)
+        return local_json
 
     @print_timing("IPCluster")
     def run(self, nodes, master, user, user_shell, volumes):
@@ -171,10 +182,10 @@ class IPCluster11(ClusterSetup):
         profile_dir = posixpath.join(user_home, '.ipython', 'profile_default')
         master.ssh.switch_user(user)
         self._write_config(master, profile_dir)
-        self._start_cluster(master, n, profile_dir)
-        cfile = '%s/security/ipcontroller-client.json' % profile_dir
+        cfile = self._start_cluster(master, n, profile_dir)
         log.info(started_msg % dict(cluster=master.parent_cluster, user=user,
-                                    connector_file=cfile))
+                                    connector_file=cfile,
+                                    key_location=master.key_location))
         master.ssh.switch_user('root')
 
     def _stop_cluster(self, master, user):
@@ -225,7 +236,9 @@ class IPClusterStop(ClusterSetup):
         time.sleep(2)
         # this is just to be sure, but they will probably do nothing
         # except print errors
-        master.ssh.execute("pkill -f ipcontrollerapp.py", ignore_exit_status=True)
+        master.ssh.execute("pkill -f ipcontrollerapp.py",
+                           ignore_exit_status=True)
         for node in nodes:
-            master.ssh.execute("pkill -f ipengineapp.py", ignore_exit_status=True)
+            master.ssh.execute("pkill -f ipengineapp.py",
+                               ignore_exit_status=True)
         master.ssh.switch_user('root')
