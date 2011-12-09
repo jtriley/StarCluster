@@ -100,8 +100,9 @@ class CmdShell(CmdBase):
                                       "%s-%s.json" % (tag, region))
             if not os.path.exists(local_json):
                 self.parser.error(
-                    "IPython json file %s does not exist - make sure the ipcluster "
-                    "plugin has been executed and completed successfully.")
+                    "IPython json file %s does not exist - make sure the "
+                    "ipcluster ipcluster plugin has been executed and "
+                    "completed successfully.")
             key_location = cl.master_node.key_location
             self._add_to_known_hosts(cl.master_node)
             log.info("Loading parallel IPython client and view")
