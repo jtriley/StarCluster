@@ -225,7 +225,7 @@ class IPClusterStop(ClusterSetup):
         time.sleep(2)
         # this is just to be sure, but they will probably do nothing
         # except print errors
-        master.ssh.execute("pkill -f ipcontrollerapp.py", ignore_failure=True)
+        master.ssh.execute("pkill -f ipcontrollerapp.py", ignore_exit_status=True)
         for node in nodes:
-            master.ssh.execute("pkill -f ipengineapp.py", ignore_failure=True)
+            master.ssh.execute("pkill -f ipengineapp.py", ignore_exit_status=True)
         master.ssh.switch_user('root')
