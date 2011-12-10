@@ -1,6 +1,7 @@
 import os
 import sys
 import base64
+import posixpath
 
 import starcluster
 from starcluster import utils
@@ -35,7 +36,7 @@ class CmdShell(CmdBase):
         ipclient - IPython.parallel.Client instance for the cluster
         ipview - IPython.parallel.client.view.DirectView for the cluster
 
-    Here's an example on how to run a parallel map across all nodes in the
+    Here's an example of how to run a parallel map across all nodes in the
     cluster:
 
         [~]> ipclient.ids
@@ -96,13 +97,25 @@ class CmdShell(CmdBase):
             tag = self.opts.ipcluster
             cl = self.cm.get_cluster(tag)
             region = cl.master_node.region.name
-            local_json = os.path.join(static.STARCLUSTER_CFG_DIR, 'ipcluster',
+            ipcluster_dir = os.path.join(static.STARCLUSTER_CFG_DIR,
+                                         'ipcluster')
+            local_json = os.path.join(ipcluster_dir,
                                       "%s-%s.json" % (tag, region))
             if not os.path.exists(local_json):
-                self.parser.error(
-                    "IPython json file %s does not exist - make sure the "
-                    "ipcluster ipcluster plugin has been executed and "
-                    "completed successfully.")
+                user_home = cl.master_node.getpwnam(cl.cluster_user).pw_dir
+                profile_dir = posixpath.join(user_home, '.ipython',
+                                             'profile_default')
+                json = posixpath.join(profile_dir, 'security',
+                                      'ipcontroller-client.json')
+                if cl.master_node.ssh.isfile(json):
+                    log.info("Fetching connector file from cluster...")
+                    os.makedirs(ipcluster_dir)
+                    cl.master_node.ssh.get(json, local_json)
+                else:
+                    self.parser.error(
+                        "IPython json file %s does not exist locally or on "
+                        "the cluster. Make sure the ipcluster plugin has "
+                        "been executed and completed successfully.")
             key_location = cl.master_node.key_location
             self._add_to_known_hosts(cl.master_node)
             log.info("Loading parallel IPython client and view")
