@@ -24,10 +24,10 @@ try:
     else:
         from IPython import embed
         ipy_shell = lambda local_ns=None: embed(user_ns=local_ns)
-except ImportError:
+except ImportError, e:
 
     def ipy_shell(local_ns=None):
-        log.error("Unable to load IPython.")
+        log.error("Unable to load IPython:\n\n%s\n" % e)
         log.error("Please check that IPython is installed and working.")
         log.error("If not, you can install it via: easy_install ipython")
 
