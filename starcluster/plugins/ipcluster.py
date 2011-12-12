@@ -17,12 +17,46 @@ from starcluster.logger import log
 
 IPCLUSTER_CACHE = os.path.join(static.STARCLUSTER_CFG_DIR, 'ipcluster')
 
+STARTED_MSG_10 = """\
+IPCluster has been started on %(cluster)s for user '%(user)s'.
+
+To use IPCluster (0.10.*) you first need to login to the master node of the
+cluster as '%(user)s':
+
+    $ starcluster sshmaster %(cluster)s -u %(user)s
+
+Once you've logged in the first step is to launch IPython and load the parallel
+client:
+
+    $ ipython
+    [~]> from IPython.kernel import client
+    [~]> mec = client.MultiEngineClient()
+    [~]> mec.get_ids()
+    [0, 1, 2, 3]
+
+This shows that we have 4 engines running on our cluster. Below is an example
+of how to run a parallel map across all nodes in the cluster using the
+MultiEngineClient interface:
+
+    [~]> print mec.map(lambda x:x**30, range(8))
+    [0,
+     1,
+     1073741824,
+     205891132094649L,
+     1152921504606846976L,
+     931322574615478515625L,
+     221073919720733357899776L,
+     22539340290692258087863249L]
+
+See the IPython 0.10.* parallel docs for more details
+(http://ipython.org/ipython-doc/rel-0.10.2/html/parallel)
+"""
+
 
 class IPCluster10(ClusterSetup):
     """
-    Starts an IPCluster on StarCluster
+    Starts an IPCluster (0.10.*) on StarCluster
     """
-
     cluster_file = '/etc/clusterfile.py'
     log_file = '/var/log/ipcluster.log'
 
@@ -42,6 +76,8 @@ class IPCluster10(ClusterSetup):
         master.ssh.execute(
             "su - %s -c 'screen -d -m ipcluster ssh --clusterfile %s'" %
             (user, self.cluster_file))
+        log.info(STARTED_MSG_10 % dict(cluster=master.parent_cluster,
+                                       user=user))
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         log.info("Adding %s to ipcluster" % node.alias)
@@ -60,31 +96,47 @@ class IPCluster10(ClusterSetup):
         node.ssh.execute('pkill ipengine')
 
 
-started_msg = """\
+STARTED_MSG_11 = """\
 IPCluster has been started on %(cluster)s for user '%(user)s'.
 
-The IPCluster connector file has been saved to:
+To use IPCluster log in to the master node as '%(user)s', create a parallel
+client, and run some parallel tasks on the cluster:
 
-%(connector_file)s
+    $ starcluster sshmaster %(cluster)s -u %(user)s
+    $ ipython
+    [~]> from IPython.parallel import Client
+    [~]> rc = Client(packer='pickle')
+    [~]> view = rc[:]
+    [~]> results = view.map_async(lambda x: x**30, range(4))
+    [~]> print results.get()
+    [0,
+     1,
+     1073741824,
+     205891132094649L]
 
-You will need this file in order to interact with the cluster from an IPython
-0.11 session on your local computer, e.g.:
+Alternatively, if IPython 0.11+ is installed locally, you can have StarCluster
+configure an interactive parallel IPython session automatically for you:
 
-    from IPython.parallel import Client
-    rc = Client('%(connector_file)s',
-                sshkey='%(key_location)s',
-                packer='pickle')
-    view = rc[:]
-    results = view.map_async(lambda x: x**30, range(50))
-    print results.get()
+    $ starcluster shell --ipcluster=%(cluster)s
+
+This will start IPython on your local computer and automatically create a
+parallel client and a view of the entire remote cluster in variables 'ipclient'
+and 'ipview' respectively:
+
+    $ starcluster shell --ipcluster=%(cluster)s
+    [~]> ipclient.ids
+    [0, 1, 2, 3]
+    [~]> res = ipview.map_async(lambda x: x**30, range(8))
+    [~]> print res.get()
+
+See the IPCluster plugin doc for more details:
+http://web.mit.edu/starcluster/docs/latest/plugins/ipython.html
 """
 
 
 class IPCluster11(ClusterSetup):
     """
-    Start an IPython cluster (IPython 0.11)
-
-    See ipythondev plugin for installing dependencies at launch
+    Start an IPython (0.11) cluster
     """
 
     def _write_config(self, master, profile_dir):
@@ -183,9 +235,9 @@ class IPCluster11(ClusterSetup):
         master.ssh.switch_user(user)
         self._write_config(master, profile_dir)
         cfile = self._start_cluster(master, n, profile_dir)
-        log.info(started_msg % dict(cluster=master.parent_cluster, user=user,
-                                    connector_file=cfile,
-                                    key_location=master.key_location))
+        log.info(STARTED_MSG_11 % dict(cluster=master.parent_cluster,
+                                       user=user, connector_file=cfile,
+                                       key_location=master.key_location))
         master.ssh.switch_user('root')
 
     def _stop_cluster(self, master, user):
@@ -207,12 +259,12 @@ class IPCluster(ClusterSetup):
 
     def _get_ipcluster_plugin(self, node):
         ipyversion = self._get_ipy_version(node)
-        if ipyversion.startswith('0.11'):
-            return IPCluster11()
-        else:
+        if ipyversion < '0.11':
             if not ipyversion.startswith('0.10'):
                 log.warn("Trying unsupported IPython version %s" % ipyversion)
             return IPCluster10()
+        else:
+            return IPCluster11()
 
     def run(self, nodes, master, user, user_shell, volumes):
         plug = self._get_ipcluster_plugin(master)
@@ -234,8 +286,6 @@ class IPClusterStop(ClusterSetup):
         master.ssh.switch_user(user)
         master.ssh.execute("ipcluster stop", source_profile=True)
         time.sleep(2)
-        # this is just to be sure, but they will probably do nothing
-        # except print errors
         master.ssh.execute("pkill -f ipcontrollerapp.py",
                            ignore_exit_status=True)
         for node in nodes:
