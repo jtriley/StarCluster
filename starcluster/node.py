@@ -482,7 +482,8 @@ class Node(object):
             node_names = [node.alias, node.private_dns_name,
                           node.private_dns_name_short, node.public_dns_name]
             for name in node_names:
-                khosts.append(' '.join([name, server_pkey.get_name(),
+                name_ip = "%s,%s" % (name, node.ip_address)
+                khosts.append(' '.join([name_ip, server_pkey.get_name(),
                                         base64.b64encode(str(server_pkey))]))
         khostsf = self.ssh.remote_file(known_hosts_file, 'a')
         khostsf.write('\n'.join(khosts) + '\n')
