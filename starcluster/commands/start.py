@@ -143,7 +143,7 @@ class CmdStart(ClusterCompleter):
         tag = self.tag = args[0]
         create = not self.opts.no_create
         create_only = self.opts.create_only
-        scluster = self.cm.get_cluster_or_none(tag)
+        scluster = self.cm.get_cluster_or_none(tag, require_keys=False)
         validate = self.opts.validate
         validate_running = self.opts.no_create
         validate_only = self.opts.validate_only
