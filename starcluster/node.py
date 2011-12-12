@@ -476,7 +476,7 @@ class Node(object):
             nodes.append(self)
         for node in nodes:
             server_pkey = node.ssh.get_server_public_key()
-            node_names = {}.from_keys([node.alias, node.private_dns_name,
+            node_names = {}.fromkeys([node.alias, node.private_dns_name,
                                        node.private_dns_name_short],
                                       node.private_ip_address)
             node_names[node.public_dns_name] = node.ip_address
