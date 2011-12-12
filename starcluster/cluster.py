@@ -1839,15 +1839,15 @@ class Cluster(object):
                 "no key_location specified for key '%s'" % self.keyname)
         if not os.path.exists(key_location):
             raise exception.ClusterValidationError(
-                'key_location=%s does not exist' % key_location)
+                "key_location '%s' does not exist" % key_location)
         elif not os.path.isfile(key_location):
             raise exception.ClusterValidationError(
-                'key_location=%s is not a file' % key_location)
+                "key_location '%s' is not a file" % key_location)
         keyname = self.keyname
         keypair = self.ec2.get_keypair_or_none(keyname)
         if not keypair:
             raise exception.ClusterValidationError(
-                'Account does not contain a key with keyname = %s' % keyname)
+                "Account does not contain a key with keyname: %s" % keyname)
         fingerprint = keypair.fingerprint
         if len(fingerprint) == 59:
             localfingerprint = ssh.get_private_rsa_fingerprint(key_location)
