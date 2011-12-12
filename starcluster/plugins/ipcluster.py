@@ -266,15 +266,27 @@ class IPCluster(ClusterSetup):
         else:
             return IPCluster11()
 
+    def _check_ipython_installed(self, node):
+        has_ipy = node.ssh.has_required(['ipython', 'ipcluster'])
+        if not has_ipy:
+            log.error("IPython is not installed...skipping plugin")
+        return has_ipy
+
     def run(self, nodes, master, user, user_shell, volumes):
+        if not self._check_ipython_installed(master):
+            return
         plug = self._get_ipcluster_plugin(master)
         plug.run(nodes, master, user, user_shell, volumes)
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
+        if not self._check_ipython_installed(master):
+            return
         plug = self._get_ipcluster_plugin(master)
         plug.on_add_node(node, nodes, master, user, user_shell, volumes)
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
+        if not self._check_ipython_installed(master):
+            return
         plug = self._get_ipcluster_plugin(master)
         plug.on_remove_node(node, nodes, master, user, user_shell, volumes)
 
