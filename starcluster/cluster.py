@@ -50,7 +50,9 @@ class ClusterManager(managers.Manager):
             except exception.KeyNotFound:
                 if require_keys:
                     raise
-                cl.key_location = None
+                cl.key_location = ''
+            if require_keys:
+                cl._validate_keypair()
             return cl
         except exception.SecurityGroupDoesNotExist:
             raise exception.ClusterDoesNotExist(cluster_name)
