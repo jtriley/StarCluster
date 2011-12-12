@@ -480,7 +480,7 @@ class Node(object):
                                        node.private_dns_name_short],
                                       node.private_ip_address)
             node_names[node.public_dns_name] = node.ip_address
-            for name, ip in node_names:
+            for name, ip in node_names.items():
                 name_ip = "%s,%s" % (name, ip)
                 khosts.append(' '.join([name_ip, server_pkey.get_name(),
                                         base64.b64encode(str(server_pkey))]))
