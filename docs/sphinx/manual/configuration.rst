@@ -449,7 +449,7 @@ example, the ``ftp`` permission specifies that only ``66.249.90.104`` ip
 address can access port 21 on the cluster nodes.
 
 Defining Plugins
--------------------
+----------------
 StarCluster also has support for user contributed plugins (see :doc:`plugins`).
 To configure a *cluster template* to use a particular plugin, we must first
 create a plugin section for each plugin we wish to use. For example, suppose we
