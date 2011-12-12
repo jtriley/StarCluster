@@ -86,13 +86,13 @@ class ClusterManager(managers.Manager):
                                            ec2_conn=self.ec2)
         return cl
 
-    def get_cluster_or_none(self, cluster_name):
+    def get_cluster_or_none(self, cluster_name, **kwargs):
         """
         Same as get_cluster but returns None instead of throwing an exception
         if the cluster does not exist
         """
         try:
-            return self.get_cluster(cluster_name)
+            return self.get_cluster(cluster_name, **kwargs)
         except exception.ClusterDoesNotExist:
             pass
 
