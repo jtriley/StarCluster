@@ -1383,8 +1383,7 @@ class Cluster(object):
                     msg += "settings:\n"
                     e.msg = msg + e.msg
                     raise
-            elif create:
-                self._validate()
+            self._validate()
             if validate_only:
                 return
         else:
