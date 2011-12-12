@@ -139,17 +139,18 @@ class IPCluster11(ClusterSetup):
     Start an IPython (0.11) cluster
     """
 
-    def _write_config(self, master, profile_dir):
+    def _write_config(self, master, user, profile_dir):
         """
         Create cluster config
         """
         log.info("Writing IPython cluster config files")
         master.ssh.execute('ipython profile create')
         f = master.ssh.remote_file('%s/ipcontroller_config.py' % profile_dir)
+        ssh_server = "@".join([user, master.public_dns_name])
         f.write('\n'.join([
             "c = get_config()",
             "c.HubFactory.ip='%s'" % master.private_ip_address,
-            "c.IPControllerApp.ssh_server='%s'" % master.public_dns_name,
+            "c.IPControllerApp.ssh_server='%s'" % ssh_server,
             # "c.Application.log_level = 'DEBUG'",
             "",
         ]))
@@ -233,7 +234,7 @@ class IPCluster11(ClusterSetup):
         user_home = node.getpwnam(user).pw_dir
         profile_dir = posixpath.join(user_home, '.ipython', 'profile_default')
         master.ssh.switch_user(user)
-        self._write_config(master, profile_dir)
+        self._write_config(master, user, profile_dir)
         cfile = self._start_cluster(master, n, profile_dir)
         log.info(STARTED_MSG_11 % dict(cluster=master.parent_cluster,
                                        user=user, connector_file=cfile,
