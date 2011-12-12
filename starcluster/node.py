@@ -467,9 +467,6 @@ class Node(object):
         username - name of the user to add to known hosts for
         nodes - the nodes to add to the user's known hosts file
         add_self - add this Node to known_hosts in addition to nodes
-
-        NOTE: this node's hostname will also be added to the known_hosts
-        file
         """
         user = self.getpwnam(username)
         known_hosts_file = posixpath.join(user.pw_dir, '.ssh', 'known_hosts')
@@ -479,10 +476,12 @@ class Node(object):
             nodes.append(self)
         for node in nodes:
             server_pkey = node.ssh.get_server_public_key()
-            node_names = [node.alias, node.private_dns_name,
-                          node.private_dns_name_short, node.public_dns_name]
-            for name in node_names:
-                name_ip = "%s,%s" % (name, node.ip_address)
+            node_names = {}.from_keys([node.alias, node.private_dns_name,
+                                       node.private_dns_name_short],
+                                      node.private_ip_address)
+            node_names[node.public_dns_name] = node.ip_address
+            for name, ip in node_names:
+                name_ip = "%s,%s" % (name, ip)
                 khosts.append(' '.join([name_ip, server_pkey.get_name(),
                                         base64.b64encode(str(server_pkey))]))
         khostsf = self.ssh.remote_file(known_hosts_file, 'a')
