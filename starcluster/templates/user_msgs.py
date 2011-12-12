@@ -107,5 +107,5 @@ The cluster '%(cluster)s' was created with a newer version of StarCluster \
 
 This may or may not be a problem depending on what's changed between these \
 versions, however, it's highly recommended that you use version \
-%(old_version)s when using the '%(cluster)s' cluster.\
+%(new_version)s when using the '%(cluster)s' cluster.\
 """
