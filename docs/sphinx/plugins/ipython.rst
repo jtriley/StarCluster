@@ -1,5 +1,6 @@
+######################
 IPython Cluster Plugin
-======================
+######################
 .. _IPython: http://ipython.org
 .. note::
 
@@ -25,8 +26,9 @@ of plugins in one of your cluster templates:
     [cluster smallcluster]
     plugins = ipcluster
 
+*************************
 Using the IPython Cluster
-=========================
+*************************
 To use your new IPython cluster log in directly to the master node of the
 cluster as the ``CLUSTER_USER`` and create a parallel client::
 
@@ -57,8 +59,9 @@ across all nodes in the cluster::
     See the `IPython parallel docs`_ (0.11+) to learn more about the IPython
     parallel API
 
+***********************************************
 Connecting from your Local IPython Installation
-===============================================
+***********************************************
 .. note::
 
     You must have IPython 0.11+ installed to use this feature
@@ -80,8 +83,9 @@ cluster::
     [~]> res = ipview.map_async(lambda x: x**30, range(8))
     [~]> print res.get()
 
+***********************************************
 Using IPython Parallel Scripts with StarCluster
-===============================================
+***********************************************
 If you wish to run parallel IPython scripts from your local machine that run on
 the remote cluster you will need to use the following configuration when
 creating the parallel client in your code::
