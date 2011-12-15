@@ -49,5 +49,5 @@ class CmdGet(ClusterCompleter):
         for rpath in rpaths:
             if not glob.has_magic(rpath) and not node.ssh.path_exists(rpath):
                 raise exception.BaseException(
-                    "Remote file or directory does not exist: %s" % lpath)
+                    "Remote file or directory does not exist: %s" % rpath)
         node.ssh.get(rpaths, lpath)
