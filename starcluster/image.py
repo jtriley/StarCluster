@@ -104,10 +104,9 @@ class S3ImageCreator(ImageCreator):
 
     @print_timing
     def create_image(self):
-        log.info("Creating bucket %s" % self.bucket)
-        self.ec2.s3.create_bucket(self.bucket)
         log.info("Checking for EC2 API tools...")
         self.host_ssh.check_required(['ec2-upload-bundle', 'ec2-bundle-vol'])
+        self.ec2.s3.get_or_create_bucket(self.bucket)
         self._remove_image_files()
         self._bundle_image()
         self._upload_image()

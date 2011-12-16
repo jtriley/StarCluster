@@ -1214,6 +1214,13 @@ class EasyS3(EasyAWS):
         except exception.BucketDoesNotExist:
             return False
 
+    def get_or_create_bucket(self, bucket_name):
+        try:
+            return self.get_bucket(bucket_name)
+        except exception.BucketDoesNotExist:
+            log.info("Creating bucket '%s'" % bucket_name)
+            return self.create_bucket(bucket_name)
+
     def get_bucket_or_none(self, bucket_name):
         """
         Returns bucket object representing S3 bucket
