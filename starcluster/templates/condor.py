@@ -17,6 +17,9 @@ ALLOW_READ = $(FULL_HOSTNAME), $(CONDOR_HOST), node*
 ALLOW_WRITE = $(FULL_HOSTNAME), $(CONDOR_HOST), node*
 SCHEDD_HOST = $(CONDOR_HOST)
 START = True
+SUSPEND = FALSE
+PREEMPT = FALSE
+KILL = FALSE
 DedicatedScheduler = "DedicatedScheduler@$(CONDOR_HOST)"
 STARTD_ATTRS = $(STARTD_ATTRS), DedicatedScheduler
 """
