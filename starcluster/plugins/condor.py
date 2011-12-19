@@ -2,7 +2,7 @@ from starcluster import clustersetup
 from starcluster.templates import condor
 from starcluster.logger import log
 
-CONDOR_CFG = '/etc/condor/condor_config'
+CONDOR_CFG = '/etc/condor/config.d/40starcluster'
 
 
 class CondorPlugin(clustersetup.DefaultClusterSetup):
