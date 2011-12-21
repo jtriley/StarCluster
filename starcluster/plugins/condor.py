@@ -3,6 +3,7 @@ from starcluster.templates import condor
 from starcluster.logger import log
 
 CONDOR_CFG = '/etc/condor/config.d/40starcluster'
+FS_REMOTE_DIR = '/home/._condor_tmp'
 
 
 class CondorPlugin(clustersetup.DefaultClusterSetup):
@@ -12,7 +13,8 @@ class CondorPlugin(clustersetup.DefaultClusterSetup):
         daemon_list = "MASTER, STARTD, SCHEDD"
         if node.is_master():
             daemon_list += ", COLLECTOR, NEGOTIATOR"
-        condorcfg.write(condor.condor_tmpl % dict(DAEMON_LIST=daemon_list))
+        ctx = dict(DAEMON_LIST=daemon_list, FS_REMOTE_DIR=FS_REMOTE_DIR)
+        condorcfg.write(condor.condor_tmpl % ctx)
         condorcfg.close()
         node.ssh.execute('pkill condor', ignore_exit_status=True)
         node.ssh.execute('/etc/init.d/condor start')
@@ -20,6 +22,11 @@ class CondorPlugin(clustersetup.DefaultClusterSetup):
     def _setup_condor(self, master=None, nodes=None):
         log.info("Setting up Condor grid")
         master = master or self._master
+        if not master.ssh.isdir(FS_REMOTE_DIR):
+            # TODO: below should work but doesn't for some reason...
+            #master.ssh.mkdir(FS_REMOTE_DIR, mode=01777)
+            master.ssh.mkdir(FS_REMOTE_DIR, mode=0777)
+            master.ssh.execute("chmod +t %s" % FS_REMOTE_DIR)
         nodes = nodes or self.nodes
         log.info("Starting Condor master")
         self._add_condor_node(master)
