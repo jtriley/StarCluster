@@ -64,6 +64,7 @@ CLUSTER_SHELL = bash
 # AMI for cluster nodes.
 # The base i386 StarCluster AMI is %(x86_ami)s
 # The base x86_64 StarCluster AMI is %(x86_64_ami)s
+# The base HVM StarCluster AMI is %(hvm_ami)s
 NODE_IMAGE_ID = %(x86_ami)s
 # instance type for all cluster nodes
 # (options: %(instance_types)s)
@@ -206,6 +207,7 @@ NODE_INSTANCE_TYPE = m1.small
 """ % {
     'x86_ami': static.BASE_AMI_32,
     'x86_64_ami': static.BASE_AMI_64,
+    'hvm_ami': static.BASE_AMI_HVM,
     'instance_types': ', '.join(static.INSTANCE_TYPES.keys()),
     'shells': ', '.join(static.AVAILABLE_SHELLS.keys()),
 }
