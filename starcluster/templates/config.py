@@ -61,7 +61,8 @@ CLUSTER_USER = sgeadmin
 # (options: %(shells)s)
 CLUSTER_SHELL = bash
 
-# AMI for cluster nodes.
+# AMI to use for cluster nodes. These AMIs are for the us-east-1 region.
+# Use the 'listpublic' command to list StarCluster AMIs in other regions
 # The base i386 StarCluster AMI is %(x86_ami)s
 # The base x86_64 StarCluster AMI is %(x86_64_ami)s
 # The base HVM StarCluster AMI is %(hvm_ami)s
