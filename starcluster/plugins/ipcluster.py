@@ -8,6 +8,7 @@ import os
 import time
 import posixpath
 
+from starcluster import utils
 from starcluster import static
 from starcluster import spinner
 from starcluster.utils import print_timing
@@ -138,6 +139,9 @@ class IPCluster11(ClusterSetup):
     """
     Start an IPython (0.11) cluster
     """
+    def __init__(self, enable_notebook=False, notebook_passwd=None):
+        self.enable_notebook = enable_notebook
+        self.notebook_passwd = notebook_passwd or utils.generate_passwd(16)
 
     def _write_config(self, master, user, profile_dir):
         """
@@ -228,6 +232,48 @@ class IPCluster11(ClusterSetup):
         master.ssh.get(json, local_json)
         return local_json
 
+    def _start_notebook(self, master, user, profile_dir):
+        log.info("Setting up IPython web notebook for user: %s" % user)
+        user_cert = posixpath.join(profile_dir, '%s.pem' % user)
+        ssl_cert = posixpath.join(profile_dir, '%s.pem' % user)
+        if not master.ssh.isfile(user_cert):
+            log.info("Creating SSL certificate for user %s" % user)
+            ssl_subj = "/C=US/ST=SC/L=STAR/O=Dis/CN=%s" % master.dns_name
+            master.ssh.execute(
+                "openssl req -new -newkey rsa:4096 -days 365 "
+                '-nodes -x509 -subj %s -keyout %s -out %s' %
+                (ssl_subj, ssl_cert, ssl_cert))
+        else:
+            log.info("Using existing SSL certificate...")
+        f = master.ssh.remote_file('%s/ipython_notebook_config.py' %
+                                   profile_dir)
+        notebook_port = 8888
+        sha1py = 'from IPython.lib import passwd; print passwd("%s")'
+        sha1cmd = "python -c '%s'" % sha1py
+        sha1pass = master.ssh.execute(sha1cmd % self.notebook_passwd)[0]
+        f.write('\n'.join([
+            "c = get_config()",
+            "c.IPKernelApp.pylab = 'inline'",
+            "c.NotebookApp.certfile = u'%s'" % ssl_cert,
+            "c.NotebookApp.ip = '*'",
+            "c.NotebookApp.open_browser = False",
+            "c.NotebookApp.password = u'%s'" % sha1pass,
+            "c.NotebookApp.port = %d" % notebook_port,
+        ]))
+        f.close()
+        master.ssh.execute_async("ipython notebook")
+        group = master.cluster_groups[0]
+        world_cidr = '0.0.0.0/0'
+        port_open = master.ec2.has_permission(group, 'tcp', notebook_port,
+                                              notebook_port, world_cidr)
+        if not port_open:
+            log.info("Authorizing tcp port %s on %s" %
+                     (notebook_port, world_cidr))
+            group.authorize('tcp', notebook_port, notebook_port, world_cidr)
+        log.info("Navigate to https://%s:%s to use the IPython notebook" %
+                 (master.dns_name, notebook_port))
+        log.info("The notebook password is: %s" % self.notebook_passwd)
+
     @print_timing("IPCluster")
     def run(self, nodes, master, user, user_shell, volumes):
         n = sum([node.num_processors for node in nodes]) - 1
@@ -236,6 +282,8 @@ class IPCluster11(ClusterSetup):
         master.ssh.switch_user(user)
         self._write_config(master, user, profile_dir)
         cfile = self._start_cluster(master, n, profile_dir)
+        if self.enable_notebook:
+            self._start_notebook(master, user, profile_dir)
         log.info(STARTED_MSG_11 % dict(cluster=master.parent_cluster,
                                        user=user, connector_file=cfile,
                                        key_location=master.key_location))
@@ -254,6 +302,10 @@ class IPCluster11(ClusterSetup):
 
 class IPCluster(ClusterSetup):
 
+    def __init__(self, enable_notebook=False, notebook_passwd=None):
+        self.enable_notebook = enable_notebook
+        self.notebook_passwd = notebook_passwd
+
     def _get_ipy_version(self, node):
         version_cmd = "python -c 'import IPython; print IPython.__version__'"
         return node.ssh.execute(version_cmd)[0]
@@ -265,7 +317,7 @@ class IPCluster(ClusterSetup):
                 log.warn("Trying unsupported IPython version %s" % ipyversion)
             return IPCluster10()
         else:
-            return IPCluster11()
+            return IPCluster11(self.enable_notebook, self.notebook_passwd)
 
     def _check_ipython_installed(self, node):
         has_ipy = node.ssh.has_required(['ipython', 'ipcluster'])
