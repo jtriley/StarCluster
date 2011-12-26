@@ -6,6 +6,8 @@ import os
 import re
 import time
 import types
+import string
+import random
 import inspect
 import calendar
 import urlparse
@@ -480,3 +482,7 @@ def chunk_list(ls, items=8):
             itms.append(v)
     if itms:
         yield itms
+
+
+def generate_passwd(length):
+    return "".join(random.sample(string.letters + string.digits, length))
