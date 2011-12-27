@@ -33,12 +33,11 @@ include the ``TMUX`` plugin:
     [cluster mycluster]
     plugins = tmux
 
-The next time you start a cluster the Xvfb plugin will automatically be
-executed and your ``DISPLAY`` setting will be set to ``:1`` on all nodes. If
-you already have a cluster running that didn't originally have Xvfb in its
-plugin list you can manually run the plugin using::
+The next time you start a cluster the ``TMUX`` plugin will automatically be
+executed. If you already have a cluster running that didn't originally have
+tmux in its plugin list you can manually run the plugin using::
 
-    $ starcluster runplugin xvfb mycluster
+    $ starcluster runplugin tmux mycluster
     StarCluster - (http://web.mit.edu/starcluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
