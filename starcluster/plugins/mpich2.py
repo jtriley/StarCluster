@@ -17,7 +17,7 @@ class MPICH2Setup(DefaultClusterSetup):
         return ''.join(secretword)
 
     def _install_mpich(self, node):
-        node.ssh.execute("apt-get --force-yes -y install mpich2")
+        node.apt_install("mpich2")
 
     def _configure_hosts_file(self, node, aliases, secretword):
         mpich2_hosts = node.ssh.remote_file(self.MPICH2_HOSTS, 'w')
