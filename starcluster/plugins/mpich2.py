@@ -26,6 +26,22 @@ class MPICH2Setup(DefaultClusterSetup):
         mpich2_profile = node.ssh.remote_file(self.MPICH2_PROFILE, 'w')
         mpich2_profile.write("export HYDRA_HOST_FILE=%s" % self.MPICH2_HOSTS)
 
+    def _update_alternatives(self, node):
+        mpi_choices = node.ssh.execute("update-alternatives --list mpi")
+        mpirun_choices = node.ssh.execute("update-alternatives --list mpirun")
+        mpipath = None
+        for choice in mpi_choices:
+            if 'mpich2' in choice:
+                mpipath = choice
+                break
+        mpirunpath = None
+        for choice in mpirun_choices:
+            if 'mpich2' in choice:
+                mpirunpath = choice
+                break
+        node.ssh.execute("update-alternatives --set mpi %s" % mpipath)
+        node.ssh.execute("update-alternatives --set mpirun %s" % mpirunpath)
+
     def run(self, nodes, master, user, shell, volumes):
         secretword = self._generate_secretword()
         aliases = map(lambda x: x.alias, nodes)
@@ -39,5 +55,12 @@ class MPICH2Setup(DefaultClusterSetup):
                                  (node, aliases, secretword),
                                  jobid=node.alias)
         self.pool.wait(len(nodes))
+        log.info("Setting MPICH2 as default MPI on all nodes")
+        for node in nodes:
+            self.pool.simple_job(self._update_alternatives,
+                                 (node),
+                                 jobid=node.alias)
+        self.pool.wait(len(nodes))
         log.info("MPICH2 is now ready to use")
-        log.info("Use mpirun.mpich2 to run your MPI applications")
+        log.info(
+            "Use mpicc, mpif90, mpirun, etc. to compile and run your MPI apps")
