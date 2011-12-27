@@ -270,7 +270,7 @@ class IPCluster11(ClusterSetup):
             log.info("Authorizing tcp port %s on %s" %
                      (notebook_port, world_cidr))
             group.authorize('tcp', notebook_port, notebook_port, world_cidr)
-        log.info("Navigate to https://%s:%s to use the IPython notebook" %
+        log.info("IPython notebook URL: https://%s:%s" %
                  (master.dns_name, notebook_port))
         log.info("The notebook password is: %s" % self.notebook_passwd)
 
