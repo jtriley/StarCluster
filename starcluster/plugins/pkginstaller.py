@@ -20,8 +20,11 @@ class PackageInstaller(clustersetup.DefaultClusterSetup):
     called ``cluster-install`` will be installed to help automatically manage
     this file while also installing the packages on all nodes.
     """
-    def __init__(self):
+    def __init__(self, packages=None):
         super(PackageInstaller, self).__init__()
+        self.packages = packages
+        if packages:
+            self.packages = [pkg.strip() for pkg in packages.split(',')]
         self.pkgfile = '/home/.starcluster-packages'
 
     def _deselect_upgrade(self, node):
@@ -30,6 +33,14 @@ class PackageInstaller(clustersetup.DefaultClusterSetup):
         node.apt_command('dselect-upgrade')
 
     def run(self, nodes, master, user, user_shell, volumes):
+        if self.packages:
+            log.info('Installing packages from plugin config:')
+            log.info(', '.join(self.packages), extra=dict(__raw__=True))
+            pkgs = ' '.join(self.packages)
+            for node in nodes:
+                self.pool.simple_job(node.apt_install, (pkgs),
+                                     jobid=node.alias)
+            self.pool.wait(len(nodes))
         mconn = master.ssh
         if mconn.isfile(self.pkgfile):
             log.info("Package file found at: %s" % self.pkgfile)
