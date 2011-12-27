@@ -904,6 +904,25 @@ class Node(object):
         etc_hosts_line = etc_hosts_line % self.network_names
         return etc_hosts_line
 
+    def apt_command(self, cmd):
+        """
+        Run an apt-get command with all the necessary options for
+        non-interactive use (DEBIAN_FRONTEND=interactive, -y, --force-yes, etc)
+        """
+        dpkg_opts = "Dpkg::Options::='--force-confnew'"
+        cmd = "apt-get -o %s -y --force-yes %s" % (dpkg_opts, cmd)
+        cmd = "DEBIAN_FRONTEND='noninteractive' " + cmd
+        self.ssh.execute(cmd)
+
+    def apt_install(self, pkgs):
+        """
+        Install a set of packages via apt-get.
+
+        pkgs is a string that contains one or more packages separated by a
+        space
+        """
+        self.apt_command('install %s' % pkgs)
+
     def __del__(self):
         if self._ssh:
             self._ssh.close()
