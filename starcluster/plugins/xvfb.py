@@ -8,7 +8,7 @@ class XvfbSetup(DefaultClusterSetup):
     (thanks to Adam Marsh for his contribution)
     """
     def _install_xvfb(self, node):
-        node.ssh.execute('apt-get --force-yes -y install xvfb')
+        node.apt_install('xvfb')
 
     def _launch_xvfb(self, node):
         node.ssh.execute('screen -d -m Xvfb :1 -screen 0 1024x768x16')
