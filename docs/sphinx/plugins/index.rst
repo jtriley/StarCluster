@@ -10,5 +10,6 @@ The links below are for plugin-specific docs. Please see the :ref:`plugin guide
    ipython
    tmux
    condor
+   mpich2
    mysqlcluster
    xvfb
