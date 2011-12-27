@@ -190,6 +190,7 @@ class MysqlCluster(DefaultClusterSetup):
     """
     def __init__(self, num_replicas, data_memory, index_memory, dump_dir,
                  dump_file, dump_interval, dedicated_query, num_data_nodes):
+        super(MysqlCluster, self).__init__()
         self._num_replicas = int(num_replicas)
         self._data_memory = data_memory
         self._index_memory = index_memory
@@ -198,7 +199,6 @@ class MysqlCluster(DefaultClusterSetup):
         self._dump_interval = dump_interval
         self._dedicated_query = dedicated_query.lower() == 'true'
         self._num_data_nodes = int(num_data_nodes)
-        super(MysqlCluster, self).__init__()
 
     def _install_mysql_cluster(self, node):
         preseedf = '/tmp/mysql-preseed.txt'
@@ -213,11 +213,7 @@ class MysqlCluster(DefaultClusterSetup):
         mysqlpreseed.close()
         node.ssh.execute('debconf-set-selections < %s' % mysqlpreseed.name)
         node.ssh.execute('rm %s' % mysqlpreseed.name)
-        dpkg_opts = "Dpkg::Options::='--force-confnew'"
-        cmd = "apt-get -o %s -y --force-yes install mysql-cluster-server"
-        cmd = "DEBIAN_FRONTEND='noninteractive' " + cmd
-        cmd %= dpkg_opts
-        node.ssh.execute(cmd)
+        node.apt_install('mysql-cluster-server')
 
     def _backup_and_reset(self, node):
         nconn = node.ssh
