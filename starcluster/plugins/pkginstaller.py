@@ -8,7 +8,7 @@ from starcluster import clustersetup
 from starcluster.logger import log
 
 
-class PackageInstaller(clustersetup.ClusterSetup):
+class PackageInstaller(clustersetup.DefaultClusterSetup):
     """
     NOTE: This plugin assumes that /home is an EBS volume.
 
@@ -20,31 +20,35 @@ class PackageInstaller(clustersetup.ClusterSetup):
     called ``cluster-install`` will be installed to help automatically manage
     this file while also installing the packages on all nodes.
     """
+    def __init__(self):
+        super(PackageInstaller, self).__init__()
+        self.pkgfile = '/home/.starcluster-packages'
+
+    def _deselect_upgrade(self, node):
+        node.ssh.execute('dpkg --set-selections < ' + self.pkgfile)
+        node.apt_command('update')
+        node.apt_command('dselect-upgrade')
 
     def run(self, nodes, master, user, user_shell, volumes):
-        log.info('Running PackageInstaller plugin.')
-        pkgfile = '/home/.starcluster-packages'
         mconn = master.ssh
-        # Test for the package file on the master node
-        if mconn.path_exists(pkgfile):
-            log.info("[PackageInstaller] Package file found at: %s" % pkgfile)
+        if mconn.isfile(self.pkgfile):
+            log.info("Package file found at: %s" % self.pkgfile)
+            log.info("Installing packages on all nodes")
             for node in nodes:
-                log.info(
-                    "[PackageInstaller] Installing packages on %s" %
-                    node.alias)
-                node.ssh.execute('dpkg --set-selections < ' + pkgfile)
-                node.ssh.execute(
-                    'apt-get update && apt-get -y dselect-upgrade')
+                self.pool.simple_job(self._deselect_upgrade, (node),
+                                     jobid=node.alias)
+            self.pool.wait(len(nodes))
         else:
-            log.info("[PackageInstaller] No package file found at: %s" %
-                     pkgfile)
+            log.info("No package file found at: %s" % self.pkgfile)
         cluster_install = "/usr/bin/cluster-install"
-        if not mconn.path_exists(cluster_install):
-            log.info("[PackageInstaller] Installing cluster-install utility")
+        if not mconn.isfile(cluster_install):
+            log.info("Installing cluster-install utility")
             f = mconn.remote_file(cluster_install, 'w')
             f.write(cluster_install_tmpl)
+            f.chmod(0755)
             f.close()
-            f.chmod(0755, cluster_install)
+        else:
+            log.info("cluster-install utility is already installed...")
 
 
 cluster_install_tmpl = """
@@ -79,7 +83,8 @@ This is a wrapper for apt-get that installs packages on all nodes and stores
 the list of packages for future use.
 
 Usage:
-  cluster-install package1 [package2 package3 ...]
+
+    cluster-install package1 [package2 package3 ...]
 
 END
     exit
