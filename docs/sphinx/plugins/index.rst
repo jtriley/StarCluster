@@ -8,6 +8,7 @@ The links below are for plugin-specific docs. Please see the :ref:`plugin guide
    :maxdepth: 2
 
    ipython
+   tmux
    condor
    mysqlcluster
    xvfb
