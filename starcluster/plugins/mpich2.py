@@ -16,9 +16,6 @@ class MPICH2Setup(DefaultClusterSetup):
         random.shuffle(secretword)
         return ''.join(secretword)
 
-    def _install_mpich(self, node):
-        node.apt_install("mpich2")
-
     def _configure_hosts_file(self, node, aliases, secretword):
         mpich2_hosts = node.ssh.remote_file(self.MPICH2_HOSTS, 'w')
         mpich2_hosts.write('\n'.join(aliases))
@@ -45,10 +42,6 @@ class MPICH2Setup(DefaultClusterSetup):
     def run(self, nodes, master, user, shell, volumes):
         secretword = self._generate_secretword()
         aliases = map(lambda x: x.alias, nodes)
-        log.info("Installing mpich2 on all nodes")
-        for node in nodes:
-            self.pool.simple_job(self._install_mpich, (node), jobid=node.alias)
-        self.pool.wait(len(nodes))
         log.info("Setting up MPICH2 hosts file on all nodes")
         for node in nodes:
             self.pool.simple_job(self._configure_hosts_file,
@@ -57,8 +50,7 @@ class MPICH2Setup(DefaultClusterSetup):
         self.pool.wait(len(nodes))
         log.info("Setting MPICH2 as default MPI on all nodes")
         for node in nodes:
-            self.pool.simple_job(self._update_alternatives,
-                                 (node),
+            self.pool.simple_job(self._update_alternatives, (node),
                                  jobid=node.alias)
         self.pool.wait(len(nodes))
         log.info("MPICH2 is now ready to use")
