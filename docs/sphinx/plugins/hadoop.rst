@@ -2,18 +2,25 @@
 Hadoop Plugin
 #############
 
-From the Hadoop homepage:
+From the `Hadoop`_ homepage:
 
     The Apache Hadoop software library is a framework that allows for the
-    distributed processing of large data sets across clusters of computers using a
-    simple programming model. It is designed to scale up from single servers to
-    thousands of machines, each offering local computation and storage. Rather than
-    rely on hardware to deliver high-avaiability, the library itself is designed to
-    detect and handle failures at the application layer, so delivering a
-    highly-availabile service on top of a cluster of computers, each of which may
-    be prone to failures.
+    distributed processing of large data sets across clusters of computers
+    using a simple programming model. It is designed to scale up from single
+    servers to thousands of machines, each offering local computation and
+    storage. Rather than rely on hardware to deliver high-avaiability, the
+    library itself is designed to detect and handle failures at the application
+    layer, so delivering a highly-availabile service on top of a cluster of
+    computers, each of which may be prone to failures.
 
-This plugin will automatically configure the Hadoop framework on your cluster(s).
+This plugin will automatically configure the Hadoop framework on your
+cluster(s). It will also configure `dumbo`_ which provides a convenient Python
+API for writing MapReduce programs in Python as well as useful tools that make
+it easier to manage HDFS.
+
+.. seealso::
+
+    Learn more about Hadoop at it's `project page <Hadoop>`_
 
 *****
 Usage
@@ -81,13 +88,17 @@ using::
     >>> Shutting down threads...
     20/20 |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| 100%
 
+Once the plugin has completed successfully you should be able to login and
+begin using HDFS and the Hadoop framework tools. Hadoop's home directory, where
+all of the Hadoop jars live, is ``/usr/lib/hadoop``.
+
 *********************
 Hadoop Web Interfaces
 *********************
-The ``Hadoop`` plugin will launch two web-based interfaces that you can access
-via your web browser. These web interfaces give you real-time stats for the
-``Hadoop`` job tracker and namenode. The urls for the job tracker and namenode
-are given at the end of the output of the plugin::
+The Hadoop plugin will launch two web-based interfaces that you can access via
+your web browser. These web interfaces give you real-time stats for the Hadoop
+job tracker and namenode. The urls for the job tracker and namenode are given
+at the end of the output of the plugin::
 
     >>> Job tracker status: http://ec2-XXXX.compute-1.amazonaws.com:50030
     >>> Namenode status: http://ec2-XXXX.compute-1.amazonaws.com:50070
@@ -103,11 +114,18 @@ Here's what the namenode page should look like
 *****************************************
 Using Dumbo to Drive the Hadoop Framework
 *****************************************
-If you are familiar with the core Hadoop framework you will feel right at home.
-However, if you're a new user or if you're tired of the verbosity of the core
-Hadoop framework, the ``Hadoop`` plugin will also configure ``dumbo`` on your
-cluster. ``Dumbo`` provides a convenient Python API for writing MapReduce
-programs and in general makes it much easier to work with the Hadoop framework.
+If you are familiar with the core Hadoop framework you should be able to get
+started quickly using the default Hadoop tool suite. However, if you're a new
+user or if you're tired of the verbosity of the core Hadoop framework, the
+Hadoop plugin also configures `dumbo`_ on your cluster. Dumbo provides a
+convenient Python API for writing MapReduce programs and in general makes
+things much easier when working with the Hadoop framework.
+
+.. note::
+
+    Every `dumbo`_ command run must include the option ``-hadoop starcluster``
+    in order to run on the cluster using Hadoop/HDFS. Without this flag dumbo
+    will run using the local environment instead of the Hadoop cluster.
 
 Managing HDFS
 =============
@@ -153,24 +171,26 @@ for a simple word count:
 Let's assume this is saved to ``$HOME/wordcount.py`` and we're currently in the
 $HOME directory. To run this example we first upload a text file to HDFS::
 
-    $ dumbo put /path/to/textfile.txt input.txt -hadoop starcluster
+    $ dumbo put /path/to/a/textfile.txt in.txt -hadoop starcluster
 
-Next we run the wordcount.py example::
+Next we run the wordcount.py example using the ``in.txt`` file we just put on
+HDFS::
 
-    $ dumbo start wordcount.py -input input.txt -output output.txt -hadoop starcluster
+    $ dumbo start wordcount.py -input in.txt -output out -hadoop starcluster
 
 This will run the word count example using the streaming API and dump the
-output to ``output.txt`` on HDFS. To view the results::
+results to a new ``out`` directory on HDFS. To view the results::
 
-    $ dumbo cat output.txt -hadoop starcluster
+    $ dumbo cat out/part* -hadoop starcluster
 
-If you'd rather download the results instead::
+If you'd rather download the entire results directory instead::
 
-    $ dumbo get output.txt -hadoop starcluster
+    $ dumbo get out out -hadoop starcluster
 
 .. seealso::
 
     Have a look at `Dumbo's documentation`_ for more details
 
+.. _Hadoop: http://hadoop.apache.org
+.. _Dumbo: http://projects.dumbotics.com/dumbo/
 .. _Dumbo's documentation: https://github.com/klbostee/dumbo/wiki
-
