@@ -302,9 +302,9 @@ class MysqlCluster(DefaultClusterSetup):
             mconn.execute('mysql < %s' % orig_path)
         else:
             log.info('No dump file found, not importing.')
-        # Setup dump cronjob
-        log.info('Adding dump cronjob to master node')
+        log.info('Adding MySQL dump cronjob to master node')
         cronjob = self.generate_mysqldump_crontab(sc_path)
+        mconn.remove_lines_from_file('/etc/crontab', '#starcluster-mysql')
         crontab_file = mconn.remote_file('/etc/crontab', 'a')
         crontab_file.write(cronjob)
         crontab_file.close()
@@ -342,6 +342,6 @@ class MysqlCluster(DefaultClusterSetup):
             'mysql --batch --skip-column-names --execute="show databases"' +
             " | egrep -v '(mysql|information_schema)' | " +
             "xargs mysqldump --add-drop-table --add-drop-database -Y -B" +
-            '> %(loc)s\n'
+            '> %(loc)s #starcluster-mysql\n'
         ) % {'dump_interval': self._dump_interval, 'loc': path}
         return crontab
