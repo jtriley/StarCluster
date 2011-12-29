@@ -188,13 +188,12 @@ class MysqlCluster(DefaultClusterSetup):
     2. start cluster mysql (will fail)
     3. starcluster runplugin mysql mysql
     """
-    def __init__(self, num_replicas, data_memory, index_memory, dump_dir,
-                 dump_file, dump_interval, dedicated_query, num_data_nodes):
+    def __init__(self, num_replicas, data_memory, index_memory, dump_file,
+                 dump_interval, dedicated_query, num_data_nodes):
         super(MysqlCluster, self).__init__()
         self._num_replicas = int(num_replicas)
         self._data_memory = data_memory
         self._index_memory = index_memory
-        self._dump_dir = dump_dir
         self._dump_file = dump_file
         self._dump_interval = dump_interval
         self._dedicated_query = dedicated_query.lower() == 'true'
@@ -284,9 +283,16 @@ class MysqlCluster(DefaultClusterSetup):
                                  jobid=node.alias)
         self.pool.wait(len(self.query_nodes))
         # Import sql dump
-        name, ext = posixpath.splitext(self._dump_file)
-        sc_path = self._dump_dir + name + '.sc' + ext
-        orig_path = self._dump_dir + self._dump_file
+        dump_file = self._dump_file
+        dump_dir = '/mnt/mysql-cluster-backup'
+        if posixpath.isabs(self._dump_file):
+            dump_dir, dump_file = posixpath.split(self._dump_file)
+        else:
+            log.warn("%s is not an absolute path, defaulting to %s" %
+                     (self._dump_file, posixpath.join(dump_dir, dump_file)))
+        name, ext = posixpath.splitext(dump_file)
+        sc_path = posixpath.join(dump_dir, name + '.sc' + ext)
+        orig_path = posixpath.join(dump_dir, dump_file)
         if mconn.isfile(sc_path):
             mconn.execute('mysql < %s' % sc_path)
         elif mconn.isfile(orig_path):
