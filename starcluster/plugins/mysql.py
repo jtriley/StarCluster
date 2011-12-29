@@ -293,6 +293,9 @@ class MysqlCluster(DefaultClusterSetup):
         name, ext = posixpath.splitext(dump_file)
         sc_path = posixpath.join(dump_dir, name + '.sc' + ext)
         orig_path = posixpath.join(dump_dir, dump_file)
+        if not mconn.isdir(dump_dir):
+            log.info("Directory %s does not exist, creating..." % dump_dir)
+            mconn.makedirs(dump_dir)
         if mconn.isfile(sc_path):
             mconn.execute('mysql < %s' % sc_path)
         elif mconn.isfile(orig_path):
