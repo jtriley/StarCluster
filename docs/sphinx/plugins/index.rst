@@ -13,4 +13,5 @@ The links below are for plugin-specific docs. Please see the :ref:`plugin guide
    hadoop
    mpich2
    mysqlcluster
+   pkginstaller
    xvfb
