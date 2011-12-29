@@ -1,6 +1,3 @@
-import string
-import random
-
 from starcluster.clustersetup import DefaultClusterSetup
 from starcluster.logger import log
 
@@ -10,13 +7,7 @@ class MPICH2Setup(DefaultClusterSetup):
     MPICH2_HOSTS = '/etc/mpich2.hosts'
     MPICH2_PROFILE = '/etc/profile.d/mpich2.sh'
 
-    def _generate_secretword(self):
-        log.info("Generating MPICH2 secretword")
-        secretword = [x for x in (string.ascii_lowercase + string.digits)]
-        random.shuffle(secretword)
-        return ''.join(secretword)
-
-    def _configure_hosts_file(self, node, aliases, secretword):
+    def _configure_hosts_file(self, node, aliases):
         mpich2_hosts = node.ssh.remote_file(self.MPICH2_HOSTS, 'w')
         mpich2_hosts.write('\n'.join(aliases))
         mpich2_hosts.close()
@@ -40,12 +31,11 @@ class MPICH2Setup(DefaultClusterSetup):
         node.ssh.execute("update-alternatives --set mpirun %s" % mpirunpath)
 
     def run(self, nodes, master, user, shell, volumes):
-        secretword = self._generate_secretword()
         aliases = map(lambda x: x.alias, nodes)
         log.info("Setting up MPICH2 hosts file on all nodes")
         for node in nodes:
             self.pool.simple_job(self._configure_hosts_file,
-                                 (node, aliases, secretword),
+                                 (node, aliases),
                                  jobid=node.alias)
         self.pool.wait(len(nodes))
         log.info("Setting MPICH2 as default MPI on all nodes")

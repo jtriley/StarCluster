@@ -36,9 +36,6 @@ plugin list you can manually run the plugin using::
     Please submit bug reports to starcluster@mit.edu
 
     >>> Running plugin mpich2
-    >>> Generating MPICH2 secretword
-    >>> Installing mpich2 on all nodes
-    3/3 |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| 100%
     >>> Setting up MPICH2 hosts file on all nodes
     3/3 |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| 100%
     >>> Setting MPICH2 as default MPI on all nodes
