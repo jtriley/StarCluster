@@ -21,35 +21,7 @@ IPCLUSTER_CACHE = os.path.join(static.STARCLUSTER_CFG_DIR, 'ipcluster')
 STARTED_MSG_10 = """\
 IPCluster has been started on %(cluster)s for user '%(user)s'.
 
-To use IPCluster (0.10.*) you first need to login to the master node of the
-cluster as '%(user)s':
-
-    $ starcluster sshmaster %(cluster)s -u %(user)s
-
-Once you've logged in the first step is to launch IPython and load the parallel
-client:
-
-    $ ipython
-    [~]> from IPython.kernel import client
-    [~]> mec = client.MultiEngineClient()
-    [~]> mec.get_ids()
-    [0, 1, 2, 3]
-
-This shows that we have 4 engines running on our cluster. Below is an example
-of how to run a parallel map across all nodes in the cluster using the
-MultiEngineClient interface:
-
-    [~]> print mec.map(lambda x:x**30, range(8))
-    [0,
-     1,
-     1073741824,
-     205891132094649L,
-     1152921504606846976L,
-     931322574615478515625L,
-     221073919720733357899776L,
-     22539340290692258087863249L]
-
-See the IPython 0.10.* parallel docs for more details
+See the IPython 0.10.* parallel docs for usage details
 (http://ipython.org/ipython-doc/rel-0.10.2/html/parallel)
 """
 
@@ -100,37 +72,7 @@ class IPCluster10(ClusterSetup):
 STARTED_MSG_11 = """\
 IPCluster has been started on %(cluster)s for user '%(user)s'.
 
-To use IPCluster log in to the master node as '%(user)s', create a parallel
-client, and run some parallel tasks on the cluster:
-
-    $ starcluster sshmaster %(cluster)s -u %(user)s
-    $ ipython
-    [~]> from IPython.parallel import Client
-    [~]> rc = Client(packer='pickle')
-    [~]> view = rc[:]
-    [~]> results = view.map_async(lambda x: x**30, range(4))
-    [~]> print results.get()
-    [0,
-     1,
-     1073741824,
-     205891132094649L]
-
-Alternatively, if IPython 0.11+ is installed locally, you can have StarCluster
-configure an interactive parallel IPython session automatically for you:
-
-    $ starcluster shell --ipcluster=%(cluster)s
-
-This will start IPython on your local computer and automatically create a
-parallel client and a view of the entire remote cluster in variables 'ipclient'
-and 'ipview' respectively:
-
-    $ starcluster shell --ipcluster=%(cluster)s
-    [~]> ipclient.ids
-    [0, 1, 2, 3]
-    [~]> res = ipview.map_async(lambda x: x**30, range(8))
-    [~]> print res.get()
-
-See the IPCluster plugin doc for more details:
+See the IPCluster plugin doc for usage details:
 http://web.mit.edu/starcluster/docs/latest/plugins/ipython.html
 """
 
