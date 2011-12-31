@@ -733,11 +733,11 @@ class Cluster(object):
     def create_node(self, alias, image_id=None, instance_type=None, zone=None,
                     placement_group=None, spot_bid=None, force_flat=False):
         return self.create_nodes([alias], image_id=image_id,
-                                 instance_type=instance_type, count=1,
-                                 zone=zone, placement_group=placement_group,
+                                 instance_type=instance_type, zone=zone,
+                                 placement_group=placement_group,
                                  spot_bid=spot_bid, force_flat=force_flat)[0]
 
-    def create_nodes(self, aliases, image_id=None, instance_type=None, count=1,
+    def create_nodes(self, aliases, image_id=None, instance_type=None,
                      zone=None, placement_group=None, spot_bid=None,
                      force_flat=False):
         """
@@ -754,6 +754,7 @@ class Cluster(object):
         if not placement_group and instance_type in static.CLUSTER_TYPES:
             placement_group = self.placement_group.name
         image_id = image_id or self.node_image_id
+        count = len(aliases) if not spot_bid else 1
         kwargs = dict(price=spot_bid, instance_type=instance_type,
                       min_count=count, max_count=count, count=count,
                       key_name=self.keyname, security_groups=[cluster_sg],
@@ -818,7 +819,7 @@ class Cluster(object):
                     raise exception.ClusterValidationError(
                         "node with alias %s already exists" % node.alias)
             log.info("Launching node(s): %s" % ', '.join(aliases))
-            self.create_nodes(aliases, count=len(aliases))
+            self.create_nodes(aliases)
         self.wait_for_cluster(msg="Waiting for node(s) to come up...")
         log.debug("Adding node(s): %s" % aliases)
         default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue,
@@ -961,7 +962,6 @@ class Cluster(object):
                              (alias, image, type))
                 master_response = self.create_nodes(aliases, image_id=image,
                                                     instance_type=type,
-                                                    count=len(aliases),
                                                     force_flat=True)[0]
                 zone = master_response.instances[0].placement
         lmap.pop(master_map)
@@ -973,7 +973,7 @@ class Cluster(object):
                 log.debug("Launching %s (ami: %s, type: %s)" % \
                           (alias, image, type))
             self.create_nodes(aliases, image_id=image, instance_type=type,
-                              count=len(aliases), zone=zone, force_flat=True)
+                              zone=zone, force_flat=True)
 
     def _create_spot_cluster(self):
         """
