@@ -33,16 +33,16 @@ diagnosing the issue. Below is an example of a crash due to a bug in the code::
     UnboundLocalError: local variable 'blah' referenced before assignment
 
     !!! ERROR - Oops! Looks like you've found a bug in StarCluster
-    !!! ERROR - Crash report written to: /home/myuser/.starcluster/crash-report-6029.txt
+    !!! ERROR - Crash report written to: /home/myuser/.starcluster/logs/crash-report-6029.txt
     !!! ERROR - Please remove any sensitive data from the crash report
     !!! ERROR - and submit it to starcluster@mit.edu
 
 Each time StarCluster encounters a crash, as in the example above, a new crash
-report will be written to $HOME/.starcluster/crash-report-$PID.txt where *$PID*
-is the process id of the buggy StarCluster session. When a crash report is
-generated users should first check the crash report for any sensitive data that
-might need to be removed and then `submit a bug report`_ with the crash report
-attached.
+report will be written to $HOME/.starcluster/logs/crash-report-$PID.txt where
+*$PID* is the process id of the buggy StarCluster session. When a crash report
+is generated users should first check the crash report for any sensitive data
+that might need to be removed and then `submit a bug report`_ with the crash
+report attached.
 
 ********************
 Issues and Questions
