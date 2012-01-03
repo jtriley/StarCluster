@@ -140,6 +140,10 @@ AWS_SETTINGS = {
     'aws_region_name': (str, False, None, None, None),
     'aws_region_host': (str, False, None, None, None),
     'aws_s3_host': (str, False, None, None, None),
+    'aws_proxy': (str, False, None, None, None),
+    'aws_proxy_port': (int, False, None, None, None),
+    'aws_proxy_user': (str, False, None, None, None),
+    'aws_proxy_pass': (str, False, None, None, None),
 }
 
 KEY_SETTINGS = {

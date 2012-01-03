@@ -62,19 +62,23 @@ class EasyEC2(EasyAWS):
     def __init__(self, aws_access_key_id, aws_secret_access_key,
                  aws_ec2_path='/', aws_s3_host=None, aws_s3_path='/',
                  aws_port=None, aws_region_name=None, aws_is_secure=True,
-                 aws_region_host=None, **kwargs):
+                 aws_region_host=None, aws_proxy=None, aws_proxy_port=None,
+                 aws_proxy_user=None, aws_proxy_pass=None, **kwargs):
         aws_region = None
         if aws_region_name and aws_region_host:
             aws_region = boto.ec2.regioninfo.RegionInfo(
                 name=aws_region_name, endpoint=aws_region_host)
         kwargs = dict(is_secure=aws_is_secure, region=aws_region,
-                      port=aws_port, path=aws_ec2_path)
+                      port=aws_port, path=aws_ec2_path, proxy=aws_proxy,
+                      proxy_port=aws_proxy_port, proxy_user=aws_proxy_user,
+                      proxy_pass=aws_proxy_pass)
         super(EasyEC2, self).__init__(aws_access_key_id, aws_secret_access_key,
                                       boto.connect_ec2, **kwargs)
-        kwargs = dict(aws_s3_host=aws_s3_host,
-                      aws_s3_path=aws_s3_path,
-                      aws_port=aws_port,
-                      aws_is_secure=aws_is_secure)
+        kwargs = dict(aws_s3_host=aws_s3_host, aws_s3_path=aws_s3_path,
+                      aws_port=aws_port, aws_is_secure=aws_is_secure,
+                      aws_proxy=aws_proxy, aws_proxy_port=aws_proxy_port,
+                      aws_proxy_user=aws_proxy_user,
+                      aws_proxy_pass=aws_proxy_pass)
         self.s3 = EasyS3(aws_access_key_id, aws_secret_access_key, **kwargs)
         self._regions = None
 
@@ -1179,11 +1183,12 @@ class EasyS3(EasyAWS):
 
     def __init__(self, aws_access_key_id, aws_secret_access_key,
                  aws_s3_path='/', aws_port=None, aws_is_secure=True,
-                 aws_s3_host=DefaultHost, **kwargs):
-        kwargs = dict(is_secure=aws_is_secure,
-                      host=aws_s3_host or self.DefaultHost,
-                      port=aws_port,
-                      path=aws_s3_path)
+                 aws_s3_host=DefaultHost, aws_proxy=None, aws_proxy_port=None,
+                 aws_proxy_user=None, aws_proxy_pass=None, **kwargs):
+        kwargs = dict(is_secure=aws_is_secure, host=aws_s3_host or
+                      self.DefaultHost, port=aws_port, path=aws_s3_path,
+                      proxy=aws_proxy, proxy_port=aws_proxy_port,
+                      proxy_user=aws_proxy_user, proxy_pass=aws_proxy_pass)
         if aws_s3_host:
             kwargs.update(dict(calling_format=self._calling_format))
         super(EasyS3, self).__init__(aws_access_key_id, aws_secret_access_key,

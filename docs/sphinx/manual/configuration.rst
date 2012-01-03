@@ -182,6 +182,32 @@ ap-southeast-1    s3-ap-southeast-1.amazonaws.com
 ap-northeast-1    s3-ap-northeast-1.amazonaws.com
 ================  =================================
 
+Using a Proxy Host
+------------------
+StarCluster can also be configured to use a proxy host when connecting to AWS
+by specifying the following settings in your **[aws info]** section:
+
+**aws_proxy_host** - The name of the proxy host to use for connecting to AWS.
+
+**aws_proxy_port** - The port number to use to connect to the proxy host.
+
+**aws_proxy_user** - The user name to use when authenticating with proxy host.
+
+**aws_proxy_pass** - The password to use when authenticating with proxy host.
+
+.. _boto: http://github.com/boto/boto
+
+StarCluster will use the settings above when creating the `boto`_ connection
+object used to communicate with AWS. Example:
+
+.. code-block:: ini
+
+   [aws info]
+   aws_proxy_host = your.proxyhost.com
+   aws_proxy_port = 8080
+   aws_proxy_user = yourproxyuser
+   aws_proxy_pass = yourproxypass
+
 Amazon EC2 Keypairs
 -------------------
 In addition to supplying your **[aws info]** you must also define at least one
