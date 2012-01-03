@@ -78,8 +78,8 @@ class SSHClient(object):
         elif private_key.endswith('dsa') or private_key.count('dsa'):
             pkey = self._load_dsa_key(private_key, private_key_pass)
         else:
-            log.debug("specified key does not end in either rsa or dsa" + \
-                      ", trying both")
+            log.debug(
+                "specified key does not end in either rsa or dsa, trying both")
             pkey = self._load_rsa_key(private_key, private_key_pass)
             if pkey is None:
                 pkey = self._load_dsa_key(private_key, private_key_pass)
@@ -138,9 +138,9 @@ class SSHClient(object):
         return False
 
     def _get_socket(self, hostname, port):
-        for (family, socktype, proto, canonname, sockaddr) in \
-        socket.getaddrinfo(hostname, port, socket.AF_UNSPEC,
-                           socket.SOCK_STREAM):
+        addrinfo = socket.getaddrinfo(hostname, port, socket.AF_UNSPEC,
+                                      socket.SOCK_STREAM)
+        for (family, socktype, proto, canonname, sockaddr) in addrinfo:
             if socktype == socket.SOCK_STREAM:
                 af = family
                 break
@@ -274,7 +274,7 @@ class SSHClient(object):
             log.debug('no regex supplied...returning')
             return
         lines = self.get_remote_file_lines(remote_file, regex, matching=False)
-        log.debug("new %s after removing regex (%s) matches:\n%s" % \
+        log.debug("new %s after removing regex (%s) matches:\n%s" %
                   (remote_file, regex, ''.join(lines)))
         f = self.remote_file(remote_file)
         f.writelines(lines)
@@ -653,7 +653,7 @@ class SSHClient(object):
     def _windows_shell(self, chan):
         import threading
 
-        sys.stdout.write("Line-buffered terminal emulation. " + \
+        sys.stdout.write("Line-buffered terminal emulation. "
                          "Press F6 or ^Z to send EOF.\r\n\r\n")
 
         def writeall(sock):

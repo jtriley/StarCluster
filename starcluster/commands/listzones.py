@@ -11,7 +11,7 @@ class CmdListZones(CmdBase):
 
     def addopts(self, parser):
         parser.add_option("-r", "--region", dest="region", default=None,
-                          help="Show all zones in a given region " + \
+                          help="Show all zones in a given region "
                           "(see listregions)")
 
     def execute(self, args):

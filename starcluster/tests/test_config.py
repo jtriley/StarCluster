@@ -27,7 +27,7 @@ class TestStarClusterConfig(tests.StarClusterTest):
         except exception.ConfigNotFound:
             pass
         else:
-            raise Exception('config loaded non-existent config file %s' % \
+            raise Exception('config loaded non-existent config file %s' %
                             non_existent_file)
 
     def test_get_cluster(self):

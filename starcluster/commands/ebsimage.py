@@ -47,7 +47,7 @@ class CmdEbsImage(InstanceCompleter):
         parser.add_option(
             "-s", "--root-volume-size", dest="root_vol_size", type="int",
             action="callback", default=15, callback=self._positive_int,
-            help="size of root volume (only used when creating an " + \
+            help="size of root volume (only used when creating an "
             "EBS image from an S3 instance)")
 
     def cancel_command(self, signum, frame):

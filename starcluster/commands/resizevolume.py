@@ -21,17 +21,17 @@ class CmdResizeVolume(CmdCreateVolume):
         parser.add_option(
             "-z", "--zone", dest="dest_zone",
             action="store", type="string", default=None,
-            help="Create the resized volume in a different zone than the " + \
+            help="Create the resized volume in a different zone than the "
             "original volume (must be within the same region)")
         parser.add_option(
             "-k", "--keypair", dest="keypair",
             action="store", type="string", default=None,
-            help="The keypair to use when launching host instance " + \
+            help="The keypair to use when launching host instance "
             "(must be defined in the config)")
         parser.add_option(
             "-H", "--host-instance", dest="host_instance",
             action="store", type="string", default=None,
-            help="Use existing instance as volume host rather than " + \
+            help="Use existing instance as volume host rather than "
             "launching a new host")
         parser.add_option(
             "-d", "--detach-volume", dest="detach_vol",
@@ -49,12 +49,12 @@ class CmdResizeVolume(CmdCreateVolume):
             "-I", "--instance-type", dest="instance_type",
             action="store", type="choice", default="m1.small",
             choices=static.INSTANCE_TYPES.keys(),
-            help="The instance type to use when launching volume " + \
+            help="The instance type to use when launching volume "
             "host instance")
         parser.add_option(
             "-r", "--resizefs-cmd", dest="resizefs_cmd",
             action="store", type="string", default="resize2fs",
-            help="Specify alternate resizefs command to use when " + \
+            help="Specify alternate resizefs command to use when "
             "formatting volume (default: resize2fs)")
 
     def execute(self, args):

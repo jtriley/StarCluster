@@ -29,12 +29,12 @@ class CmdCreateVolume(CmdBase):
         parser.add_option(
             "-k", "--keypair", dest="keypair",
             action="store", type="string", default=None,
-            help="The keypair to use when launching host instance " + \
+            help="The keypair to use when launching host instance "
             "(must be defined in the config)")
         parser.add_option(
             "-H", "--host-instance", dest="host_instance",
             action="store", type="string", default=None,
-            help="Use specified instance as volume host rather than " + \
+            help="Use specified instance as volume host rather than "
             "launching a new host")
         parser.add_option(
             "-d", "--detach-volume", dest="detach_vol",
@@ -47,7 +47,7 @@ class CmdCreateVolume(CmdBase):
         parser.add_option(
             "-m", "--mkfs-cmd", dest="mkfs_cmd",
             action="store", type="string", default="mkfs.ext3",
-            help="Specify alternate mkfs command to use when " + \
+            help="Specify alternate mkfs command to use when "
             "formatting volume (default: mkfs.ext3)")
         parser.add_option(
             "-i", "--image-id", dest="image_id",
@@ -57,7 +57,7 @@ class CmdCreateVolume(CmdBase):
             "-I", "--instance-type", dest="instance_type",
             action="store", type="choice", default="m1.small",
             choices=static.INSTANCE_TYPES.keys(),
-            help="The instance type to use when launching volume " + \
+            help="The instance type to use when launching volume "
             "host instance")
         parser.add_option(
             "-t", "--tag", dest="tags", action="callback", type="string",
@@ -85,7 +85,7 @@ class CmdCreateVolume(CmdBase):
                         break
         if not keypair:
             raise exception.ConfigError(
-                "no keypairs in region %s defined in config" % \
+                "no keypairs in region %s defined in config" %
                 self.ec2.region.name)
         if not key_location:
             raise exception.ConfigError(

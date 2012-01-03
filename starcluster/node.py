@@ -233,7 +233,7 @@ class Node(object):
         try:
             return int(self.instance.ami_launch_index)
         except TypeError:
-            log.error("instance %s (state: %s) has no ami_launch_index" % \
+            log.error("instance %s (state: %s) has no ami_launch_index" %
                       (self.id, self.state))
             log.error("returning 0 as ami_launch_index...")
             return 0
@@ -576,10 +576,10 @@ class Node(object):
         """
         # setup /etc/exports
         nfs_export_settings = "(async,no_root_squash,no_subtree_check,rw)"
-        etc_exports = self.ssh.remote_file('/etc/exports')
+        etc_exports = self.ssh.remote_file('/etc/exports', 'w')
         for node in nodes:
             for path in export_paths:
-                etc_exports.write(' '.join([path, node.alias + \
+                etc_exports.write(' '.join([path, node.alias +
                                             nfs_export_settings + '\n']))
         etc_exports.close()
         self.ssh.execute('exportfs -fra')
@@ -643,7 +643,7 @@ class Node(object):
         self.ssh.remove_lines_from_file('/etc/fstab',
                                         path.center(len(path) + 2))
         master_fstab = self.ssh.remote_file('/etc/fstab', mode='a')
-        master_fstab.write("%s %s auto noauto,defaults 0 0\n" % \
+        master_fstab.write("%s %s auto noauto,defaults 0 0\n" %
                            (device, path))
         master_fstab.close()
         if not self.ssh.path_exists(path):
@@ -840,14 +840,14 @@ class Node(object):
             return False
         if self.private_ip_address is None:
             log.debug("instance %s has no private_ip_address" % self.id)
-            log.debug(("attempting to determine private_ip_address for" + \
-                       "instance %s") % self.id)
+            log.debug("attempting to determine private_ip_address for "
+                      "instance %s" % self.id)
             try:
-                private_ip = self.ssh.execute((
-                    'python -c ' + \
-                    '"import socket; print socket.gethostbyname(\'%s\')"') % \
+                private_ip = self.ssh.execute(
+                    'python -c '
+                    '"import socket; print socket.gethostbyname(\'%s\')"' %
                     self.private_dns_name)[0].strip()
-                log.debug("determined instance %s's private ip to be %s" % \
+                log.debug("determined instance %s's private ip to be %s" %
                           (self.id, private_ip))
                 self.instance.private_ip_address = private_ip
             except Exception, e:

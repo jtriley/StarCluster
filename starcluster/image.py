@@ -137,10 +137,9 @@ class S3ImageCreator(ImageCreator):
         self._transfer_pem_files()
         self.clean_private_data()
         log.info('Creating the bundled image: (please be patient)')
-        conn.execute('ec2-bundle-vol -d /mnt -k /mnt/%(private_key)s \
--c /mnt/%(cert)s -p %(prefix)s -u %(userid)s -r %(arch)s -e /root/.ssh' % \
-                     config_dict,
-                     silent=False)
+        conn.execute('ec2-bundle-vol -d /mnt -k /mnt/%(private_key)s '
+                     '-c /mnt/%(cert)s -p %(prefix)s -u %(userid)s '
+                     '-r %(arch)s -e /root/.ssh' % config_dict, silent=False)
         self._cleanup_pem_files()
 
     @print_timing
@@ -148,9 +147,9 @@ class S3ImageCreator(ImageCreator):
         log.info('Uploading bundled image: (please be patient)')
         conn = self.host_ssh
         config_dict = self.config_dict
-        conn.execute('ec2-upload-bundle -b %(bucket)s \
--m /mnt/%(prefix)s.manifest.xml -a %(access_key)s -s %(secret_key)s' % \
-                     config_dict, silent=False)
+        conn.execute('ec2-upload-bundle -b %(bucket)s '
+                     '-m /mnt/%(prefix)s.manifest.xml -a %(access_key)s '
+                     '-s %(secret_key)s' % config_dict, silent=False)
 
     def _cleanup(self):
         #just in case...

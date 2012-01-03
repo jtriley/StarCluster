@@ -58,7 +58,7 @@ class CmdRemoveImage(ImageCompleter):
             keep_image_data = self.opts.keep_image_data
             if not confirmed:
                 if not pretend:
-                    resp = raw_input("**PERMANENTLY** delete %s (y/n)? " % \
+                    resp = raw_input("**PERMANENTLY** delete %s (y/n)? " %
                                      imageid)
                     if resp not in ['y', 'Y', 'yes']:
                         log.info("Aborting...")

@@ -153,7 +153,7 @@ class DefaultClusterSetup(ClusterSetup):
                     msg % (username, node.alias, self._user, username))
                 node.remove_user(username)
                 node.add_user(self._user, uid, gid, self._user_shell)
-            log.debug("user %s exists on node %s, no action" % \
+            log.debug("user %s exists on node %s, no action" %
                       (self._user, node.alias))
         else:
             log.debug("user %s does not exist, creating..." % self._user)
@@ -171,7 +171,7 @@ class DefaultClusterSetup(ClusterSetup):
         user_scratch = '/mnt/%s' % self._user
         if not nconn.path_exists(user_scratch):
             nconn.mkdir(user_scratch)
-        nconn.execute('chown -R %(user)s:%(user)s /mnt/%(user)s' % \
+        nconn.execute('chown -R %(user)s:%(user)s /mnt/%(user)s' %
                       {'user': self._user})
         scratch = '/scratch'
         if not nconn.path_exists(scratch):
@@ -256,12 +256,12 @@ class DefaultClusterSetup(ClusterSetup):
                         "partition=1, etc.) in the volume's config")
                     continue
             elif not master.ssh.path_exists(volume_partition):
-                log.warn("Cannot find partition %s on volume %s" % \
+                log.warn("Cannot find partition %s on volume %s" %
                          (volume_partition, vol_id))
                 log.warn("Not mounting %s on %s" % (vol_id,
                                                     mount_path))
-                log.warn("This either means that the volume has not " + \
-                         "been partitioned or that the partition" + \
+                log.warn("This either means that the volume has not "
+                         "been partitioned or that the partition"
                          "specified does not exist on the volume")
                 continue
             log.info("Mounting EBS volume %s on %s..." % (vol_id, mount_path))
@@ -270,11 +270,11 @@ class DefaultClusterSetup(ClusterSetup):
             if dev:
                 path, fstype, options = dev
                 if path != mount_path:
-                    log.error("Volume %s is mounted on %s, not on %s" % \
+                    log.error("Volume %s is mounted on %s, not on %s" %
                               (vol_id, path, mount_path))
                 else:
                     log.info(
-                        "Volume %s already mounted on %s...skipping" % \
+                        "Volume %s already mounted on %s...skipping" %
                         (vol_id, mount_path))
                 continue
             self._master.mount_device(volume_partition, mount_path)
@@ -301,8 +301,8 @@ class DefaultClusterSetup(ClusterSetup):
                 network_device = "%s:%s" % (master.alias, path)
                 if network_device in mount_map:
                     mount_path, type, options = mount_map.get(network_device)
-                    log.debug(('nfs share %s already mounted to %s on ' + \
-                               'node %s, skipping...') % \
+                    log.debug('nfs share %s already mounted to %s on '
+                              'node %s, skipping...' %
                               (network_device, mount_path, node.alias))
                 else:
                     mount_paths.append(path)
@@ -320,7 +320,7 @@ class DefaultClusterSetup(ClusterSetup):
         if not self._disable_queue and not master.ssh.isdir('/opt/sge6'):
             # copy fresh sge installation files to /opt/sge6
             master.ssh.execute('cp -r /opt/sge6-fresh /opt/sge6')
-            master.ssh.execute('chown -R %(user)s:%(user)s /opt/sge6' % \
+            master.ssh.execute('chown -R %(user)s:%(user)s /opt/sge6' %
                                {'user': self._user})
         # setup /etc/exports and start nfsd on master node
         nodes = nodes or self.nodes

@@ -152,8 +152,8 @@ def configure_paramiko_logging():
                                               maxBytes=1048576,
                                               backupCount=2)
     lh.setLevel(logging.DEBUG)
-    format = (('PID: %s ' % str(static.PID)) + \
-              '%(levelname)-.3s [%(asctime)s.%(msecs)03d] ' + \
+    format = (('PID: %s ' % str(static.PID)) +
+              '%(levelname)-.3s [%(asctime)s.%(msecs)03d] '
               'thr=%(_threadid)-3d %(name)s: %(message)s')
     date_format = '%Y%m%d-%H:%M:%S'
     lh.setFormatter(logging.Formatter(format, date_format))
@@ -171,8 +171,8 @@ def configure_boto_logging():
                                               maxBytes=1048576,
                                               backupCount=2)
     lh.setLevel(logging.DEBUG)
-    format = (('PID: %s ' % str(static.PID)) + \
-              '%(levelname)-.3s [%(asctime)s.%(msecs)03d] ' + \
+    format = (('PID: %s ' % str(static.PID)) +
+              '%(levelname)-.3s [%(asctime)s.%(msecs)03d] '
               '%(name)s: %(message)s')
     date_format = '%Y%m%d-%H:%M:%S'
     lh.setFormatter(logging.Formatter(format, date_format))

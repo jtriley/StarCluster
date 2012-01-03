@@ -402,7 +402,7 @@ class EasyEC2(EasyAWS):
                     "output directory does not exist")
             if os.path.exists(output_file):
                 raise exception.BaseException(
-                    "cannot save keypair %s: file already exists" % \
+                    "cannot save keypair %s: file already exists" %
                     output_file)
         kp = self.conn.create_key_pair(name)
         if output_file:

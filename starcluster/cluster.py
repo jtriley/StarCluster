@@ -213,7 +213,7 @@ class ClusterManager(managers.Manager):
                 log.info("No clusters found...")
         else:
             try:
-                cluster_groups = [self.get_cluster_security_group(g) for g \
+                cluster_groups = [self.get_cluster_security_group(g) for g
                                   in cluster_groups]
             except exception.SecurityGroupDoesNotExist:
                 raise exception.ClusterDoesNotExist(g)
@@ -462,11 +462,11 @@ class Cluster(object):
                 mod = __import__(mod_name, globals(), locals(), [class_name])
             except SyntaxError, e:
                 raise exception.PluginSyntaxError(
-                    "Plugin %s (%s) contains a syntax error at line %s" % \
+                    "Plugin %s (%s) contains a syntax error at line %s" %
                     (plugin_name, e.filename, e.lineno))
             except ImportError, e:
                 raise exception.PluginLoadError(
-                    "Failed to import plugin %s: %s" % \
+                    "Failed to import plugin %s: %s" %
                     (plugin_name, e[0]))
             klass = getattr(mod, class_name, None)
             if not klass:
@@ -474,8 +474,8 @@ class Cluster(object):
                     'Plugin class %s does not exist' % setup_class)
             if not issubclass(klass, clustersetup.ClusterSetup):
                 raise exception.PluginError(
-                    ("Plugin %s must be a subclass of " + \
-                     "starcluster.clustersetup.ClusterSetup") % setup_class)
+                    "Plugin %s must be a subclass of "
+                    "starcluster.clustersetup.ClusterSetup" % setup_class)
             args, kwargs = utils.get_arg_spec(klass.__init__)
             config_args = []
             missing_args = []
@@ -895,8 +895,8 @@ class Cluster(object):
                 lmap[(type, image_id)] = []
             for id in range(id_start, id_start + count):
                 alias = 'node%.3d' % id
-                log.debug("Launch map: %s (ami: %s, type: %s)..." % \
-                        (alias, image_id, type))
+                log.debug("Launch map: %s (ami: %s, type: %s)..." %
+                          (alias, image_id, type))
                 lmap[(type, image_id)].append(alias)
                 id_start += 1
         ntype = self.node_instance_type
@@ -905,8 +905,8 @@ class Cluster(object):
             lmap[(ntype, nimage)] = []
         for id in range(id_start, self.cluster_size):
             alias = 'node%.3d' % id
-            log.debug("Launch map: %s (ami: %s, type: %s)..." % \
-                    (alias, nimage, ntype))
+            log.debug("Launch map: %s (ami: %s, type: %s)..." %
+                      (alias, nimage, ntype))
             lmap[(ntype, nimage)].append(alias)
         if reverse:
             rlmap = {}
@@ -958,8 +958,8 @@ class Cluster(object):
             if 'master' in aliases:
                 master_map = (type, image)
                 for alias in aliases:
-                    log.debug("Launching %s (ami: %s, type: %s)" % \
-                             (alias, image, type))
+                    log.debug("Launching %s (ami: %s, type: %s)" %
+                              (alias, image, type))
                 master_response = self.create_nodes(aliases, image_id=image,
                                                     instance_type=type,
                                                     force_flat=True)[0]
@@ -970,7 +970,7 @@ class Cluster(object):
         for (type, image) in lmap:
             aliases = lmap.get((type, image))
             for alias in aliases:
-                log.debug("Launching %s (ami: %s, type: %s)" % \
+                log.debug("Launching %s (ami: %s, type: %s)" %
                           (alias, image, type))
             self.create_nodes(aliases, image_id=image, instance_type=type,
                               zone=zone, force_flat=True)
@@ -983,7 +983,7 @@ class Cluster(object):
         correctly assign aliases to nodes.
         """
         (mtype, mimage) = self._get_type_and_image_id('master')
-        log.info("Launching master node (ami: %s, type: %s)..." % \
+        log.info("Launching master node (ami: %s, type: %s)..." %
                  (mimage, mtype))
         force_flat = not self.force_spot_master and self.cluster_size > 1
         master_response = self.create_node('master',
@@ -1253,12 +1253,12 @@ class Cluster(object):
             vol_id = volume.get('volume_id')
             vol = self.ec2.get_volume(vol_id)
             if vol.attach_data.instance_id == self.master_node.id:
-                log.info("Volume %s already attached to master...skipping" % \
+                log.info("Volume %s already attached to master...skipping" %
                          vol.id)
                 continue
             if vol.status != "available":
-                log.error(('Volume %s not available...' +
-                          'please check and try again') % vol.id)
+                log.error('Volume %s not available...'
+                          'please check and try again' % vol.id)
                 continue
             log.info("Attaching volume %s to master node on %s ..." % (vol.id,
                                                                        device))
@@ -1471,7 +1471,7 @@ class Cluster(object):
         try:
             func = getattr(plugin, method_name, None)
             if not func:
-                log.warn("Plugin %s has no %s method...skipping" % \
+                log.warn("Plugin %s has no %s method...skipping" %
                          (plugin_name, method_name))
                 return
             args = [self.nodes, self.master_node, self.cluster_user,
@@ -1566,15 +1566,15 @@ class Cluster(object):
         num_nodes = self.cluster_size - 1
         if num_itypes > num_nodes:
             raise exception.ClusterValidationError(
-                ("total number of nodes specified in node_instance_type (%s)" +
-                 " must be <= cluster_size-1 (%s)") % (num_itypes, num_nodes))
+                "total number of nodes specified in node_instance_type (%s) "
+                "must be <= cluster_size-1 (%s)" % (num_itypes, num_nodes))
         return True
 
     def _validate_shell_setting(self):
         cluster_shell = self.cluster_shell
         if not self.__available_shells.get(cluster_shell):
             raise exception.ClusterValidationError(
-                'Invalid user shell specified. Options are %s' % \
+                'Invalid user shell specified. Options are %s' %
                 ' '.join(self.__available_shells.keys()))
         return True
 
@@ -1602,8 +1602,8 @@ class Cluster(object):
                 raise exception.ClusterValidationError(
                     'availability_zone = %s does not exist' % azone)
             if zone.state != 'available':
-                log.warn('The availability_zone = %s ' % zone +
-                          'is not available at this time')
+                log.warn('The availability_zone = %s '
+                         'is not available at this time' % zone)
         return True
 
     def __check_platform(self, image_id, instance_type):
@@ -1623,12 +1623,12 @@ class Cluster(object):
             raise exception.ClusterValidationError(
                 "Image '%s' is a Cluster Compute/GPU image (HVM) and cannot "
                 "be used with instance type '%s'\nThe instance type "
-                "for a Cluster Compute/GPU image (HVM) must be one of: %s" % \
+                "for a Cluster Compute/GPU image (HVM) must be one of: %s" %
                 (image_id, instance_type, cctypes_list))
         instance_platforms = self.__instance_types[instance_type]
         if image_platform not in instance_platforms:
-            error_msg = "Instance type %(instance_type)s is for an " + \
-                        "%(instance_platform)s platform while " + \
+            error_msg = "Instance type %(instance_type)s is for an " \
+                        "%(instance_platform)s platform while " \
                         "%(image_id)s is an %(image_platform)s platform"
             error_dict = {'instance_type': instance_type,
                           'instance_platform': ', '.join(instance_platforms),
@@ -1646,14 +1646,14 @@ class Cluster(object):
         instance_type_list = ', '.join(instance_types.keys())
         if not node_instance_type in instance_types:
             raise exception.ClusterValidationError(
-                ("You specified an invalid node_instance_type %s \n" +
-                "Possible options are:\n%s") % \
+                "You specified an invalid node_instance_type %s\n"
+                "Possible options are:\n%s" %
                 (node_instance_type, instance_type_list))
         elif master_instance_type:
             if not master_instance_type in instance_types:
                 raise exception.ClusterValidationError(
-                    ("You specified an invalid master_instance_type %s\n" + \
-                    "Possible options are:\n%s") % \
+                    "You specified an invalid master_instance_type %s\n"
+                    "Possible options are:\n%s" %
                     (master_instance_type, instance_type_list))
         try:
             self.__check_platform(node_image_id, node_instance_type)
@@ -1665,29 +1665,29 @@ class Cluster(object):
                 self.__check_platform(master_image_id, node_instance_type)
             except exception.ClusterValidationError, e:
                 raise exception.ClusterValidationError(
-                    'Incompatible master_image_id and ' +
-                    'node_instance_type\n' + e.msg)
+                    'Incompatible master_image_id and node_instance_type\n' +
+                    e.msg)
         elif master_image_id and master_instance_type:
             try:
                 self.__check_platform(master_image_id, master_instance_type)
             except exception.ClusterValidationError, e:
                 raise exception.ClusterValidationError(
-                    'Incompatible master_image_id and ' +
-                    'master_instance_type\n' + e.msg)
+                    'Incompatible master_image_id and master_instance_type\n' +
+                    e.msg)
         elif master_instance_type and not master_image_id:
             try:
                 self.__check_platform(node_image_id, master_instance_type)
             except exception.ClusterValidationError, e:
                 raise exception.ClusterValidationError(
-                    'Incompatible node_image_id and ' +
-                    'master_instance_type\n' + e.msg)
+                    'Incompatible node_image_id and master_instance_type\n' +
+                    e.msg)
         for itype in self.node_instance_types:
             type = itype.get('type')
             img = itype.get('image') or node_image_id
             if not type in instance_types:
                 raise exception.ClusterValidationError(
-                    ("You specified an invalid instance type %s \n" +
-                     "Possible options are:\n%s") % (type, instance_type_list))
+                    "You specified an invalid instance type %s\n"
+                    "Possible options are:\n%s" % (type, instance_type_list))
             try:
                 self.__check_platform(img, type)
             except exception.ClusterValidationError, e:

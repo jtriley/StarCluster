@@ -101,7 +101,6 @@ class IPCluster11(ClusterSetup):
             "",
         ]))
         f.close()
-
         f = master.ssh.remote_file('%s/ipcluster_config.py' % profile_dir)
         f.write('\n'.join([
             "c = get_config()",

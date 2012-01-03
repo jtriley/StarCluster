@@ -22,7 +22,7 @@ class ClusterCompleter(Completer):
         try:
             cm = self.cm
             clusters = cm.get_cluster_security_groups()
-            completion_list = [cm.get_tag_from_sg(sg.name) \
+            completion_list = [cm.get_tag_from_sg(sg.name)
                                for sg in clusters]
             return optcomplete.ListCompleter(completion_list)
         except Exception, e:
@@ -45,7 +45,7 @@ class NodeCompleter(Completer):
                     max_num_nodes = num_instances
             compl_list.extend(['master'])
             compl_list.extend([str(i) for i in range(0, num_instances)])
-            compl_list.extend(["node%03d" % i \
+            compl_list.extend(["node%03d" % i
                                for i in range(1, num_instances)])
             return optcomplete.ListCompleter(compl_list)
         except Exception, e:

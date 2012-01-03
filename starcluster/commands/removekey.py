@@ -14,7 +14,7 @@ class CmdRemoveKey(CmdBase):
     def addopts(self, parser):
         parser.add_option("-c", "--confirm", dest="confirm",
                           action="store_true", default=False,
-                          help="do not prompt for confirmation, just " + \
+                          help="do not prompt for confirmation, just "
                           "remove the keypair")
 
     def execute(self, args):
@@ -23,7 +23,7 @@ class CmdRemoveKey(CmdBase):
         name = args[0]
         kp = self.ec2.get_keypair(name)
         if not self.opts.confirm:
-            resp = raw_input("**PERMANENTLY** delete keypair %s (y/n)? " % \
+            resp = raw_input("**PERMANENTLY** delete keypair %s (y/n)? " %
                              name)
             if resp not in ['y', 'Y', 'yes']:
                 log.info("Aborting...")

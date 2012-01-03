@@ -48,8 +48,8 @@ class TestClusterValidation(StarClusterTest):
             except exception.ClusterValidationError:
                 pass
             else:
-                raise Exception('cluster allows invalid size (case: %s)' \
-                                % case)
+                raise Exception(
+                    'cluster allows invalid size (case: %s)' % case)
 
     def test_shell_validation(self):
         cases = [
@@ -126,7 +126,7 @@ class TestClusterValidation(StarClusterTest):
                                                 "_validate_instance_types")
         if failed:
             raise Exception(
-                'cluster allows invalid instance type settings (cases: %s)' % \
+                'cluster allows invalid instance type settings (cases: %s)' %
                 failed)
 
     def test_ebs_validation(self):
@@ -183,7 +183,7 @@ class TestClusterValidation(StarClusterTest):
                                             cluster_name='c4')
         if failed:
             raise Exception(
-                "cluster allows invalid permission settings (cases %s)" % \
+                "cluster allows invalid permission settings (cases %s)" %
                 failed)
 
     #def test_image_validation(self):

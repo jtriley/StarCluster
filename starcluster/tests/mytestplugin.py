@@ -16,7 +16,7 @@ class SetupClass(ClusterSetup):
 
 class SetupClass2(ClusterSetup):
     def __init__(self, my_arg, my_other_arg):
-        log.debug("setupclass2: my_arg = %s, my_other_arg = %s" % \
+        log.debug("setupclass2: my_arg = %s, my_other_arg = %s" %
                   (my_arg, my_other_arg))
 
     def run(self, nodes, master, user, shell, volumes):

@@ -151,8 +151,8 @@ class EC2CertRequired(AWSError):
 
 class EC2PrivateKeyRequired(AWSError):
     def __init__(self):
-        self.msg = "No private certificate file (pem) file specified in " + \
-                   "config (EC2_PRIVATE_KEY)"
+        self.msg = "No private certificate file (pem) file specified in "
+        self.msg += "config (EC2_PRIVATE_KEY)"
 
 
 class EC2CertDoesNotExist(AWSError):
@@ -167,8 +167,8 @@ class EC2PrivateKeyDoesNotExist(AWSError):
 
 class SpotHistoryError(AWSError):
     def __init__(self, start, end):
-        self.msg = "no spot price history for the dates specified: " + \
-                "%s - %s" % (start, end)
+        self.msg = "no spot price history for the dates specified: "
+        self.msg += "%s - %s" % (start, end)
 
 
 class InvalidIsoDate(BaseException):
@@ -310,8 +310,8 @@ class IncompatibleSettings(ClusterValidationError):
 class InvalidProtocol(ClusterValidationError):
     """Raised when user specifies an invalid IP protocol for permission"""
     def __init__(self, protocol):
-        self.msg = "protocol %s is not a valid ip protocol. options: %s" % \
-        (protocol, ', '.join(static.PROTOCOLS))
+        self.msg = "protocol %s is not a valid ip protocol. options: %s"
+        self.msg %= (protocol, ', '.join(static.PROTOCOLS))
 
 
 class InvalidPortRange(ClusterValidationError):
@@ -337,7 +337,7 @@ class InvalidZone(ClusterValidationError):
     """
     def __init__(self, zone, common_vol_zone):
         cvz = common_vol_zone
-        self.msg = ("availability_zone setting '%s' does not " +
+        self.msg = ("availability_zone setting '%s' does not "
                     "match the common volume zone '%s'") % (zone, cvz)
 
 
@@ -402,10 +402,10 @@ class CancelledCreateVolume(BaseException):
         self.msg += "\n\nPlease be aware that volume host instances"
         self.msg += " may still be running. "
         self.msg += "\n\nTo destroy these instances:"
-        self.msg += "\n\n   $ starcluster terminate %s" % \
-                static.VOLUME_GROUP_NAME
+        self.msg += "\n\n   $ starcluster terminate %s"
         self.msg += "\n\nYou can then use\n\n   $ starcluster listinstances"
         self.msg += "\n\nto verify that the volume hosts have been terminated."
+        self.msg %= static.VOLUME_GROUP_NAME
 
 
 class CancelledCreateImage(BaseException):

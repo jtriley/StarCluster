@@ -31,16 +31,16 @@ class CmdSpotHistory(CmdBase):
         thirty_days_ago = utils.datetime_tuple_to_iso(delta)
         parser.add_option("-d", "--days", dest="days_ago",
                           action="store", type="float",
-                          help="provide history in the last DAYS_AGO days " + \
+                          help="provide history in the last DAYS_AGO days "
                           "(overrides -s and -e options)")
         parser.add_option("-s", "--start-time", dest="start_time",
                           action="store", type="string",
                           default=thirty_days_ago,
-                          help="show price history after START_TIME" + \
+                          help="show price history after START_TIME "
                           "(e.g. 2010-01-15T22:22:22)")
         parser.add_option("-e", "--end-time", dest="end_time",
                           action="store", type="string", default=now,
-                          help="show price history up until END_TIME" + \
+                          help="show price history up until END_TIME "
                           "(e.g. 2010-02-15T22:22:22)")
         parser.add_option("-p", "--plot", dest="plot",
                           action="store_true", default=False,
@@ -50,11 +50,11 @@ class CmdSpotHistory(CmdBase):
         instance_types = ', '.join(static.INSTANCE_TYPES.keys())
         if len(args) != 1:
             self.parser.error(
-                'please provide an instance type (options: %s)' % \
-                             instance_types)
+                'please provide an instance type (options: %s)' %
+                instance_types)
         instance_type = args[0]
         if not instance_type in static.INSTANCE_TYPES:
-            self.parser.error('invalid instance type. possible options: %s' % \
+            self.parser.error('invalid instance type. possible options: %s' %
                               ', '.join(static.INSTANCE_TYPES))
         start = self.opts.start_time
         end = self.opts.end_time
