@@ -109,7 +109,7 @@ class TemplateHandler(DocrootHandler):
             if relpath.endswith(self._bin_exts):
                 data = templates.get_resource(fullpath).read()
             else:
-                tmpl = templates.get_template(fullpath)
+                tmpl = templates.get_web_template(fullpath)
                 data = tmpl.render(**self._tmpl_context)
             content_type = mimetypes.guess_type(os.path.basename(relpath))[0]
             self.send_response(200)
