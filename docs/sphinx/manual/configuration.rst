@@ -187,7 +187,7 @@ Using a Proxy Host
 StarCluster can also be configured to use a proxy host when connecting to AWS
 by specifying the following settings in your **[aws info]** section:
 
-**aws_proxy_host** - The name of the proxy host to use for connecting to AWS.
+**aws_proxy** - The name of the proxy host to use for connecting to AWS.
 
 **aws_proxy_port** - The port number to use to connect to the proxy host.
 
@@ -203,7 +203,7 @@ object used to communicate with AWS. Example:
 .. code-block:: ini
 
    [aws info]
-   aws_proxy_host = your.proxyhost.com
+   aws_proxy = your.proxyhost.com
    aws_proxy_port = 8080
    aws_proxy_user = yourproxyuser
    aws_proxy_pass = yourproxypass
