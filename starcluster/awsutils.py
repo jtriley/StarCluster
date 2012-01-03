@@ -1149,7 +1149,7 @@ class EasyEC2(EasyAWS):
             yzoomrange = [0.1, ypanrange[-1] - ypanrange[0]]
             context = dict(instance_type=instance_type,
                            start=start, end=end,
-                           time_series_data=str(data),
+                           time_series_data=str(data).replace('L', ''),
                            shutdown=plot_shutdown_server,
                            xpanrange=xpanrange, ypanrange=ypanrange,
                            xzoomrange=xzoomrange, yzoomrange=yzoomrange)
