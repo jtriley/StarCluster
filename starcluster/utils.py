@@ -486,3 +486,58 @@ def chunk_list(ls, items=8):
 
 def generate_passwd(length):
     return "".join(random.sample(string.letters + string.digits, length))
+
+
+class struct_group(tuple):
+    """
+    grp.struct_group: Results from getgr*() routines.
+
+    This object may be accessed either as a tuple of
+      (gr_name,gr_passwd,gr_gid,gr_mem)
+    or via the object attributes as named in the above tuple.
+    """
+
+    attrs = ['gr_name', 'gr_passwd', 'gr_gid', 'gr_mem']
+
+    def __new__(cls, grp):
+        if type(grp) not in (list, str, tuple):
+            grp = (grp.name, grp.password, int(grp.GID),
+                   [member for member in grp.members])
+        if len(grp) != 4:
+            raise TypeError('expecting a 4-sequence (%d-sequeunce given)' %
+                            len(grp))
+        return tuple.__new__(cls, grp)
+
+    def __getattr__(self, attr):
+        try:
+            return self[self.attrs.index(attr)]
+        except ValueError:
+            raise AttributeError
+
+
+class struct_passwd(tuple):
+    """
+    pwd.struct_passwd: Results from getpw*() routines.
+
+    This object may be accessed either as a tuple of
+      (pw_name,pw_passwd,pw_uid,pw_gid,pw_gecos,pw_dir,pw_shell)
+    or via the object attributes as named in the above tuple.
+    """
+
+    attrs = ['pw_name', 'pw_passwd', 'pw_uid', 'pw_gid', 'pw_gecos',
+             'pw_dir', 'pw_shell']
+
+    def __new__(cls, pwd):
+        if type(pwd) not in (list, str, tuple):
+            pwd = (pwd.loginName, pwd.password, int(pwd.UID), int(pwd.GID),
+                   pwd.GECOS, pwd.home, pwd.shell)
+        if len(pwd) != 7:
+            raise TypeError('expecting a 4-sequence (%d-sequeunce given)' %
+                            len(pwd))
+        return tuple.__new__(cls, pwd)
+
+    def __getattr__(self, attr):
+        try:
+            return self[self.attrs.index(attr)]
+        except ValueError:
+            raise AttributeError

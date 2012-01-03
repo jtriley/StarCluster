@@ -1,6 +1,4 @@
 import os
-import pwd
-import grp
 import time
 import stat
 import base64
@@ -308,7 +306,7 @@ class Node(object):
             key = name
             if key_by_gid:
                 key = gid
-            grp_map[key] = grp.struct_group([name, passwd, gid, mems])
+            grp_map[key] = utils.struct_group([name, passwd, gid, mems])
         return grp_map
 
     def get_user_map(self, key_by_uid=False):
@@ -330,7 +328,7 @@ class Node(object):
             key = name
             if key_by_uid:
                 key = uid
-            user_map[key] = pwd.struct_passwd([name, passwd, uid, gid,
+            user_map[key] = utils.struct_passwd([name, passwd, uid, gid,
                                                gecos, home, shell])
         return user_map
 
