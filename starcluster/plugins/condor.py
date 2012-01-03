@@ -13,7 +13,8 @@ class CondorPlugin(clustersetup.DefaultClusterSetup):
         daemon_list = "MASTER, STARTD, SCHEDD"
         if node.is_master():
             daemon_list += ", COLLECTOR, NEGOTIATOR"
-        ctx = dict(DAEMON_LIST=daemon_list, FS_REMOTE_DIR=FS_REMOTE_DIR)
+        ctx = dict(CONDOR_HOST='master', DAEMON_LIST=daemon_list,
+                   FS_REMOTE_DIR=FS_REMOTE_DIR)
         condorcfg.write(condor.condor_tmpl % ctx)
         condorcfg.close()
         node.ssh.execute('pkill condor', ignore_exit_status=True)

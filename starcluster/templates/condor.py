@@ -1,5 +1,5 @@
 condor_tmpl = """\
-CONDOR_HOST = master
+CONDOR_HOST = %(CONDOR_HOST)s
 LOCAL_DIR = /var/lib/condor
 LOCAL_CONFIG_FILE =
 RUN = $(LOCAL_DIR)
