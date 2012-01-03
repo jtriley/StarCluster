@@ -33,6 +33,11 @@ AWS_USER_ID= #your userid
 # Uncomment these settings when creating an instance-store (S3) AMI (OPTIONAL)
 #EC2_CERT = /path/to/your/cert-asdf0as9df092039asdfi02089.pem
 #EC2_PRIVATE_KEY = /path/to/your/pk-asdfasd890f200909.pem
+# Uncomment these settings to use a proxy host when connecting to AWS
+#aws_proxy = your.proxyhost.com
+#aws_proxy_port = 8080
+#aws_proxy_user = yourproxyuser
+#aws_proxy_pass = yourproxypass
 
 # Sections starting with "key" define your keypairs
 # (see the EC2 getting started guide tutorial on using ec2-add-keypair to learn
