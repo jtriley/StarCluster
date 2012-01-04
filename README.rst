@@ -1,8 +1,8 @@
-=================================
-StarCluster v0.9999 (development)
-=================================
+=================
+StarCluster v0.93
+=================
 :StarCluster: Cluster Computing Toolkit for the Cloud
-:Version: 0.9999 (development)
+:Version: 0.93
 :Author: Justin Riley <justin.t.riley@gmail.com>
 :Team: Software Tools for Academics and Researchers (http://web.mit.edu/star)
 :Homepage: http://web.mit.edu/starcluster
@@ -20,20 +20,22 @@ and StarCluster. StarCluster features:
 * **Simple configuration** - with examples ready to go out-of-the-box
 * **Create/Manage Clusters** - simple **start** command to automatically launch
   and configure one or more clusters on EC2
-* **Automated Cluster Setup** - includes NFS-sharing, Sun Grid Engine queuing
-  system, password-less ssh between machines, and more
-* **Scientific Computing AMI** - contains OpenMPI, ATLAS, Lapack, NumPy, SciPy,
-  and other useful libraries
+* **Automated Cluster Setup** - includes NFS-sharing, Open Grid Scheduler
+  queuing system, Condor, password-less ssh between machines, and more
+* **Scientific Computing AMI** - comes with Ubuntu 11.10-based EBS-backed AMI
+  that contains Hadoop, OpenMPI, ATLAS, LAPACK, NumPy, SciPy, IPython, and
+  other useful libraries
 * **EBS Volume Sharing** - easily NFS-share Amazon Elastic Block Storage (EBS)
   volumes across a cluster for persistent storage
 * **EBS-Backed Clusters** - start and stop EBS-backed clusters on EC2
 * **Cluster Compute Instances** - support for "cluster compute" instance types
-* **Add/Remove Nodes** - scale a cluster by adding or removing nodes
+* **Expand/Shrink Clusters** - scale a cluster by adding or removing nodes
 * **Elastic Load Balancing** - automatically shrink or expand a cluster based
-  on Sun Grid Engine queue statistics
+  on Open Grid Scheduler queue statistics
 * **Plugin Support** - allows users to run additional setup routines on the
-  cluster after StarCluster's defaults by writing simple plugins in Python
-* and more...
+  cluster after StarCluster's defaults. Comes with plugins for IPython
+  parallel+notebook, Condor, Hadoop, MPICH2, MySQL cluster, installing Ubuntu
+  packages, and more.
 
 Interested? See the `getting started`_ section for more details.
 
@@ -56,7 +58,7 @@ After the software has been installed, the next step is to setup the
 configuration file::
 
     $ starcluster help
-    StarCluster - (http://web.mit.edu/starcluster) (v. 0.9999)
+    StarCluster - (http://web.mit.edu/starcluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 

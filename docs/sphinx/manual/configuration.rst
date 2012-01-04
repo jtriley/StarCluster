@@ -182,6 +182,8 @@ ap-southeast-1    s3-ap-southeast-1.amazonaws.com
 ap-northeast-1    s3-ap-northeast-1.amazonaws.com
 ================  =================================
 
+.. _proxy-config:
+
 Using a Proxy Host
 ------------------
 StarCluster can also be configured to use a proxy host when connecting to AWS

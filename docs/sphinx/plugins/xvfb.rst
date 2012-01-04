@@ -1,3 +1,5 @@
+.. _xvfb-plugin:
+
 ###########
 Xvfb Plugin
 ###########

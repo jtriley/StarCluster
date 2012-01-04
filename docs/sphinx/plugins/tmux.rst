@@ -1,3 +1,5 @@
+.. _tmux-plugin:
+
 ###########
 TMUX Plugin
 ###########

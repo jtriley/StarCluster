@@ -1,3 +1,5 @@
+.. _pkginstaller-plugin:
+
 ########################
 Package Installer Plugin
 ########################

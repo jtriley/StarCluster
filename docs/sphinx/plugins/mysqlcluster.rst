@@ -1,3 +1,5 @@
+.. _mysql-plugin:
+
 MySQL Cluster Plugin
 ====================
 This plugin automates the configuration and startup of a MySQL Cluster on
