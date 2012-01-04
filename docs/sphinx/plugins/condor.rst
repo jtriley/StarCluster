@@ -35,6 +35,12 @@ the cluster as the normal ``CLUSTER_USER``::
 ***************
 Submitting Jobs
 ***************
+
+.. warning::
+
+    The "parallel" universe currently does not work. This should be
+    resolved in a future release.
+
 To submit a job you must first create a job script. Below is a simple example
 that submits a job which sleeps for 5 minutes::
 
