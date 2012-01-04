@@ -5,6 +5,92 @@ Version History
 .. contents::
     :local:
 
+.. _version-0.93:
+
+0.93
+====
+
+.. _v093-news:
+
+News
+----
+New StarCluster Ubuntu 11.10 EBS AMIs available including a new HVM AMI for use
+with CC/CC2/CG instance types! Includes OpenGridScheduler (to replace SGE),
+Condor, Hadoop/Dumbo, MPICH2, OpenMPI, IPython 0.12 (parallel+notebook), and
+more. Run ``dpkg -l`` on the AMIs for the full list of packages.
+
+The new StarCluster Ubuntu 11.10 EBS HVM AMI additionally comes with NVIDIA
+driver, CUDA Toolkit/SDK, PyCuda, PyOpenCL, and Magma for GPU computing.
+
+These new AMIs are available in all AWS regions. The new ``us-east-1`` 11.10
+EBS AMIs are now the defaults in the StarCluster config template. Use the
+``listpublic`` command to obtain a list of available StarCluster AMIs in other
+regions::
+
+    $ starcluster -r sa-east-1 listpublic
+
+.. note::
+
+    The **HVM** AMI is currently only available in the ``us-east-1`` region
+    until other regions support HVM.
+
+.. _v093-features:
+
+Features
+--------
+* Added support for new CC2 instance types
+
+* Added support for specifying a proxy host to use when connecting to AWS::
+
+   [aws info]
+   aws_proxy = your.proxy.com
+   aws_proxy_port = 8080
+   aws_proxy_user = yourproxyuser
+   aws_proxy_pass = yourproxypass
+
+  See :ref:`proxy-config` for more details
+
+* Updated IPCluster plugin to support IPython 0.12 with :ref:`parallel
+  <using-ipython-cluster>` and :ref:`notebook <ipython-notebook>`
+  support (SSL+password auth). See :ref:`ipcluster-plugin` for more details
+
+* Keypairs are now validated against EC2 fingerprint which notifies users ahead
+  of time if the file they specified in KEY_LOCATION doesn't match the EC2
+  keypair specified
+
+* Support for Windows (tested on 32bit Windows 7). See :ref:`windows-install`
+  for more details
+
+New Plugins
+^^^^^^^^^^^
+* **Condor** - experimental support for creating a Condor pool on StarCluster.
+  See :ref:`condor-plugin` for more details
+* **Hadoop** - support for creating a Hadoop cluster with StarCluster
+  See :ref:`hadoop-plugin` for more details
+* **MPICH2** - configure cluster to use MPICH2 instead of OpenMPI
+  See :ref:`mpich2-plugin` for more details
+* **TMUX** - configures cluster SSH "dashboard" in tmux
+  See :ref:`tmux-plugin` for more details
+* **Package installer** - install Ubuntu packages on all nodes concurrently
+  See :ref:`pkginstaller-plugin` for more details
+* **Xvfb** - install and configure an Xvfb session on all nodes (``sets
+  DISPLAY=:1``) See :ref:`xvfb-plugin` for more details
+* **MySQL** - install and configure a MySQL cluster on StarCluster. See
+  :ref:`mysql-plugin` for more details
+
+.. _v093-fixes:
+
+Bug Fixes
+---------
+* Fix bug in ``put`` command where in random cases the last few bytes of the
+  file weren't being transferred
+* Raise an error if placement group creation fails
+* Fix bug in terminate command in the case that nodes are already
+  ``shutting-down`` when the terminate command is executed
+* Fix bug in s3image when destination S3 bucket already exists
+* Fix known_hosts warnings when ssh'ing from node to node internally
+* Fix trivial logging bug in createvolume command
+
 .. _version-0.92.1:
 
 0.92.1

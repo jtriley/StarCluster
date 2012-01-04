@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 sgeinstall_template = """
 SGE_CLUSTER_NAME="starcluster"
 SGE_ROOT="/opt/sge6"

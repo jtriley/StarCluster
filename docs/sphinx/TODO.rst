@@ -48,14 +48,6 @@ Dan Yamins has a `pull request`_ for this that needs to be merged.
 
 .. _pull request: https://github.com/jtriley/StarCluster/pull/20
 
-Add HTTP Proxy Settings for Boto to StarCluster Config
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-It looks like boto supports using an HTTP proxy:
-http://code.google.com/p/boto/wiki/BotoConfig
-
-Need to add a *[proxy]* section to the starcluster config that gets passed on
-to the boto connection.
-
 Use PyStun to Restrict Cluster Acccess to User's IP-address
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 StarCluster should support restricting ssh access to the user's current

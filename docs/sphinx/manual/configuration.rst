@@ -182,6 +182,34 @@ ap-southeast-1    s3-ap-southeast-1.amazonaws.com
 ap-northeast-1    s3-ap-northeast-1.amazonaws.com
 ================  =================================
 
+.. _proxy-config:
+
+Using a Proxy Host
+------------------
+StarCluster can also be configured to use a proxy host when connecting to AWS
+by specifying the following settings in your **[aws info]** section:
+
+**aws_proxy** - The name of the proxy host to use for connecting to AWS.
+
+**aws_proxy_port** - The port number to use to connect to the proxy host.
+
+**aws_proxy_user** - The user name to use when authenticating with proxy host.
+
+**aws_proxy_pass** - The password to use when authenticating with proxy host.
+
+.. _boto: http://github.com/boto/boto
+
+StarCluster will use the settings above when creating the `boto`_ connection
+object used to communicate with AWS. Example:
+
+.. code-block:: ini
+
+   [aws info]
+   aws_proxy = your.proxyhost.com
+   aws_proxy_port = 8080
+   aws_proxy_user = yourproxyuser
+   aws_proxy_pass = yourproxypass
+
 Amazon EC2 Keypairs
 -------------------
 In addition to supplying your **[aws info]** you must also define at least one
@@ -441,7 +469,7 @@ world for the ``smallcluster`` template:
 
 A permission section specifies a port range to open to a given network range
 (cidr_ip). By default, the network range is set to ``0.0.0.0/0`` which
-represents any ip address (ie the "world"). In the above example, we created a
+represents any ip address (i.e. the "world"). In the above example, we created a
 permission section called ``www`` that opens port 80 to the "world" by setting
 the from_port and to_port both to be 80.  You can restrict the ip addresses
 that the rule applies to by specifying the proper cidr_ip setting. In the above
@@ -449,7 +477,7 @@ example, the ``ftp`` permission specifies that only ``66.249.90.104`` ip
 address can access port 21 on the cluster nodes.
 
 Defining Plugins
--------------------
+----------------
 StarCluster also has support for user contributed plugins (see :doc:`plugins`).
 To configure a *cluster template* to use a particular plugin, we must first
 create a plugin section for each plugin we wish to use. For example, suppose we
@@ -624,13 +652,13 @@ Finally, to (optionally) create new EBS volumes in the target region::
 Given that a *cluster template* references these region-specific items you must
 either override the relevant settings at the command line using the *start*
 command's option flags or create separate *cluster templates* configured for
-each region you use. To override the releveant settings at the command line::
+each region you use. To override the relevant settings at the command line::
 
     $ starcluster -r us-west-1 start -k myuswestkey -n ami-99999999
 
 If you often use multiple regions you will most likely want to create separate
 *cluster templates* for each region by extending a common template,
-*smallcluster* for examle, and overriding the relevant settings:
+*smallcluster* for example, and overriding the relevant settings:
 
 .. code-block:: ini
 

@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from starcluster import static
 
 from base import CmdBase

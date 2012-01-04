@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 EC2/S3 Utility Classes
 """
@@ -63,19 +62,23 @@ class EasyEC2(EasyAWS):
     def __init__(self, aws_access_key_id, aws_secret_access_key,
                  aws_ec2_path='/', aws_s3_host=None, aws_s3_path='/',
                  aws_port=None, aws_region_name=None, aws_is_secure=True,
-                 aws_region_host=None, **kwargs):
+                 aws_region_host=None, aws_proxy=None, aws_proxy_port=None,
+                 aws_proxy_user=None, aws_proxy_pass=None, **kwargs):
         aws_region = None
         if aws_region_name and aws_region_host:
             aws_region = boto.ec2.regioninfo.RegionInfo(
                 name=aws_region_name, endpoint=aws_region_host)
         kwargs = dict(is_secure=aws_is_secure, region=aws_region,
-                      port=aws_port, path=aws_ec2_path)
+                      port=aws_port, path=aws_ec2_path, proxy=aws_proxy,
+                      proxy_port=aws_proxy_port, proxy_user=aws_proxy_user,
+                      proxy_pass=aws_proxy_pass)
         super(EasyEC2, self).__init__(aws_access_key_id, aws_secret_access_key,
                                       boto.connect_ec2, **kwargs)
-        kwargs = dict(aws_s3_host=aws_s3_host,
-                      aws_s3_path=aws_s3_path,
-                      aws_port=aws_port,
-                      aws_is_secure=aws_is_secure)
+        kwargs = dict(aws_s3_host=aws_s3_host, aws_s3_path=aws_s3_path,
+                      aws_port=aws_port, aws_is_secure=aws_is_secure,
+                      aws_proxy=aws_proxy, aws_proxy_port=aws_proxy_port,
+                      aws_proxy_user=aws_proxy_user,
+                      aws_proxy_pass=aws_proxy_pass)
         self.s3 = EasyS3(aws_access_key_id, aws_secret_access_key, **kwargs)
         self._regions = None
 
@@ -271,8 +274,13 @@ class EasyEC2(EasyAWS):
         """
         log.info("Creating placement group %s..." % name)
         success = self.conn.create_placement_group(name)
-        if success:
-            return self.get_placement_group_or_none(name)
+        if not success:
+            log.debug(
+                "failed to create placement group '%s' (error = %s)" %
+                (name, success))
+            raise exception.AWSError(
+                "failed to create placement group '%s'" % name)
+        return self.get_placement_group(name)
 
     def get_placement_groups(self, filters=None):
         return self.conn.get_all_placement_groups(filters=filters)
@@ -394,7 +402,7 @@ class EasyEC2(EasyAWS):
                     "output directory does not exist")
             if os.path.exists(output_file):
                 raise exception.BaseException(
-                    "cannot save keypair %s: file already exists" % \
+                    "cannot save keypair %s: file already exists" %
                     output_file)
         kp = self.conn.create_key_pair(name)
         if output_file:
@@ -699,7 +707,7 @@ class EasyEC2(EasyAWS):
 
     def get_zone(self, zone):
         """
-        Return zone object respresenting an EC2 availability zone
+        Return zone object representing an EC2 availability zone
         Raises exception.ZoneDoesNotExist if not successful
         """
         try:
@@ -712,7 +720,7 @@ class EasyEC2(EasyAWS):
 
     def get_zone_or_none(self, zone):
         """
-        Return zone object respresenting an EC2 availability zone
+        Return zone object representing an EC2 availability zone
         Returns None if unsuccessful
         """
         try:
@@ -1141,7 +1149,7 @@ class EasyEC2(EasyAWS):
             yzoomrange = [0.1, ypanrange[-1] - ypanrange[0]]
             context = dict(instance_type=instance_type,
                            start=start, end=end,
-                           time_series_data=str(data),
+                           time_series_data=str(data).replace('L', ''),
                            shutdown=plot_shutdown_server,
                            xpanrange=xpanrange, ypanrange=ypanrange,
                            xzoomrange=xzoomrange, yzoomrange=yzoomrange)
@@ -1175,11 +1183,12 @@ class EasyS3(EasyAWS):
 
     def __init__(self, aws_access_key_id, aws_secret_access_key,
                  aws_s3_path='/', aws_port=None, aws_is_secure=True,
-                 aws_s3_host=DefaultHost, **kwargs):
-        kwargs = dict(is_secure=aws_is_secure,
-                      host=aws_s3_host or self.DefaultHost,
-                      port=aws_port,
-                      path=aws_s3_path)
+                 aws_s3_host=DefaultHost, aws_proxy=None, aws_proxy_port=None,
+                 aws_proxy_user=None, aws_proxy_pass=None, **kwargs):
+        kwargs = dict(is_secure=aws_is_secure, host=aws_s3_host or
+                      self.DefaultHost, port=aws_port, path=aws_s3_path,
+                      proxy=aws_proxy, proxy_port=aws_proxy_port,
+                      proxy_user=aws_proxy_user, proxy_pass=aws_proxy_pass)
         if aws_s3_host:
             kwargs.update(dict(calling_format=self._calling_format))
         super(EasyS3, self).__init__(aws_access_key_id, aws_secret_access_key,
@@ -1209,6 +1218,13 @@ class EasyS3(EasyAWS):
             return self.get_bucket(bucket_name) is not None
         except exception.BucketDoesNotExist:
             return False
+
+    def get_or_create_bucket(self, bucket_name):
+        try:
+            return self.get_bucket(bucket_name)
+        except exception.BucketDoesNotExist:
+            log.info("Creating bucket '%s'" % bucket_name)
+            return self.create_bucket(bucket_name)
 
     def get_bucket_or_none(self, bucket_name):
         """

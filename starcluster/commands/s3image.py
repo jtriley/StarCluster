@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import sys
 import time
 import warnings
@@ -45,7 +44,7 @@ class CmdS3Image(InstanceCompleter):
         parser.add_option(
             "-r", "--remove-image-files", dest="remove_image_files",
             action="store_true", default=False,
-            help="Remove generated image files on the " + \
+            help="Remove generated image files on the "
             "instance after registering (for S3 AMIs)")
 
     def cancel_command(self, signum, frame):

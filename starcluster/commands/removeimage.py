@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from starcluster.logger import log
 
 from completers import ImageCompleter
@@ -39,7 +37,7 @@ class CmdRemoveImage(ImageCompleter):
     def addopts(self, parser):
         parser.add_option("-p", "--pretend", dest="pretend",
                           action="store_true", default=False,
-                          help="pretend run, dont actually remove anything")
+                          help="pretend run, do not actually remove anything")
         parser.add_option("-c", "--confirm", dest="confirm",
                           action="store_true", default=False,
                           help="do not prompt for confirmation, "
@@ -60,7 +58,7 @@ class CmdRemoveImage(ImageCompleter):
             keep_image_data = self.opts.keep_image_data
             if not confirmed:
                 if not pretend:
-                    resp = raw_input("**PERMANENTLY** delete %s (y/n)? " % \
+                    resp = raw_input("**PERMANENTLY** delete %s (y/n)? " %
                                      imageid)
                     if resp not in ['y', 'Y', 'yes']:
                         log.info("Aborting...")

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 StarCluster logging module
 """
@@ -112,8 +111,8 @@ def configure_sc_logging(use_syslog=False):
 
     By default StarCluster's logger has no formatters and a NullHandler so that
     other developers using StarCluster as a library can configure logging as
-    they see fit. This method is used in StarCluster's application code (ie the
-    'starcluster' command) to toggle StarCluster's application specific
+    they see fit. This method is used in StarCluster's application code (i.e.
+    the 'starcluster' command) to toggle StarCluster's application specific
     formatters/handlers
 
     use_syslog - enable logging all messages to syslog. currently only works if
@@ -153,8 +152,8 @@ def configure_paramiko_logging():
                                               maxBytes=1048576,
                                               backupCount=2)
     lh.setLevel(logging.DEBUG)
-    format = (('PID: %s ' % str(static.PID)) + \
-              '%(levelname)-.3s [%(asctime)s.%(msecs)03d] ' + \
+    format = (('PID: %s ' % str(static.PID)) +
+              '%(levelname)-.3s [%(asctime)s.%(msecs)03d] '
               'thr=%(_threadid)-3d %(name)s: %(message)s')
     date_format = '%Y%m%d-%H:%M:%S'
     lh.setFormatter(logging.Formatter(format, date_format))
@@ -172,8 +171,8 @@ def configure_boto_logging():
                                               maxBytes=1048576,
                                               backupCount=2)
     lh.setLevel(logging.DEBUG)
-    format = (('PID: %s ' % str(static.PID)) + \
-              '%(levelname)-.3s [%(asctime)s.%(msecs)03d] ' + \
+    format = (('PID: %s ' % str(static.PID)) +
+              '%(levelname)-.3s [%(asctime)s.%(msecs)03d] '
               '%(name)s: %(message)s')
     date_format = '%Y%m%d-%H:%M:%S'
     lh.setFormatter(logging.Formatter(format, date_format))

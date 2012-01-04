@@ -1,26 +1,25 @@
+.. _mysql-plugin:
+
 MySQL Cluster Plugin
 ====================
-This plugin automates the configuration and startup of MySQL Cluster on Ubuntu
-10.04 Lucid Lynx. The mysql-cluster-server package suffers from an
-`installation bug`_ as of 7/21/10. This plugin works its way around that bug
-and results in an operational MySQL Cluster on initialization of the cluster.
+This plugin automates the configuration and startup of a MySQL Cluster on
+StarCluster.
 
 Configuration Options
 ---------------------
-Here is an example of the mysqlcluster plugin section of the StarCluster config
-file:
+To use this plugin add the following to your StarCluster config file: file:
 
 .. code-block:: ini
 
     [plugin mysqlcluster]
-    SETUP_CLASS = mysqlcluster.MysqlCluster
-    NUM_REPLICAS = 2
-    DATA_MEMORY = 80M
-    INDEX_MEMORY = 18M
-    DATA_DIR = /var/lib/mysqlcluster
-    BACKUP_DATA_DIR = /var/lib/mysqlcluster/
-    DEDICATED_QUERY = True
-    NUM_DATA_NODES = 2
+    setup_class = starcluster.plugins.mysql.MysqlCluster
+    num_replicas = 2
+    data_memory = 80M
+    index_memory = 18M
+    dump_file = test.sql
+    dump_interval = 60
+    dedicated_query = True
+    num_data_nodeS = 2
 
 **NUM_REPLICAS**: Specifies number of replicas for each table in the cluster,
 as well as the number of node groups. The maximum value is 4, and only values 1
@@ -37,12 +36,10 @@ or Gigabytes. Default value is 80M, minimum is 1M.
 **INDEX_MEMORY**: Amount of storage used for hash indexes in the MySQL Cluster.
 Default value is 18M, minimum is 1M.
 
-**DATA_DIR**: Specifies the directory where metadata, REDO logs, UNDO logs (for
-Disk Data tables), data files, trace files, log files, pid files and error logs
-are placed.
+**DUMP_FILE**: Path to sql file on the cluster to back databases to. Will be
+created if it does not exist along with all parent directories.
 
-**BACKUP_DATA_DIR**: Specifies the directory in which to put the BACKUP
-directory. Defaults to DATA_DIR.
+**DUMP_INTERVAL**: How often, in minutes, to backup databases to ``DUMP_FILE``.
 
 **DEDICATED_QUERY**: True indicates that the data nodes do not also function as
 query nodes, and there are instead dedicated nodes to accept queries. False
@@ -53,18 +50,18 @@ remaining nodes in the cluster will be MySQL query nodes.
 
 What This Plugin Does
 ---------------------
-#. Creates data and backup directories, changes ownership to mysql user
-#. Generates /etc/mysql/ndb_mgmd.cnf configuration file on master.
-#. Generates /etc/mysql/my.cnf configuration file on all nodes.
-#. Kills mysql processes on all nodes.
-#. Starts Management Client on master.
-#. Starts mysql on query nodes
-#. Starts mysql-ndb on data nodes.
+# Creates data and backup directories, changes ownership to mysql user
+# Generates /etc/mysql/ndb_mgmd.cnf configuration file on master.
+# Generates /etc/mysql/my.cnf configuration file on all nodes.
+# Kills mysql processes on all nodes.
+# Starts Management Client on master.
+# Starts mysql on query nodes
+# Starts mysql-ndb on data nodes.
 
 Creating a Replicated Table
 ---------------------------
-Here is an example of how to create a table that is replicated across
-the cluster. Do this on one of the data nodes:
+Here is an example of how to create a table that is replicated across the
+cluster. Do this on one of the data nodes:
 
 .. code-block:: mysql
 
@@ -84,7 +81,7 @@ the cluster. Do this on one of the data nodes:
     +------+
     1 row in set (0.03 sec)
 
-Note that 'engine=ndbcluster' is what indicates that the table should be
+Note that ``engine=ndbcluster`` is what indicates that the table should be
 created in a cluster configuration. If it is not used, the table will not be
 replicated.
 
@@ -109,7 +106,3 @@ Recommendations for Use
 * Clusters should have three nodes at the very least.
 * NUM_REPLICAS should probably stay at 2. Consequently, there should be an even
   number of data nodes.
-* Set DATA_DIR and BACKUP_DATA_DIR to an EBS volume if you want the data to
-  persist.
-
-.. _installation bug: https://bugs.launchpad.net/ubuntu/+source/mysql-cluster-7.0/+bug/579732

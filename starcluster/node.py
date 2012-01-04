@@ -1,7 +1,4 @@
-#!/usr/bin/env python
 import os
-import pwd
-import grp
 import time
 import stat
 import base64
@@ -54,7 +51,7 @@ class Node(object):
     This class represents a single compute node in a StarCluster.
 
     It contains all useful metadata for the node such as the internal/external
-    hostnames, ips, etc as well as a paramiko ssh object for executing
+    hostnames, ips, etc. as well as a paramiko ssh object for executing
     commands, creating/modifying files on the node.
 
     'instance' arg must be an instance of boto.ec2.instance.Instance
@@ -145,7 +142,7 @@ class Node(object):
     @property
     def groups(self):
         if not self._groups:
-            groups = map(lambda x: x.id, self.instance.groups)
+            groups = map(lambda x: x.name, self.instance.groups)
             self._groups = self.ec2.get_all_security_groups(groupnames=groups)
         return self._groups
 
@@ -153,6 +150,16 @@ class Node(object):
     def cluster_groups(self):
         sg_prefix = static.SECURITY_GROUP_PREFIX
         return filter(lambda x: x.name.startswith(sg_prefix), self.groups)
+
+    @property
+    def parent_cluster(self):
+        cluster_tag = "--UNKNOWN--"
+        try:
+            cg = self.cluster_groups[0].name
+            cluster_tag = cg.replace(static.SECURITY_GROUP_PREFIX + '-', '')
+        except IndexError:
+            pass
+        return cluster_tag
 
     @property
     def num_processors(self):
@@ -224,7 +231,7 @@ class Node(object):
         try:
             return int(self.instance.ami_launch_index)
         except TypeError:
-            log.error("instance %s (state: %s) has no ami_launch_index" % \
+            log.error("instance %s (state: %s) has no ami_launch_index" %
                       (self.id, self.state))
             log.error("returning 0 as ami_launch_index...")
             return 0
@@ -256,6 +263,10 @@ class Node(object):
     @property
     def placement(self):
         return self.instance.placement
+
+    @property
+    def region(self):
+        return self.instance.region
 
     @property
     def root_device_name(self):
@@ -295,7 +306,7 @@ class Node(object):
             key = name
             if key_by_gid:
                 key = gid
-            grp_map[key] = grp.struct_group([name, passwd, gid, mems])
+            grp_map[key] = utils.struct_group([name, passwd, gid, mems])
         return grp_map
 
     def get_user_map(self, key_by_uid=False):
@@ -317,7 +328,7 @@ class Node(object):
             key = name
             if key_by_uid:
                 key = uid
-            user_map[key] = pwd.struct_passwd([name, passwd, uid, gid,
+            user_map[key] = utils.struct_passwd([name, passwd, uid, gid,
                                                gecos, home, shell])
         return user_map
 
@@ -454,22 +465,23 @@ class Node(object):
         username - name of the user to add to known hosts for
         nodes - the nodes to add to the user's known hosts file
         add_self - add this Node to known_hosts in addition to nodes
-
-        NOTE: this node's hostname will also be added to the known_hosts
-        file
         """
         user = self.getpwnam(username)
         known_hosts_file = posixpath.join(user.pw_dir, '.ssh', 'known_hosts')
         self.remove_from_known_hosts(username, nodes)
         khosts = []
+        if add_self and self not in nodes:
+            nodes.append(self)
         for node in nodes:
             server_pkey = node.ssh.get_server_public_key()
-            khosts.append(' '.join([node.alias, server_pkey.get_name(),
-                                    base64.b64encode(str(server_pkey))]))
-        if add_self and self not in nodes:
-            server_pkey = self.ssh.get_server_public_key()
-            khosts.append(' '.join([self.alias, server_pkey.get_name(),
-                                    base64.b64encode(str(server_pkey))]))
+            node_names = {}.fromkeys([node.alias, node.private_dns_name,
+                                       node.private_dns_name_short],
+                                      node.private_ip_address)
+            node_names[node.public_dns_name] = node.ip_address
+            for name, ip in node_names.items():
+                name_ip = "%s,%s" % (name, ip)
+                khosts.append(' '.join([name_ip, server_pkey.get_name(),
+                                        base64.b64encode(str(server_pkey))]))
         khostsf = self.ssh.remote_file(known_hosts_file, 'a')
         khostsf.write('\n'.join(khosts) + '\n')
         khostsf.chown(user.pw_uid, user.pw_gid)
@@ -482,7 +494,10 @@ class Node(object):
         """
         user = self.getpwnam(username)
         known_hosts_file = posixpath.join(user.pw_dir, '.ssh', 'known_hosts')
-        hostnames = map(lambda n: n.alias, nodes)
+        hostnames = []
+        for node in nodes:
+            hostnames += [node.alias, node.private_dns_name,
+                          node.private_dns_name_short, node.public_dns_name]
         if self.ssh.isfile(known_hosts_file):
             regex = '|'.join(hostnames)
             self.ssh.remove_lines_from_file(known_hosts_file, regex)
@@ -559,13 +574,13 @@ class Node(object):
         """
         # setup /etc/exports
         nfs_export_settings = "(async,no_root_squash,no_subtree_check,rw)"
-        etc_exports = self.ssh.remote_file('/etc/exports')
+        etc_exports = self.ssh.remote_file('/etc/exports', 'w')
         for node in nodes:
             for path in export_paths:
-                etc_exports.write(' '.join([path, node.alias + \
+                etc_exports.write(' '.join([path, node.alias +
                                             nfs_export_settings + '\n']))
         etc_exports.close()
-        self.ssh.execute('exportfs -a')
+        self.ssh.execute('exportfs -fra')
 
     def stop_exporting_fs_to_nodes(self, nodes):
         """
@@ -578,14 +593,14 @@ class Node(object):
         """
         regex = '|'.join(map(lambda x: x.alias, nodes))
         self.ssh.remove_lines_from_file('/etc/exports', regex)
-        self.ssh.execute('exportfs -a')
+        self.ssh.execute('exportfs -fra')
 
     def start_nfs_server(self):
         self.ssh.execute('/etc/init.d/portmap start')
         self.ssh.execute('mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs/',
                          ignore_exit_status=True)
         self.ssh.execute('/etc/init.d/nfs start')
-        self.ssh.execute('/usr/sbin/exportfs -r')
+        self.ssh.execute('/usr/sbin/exportfs -fra')
 
     def mount_nfs_shares(self, server_node, remote_paths):
         """
@@ -603,7 +618,7 @@ class Node(object):
         self.ssh.remove_lines_from_file('/etc/fstab', remote_paths_regex)
         fstab = self.ssh.remote_file('/etc/fstab', 'a')
         for path in remote_paths:
-            fstab.write('%s:%s %s nfs user,rw,exec,noauto 0 0\n' %
+            fstab.write('%s:%s %s nfs vers=3,user,rw,exec,noauto 0 0\n' %
                         (server_node.alias, path, path))
         fstab.close()
         for path in remote_paths:
@@ -626,7 +641,7 @@ class Node(object):
         self.ssh.remove_lines_from_file('/etc/fstab',
                                         path.center(len(path) + 2))
         master_fstab = self.ssh.remote_file('/etc/fstab', mode='a')
-        master_fstab.write("%s %s auto noauto,defaults 0 0\n" % \
+        master_fstab.write("%s %s auto noauto,defaults 0 0\n" %
                            (device, path))
         master_fstab.close()
         if not self.ssh.path_exists(path):
@@ -709,7 +724,7 @@ class Node(object):
         vol_id = root_vol.volume_id
         vol = self.ec2.get_volume(vol_id)
         vol.detach()
-        while vol.update() != 'availabile':
+        while vol.update() != 'available':
             time.sleep(5)
         log.info("Deleting node %s's root volume" % self.alias)
         root_vol.delete()
@@ -797,7 +812,7 @@ class Node(object):
         """
         Shutdown this instance. This method will terminate traditional
         instance-store instances and stop EBS-backed instances
-        (ie not destroy EBS root dev)
+        (i.e. not destroy EBS root dev)
         """
         if self.is_stoppable():
             self.stop()
@@ -823,14 +838,14 @@ class Node(object):
             return False
         if self.private_ip_address is None:
             log.debug("instance %s has no private_ip_address" % self.id)
-            log.debug(("attempting to determine private_ip_address for" + \
-                       "instance %s") % self.id)
+            log.debug("attempting to determine private_ip_address for "
+                      "instance %s" % self.id)
             try:
-                private_ip = self.ssh.execute((
-                    'python -c ' + \
-                    '"import socket; print socket.gethostbyname(\'%s\')"') % \
+                private_ip = self.ssh.execute(
+                    'python -c '
+                    '"import socket; print socket.gethostbyname(\'%s\')"' %
                     self.private_dns_name)[0].strip()
-                log.debug("determined instance %s's private ip to be %s" % \
+                log.debug("determined instance %s's private ip to be %s" %
                           (self.id, private_ip))
                 self.instance.private_ip_address = private_ip
             except Exception, e:
@@ -886,6 +901,25 @@ class Node(object):
         etc_hosts_line = "%(INTERNAL_IP)s %(INTERNAL_ALIAS)s"
         etc_hosts_line = etc_hosts_line % self.network_names
         return etc_hosts_line
+
+    def apt_command(self, cmd):
+        """
+        Run an apt-get command with all the necessary options for
+        non-interactive use (DEBIAN_FRONTEND=interactive, -y, --force-yes, etc)
+        """
+        dpkg_opts = "Dpkg::Options::='--force-confnew'"
+        cmd = "apt-get -o %s -y --force-yes %s" % (dpkg_opts, cmd)
+        cmd = "DEBIAN_FRONTEND='noninteractive' " + cmd
+        self.ssh.execute(cmd)
+
+    def apt_install(self, pkgs):
+        """
+        Install a set of packages via apt-get.
+
+        pkgs is a string that contains one or more packages separated by a
+        space
+        """
+        self.apt_command('install %s' % pkgs)
 
     def __del__(self):
         if self._ssh:

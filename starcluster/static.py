@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Module for storing static data structures
 """
@@ -33,7 +32,7 @@ def create_sc_config_dirs():
     __makedirs(STARCLUSTER_LOG_DIR)
 
 
-VERSION = "0.92.1"
+VERSION = "0.93"
 PID = os.getpid()
 TMP_DIR = tempfile.gettempdir()
 if os.path.exists("/tmp"):
@@ -58,9 +57,10 @@ SSH_DEBUG_FILE = os.path.join(STARCLUSTER_LOG_DIR, 'ssh-debug.log')
 AWS_DEBUG_FILE = os.path.join(STARCLUSTER_LOG_DIR, 'aws-debug.log')
 CRASH_FILE = os.path.join(STARCLUSTER_LOG_DIR, 'crash-report-%d.txt' % PID)
 
-# StarCluster BASE AMIs (i386/x86_64)
-BASE_AMI_32 = "ami-8cf913e5"
-BASE_AMI_64 = "ami-0af31963"
+# StarCluster BASE AMIs (us-east-1)
+BASE_AMI_32 = "ami-899d49e0"
+BASE_AMI_64 = "ami-999d49f0"
+BASE_AMI_HVM = "ami-4583572c"
 
 SECURITY_GROUP_PREFIX = "@sc"
 SECURITY_GROUP_TEMPLATE = '-'.join([SECURITY_GROUP_PREFIX, "%s"])
@@ -90,12 +90,13 @@ INSTANCE_TYPES = {
     'm2.2xlarge': ['x86_64'],
     'm2.4xlarge': ['x86_64'],
     'cc1.4xlarge': ['x86_64'],
+    'cc2.8xlarge': ['x86_64'],
     'cg1.4xlarge': ['x86_64'],
 }
 
 MICRO_INSTANCE_TYPES = ['t1.micro']
 
-CLUSTER_COMPUTE_TYPES = ['cc1.4xlarge']
+CLUSTER_COMPUTE_TYPES = ['cc1.4xlarge', 'cc2.8xlarge']
 
 CLUSTER_GPU_TYPES = ['cg1.4xlarge']
 
@@ -139,6 +140,10 @@ AWS_SETTINGS = {
     'aws_region_name': (str, False, None, None, None),
     'aws_region_host': (str, False, None, None, None),
     'aws_s3_host': (str, False, None, None, None),
+    'aws_proxy': (str, False, None, None, None),
+    'aws_proxy_port': (int, False, None, None, None),
+    'aws_proxy_user': (str, False, None, None, None),
+    'aws_proxy_pass': (str, False, None, None, None),
 }
 
 KEY_SETTINGS = {

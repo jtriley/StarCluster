@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from starcluster import exception
 from starcluster.balancers import sge
 

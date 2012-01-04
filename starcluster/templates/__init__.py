@@ -1,18 +1,23 @@
-#!/usr/bin/env python
 import jinja2
 import pkg_resources
 
 __all__ = [
     'config',
     'sge',
+    'condor',
     'user_msgs',
 ]
 
-loader = jinja2.Environment(loader=jinja2.PrefixLoader({
+_web_tmpl_loader = jinja2.Environment(loader=jinja2.PrefixLoader({
     'web': jinja2.PackageLoader('starcluster.templates', 'web'),
 }))
 
-get_template = loader.get_template
+get_web_template = _web_tmpl_loader.get_template
+
+_tmpl_loader = jinja2.Environment(
+    loader=jinja2.PackageLoader('starcluster', 'templates'))
+
+get_template = _tmpl_loader.get_template
 
 
 def get_resource(pkg_data_path, stream=True):

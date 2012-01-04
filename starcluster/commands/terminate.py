@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from starcluster import exception
 from starcluster.logger import log
 
@@ -34,7 +32,7 @@ class CmdTerminate(ClusterCompleter):
                           "just terminate the cluster")
 
     def terminate_cluster(self, cluster_name):
-        cl = self.cm.get_cluster(cluster_name)
+        cl = self.cm.get_cluster(cluster_name, require_keys=False)
         if not self.opts.confirm:
             action = 'Terminate'
             if cl.is_ebs_cluster():

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import time
 import string
 
@@ -63,7 +62,7 @@ class VolumeCreator(cluster.Cluster):
             return i
         for node in self.nodes:
             if node.state in active_states and node.placement == zone:
-                log.info("Using existing instance %s in group %s" % \
+                log.info("Using existing instance %s in group %s" %
                          (node.id, self.cluster_group.name))
                 return node
 
@@ -73,7 +72,7 @@ class VolumeCreator(cluster.Cluster):
             alias = self._alias_tmpl % zone
             self._validate_image_and_type(self._image_id, self._instance_type)
             log.info(
-                "No instance in group %s for zone %s, launching one now." % \
+                "No instance in group %s for zone %s, launching one now." %
                 (self.cluster_group.name, zone))
             self._resv = self.create_node(alias, image_id=self._image_id,
                                           instance_type=self._instance_type,
@@ -81,7 +80,7 @@ class VolumeCreator(cluster.Cluster):
             self.wait_for_cluster(msg="Waiting for volume host to come up...")
             self._instance = self.get_node_by_alias(alias)
         else:
-            s = self.get_spinner("Waiting for instance %s to come up..." % \
+            s = self.get_spinner("Waiting for instance %s to come up..." %
                                  self._instance.id)
             while not self._instance.is_up():
                 time.sleep(self.refresh_interval)
@@ -112,7 +111,7 @@ class VolumeCreator(cluster.Cluster):
                 return self._device
 
     def _attach_volume(self, vol, instance_id, device):
-        s = self.get_spinner("Attaching volume %s to instance %s..." % \
+        s = self.get_spinner("Attaching volume %s to instance %s..." %
                              (vol.id, instance_id))
         vol.attach(instance_id, device)
         while True:
@@ -144,12 +143,12 @@ class VolumeCreator(cluster.Cluster):
         itype_platform = static.INSTANCE_TYPES.get(itype)
         img_platform = img.architecture
         if img_platform not in itype_platform:
-            error_msg = "instance_type %(itype)s is for an " + \
-                          "%(iplat)s platform while image_id " + \
-                          "%(img)s is an %(imgplat)s platform"
-            error_dict = {'itype': itype, 'iplat': ', '.join(itype_platform),
+            error_msg = "instance_type %(itype)s is for an "
+            error_msg += "%(iplat)s platform while image_id "
+            error_msg += "%(img)s is an %(imgplat)s platform"
+            error_msg %= {'itype': itype, 'iplat': ', '.join(itype_platform),
                           'img': img.id, 'imgplat': img_platform}
-            raise exception.ValidationError(error_msg % error_dict)
+            raise exception.ValidationError(error_msg)
 
     def _validate_zone(self, zone):
         z = self.ec2.get_zone(zone)
@@ -168,7 +167,7 @@ class VolumeCreator(cluster.Cluster):
 
     def _validate_device(self, device):
         if not utils.is_valid_device(device):
-            raise exception.ValidationError("volume device %s is not valid" % \
+            raise exception.ValidationError("volume device %s is not valid" %
                                             device)
 
     def _validate_required_progs(self, progs):
@@ -205,31 +204,31 @@ class VolumeCreator(cluster.Cluster):
                            sg.instances())
         vol_hosts = map(lambda x: x.id, vol_hosts)
         if vol_hosts:
-            log.warn("There are still volume hosts running: %s" % \
+            log.warn("There are still volume hosts running: %s" %
                      ', '.join(vol_hosts))
-            log.warn(("Run 'starcluster terminate %s' to terminate *all* " + \
-                     "volume host instances once they're no longer needed") % \
+            log.warn("Run 'starcluster terminate %s' to terminate *all* "
+                     "volume host instances once they're no longer needed" %
                      static.VOLUME_GROUP_NAME)
         else:
-            log.info("No active volume hosts found. Run 'starcluster " + \
-                     "terminate %(g)s' to remove the '%(g)s' group" % \
+            log.info("No active volume hosts found. Run 'starcluster "
+                     "terminate %(g)s' to remove the '%(g)s' group" %
                      {'g': static.VOLUME_GROUP_NAME})
 
     def shutdown(self):
         vol = self._volume
         host = self._instance
         if self._detach_vol:
-            log.info("Detaching volume %s from instance %s" % \
+            log.info("Detaching volume %s from instance %s" %
                      (vol.id, host.id))
             vol.detach()
         else:
-            log.info("Leaving volume %s attached to instance %s" % \
+            log.info("Leaving volume %s attached to instance %s" %
                      (vol.id, host.id))
         if self._shutdown:
             log.info("Terminating host instance %s" % host.id)
             host.terminate()
         else:
-            log.info("Not terminating host instance %s" % \
+            log.info("Not terminating host instance %s" %
                      host.id)
 
     @print_timing("Creating volume")
@@ -254,14 +253,14 @@ class VolumeCreator(cluster.Cluster):
             self._format_volume()
             self.shutdown()
             self._warn_about_volume_hosts()
-            self.log.info("Your new %sGB volume %s has been created "
-                          "successfully" % (volume_size, vol.id))
+            log.info("Your new %sGB volume %s has been created successfully" %
+                     (volume_size, vol.id))
             return vol
         except Exception:
-            self.log.error("failed to create new volume")
+            log.error("failed to create new volume")
             if self._volume:
                 log.error(
-                    "Error occured. Detaching, and deleting volume: %s" % \
+                    "Error occurred. Detaching, and deleting volume: %s" %
                     self._volume.id)
                 self._volume.detach(force=True)
                 time.sleep(5)
@@ -272,7 +271,7 @@ class VolumeCreator(cluster.Cluster):
     def _validate_resize(self, vol, size):
         self._validate_size(size)
         if vol.size > size:
-            log.warn("You are attempting to shrink an EBS volume. " + \
+            log.warn("You are attempting to shrink an EBS volume. "
                      "Data loss may occur")
 
     def resize(self, vol, size, dest_zone=None):
@@ -280,7 +279,7 @@ class VolumeCreator(cluster.Cluster):
         Resize EBS volume
 
         vol - boto volume object
-        size - new volume sze
+        size - new volume size
         dest_zone - zone to create the new resized volume in. this must be
         within the original volume's region otherwise a manual copy (rsync)
         is required. this is currently not implemented.

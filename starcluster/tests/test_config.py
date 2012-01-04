@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import os
 import copy
 import tempfile
@@ -28,7 +27,7 @@ class TestStarClusterConfig(tests.StarClusterTest):
         except exception.ConfigNotFound:
             pass
         else:
-            raise Exception('config loaded non-existent config file %s' % \
+            raise Exception('config loaded non-existent config file %s' %
                             non_existent_file)
 
     def test_get_cluster(self):
@@ -140,7 +139,7 @@ class TestStarClusterConfig(tests.StarClusterTest):
     def test_order_invariance(self):
         """
         Loads all cluster sections in the test config in all possible orders
-        (ie c1,c2,c3, c3,c1,c2, etc) and test that the results are the same
+        (i.e. c1,c2,c3, c3,c1,c2, etc.) and test that the results are the same
         """
         cfg = self.config
         orig = cfg.clusters

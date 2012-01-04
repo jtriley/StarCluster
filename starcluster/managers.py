@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-
-
 class Manager(object):
     """
     Base class for all Manager classes in StarCluster

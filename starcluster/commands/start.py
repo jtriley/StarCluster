@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import time
 
 from starcluster import static
@@ -42,15 +40,15 @@ class CmdStart(ClusterCompleter):
             templates = self.cfg.get_cluster_names().keys()
         parser.add_option("-x", "--no-create", dest="no_create",
                           action="store_true", default=False,
-                          help="do not launch new EC2 instances when " + \
+                          help="do not launch new EC2 instances when "
                           "starting cluster (use existing instances instead)")
         parser.add_option("-o", "--create-only", dest="create_only",
                           action="store_true", default=False,
-                          help="only launch/start EC2 instances, " + \
+                          help="only launch/start EC2 instances, "
                           "do not perform any setup routines")
         parser.add_option("-v", "--validate-only", dest="validate_only",
                           action="store_true", default=False,
-                          help="only validate cluster settings, do " + \
+                          help="only validate cluster settings, do "
                           "not start a cluster")
         parser.add_option("-V", "--skip-validation", dest="validate",
                           action="store_false", default=True,
@@ -77,16 +75,16 @@ class CmdStart(ClusterCompleter):
         parser.add_option("-r", "--refresh-interval", dest="refresh_interval",
                           type="int", action="callback", default=None,
                           callback=self._positive_int,
-                          help="refresh interval when waiting for cluster " + \
+                          help="refresh interval when waiting for cluster "
                           "nodes to come up (default: 30)")
         parser.add_option("-b", "--bid", dest="spot_bid", action="store",
                           type="float", default=None,
-                          help="requests spot instances instead of flat " + \
-                          "rate instances. Uses SPOT_BID as max bid for " + \
+                          help="requests spot instances instead of flat "
+                          "rate instances. Uses SPOT_BID as max bid for "
                           "the request.")
         parser.add_option("-d", "--description", dest="cluster_description",
                           action="store", type="string",
-                          default="Cluster requested at %s" % \
+                          default="Cluster requested at %s" %
                           time.strftime("%Y%m%d%H%M"),
                           help="brief description of cluster")
         parser.add_option("-s", "--cluster-size", dest="cluster_size",
@@ -95,13 +93,13 @@ class CmdStart(ClusterCompleter):
                           help="number of ec2 instances to launch")
         parser.add_option("-u", "--cluster-user", dest="cluster_user",
                           action="store", type="string", default=None,
-                          help="name of user to create on cluster " + \
+                          help="name of user to create on cluster "
                           "(defaults to sgeadmin)")
         opt = parser.add_option("-S", "--cluster-shell", dest="cluster_shell",
                                 action="store",
                                 choices=static.AVAILABLE_SHELLS.keys(),
                                 default=None,
-                                help="shell for cluster user " + \
+                                help="shell for cluster user "
                                 "(defaults to bash)")
         if optcomplete:
             opt.completer = optcomplete.ListCompleter(opt.choices)
@@ -145,7 +143,7 @@ class CmdStart(ClusterCompleter):
         tag = self.tag = args[0]
         create = not self.opts.no_create
         create_only = self.opts.create_only
-        scluster = self.cm.get_cluster_or_none(tag)
+        scluster = self.cm.get_cluster_or_none(tag, require_keys=False)
         validate = self.opts.validate
         validate_running = self.opts.no_create
         validate_only = self.opts.validate_only
@@ -178,6 +176,9 @@ class CmdStart(ClusterCompleter):
                 log.info("Using default cluster template: %s" % template)
             scluster = self.cm.get_cluster_template(template, tag)
         scluster.update(self.specified_options_dict)
+        if self.opts.keyname and not self.opts.key_location:
+            key = self.cfg.get_key(self.opts.keyname)
+            scluster.key_location = key.key_location
         if not self.opts.refresh_interval:
             interval = self.cfg.globals.get("refresh_interval")
             scluster.refresh_interval = interval

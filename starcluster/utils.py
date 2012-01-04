@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Utils module for StarCluster
 """
@@ -7,6 +6,8 @@ import os
 import re
 import time
 import types
+import string
+import random
 import inspect
 import calendar
 import urlparse
@@ -25,10 +26,10 @@ try:
     else:
         from IPython import embed
         ipy_shell = lambda local_ns=None: embed(user_ns=local_ns)
-except ImportError:
+except ImportError, e:
 
     def ipy_shell(local_ns=None):
-        log.error("Unable to load IPython.")
+        log.error("Unable to load IPython:\n\n%s\n" % e)
         log.error("Please check that IPython is installed and working.")
         log.error("If not, you can install it via: easy_install ipython")
 
@@ -372,7 +373,7 @@ def version_to_float(v):
     # and is placed in public domain.
     """
     Convert a Mozilla-style version string into a floating-point number
-    1.2.3.4, 1.2a5, 2.3.4b1pre, 3.0rc2, etc
+    1.2.3.4, 1.2a5, 2.3.4b1pre, 3.0rc2, etc.
     """
     version = [
         0, 0, 0, 0,  # 4-part numerical revision
@@ -481,3 +482,62 @@ def chunk_list(ls, items=8):
             itms.append(v)
     if itms:
         yield itms
+
+
+def generate_passwd(length):
+    return "".join(random.sample(string.letters + string.digits, length))
+
+
+class struct_group(tuple):
+    """
+    grp.struct_group: Results from getgr*() routines.
+
+    This object may be accessed either as a tuple of
+      (gr_name,gr_passwd,gr_gid,gr_mem)
+    or via the object attributes as named in the above tuple.
+    """
+
+    attrs = ['gr_name', 'gr_passwd', 'gr_gid', 'gr_mem']
+
+    def __new__(cls, grp):
+        if type(grp) not in (list, str, tuple):
+            grp = (grp.name, grp.password, int(grp.GID),
+                   [member for member in grp.members])
+        if len(grp) != 4:
+            raise TypeError('expecting a 4-sequence (%d-sequeunce given)' %
+                            len(grp))
+        return tuple.__new__(cls, grp)
+
+    def __getattr__(self, attr):
+        try:
+            return self[self.attrs.index(attr)]
+        except ValueError:
+            raise AttributeError
+
+
+class struct_passwd(tuple):
+    """
+    pwd.struct_passwd: Results from getpw*() routines.
+
+    This object may be accessed either as a tuple of
+      (pw_name,pw_passwd,pw_uid,pw_gid,pw_gecos,pw_dir,pw_shell)
+    or via the object attributes as named in the above tuple.
+    """
+
+    attrs = ['pw_name', 'pw_passwd', 'pw_uid', 'pw_gid', 'pw_gecos',
+             'pw_dir', 'pw_shell']
+
+    def __new__(cls, pwd):
+        if type(pwd) not in (list, str, tuple):
+            pwd = (pwd.loginName, pwd.password, int(pwd.UID), int(pwd.GID),
+                   pwd.GECOS, pwd.home, pwd.shell)
+        if len(pwd) != 7:
+            raise TypeError('expecting a 4-sequence (%d-sequeunce given)' %
+                            len(pwd))
+        return tuple.__new__(cls, pwd)
+
+    def __getattr__(self, attr):
+        try:
+            return self[self.attrs.index(attr)]
+        except ValueError:
+            raise AttributeError

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 StarCluster Command Line Interface:
 

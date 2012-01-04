@@ -160,11 +160,11 @@ external programs/scripts::
     echo "finishing job :D"
 
 As you can see, this script simply executes a few commands (such as echo, date,
-cat, etc) and exits. Anything printed to the screen will be put in the job's
+cat, etc.) and exits. Anything printed to the screen will be put in the job's
 stdout file by Sun Grid Engine.
 
 Since this is just a bash script, you can put any form of logic necessary in
-the job script (i.e. if statements, while loops, for loops, etc) and you may
+the job script (i.e. if statements, while loops, for loops, etc.) and you may
 call any number of external programs needed to complete the job.
 
 Let's see how you run this new job script. Save the script above to
@@ -331,7 +331,7 @@ Submitting OpenMPI Jobs using a Parallel Environment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 The general workflow for running MPI code is:
 
-1. Compile the code using mpicc, mpicxx, mpif77, mpif90, etc
+1. Compile the code using mpicc, mpicxx, mpif77, mpif90, etc.
 2. Copy the resulting executable to the same path on all nodes or to an
    NFS-shared location on the master node
 
@@ -354,7 +354,7 @@ where the hostfile looks something like::
     node003 slots=2
 
 However, when using an SGE parallel environment with OpenMPI **you no longer
-have to specify the -np, -hostfile, -host, etc options to mpirun**. This is
+have to specify the -np, -hostfile, -host, etc. options to mpirun**. This is
 because SGE will *automatically* assign hosts and processors to be used by
 OpenMPI for your job. You also do not need to pass the --byslot and --bynode
 options to mpirun given that these mechanisms are now handled by the *fill_up*

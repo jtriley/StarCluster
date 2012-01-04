@@ -1,7 +1,7 @@
 **********************
 Installing StarCluster
 **********************
-StarCluster is available via the Python Package Index (PyPI) and comes with two
+StarCluster is available via the PYthon Package Index (PyPI) and comes with two
 public Amazon EC2 AMIs (i386 and x86_64).  Below are instructions for
 installing the latest stable release of StarCluster via PyPI (**recommended**).
 There are also instructions for installing the latest development version from
@@ -94,3 +94,31 @@ After this is complete, you will need to setup the configuration file.
 .. code-block:: ini
 
     $ starcluster help
+
+.. _windows-install:
+
+Installing on Windows
+=====================
+Before attempting to install StarCluster you first need to install Python 2.7
+for Windows from `python.org <http://www.python.org/download/>`_. You'll want
+to download the "Python 2.7.x Windows Installer".
+
+Once you have Python 2.7 installed the next step is to download and install the
+Windows installers for the following dependencies:
+
+* `setuptools 0.6rc11 <http://pypi.python.org/packages/2.7/s/setuptools/setuptools-0.6c11.win32-py2.7.exe>`_
+* `pycrypto 2.3 <http://www.voidspace.org.uk/downloads/pycrypto-2.3.win32-py2.7.zip>`_
+
+.. note::
+
+   You will need to have your Python installation's ``Script`` directory (e.g.
+   ``C:\Python27\Scripts``) added to the end of your ``%PATH%`` variable in
+   order to use both the ``easy_install`` and ``starcluster`` commands below
+
+Once you've installed the above dependencies into your Python 2.7 installation you can now run::
+
+    c:\> easy_install StarCluster
+
+Once the install is finished you're now ready to setup the configuration file::
+
+    c:\> starcluster help

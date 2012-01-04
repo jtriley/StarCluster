@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import os
 import sys
 import shlex
@@ -94,7 +93,7 @@ class TemplateHandler(DocrootHandler):
     under the starcluster.templates package. You can set the _root_template_pkg
     attribute on this class before passing to BaseHTTPServer to specify a
     starcluster.templates subpackage to render templates from. Defaults to
-    rendering starcluster.templates (ie '/')
+    rendering starcluster.templates (i.e. '/')
     """
     _root_template_pkg = '/'
     _tmpl_context = {}
@@ -110,7 +109,7 @@ class TemplateHandler(DocrootHandler):
             if relpath.endswith(self._bin_exts):
                 data = templates.get_resource(fullpath).read()
             else:
-                tmpl = templates.get_template(fullpath)
+                tmpl = templates.get_web_template(fullpath)
                 data = tmpl.render(**self._tmpl_context)
             content_type = mimetypes.guess_type(os.path.basename(relpath))[0]
             self.send_response(200)

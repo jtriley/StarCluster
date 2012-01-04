@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import os
 import urllib
 import StringIO
@@ -299,7 +298,7 @@ class StarClusterConfig(object):
             default = settings[setting][2]
             if section_conf.get(setting) is None:
                 if DEBUG_CONFIG:
-                    log.debug('%s setting not specified. Defaulting to %s' % \
+                    log.debug('%s setting not specified. Defaulting to %s' %
                               (setting, default))
                 section_conf[setting] = default
 
@@ -312,7 +311,7 @@ class StarClusterConfig(object):
         step is a group of settings for a section in the form of a dictionary.
         A 'master' dictionary is updated with the settings at each step. This
         causes the next group of settings to override the previous, and so on.
-        The 'section_name' settings are at the top of the dep tree.
+        The 'section_name' settings are at the top of the dependency tree.
         """
         section = store[section_name]
         extends = section.get('extends')
@@ -331,12 +330,12 @@ class StarClusterConfig(object):
                     exts = ', '.join([self._get_section_name(x['__name__'])
                                       for x in extensions])
                     raise exception.ConfigError(
-                        ("Cyclical dependency between sections %s. " % exts) \
-                        + "Check your extends settings.")
+                        "Cyclical dependency between sections %s. "
+                        "Check your EXTENDS settings." % exts)
                 extensions.insert(0, section)
             except KeyError:
                 raise exception.ConfigError(
-                    "%s can't extend non-existent section %s" % \
+                    "%s can't extend non-existent section %s" %
                     (section_name, extends))
         transform = AttributeDict()
         for extension in extensions:
@@ -414,8 +413,8 @@ class StarClusterConfig(object):
             default_instance_type = instance_types[-1]
             if not default_instance_type in static.INSTANCE_TYPES:
                 raise exception.ConfigError(
-                    ("invalid node_instance_type specified: '%s'\n" +
-                     "must be one of: %s") %
+                    "invalid node_instance_type specified: '%s'\n"
+                    "must be one of: %s" %
                     (default_instance_type, choices_string))
         except IndexError:
             default_instance_type = None
@@ -424,15 +423,15 @@ class StarClusterConfig(object):
             type_spec = type_spec.split(':')
             if len(type_spec) > 3:
                 raise exception.ConfigError(
-                    "invalid node_instance_type item specified: %s" % \
+                    "invalid node_instance_type item specified: %s" %
                     type_spec)
             itype = type_spec[0]
             itype_image = None
             itype_num = 1
             if not itype in static.INSTANCE_TYPES:
                 raise exception.ConfigError(
-                    ("invalid type specified (%s) in node_instance_type " + \
-                     "item: '%s'\nmust be one of: %s") %
+                    "invalid type specified (%s) in node_instance_type "
+                    "item: '%s'\nmust be one of: %s" %
                     (itype, type_spec, choices_string))
             if len(type_spec) == 2:
                 itype, next_var = type_spec
@@ -449,8 +448,8 @@ class StarClusterConfig(object):
                 total_num_nodes += itype_num
             except (ValueError, TypeError):
                 raise exception.ConfigError(
-                    ("number of instances (%s) of type '%s' must " + \
-                     "be an integer > 1") % (itype_num, itype))
+                    "number of instances (%s) of type '%s' must "
+                    "be an integer > 1" % (itype_num, itype))
             itype_dic = AttributeDict(size=itype_num, image=itype_image,
                                       type=itype)
             itypes.append(itype_dic)
@@ -523,7 +522,8 @@ class StarClusterConfig(object):
     def _load_cluster_sections(self, cluster_sections):
         """
         Loads all cluster sections. Similar to _load_sections but also handles
-        populating specified keypair,volume,plugins,permissions,etc settings
+        populating specified keypair, volume, plugins, permissions, etc.
+        settings
         """
         clusters = cluster_sections
         cluster_store = AttributeDict()

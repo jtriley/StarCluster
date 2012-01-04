@@ -38,7 +38,7 @@ class SCPClient(object):
     halted after too many levels of symlinks are detected.
     The put method uses os.walk for recursion, and sends files accordingly.
     Since scp doesn't support symlinks, we send file symlinks as the file
-    (matching scp behaviour), but we make no attempt at symlinked directories.
+    (matching scp behavior), but we make no attempt at symlinked directories.
     """
     def __init__(self, transport, buff_size=16384, socket_timeout=5.0,
                  progress=None):
@@ -72,7 +72,7 @@ class SCPClient(object):
         """
         Transfer files to remote host.
 
-        @param files: A single path, or a list of paths to be transfered.
+        @param files: A single path, or a list of paths to be transferred.
             recursive must be True to transfer directories.
         @type files: string OR list of strings
         @param remote_path: path in which to receive the files on the remote
@@ -80,7 +80,7 @@ class SCPClient(object):
         @type remote_path: str
         @param recursive: transfer files and directories recursively
         @type recursive: bool
-        @param preserve_times: preserve mtime and atime of transfered files
+        @param preserve_times: preserve mtime and atime of transferred files
             and directories.
         @type preserve_times: bool
         """
@@ -107,7 +107,7 @@ class SCPClient(object):
         """
         Transfer files from remote host to localhost
 
-        @param remote_path: path to retreive from remote host. since this is
+        @param remote_path: path to retrieve from remote host. since this is
             evaluated by scp on the remote host, shell wildcards and
             environment variables may be used.
         @type remote_path: str
@@ -115,7 +115,7 @@ class SCPClient(object):
         @type local_path: str
         @param recursive: transfer files and directories recursively
         @type recursive: bool
-        @param preserve_times: preserve mtime and atime of transfered files
+        @param preserve_times: preserve mtime and atime of transferred files
             and directories.
         @type preserve_times: bool
         """
@@ -173,6 +173,7 @@ class SCPClient(object):
                 self._progress(basename, 1, 1)
             chan.sendall('\x00')
             file_hdl.close()
+            self._recv_confirm()
 
     def _send_recursive(self, files):
         single_files = []
@@ -215,7 +216,7 @@ class SCPClient(object):
         try:
             msg = self.channel.recv(512)
         except SocketTimeout:
-            raise exception.SCPException('Timout waiting for scp response')
+            raise exception.SCPException('Timeout waiting for scp response')
         if msg and msg[0] == '\x00':
             return
         elif msg and msg[0] == '\x01':

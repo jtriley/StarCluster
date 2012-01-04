@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from starcluster import utils
 from starcluster import exception
 from starcluster import clustersetup

@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from starcluster.logger import log
 
 from completers import VolumeCompleter
@@ -23,7 +21,7 @@ class CmdRemoveVolume(VolumeCompleter):
     def addopts(self, parser):
         parser.add_option("-c", "--confirm", dest="confirm",
                           action="store_true", default=False,
-                          help="do not prompt for confirmation, just " + \
+                          help="do not prompt for confirmation, just "
                           "remove the volume")
 
     def execute(self, args):
@@ -36,7 +34,7 @@ class CmdRemoveVolume(VolumeCompleter):
                 log.error("volume is currently in use. aborting...")
                 return
             if vol.status == 'detaching':
-                log.error("volume is currently detaching. " + \
+                log.error("volume is currently detaching. "
                           "please wait a few moments and try again...")
                 return
             if not self.opts.confirm:

@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from completers import ClusterCompleter
 
 
@@ -56,14 +54,14 @@ class CmdAddNode(ClusterCompleter):
     def addopts(self, parser):
         parser.add_option("-a", "--alias", dest="alias",
                           action="append", type="string", default=[],
-                          help=("alias to give to the new node " + \
-                                "(e.g. node007, mynode, etc)"))
+                          help="alias to give to the new node "
+                          "(e.g. node007, mynode, etc.)")
         parser.add_option("-n", "--num-nodes", dest="num_nodes",
                           action="store", type="int", default=1,
-                          help=("number of new nodes to launch"))
+                          help="number of new nodes to launch")
         parser.add_option("-x", "--no-create", dest="no_create",
                           action="store_true", default=False,
-                          help="do not launch new EC2 instances when " + \
+                          help="do not launch new EC2 instances when "
                           "adding nodes (use existing instances instead)")
 
     def _get_duplicate(self, lst):

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 qhost_xml = """<?xml version='1.0'?>
 <qhost xmlns:xsd="http://gridengine.sunsource.net/source/browse/*checkout*/\
 gridengine/source/dist/util/resources/schemas/qhost/qhost.xsd?revision=1.2">

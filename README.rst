@@ -1,8 +1,8 @@
-===================
-StarCluster v0.92.1
-===================
+=================
+StarCluster v0.93
+=================
 :StarCluster: Cluster Computing Toolkit for the Cloud
-:Version: 0.92.1
+:Version: 0.93
 :Author: Justin Riley <justin.t.riley@gmail.com>
 :Team: Software Tools for Academics and Researchers (http://web.mit.edu/star)
 :Homepage: http://web.mit.edu/starcluster
@@ -20,20 +20,22 @@ and StarCluster. StarCluster features:
 * **Simple configuration** - with examples ready to go out-of-the-box
 * **Create/Manage Clusters** - simple **start** command to automatically launch
   and configure one or more clusters on EC2
-* **Automated Cluster Setup** - includes NFS-sharing, Sun Grid Engine queuing
-  system, password-less ssh between machines, and more
-* **Scientific Computing AMI** - contains OpenMPI, ATLAS, Lapack, NumPy, SciPy,
-  and other useful libraries
+* **Automated Cluster Setup** - includes NFS-sharing, Open Grid Scheduler
+  queuing system, Condor, password-less ssh between machines, and more
+* **Scientific Computing AMI** - comes with Ubuntu 11.10-based EBS-backed AMI
+  that contains Hadoop, OpenMPI, ATLAS, LAPACK, NumPy, SciPy, IPython, and
+  other useful libraries
 * **EBS Volume Sharing** - easily NFS-share Amazon Elastic Block Storage (EBS)
   volumes across a cluster for persistent storage
 * **EBS-Backed Clusters** - start and stop EBS-backed clusters on EC2
 * **Cluster Compute Instances** - support for "cluster compute" instance types
-* **Add/Remove Nodes** - scale a cluster by adding or removing nodes
+* **Expand/Shrink Clusters** - scale a cluster by adding or removing nodes
 * **Elastic Load Balancing** - automatically shrink or expand a cluster based
-  on Sun Grid Engine queue statistics
+  on Open Grid Scheduler queue statistics
 * **Plugin Support** - allows users to run additional setup routines on the
-  cluster after StarCluster's defaults by writing simple plugins in Python
-* and more...
+  cluster after StarCluster's defaults. Comes with plugins for IPython
+  parallel+notebook, Condor, Hadoop, MPICH2, MySQL cluster, installing Ubuntu
+  packages, and more.
 
 Interested? See the `getting started`_ section for more details.
 
@@ -56,7 +58,7 @@ After the software has been installed, the next step is to setup the
 configuration file::
 
     $ starcluster help
-    StarCluster - (http://web.mit.edu/starcluster) (v. 0.9999)
+    StarCluster - (http://web.mit.edu/starcluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
@@ -159,6 +161,7 @@ Dependencies:
 * WorkerPool 0.9.2
 * Jinja2 2.5.5
 * decorator 3.3.1
+* pyasn1 0.0.13b
 
 Learn more...
 =============
@@ -171,85 +174,3 @@ Licensing
 =========
 StarCluster is licensed under the LGPLv3
 See COPYING.LESSER (LGPL) and COPYING (GPL) for LICENSE details
-
-What's New?
-===========
-See http://web.mit.edu/starcluster/docs/latest/changelog.html for the full
-version history.
-
-Features
---------
-* Support for splitting the config into an arbitrary set of files::
-
-    [global]
-    include=~/.starcluster/awscreds, ~/.starcluster/myconf
-
-  See `Splitting the Config`_ for more details
-
-* createvolume: support naming/tagging newly created volumes::
-
-    $ starcluster createvolume --name mynewvol 30 us-east-1d
-
-  See `Create and Format a new EBS Volume`_ for more details
-
-* listvolumes: add support for filtering by tags::
-
-    $ starcluster listvolumes --name mynewvol
-    $ starcluster listvolumes --tag mykey=myvalue
-
-  See `Managing EBS Volumes with StarCluster`_ for more details
-
-* sshmaster, sshnode, sshinstance: support for running remote
-  commands from command line::
-
-    $ starcluster sshmaster mycluster 'cat /etc/fstab'
-    $ starcluster sshnode mycluster node001 'cat /etc/fstab'
-    $ starcluster sshinstance i-99999999 'cat /etc/hosts'
-
-  See `Running Remote Commands on a Cluster from Command Line`_ for more
-  details
-
-Bug Fixes
----------
-The following bugs were fixed in this release:
-
-**spothistory command**
-
-* add package_data to sdist in order to include the necessary web media and
-  templates needed for the ``--plot`` feature. The previous 0.92 version left
-  these out and thus the ``--plot`` feature was broken. This should be fixed.
-* fix bug when launching default browser on mac
-
-**start command**
-
-* fix bug in option completion when using the start command's
-  ``--cluster-template`` option
-
-**terminate command**
-
-* fix bug in terminate cmd when region != us-east-1
-
-**listkeypairs command**
-
-* fix bug in list_keypairs when no keys exist
-
-Improvements
-------------
-* listinstances: add 'state_reason' msg to output if available
-* add system info, Python info, and package versions to crash-report
-* listregions: sort regions by name
-* improved bash/zsh completion support. completion will read from the correct
-  config file, if possible, in the case that the global -c option is specified
-  while completing.
-* separate the timing of cluster setup into time spent on waiting for EC2
-  instances to come up and time spent configuring the cluster after all
-  instances are up and running. this is useful when profiling StarCluster's
-  performance on large (100+ node) clusters.
-
-.. _Splitting the Config: http://web.mit.edu/starcluster/docs/latest/manual/configuration.html#splitting-the-config
-
-.. _Create and Format a new EBS Volume: http://web.mit.edu/starcluster/docs/latest/manual/volumes.html#create-and-format-ebs-volumes
-
-.. _Managing EBS Volumes with StarCluster: http://web.mit.edu/starcluster/docs/latest/manual/volumes.html#managing-ebs-volumes
-
-.. _Running Remote Commands on a Cluster from Command Line: http://web.mit.edu/starcluster/docs/latest/manual/runcommands.html
