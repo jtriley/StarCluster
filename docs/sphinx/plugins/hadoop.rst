@@ -1,3 +1,5 @@
+.. _hadoop-plugin:
+
 #############
 Hadoop Plugin
 #############

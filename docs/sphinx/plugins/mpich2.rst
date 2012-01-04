@@ -1,3 +1,5 @@
+.. _mpich2-plugin:
+
 #############
 MPICH2 Plugin
 #############

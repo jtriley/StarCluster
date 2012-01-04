@@ -1,3 +1,5 @@
+.. _condor-plugin:
+
 #############
 Condor Plugin
 #############

@@ -95,6 +95,8 @@ After this is complete, you will need to setup the configuration file.
 
     $ starcluster help
 
+.. _windows-install:
+
 Installing on Windows
 =====================
 Before attempting to install StarCluster you first need to install Python 2.7

@@ -1,3 +1,5 @@
+.. _ipcluster-plugin:
+
 ######################
 IPython Cluster Plugin
 ######################
@@ -116,6 +118,8 @@ case the above config should be updated to::
     rc = Client('/home/user/.starcluster/ipcluster/mycluster-us-east-1.json'
                 sshkey='/home/user/.ssh/mykey.rsa'
                 packer='pickle')
+
+.. _ipython-notebook:
 
 *******************************
 Using the IPython HTML Notebook
