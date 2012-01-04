@@ -106,7 +106,7 @@ This will give you verbose output showing which scheduling conditions failed
 and why.
 
 ***************
-Cancelling Jobs
+Canceling Jobs
 ***************
 In some cases you may need to cancel queued or running jobs either because of
 an error in your job script or simply because you wish to change job

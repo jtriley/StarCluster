@@ -10,9 +10,9 @@ From the `Hadoop`_ homepage:
     distributed processing of large data sets across clusters of computers
     using a simple programming model. It is designed to scale up from single
     servers to thousands of machines, each offering local computation and
-    storage. Rather than rely on hardware to deliver high-avaiability, the
+    storage. Rather than rely on hardware to deliver high-availability, the
     library itself is designed to detect and handle failures at the application
-    layer, so delivering a highly-availabile service on top of a cluster of
+    layer, so delivering a highly-available service on top of a cluster of
     computers, each of which may be prone to failures.
 
 This plugin will automatically configure the Hadoop framework on your

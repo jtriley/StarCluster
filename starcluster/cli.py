@@ -193,7 +193,7 @@ class StarClusterCLI(object):
 
         StarCluster's Bash/ZSH completion code needs to read the global config
         option in case an alternate config is specified at the command line
-        when completing options. StarCluster's comletion code uses the config
+        when completing options. StarCluster's completion code uses the config
         to generate completion options. Setting sys.argv to $COMP_LINE in this
         case allows the global option parser to be used to extract the global
         -c option (if specified) and load the proper config in the completion
