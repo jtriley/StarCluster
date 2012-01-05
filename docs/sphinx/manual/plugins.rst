@@ -91,7 +91,7 @@ plugin above:
     pkg_to_install = htop
 
 In this example, pkg_to_install is an argument to the plugin's constructor (ie
-__init__). A plugin can, of course, define multiple construtor arguments and
+__init__). A plugin can, of course, define multiple constructor arguments and
 you can configure these arguments in the config similar to *pkg_to_install* in
 the above example.
 
