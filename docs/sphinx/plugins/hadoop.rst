@@ -22,7 +22,7 @@ it easier to manage HDFS.
 
 .. seealso::
 
-    Learn more about Hadoop at it's `project page <Hadoop>`_
+    Learn more about Hadoop at it's `project page <http://hadoop.apache.org>`_
 
 *****
 Usage
