@@ -149,6 +149,10 @@ class StarClusterCLI(object):
         header = dashes + ' %s ' + dashes + '\n'
         crashfile = open(static.CRASH_FILE, 'w')
         crashfile.write(header % "CRASH DETAILS")
+        argv = sys.argv[:]
+        argv[0] = os.path.basename(argv[0])
+        argv = ' '.join(argv)
+        crashfile.write('COMMAND: %s\n' % argv)
         crashfile.write(session.stream.getvalue())
         crashfile.write(header % "SYSTEM INFO")
         crashfile.write("StarCluster: %s\n" % __version__)
