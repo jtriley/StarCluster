@@ -12,7 +12,7 @@ Overview
 --------
 
 Sign-up for a github account
----------------------------
+----------------------------
 StarCluster's source code is stored on `github.com <https://github.com>`_. It
 is preferred that you use github.com to submit patches and enhancements via
 `pull requests <http://help.github.com/pull-requests/>`_. The first step is to
