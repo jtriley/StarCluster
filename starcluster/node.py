@@ -574,7 +574,9 @@ class Node(object):
         """
         # setup /etc/exports
         nfs_export_settings = "(async,no_root_squash,no_subtree_check,rw)"
-        etc_exports = self.ssh.remote_file('/etc/exports', 'w')
+        regex = '|'.join([n.alias for n in nodes])
+        self.ssh.remove_lines_from_file('/etc/exports', regex)
+        etc_exports = self.ssh.remote_file('/etc/exports', 'a')
         for node in nodes:
             for path in export_paths:
                 etc_exports.write(' '.join([path, node.alias +
