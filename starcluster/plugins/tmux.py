@@ -146,15 +146,33 @@ class TmuxControlCenter(clustersetup.DefaultClusterSetup):
         self._user_shell = user_shell
         self._volumes = volumes
         self.add_to_utmp_group(master, user)
-        self.setup_tmuxcc(user=user)
         self.setup_tmuxcc(user='root')
+        self.setup_tmuxcc(user=user)
+
+    def _add_to_tmuxcc(self, client, node, user='root'):
+        orig_user = client.ssh._username
+        if orig_user != user:
+            client.ssh.connect(username=user)
+        self._new_window(client, self._envname, node.alias)
+        self._send_keys(client, self._envname, cmd='ssh %s' % node.alias,
+                        window=node.alias)
+        if orig_user != user:
+            client.ssh.connect(username=orig_user)
+
+    def _remove_from_tmuxcc(self, client, node, user='root'):
+        orig_user = client.ssh._username
+        if orig_user != user:
+            client.ssh.connect(username=user)
+        self._kill_window(client, self._envname, node.alias)
+        if orig_user != user:
+            client.ssh.connect(username=orig_user)
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         log.info("Adding %s to TMUX Control Center" % node.alias)
-        self._new_window(master, self._envname, node.alias)
-        self._send_keys(master, self._envname, cmd='ssh %s' % node.alias,
-                        window=node.alias)
+        self._add_to_tmuxcc(master, node, user='root')
+        self._add_to_tmuxcc(master, node, user=user)
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         log.info("Removing %s from TMUX Control Center" % node.alias)
-        self._kill_window(master, self._envname, node.alias)
+        self._remove_from_tmuxcc(master, node, user='root')
+        self._remove_from_tmuxcc(master, node, user=user)
