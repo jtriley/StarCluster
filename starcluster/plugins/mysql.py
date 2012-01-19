@@ -1,4 +1,3 @@
-
 import posixpath
 from starcluster.clustersetup import DefaultClusterSetup
 from starcluster.logger import log
@@ -345,3 +344,9 @@ class MysqlCluster(DefaultClusterSetup):
             '> %(loc)s #starcluster-mysql\n'
         ) % {'dump_interval': self._dump_interval, 'loc': path}
         return crontab
+
+    def on_add_node(self, node, nodes, master, user, user_shell, volumes):
+        pass
+
+    def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
+        pass

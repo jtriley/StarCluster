@@ -27,3 +27,11 @@ class PackageInstaller(clustersetup.DefaultClusterSetup):
         for node in nodes:
             self.pool.simple_job(node.apt_install, (pkgs), jobid=node.alias)
         self.pool.wait(len(nodes))
+
+    def on_add_node(self, new_node, nodes, master, user, user_shell, volumes):
+        log.info('Installing the following packages on %s:' % new_node.alias)
+        pkgs = ' '.join(self.packages)
+        new_node.apt_install(pkgs)
+
+    def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
+        pass

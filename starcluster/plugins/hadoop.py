@@ -1,7 +1,7 @@
 import posixpath
 
 from starcluster import threadpool
-from starcluster.clustersetup import ClusterSetup
+from starcluster import clustersetup
 from starcluster.logger import log
 
 core_site_templ = """\
@@ -74,7 +74,7 @@ mapred_site_templ = """\
 """
 
 
-class Hadoop(ClusterSetup):
+class Hadoop(clustersetup.ClusterSetup):
     """
     Configures Hadoop using Cloudera packages on StarCluster
     """
@@ -249,7 +249,6 @@ class Hadoop(ClusterSetup):
         master.ssh.execute('/etc/init.d/hadoop-0.20-namenode restart')
         log.info("Starting secondary namenode...")
         master.ssh.execute('/etc/init.d/hadoop-0.20-secondarynamenode restart')
-
         for node in nodes:
             log.info("Starting datanode on %s..." % node.alias)
             self.pool.simple_job(self._start_datanode, (node,),

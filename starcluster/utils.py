@@ -504,7 +504,7 @@ class struct_group(tuple):
             grp = (grp.name, grp.password, int(grp.GID),
                    [member for member in grp.members])
         if len(grp) != 4:
-            raise TypeError('expecting a 4-sequence (%d-sequeunce given)' %
+            raise TypeError('expecting a 4-sequence (%d-sequence given)' %
                             len(grp))
         return tuple.__new__(cls, grp)
 
@@ -532,7 +532,7 @@ class struct_passwd(tuple):
             pwd = (pwd.loginName, pwd.password, int(pwd.UID), int(pwd.GID),
                    pwd.GECOS, pwd.home, pwd.shell)
         if len(pwd) != 7:
-            raise TypeError('expecting a 4-sequence (%d-sequeunce given)' %
+            raise TypeError('expecting a 4-sequence (%d-sequence given)' %
                             len(pwd))
         return tuple.__new__(cls, pwd)
 

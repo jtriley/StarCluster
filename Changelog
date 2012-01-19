@@ -5,6 +5,57 @@ Version History
 .. contents::
     :local:
 
+
+.. _version-0.93.1:
+
+0.93.1
+======
+
+.. _v0931-news:
+
+News
+----
+.. warning:: It is recommended that you upgrade as soon as possible.
+
+Version 0.93.1 of StarCluster is largely a patch release that fixes several
+bugs. See the "Bug Fixes" section below for details.
+
+
+Also, the ``put`` and ``get`` commands have been marked stable which means they
+no longer require ``ENABLE_EXPERIMENTAL=True`` in the config in order to use
+them.
+
+.. _v0931-features:
+
+Features
+--------
+* Added sys.argv to crash reports for better details when things go wrong
+* Implemented on_add_node and on_remove_node for TMUX plugin to add/remove
+  nodes from the TMUX control-center sessions for both ``root`` and
+  ``CLUSTER_USER``
+* Implemented on_add_node for the Ubuntu package installer plugin
+  (``pkginstaller``) to ensure new nodes also install the required packages
+* Implemented on_add_node for the MPICH2 plugin to ensure new nodes are
+  configured for MPICH2 and also added to the hosts file. Moved the MPICH2
+  hosts file to an NFS-shared location (``/home/mpich2.hosts``) for faster
+  configuration
+* Implemented on_add_node for the Xvfb plugin that installs and runs Xvfb on
+  newly added nodes
+
+.. _v0931-fixes:
+
+Bug Fixes
+---------
+* Fixed major NFS bug in ``addnode`` command where ``/etc/exports`` was being
+  wiped each time a new node was added. This caused the last-to-be-added node
+  to be the only node correctly configured for NFS in the entire cluster.
+* Updated all plugins which subclass DefaultClusterSetup to implement
+  on_add_node and on_remove_node regardless of whether or not they actually use
+  them to avoid the 'default' plugin's implementation being incorrectly called
+  multiple times by plugins when adding/removing nodes using the ``addnode``
+  and ``removenode`` commands
+* Fixed string formatting bug in Condor plugin
+
 .. _version-0.93:
 
 0.93

@@ -149,6 +149,10 @@ class StarClusterCLI(object):
         header = dashes + ' %s ' + dashes + '\n'
         crashfile = open(static.CRASH_FILE, 'w')
         crashfile.write(header % "CRASH DETAILS")
+        argv = sys.argv[:]
+        argv[0] = os.path.basename(argv[0])
+        argv = ' '.join(argv)
+        crashfile.write('COMMAND: %s\n' % argv)
         crashfile.write(session.stream.getvalue())
         crashfile.write(header % "SYSTEM INFO")
         crashfile.write("StarCluster: %s\n" % __version__)
@@ -193,7 +197,7 @@ class StarClusterCLI(object):
 
         StarCluster's Bash/ZSH completion code needs to read the global config
         option in case an alternate config is specified at the command line
-        when completing options. StarCluster's comletion code uses the config
+        when completing options. StarCluster's completion code uses the config
         to generate completion options. Setting sys.argv to $COMP_LINE in this
         case allows the global option parser to be used to extract the global
         -c option (if specified) and load the proper config in the completion

@@ -65,4 +65,4 @@ class CondorPlugin(clustersetup.DefaultClusterSetup):
         self._volumes = volumes
         log.info("Removing %s from Condor peacefully..." % node.alias)
         master.ssh.execute("condor_off -peaceful %s" % node.alias)
-        node.ssh.execute("pkill condor" % node.alias, ignore_exit_status=True)
+        node.ssh.execute("pkill condor", ignore_exit_status=True)
