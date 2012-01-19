@@ -1,8 +1,8 @@
-from starcluster.clustersetup import DefaultClusterSetup
+from starcluster import clustersetup
 from starcluster.logger import log
 
 
-class XvfbSetup(DefaultClusterSetup):
+class XvfbSetup(clustersetup.DefaultClusterSetup):
     """
     Installs, configures, and sets up an Xvfb server
     (thanks to Adam Marsh for his contribution)
@@ -25,10 +25,18 @@ class XvfbSetup(DefaultClusterSetup):
         for node in nodes:
             self.pool.simple_job(self._launch_xvfb, (node), jobid=node.alias)
         self.pool.wait(numtasks=len(nodes))
-        #self._terminate(nodes)
 
     def _terminate(self, nodes):
         for node in nodes:
             self.pool.simple_job(node.ssh.execute, ('pkill Xvfb'),
                                  jobid=node.alias)
         self.pool.wait(numtasks=len(nodes))
+
+    def on_add_node(self, new_node, nodes, master, user, user_shell, volumes):
+        log.info("Installing Xvfb on %s" % new_node.alias)
+        self._install_xvfb(new_node)
+        log.info("Launching Xvfb Server on %s" % new_node.alias)
+        self._launch_xvfb(new_node)
+
+    def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
+        pass
