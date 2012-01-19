@@ -66,6 +66,9 @@ class TmuxControlCenter(clustersetup.DefaultClusterSetup):
     def _kill_session(self, node, envname):
         node.ssh.execute('tmux kill-session -t %s' % envname)
 
+    def _kill_window(self, node, envname, window):
+        node.ssh.execute('tmux kill-window -t %s:%s' % (envname, window))
+
     def _new_window(self, node, envname, title):
         node.ssh.execute('tmux new-window -n %s -t %s:' % (title, envname))
 
@@ -148,7 +151,10 @@ class TmuxControlCenter(clustersetup.DefaultClusterSetup):
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         log.info("Adding %s to TMUX Control Center" % node.alias)
-        #user_home = node.getpwnam(user).pw_dir
+        self._new_window(master, self._envname, node.alias)
+        self._send_keys(master, self._envname, cmd='ssh %s' % node.alias,
+                        window=node.alias)
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         log.info("Removing %s from TMUX Control Center" % node.alias)
+        self._kill_window(master, self._envname, node.alias)
