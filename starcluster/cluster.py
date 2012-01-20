@@ -749,7 +749,7 @@ class Cluster(object):
 
     @property
     def spot_requests(self):
-        filters = {'launch.group-id': self.cluster_group.name,
+        filters = {'launch.group-id': self.cluster_group.id,
                    'state': ['active', 'open']}
         return self.ec2.get_all_spot_requests(filters=filters)
 
