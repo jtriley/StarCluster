@@ -141,7 +141,7 @@ class ClusterManager(managers.Manager):
                        zone=None,
                        placement_group=None,
                        spot_bid=None,
-                       no_create=no_create):
+                       no_create=False):
         cl = self.get_cluster(cluster_name)
         return cl.add_node(alias=alias,
                     image_id=image_id,

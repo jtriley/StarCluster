@@ -58,9 +58,6 @@ class CmdAddNode(ClusterCompleter):
                           action="append", type="string", default=[],
                           help="alias to give to the new node "
                           "(e.g. node007, mynode, etc.)")
-        parser.add_option("-n", "--num-nodes", dest="num_nodes",
-                          action="store", type="int", default=1,
-                          help="number of new nodes to launch")
         parser.add_option("-x", "--no-create", dest="no_create",
                           action="store_true", default=False,
                           help="do not launch new EC2 instances when "
@@ -121,5 +118,5 @@ class CmdAddNode(ClusterCompleter):
                           image_id = self.opts.image_id,
                           instance_type = self.opts.instance_type,
                           zone = self.opts.zone,
-                          spot_bid = self.opts.spot_bid)
+                          spot_bid = self.opts.spot_bid,
                           no_create=self.opts.no_create)
