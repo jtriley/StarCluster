@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 StarCluster SunGrinEngine stats visualizer module
 """

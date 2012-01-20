@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 StarCluster Exception Classes
 """
@@ -12,6 +11,7 @@ from starcluster.templates import config, user_msgs
 
 class BaseException(Exception):
     def __init__(self, *args):
+        self.args = args
         self.msg = args[0]
 
     def __str__(self):
@@ -55,6 +55,11 @@ class SSHNoCredentialsError(SSHError):
         self.msg = "No password or key specified"
 
 
+class SCPException(BaseException):
+    """SCP exception class"""
+    pass
+
+
 class AWSError(BaseException):
     """Base exception for all AWS related errors"""
 
@@ -84,6 +89,11 @@ class SecurityGroupDoesNotExist(AWSError):
         self.msg = "security group %s does not exist" % sg_name
 
 
+class PlacementGroupDoesNotExist(AWSError):
+    def __init__(self, pg_name):
+        self.msg = "placement group %s does not exist" % pg_name
+
+
 class KeyPairDoesNotExist(AWSError):
     def __init__(self, keyname):
         self.msg = "keypair %s does not exist" % keyname
@@ -107,7 +117,7 @@ class SnapshotDoesNotExist(AWSError):
 class BucketAlreadyExists(AWSError):
     def __init__(self, bucket_name):
         self.msg = "bucket with name '%s' already exists on S3\n" % bucket_name
-        self.msg += "(NOTE: S3's bucket namepsace is shared by all AWS users)"
+        self.msg += "(NOTE: S3's bucket namespace is shared by all AWS users)"
 
 
 class BucketDoesNotExist(AWSError):
@@ -141,8 +151,8 @@ class EC2CertRequired(AWSError):
 
 class EC2PrivateKeyRequired(AWSError):
     def __init__(self):
-        self.msg = "No private certificate file (pem) file specified in " + \
-                   "config (EC2_PRIVATE_KEY)"
+        self.msg = "No private certificate file (pem) file specified in "
+        self.msg += "config (EC2_PRIVATE_KEY)"
 
 
 class EC2CertDoesNotExist(AWSError):
@@ -157,8 +167,8 @@ class EC2PrivateKeyDoesNotExist(AWSError):
 
 class SpotHistoryError(AWSError):
     def __init__(self, start, end):
-        self.msg = "no spot price history for the dates specified: " + \
-                "%s - %s" % (start, end)
+        self.msg = "no spot price history for the dates specified: "
+        self.msg += "%s - %s" % (start, end)
 
 
 class InvalidIsoDate(BaseException):
@@ -186,12 +196,16 @@ class PluginNotFound(ConfigError):
 
 class NoDefaultTemplateFound(ConfigError):
     def __init__(self, options=None):
-        msg = "No default cluster template specified. To set the default "
-        msg += "cluster template, set DEFAULT_TEMPLATE in the [global] section"
-        msg += " of the config to the name of one of your cluster templates "
+        msg = "No default cluster template specified.\n\n"
+        msg += "To set the default cluster template, set DEFAULT_TEMPLATE "
+        msg += "in the [global] section of the config to the name of one of "
+        msg += "your cluster templates"
+        optlist = ', '.join(options)
         if options:
-            msg += '(' + ', '.join(options) + ')'
+            msg += '\n\nCurrent Templates:\n\n' + optlist
         self.msg = msg
+        self.options = options
+        self.options_list = optlist
 
 
 class ConfigNotFound(ConfigError):
@@ -207,8 +221,8 @@ class ConfigNotFound(ConfigError):
         cfg_file = open(self.cfg, 'w')
         cfg_file.write(config.config_template)
         cfg_file.close()
-        log.info("Config template written to %s. Please customize this file." %
-                 self.cfg)
+        log.info("Config template written to %s" % self.cfg)
+        log.info("Please customize the config template")
 
     def display_options(self):
         print 'Options:'
@@ -263,6 +277,32 @@ class ClusterValidationError(ValidationError):
     """Cluster validation related errors"""
 
 
+class NoClusterNodesFound(ValidationError):
+    """Raised if no cluster nodes are found"""
+    def __init__(self, terminated=None):
+        self.msg = "No active cluster nodes found!"
+        if not terminated:
+            return
+        self.msg += "\n\nBelow is a list of terminated instances:\n"
+        for tnode in terminated:
+            id = tnode.id
+            reason = tnode.reason or 'N/A'
+            state = tnode.state or 'N/A'
+            self.msg += "\n%s (state: %s, reason: %s)" % (id, state, reason)
+
+
+class NoClusterSpotRequests(ValidationError):
+    """Raised if no spot requests belonging to a cluster are found"""
+    def __init__(self):
+        self.msg = "No cluster spot requests found!"
+
+
+class MasterDoesNotExist(ClusterValidationError):
+    """Raised when no master node is available"""
+    def __init__(self):
+        self.msg = "No master node found!"
+
+
 class IncompatibleSettings(ClusterValidationError):
     """Raised when two or more settings conflict with each other"""
 
@@ -270,8 +310,8 @@ class IncompatibleSettings(ClusterValidationError):
 class InvalidProtocol(ClusterValidationError):
     """Raised when user specifies an invalid IP protocol for permission"""
     def __init__(self, protocol):
-        self.msg = "protocol %s is not a valid ip protocol. options: %s" % \
-        (protocol, ', '.join(static.PROTOCOLS))
+        self.msg = "protocol %s is not a valid ip protocol. options: %s"
+        self.msg %= (protocol, ', '.join(static.PROTOCOLS))
 
 
 class InvalidPortRange(ClusterValidationError):
@@ -297,7 +337,7 @@ class InvalidZone(ClusterValidationError):
     """
     def __init__(self, zone, common_vol_zone):
         cvz = common_vol_zone
-        self.msg = ("availability_zone setting '%s' does not " +
+        self.msg = ("availability_zone setting '%s' does not "
                     "match the common volume zone '%s'") % (zone, cvz)
 
 
@@ -328,7 +368,7 @@ class ClusterDoesNotExist(BaseException):
     Exception raised when user requests a running cluster that does not exist
     """
     def __init__(self, cluster_name):
-        self.msg = "cluster %s does not exist" % cluster_name
+        self.msg = "cluster '%s' does not exist" % cluster_name
 
 
 class ClusterExists(BaseException):
@@ -344,32 +384,28 @@ class ClusterExists(BaseException):
 
 class CancelledStartRequest(BaseException):
     def __init__(self, tag):
-        self.msg = "Request to start cluster '%s' was cancelled" % tag
+        self.msg = "Request to start cluster '%s' was cancelled!!!" % tag
         self.msg += "\n\nPlease be aware that instances may still be running."
         self.msg += "\nYou can check this from the output of:"
         self.msg += "\n\n   $ starcluster listclusters"
         self.msg += "\n\nIf you wish to destroy these instances please run:"
-        self.msg += "\n\n   $ starcluster stop %s" % tag
-        self.msg += "\n\nYou can then use:\n\n   $ starcluster listinstances"
-        self.msg += "\n\nto verify that the instances have been terminated."
-        self.msg += "\n\nAnother option is to use the AWS management console"
-        self.msg += "\nto terminate the instances manually."
+        self.msg += "\n\n   $ starcluster terminate %s" % tag
+        self.msg += "\n\nYou can then use:\n\n   $ starcluster listclusters"
+        self.msg += "\n\nto verify that the cluster has been terminated."
         self.msg += "\n\nIf you would like to re-use these instances, rerun"
-        self.msg += "\nthe same start command with the --no-create option"
+        self.msg += "\nthe same start command with the -x (--no-create) option"
 
 
 class CancelledCreateVolume(BaseException):
     def __init__(self):
-        self.msg = "Request to create volume was cancelled"
-        self.msg += "\n\nPlease be aware that the volume host instance"
+        self.msg = "Request to create a new volume was cancelled!!!"
+        self.msg += "\n\nPlease be aware that volume host instances"
         self.msg += " may still be running. "
-        self.msg += "\n\nTo destroy this instance please run:"
-        self.msg += "\n\n   $ starcluster terminate %s" % \
-                static.VOLUME_GROUP_NAME
-        self.msg += "\n\nand then use\n\n   $ starcluster listinstances"
-        self.msg += "\n\nto verify that this instance has been terminated."
-        self.msg += "\n\nAnother option is to use the AWS management console "
-        self.msg += "to terminate\nthis instance manually."
+        self.msg += "\n\nTo destroy these instances:"
+        self.msg += "\n\n   $ starcluster terminate %s"
+        self.msg += "\n\nYou can then use\n\n   $ starcluster listinstances"
+        self.msg += "\n\nto verify that the volume hosts have been terminated."
+        self.msg %= static.VOLUME_GROUP_NAME
 
 
 class CancelledCreateImage(BaseException):
@@ -380,13 +416,13 @@ class CancelledCreateImage(BaseException):
         self.msg += "around in /mnt on the instance."
         self.msg += "\n\nAlso, some of these intermediate files might "
         self.msg += "have been uploaded to \nS3 in the '%(bucket)s' bucket "
-        self.msg += "you specified. You can check this by running:"
+        self.msg += "you specified. You can check this using:"
         self.msg += "\n\n   $ starcluster showbucket %(bucket)s\n\n"
-        self.msg += "and looking for files like: "
+        self.msg += "Look for files like: "
         self.msg += "'%(iname)s.manifest.xml' or '%(iname)s.part.*'"
         self.msg += "\nRe-executing the same s3image command "
-        self.msg += "should take care of these \nintermediate files and "
-        self.msg += "will also automatically override any\npartially uploaded "
+        self.msg += "should clean up these \nintermediate files and "
+        self.msg += "also automatically override any\npartially uploaded "
         self.msg += "files in S3."
         self.msg = self.msg % {'bucket': bucket, 'iname': image_name}
 
@@ -418,9 +454,9 @@ class CancelledEBSImageCreation(BaseException):
 class ExperimentalFeature(BaseException):
     def __init__(self, feature_name):
         self.msg = "%s is an experimental feature for this " % feature_name
-        self.msg += "release. \nIf you wish to test this feature, set "
-        self.msg += "ENABLE_EXPERIMENTAL=True \nin the [global] section of the"
-        self.msg += " config. \nYou have officially been warned :D"
+        self.msg += "release. If you wish to test this feature, please set "
+        self.msg += "ENABLE_EXPERIMENTAL=True in the [global] section of the"
+        self.msg += " config. \n\nYou've officially been warned :D"
 
 
 class ThreadPoolException(BaseException):
@@ -435,7 +471,7 @@ class ThreadPoolException(BaseException):
         excs = []
         for exception in self.exceptions:
             e, tb_msg, jobid = exception
-            excs.append('error occured in job (id=%s): %s' % (jobid, str(e)))
+            excs.append('error occurred in job (id=%s): %s' % (jobid, str(e)))
             excs.append(tb_msg)
         return '\n'.join(excs)
 

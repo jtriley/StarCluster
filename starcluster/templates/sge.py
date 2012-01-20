@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 sgeinstall_template = """
 SGE_CLUSTER_NAME="starcluster"
 SGE_ROOT="/opt/sge6"
@@ -45,7 +43,7 @@ CSP_MAIL_ADDRESS="none@none.edu"
 """
 
 sge_pe_template = """
-pe_name           orte
+pe_name           %s
 slots             %s
 user_lists        NONE
 xuser_lists       NONE

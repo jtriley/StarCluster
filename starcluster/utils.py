@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Utils module for StarCluster
 """
@@ -7,13 +6,42 @@ import os
 import re
 import time
 import types
+import string
+import random
+import inspect
 import calendar
 import urlparse
+import decorator
 from datetime import datetime
 
 from starcluster import iptools
 from starcluster import exception
 from starcluster.logger import log
+
+try:
+    import IPython
+    if IPython.__version__ < '0.11':
+        from IPython.Shell import IPShellEmbed
+        ipy_shell = IPShellEmbed(argv=[])
+    else:
+        from IPython import embed
+        ipy_shell = lambda local_ns=None: embed(user_ns=local_ns)
+except ImportError, e:
+
+    def ipy_shell(local_ns=None):
+        log.error("Unable to load IPython:\n\n%s\n" % e)
+        log.error("Please check that IPython is installed and working.")
+        log.error("If not, you can install it via: easy_install ipython")
+
+try:
+    import pudb
+    set_trace = pudb.set_trace
+except ImportError:
+
+    def set_trace():
+        log.error("Unable to load PuDB")
+        log.error("Please check that PuDB is installed and working.")
+        log.error("If not, you can install it via: easy_install pudb")
 
 
 class AttributeDict(dict):
@@ -37,42 +65,34 @@ def print_timing(msg=None):
 
     @print_timing
     def myfunc():
-        print 'hi'
+        print 'Running myfunc'
     >>> myfunc()
-    hi
+    Running myfunc
     myfunc took 0.000 mins
 
     @print_timing('My function')
     def myfunc():
-        print 'hi'
+        print 'Running myfunc'
     >>> myfunc()
-    hi
+    Running myfunc
     My function took 0.000 mins
     """
+    prefix = msg
     if type(msg) == types.FunctionType:
-        func = msg
+        prefix = msg.func_name
 
-        def wrap_f(*arg, **kargs):
-            """Raw timing function """
-            time1 = time.time()
-            res = func(*arg, **kargs)
-            time2 = time.time()
-            prefix = func.func_name
-            log.info('%s took %0.3f mins' % (prefix, (time2 - time1) / 60.0))
-            return res
-        return wrap_f
+    def wrap_f(func, *arg, **kargs):
+        """Raw timing function """
+        time1 = time.time()
+        res = func(*arg, **kargs)
+        time2 = time.time()
+        log.info('%s took %0.3f mins' % (prefix, (time2 - time1) / 60.0))
+        return res
 
-    def wrap(func):
-        def wrap_f(*arg, **kargs):
-            """Raw timing function """
-            time1 = time.time()
-            res = func(*arg, **kargs)
-            time2 = time.time()
-            prefix = msg
-            log.info('%s took %0.3f mins' % (prefix, (time2 - time1) / 60.0))
-            return res
-        return wrap_f
-    return wrap
+    if type(msg) == types.FunctionType:
+        return decorator.decorator(wrap_f, msg)
+    else:
+        return decorator.decorator(wrap_f)
 
 
 def is_valid_device(dev):
@@ -205,24 +225,31 @@ def get_elapsed_time(past_time):
     ptime = iso_to_localtime_tuple(past_time)
     now = datetime.now()
     delta = now - ptime
-    return time.strftime("%H:%M:%S", time.gmtime(delta.seconds))
+    timestr = time.strftime("%H:%M:%S", time.gmtime(delta.seconds))
+    if delta.days != -1:
+        timestr = "%d days, %s" % (delta.days, timestr)
+    return timestr
+
+
+def iso_to_unix_time(iso):
+    dtup = iso_to_datetime_tuple(iso)
+    secs = calendar.timegm(dtup.timetuple())
+    return secs
+
+
+def iso_to_javascript_timestamp(iso):
+    """
+    Convert dates to Javascript timestamps (number of milliseconds since
+    January 1st 1970 UTC)
+    """
+    secs = iso_to_unix_time(iso)
+    return secs * 1000
 
 
 def iso_to_localtime_tuple(iso):
-    dtup = iso_to_datetime_tuple(iso)
-    secs = calendar.timegm(dtup.timetuple())
+    secs = iso_to_unix_time(iso)
     t = time.mktime(time.localtime(secs))
     return datetime.fromtimestamp(t)
-
-try:
-    import IPython.Shell
-    ipy_shell = IPython.Shell.IPShellEmbed(argv=[])
-except ImportError:
-
-    def ipy_shell(local_ns=None):
-        log.error("Unable to load IPython.")
-        log.error("Please check that IPython is installed and working.")
-        log.error("If not, you can install it via: easy_install ipython")
 
 
 def permute(a):
@@ -346,7 +373,7 @@ def version_to_float(v):
     # and is placed in public domain.
     """
     Convert a Mozilla-style version string into a floating-point number
-    1.2.3.4, 1.2a5, 2.3.4b1pre, 3.0rc2, etc
+    1.2.3.4, 1.2a5, 2.3.4b1pre, 3.0rc2, etc.
     """
     version = [
         0, 0, 0, 0,  # 4-part numerical revision
@@ -410,3 +437,107 @@ def test_version_to_float():
     assert program_version_greater("0.92", "0.92b1")
     assert program_version_greater("0.9999", "0.92b3")
     print("All tests passed")
+
+
+def get_arg_spec(func):
+    """
+    Convenience wrapper around inspect.getargspec
+
+    Returns a tuple whose first element is a list containing the names of all
+    required arguments and whose second element is a list containing the names
+    of all keyword (optional) arguments.
+    """
+    allargs, varargs, keywords, defaults = inspect.getargspec(func)
+    if 'self' in allargs:
+        allargs.remove('self')  # ignore self
+    nargs = len(allargs)
+    ndefaults = 0
+    if defaults:
+        ndefaults = len(defaults)
+    nrequired = nargs - ndefaults
+    args = allargs[:nrequired]
+    kwargs = allargs[nrequired:]
+    log.debug('nargs = %s' % nargs)
+    log.debug('ndefaults = %s' % ndefaults)
+    log.debug('nrequired = %s' % nrequired)
+    log.debug('args = %s' % args)
+    log.debug('kwargs = %s' % kwargs)
+    log.debug('defaults = %s' % str(defaults))
+    return args, kwargs
+
+
+def chunk_list(ls, items=8):
+    """
+    iterate through 'chunks' of a list. final chunk consists of remaining
+    elements if items does not divide len(ls) evenly.
+
+    items - size of 'chunks'
+    """
+    itms = []
+    for i, v in enumerate(ls):
+        if i >= items and i % items == 0:
+            yield itms
+            itms = [v]
+        else:
+            itms.append(v)
+    if itms:
+        yield itms
+
+
+def generate_passwd(length):
+    return "".join(random.sample(string.letters + string.digits, length))
+
+
+class struct_group(tuple):
+    """
+    grp.struct_group: Results from getgr*() routines.
+
+    This object may be accessed either as a tuple of
+      (gr_name,gr_passwd,gr_gid,gr_mem)
+    or via the object attributes as named in the above tuple.
+    """
+
+    attrs = ['gr_name', 'gr_passwd', 'gr_gid', 'gr_mem']
+
+    def __new__(cls, grp):
+        if type(grp) not in (list, str, tuple):
+            grp = (grp.name, grp.password, int(grp.GID),
+                   [member for member in grp.members])
+        if len(grp) != 4:
+            raise TypeError('expecting a 4-sequence (%d-sequence given)' %
+                            len(grp))
+        return tuple.__new__(cls, grp)
+
+    def __getattr__(self, attr):
+        try:
+            return self[self.attrs.index(attr)]
+        except ValueError:
+            raise AttributeError
+
+
+class struct_passwd(tuple):
+    """
+    pwd.struct_passwd: Results from getpw*() routines.
+
+    This object may be accessed either as a tuple of
+      (pw_name,pw_passwd,pw_uid,pw_gid,pw_gecos,pw_dir,pw_shell)
+    or via the object attributes as named in the above tuple.
+    """
+
+    attrs = ['pw_name', 'pw_passwd', 'pw_uid', 'pw_gid', 'pw_gecos',
+             'pw_dir', 'pw_shell']
+
+    def __new__(cls, pwd):
+        if type(pwd) not in (list, str, tuple):
+            pwd = (pwd.loginName, pwd.password, int(pwd.UID), int(pwd.GID),
+                   pwd.GECOS, pwd.home, pwd.shell)
+        if len(pwd) != 7:
+            raise TypeError('expecting a 4-sequence (%d-sequence given)' %
+                            len(pwd))
+        return tuple.__new__(cls, pwd)
+
+    def __getattr__(self, attr):
+        try:
+            return self[self.attrs.index(attr)]
+        except ValueError:
+            raise AttributeError

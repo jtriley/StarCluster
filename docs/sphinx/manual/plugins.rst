@@ -1,3 +1,5 @@
+.. _plugin_system:
+
 StarCluster Plugin System
 =========================
 StarCluster has support for user contributed plugins. Plugins allow developers
@@ -19,14 +21,14 @@ on each node using apt-get after the cluster has been configured:
 
 .. code-block:: python
 
-        from starcluster.clustersetup import ClusterSetup
+    from starcluster.clustersetup import ClusterSetup
 
-        class PackageInstaller(ClusterSetup):
-             def __init__(self, pkg_to_install):
-                  self.pkg_to_install = pkg_to_install
-             def run(self, nodes, master, user, user_shell, volumes):
-                  for node in nodes:
-                       node.ssh.execute('apt-get -y install %s' % self.pkg_to_install)
+    class PackageInstaller(ClusterSetup):
+         def __init__(self, pkg_to_install):
+              self.pkg_to_install = pkg_to_install
+         def run(self, nodes, master, user, user_shell, volumes):
+              for node in nodes:
+                   node.ssh.execute('apt-get -y install %s' % self.pkg_to_install)
 
 For this example we assume that this class lives in a module file called
 **ubuntu.py** and that this file lives in the ~/.starcluster/plugins directory.
@@ -49,17 +51,17 @@ system:
 
 .. code-block:: python
 
-        from starcluster.clustersetup import ClusterSetup
-        from starcluster.logger import log
+    from starcluster.clustersetup import ClusterSetup
+    from starcluster.logger import log
 
-        class PackageInstaller(ClusterSetup):
-             def __init__(self, pkg_to_install):
-                  self.pkg_to_install = pkg_to_install
-                  log.debug('pkg_to_install = %s' % pkg_to_install)
-             def run(self, nodes, master, user, user_shell, volumes):
-                  for node in nodes:
-                       log.info("Installing %s on %s" % (self.pkg_to_install, node.alias))
-                       node.ssh.execute('apt-get -y install %s' % self.pkg_to_install)
+    class PackageInstaller(ClusterSetup):
+         def __init__(self, pkg_to_install):
+              self.pkg_to_install = pkg_to_install
+              log.debug('pkg_to_install = %s' % pkg_to_install)
+         def run(self, nodes, master, user, user_shell, volumes):
+              for node in nodes:
+                   log.info("Installing %s on %s" % (self.pkg_to_install, node.alias))
+                   node.ssh.execute('apt-get -y install %s' % self.pkg_to_install)
 
 The first thing you'll notice is that we've added an additional import
 statement to the code. This line imports the log object that you'll use to log
@@ -84,12 +86,12 @@ plugin above:
 
 .. code-block:: ini
 
-        [plugin pkginstaller]
-        setup_class = ubuntu.PackageInstaller
-        pkg_to_install = htop
+    [plugin pkginstaller]
+    setup_class = ubuntu.PackageInstaller
+    pkg_to_install = htop
 
 In this example, pkg_to_install is an argument to the plugin's constructor (ie
-__init__). A plugin can, of course, define multiple construtor arguments and
+__init__). A plugin can, of course, define multiple constructor arguments and
 you can configure these arguments in the config similar to *pkg_to_install* in
 the above example.
 
@@ -98,9 +100,9 @@ After you've defined a **[plugin]** section, you can now use this plugin in a
 
 .. code-block:: ini
 
-        [cluster smallcluster]
-        ....
-        plugins = pkginstaller
+    [cluster smallcluster]
+    ....
+    plugins = pkginstaller
 
 This setting instructs StarCluster to run the *pkginstaller* plugin after
 StarCluster's default setup routines. If you want to use more than one plugin
@@ -108,9 +110,9 @@ in a template you can do so by providing a list of plugins:
 
 .. code-block:: ini
 
-        [cluster smallcluster]
-        ....
-        plugins = pkginstaller, myplugin
+    [cluster smallcluster]
+    ....
+    plugins = pkginstaller, myplugin
 
 In the example above, starcluster would first run the *pkginstaller* plugin and
 then the *myplugin* plugin afterwards. In short, order matters when defining
@@ -118,35 +120,33 @@ plugins to use in a *cluster template*.
 
 Using the Development Shell
 ---------------------------
-To launch StarCluster's development shell, use the *shell* command
+To launch StarCluster's development shell, use the *shell* command::
 
-.. code-block:: none
+    $ starcluster shell
+    StarCluster - (http://web.mit.edu/starcluster) (v. 0.9999)
+    Software Tools for Academics and Researchers (STAR)
+    Please submit bug reports to starcluster@mit.edu
 
-        $ starcluster shell
-        StarCluster - (http://web.mit.edu/starcluster) (v. 0.9999)
-        Software Tools for Academics and Researchers (STAR)
-        Please submit bug reports to starcluster@mit.edu
+    >>> Importing module config
+    >>> Importing module plugins
+    >>> Importing module cli
+    >>> Importing module awsutils
+    >>> Importing module ssh
+    >>> Importing module utils
+    >>> Importing module static
+    >>> Importing module exception
+    >>> Importing module cluster
+    >>> Importing module node
+    >>> Importing module clustersetup
+    >>> Importing module image
+    >>> Importing module volume
+    >>> Importing module tests
+    >>> Importing module templates
+    >>> Importing module optcomplete
+    >>> Importing module boto
+    >>> Importing module paramiko
 
-        >>> Importing module config
-        >>> Importing module plugins
-        >>> Importing module cli
-        >>> Importing module awsutils
-        >>> Importing module ssh
-        >>> Importing module utils
-        >>> Importing module static
-        >>> Importing module exception
-        >>> Importing module cluster
-        >>> Importing module node
-        >>> Importing module clustersetup
-        >>> Importing module image
-        >>> Importing module volume
-        >>> Importing module tests
-        >>> Importing module templates
-        >>> Importing module optcomplete
-        >>> Importing module boto
-        >>> Importing module paramiko
-
-        [~]|1>
+    [~]|1>
 
 .. _IPython: http://ipython.scipy.org
 
@@ -154,46 +154,46 @@ This launches you into an IPython_ shell with all of the StarCluster modules
 automatically loaded. You'll also notice that you have the following variables
 available to you automagically:
 
-1. **cm** - manager object for clusters (*starcluster.cluster.ClusterManager*)
-2. **cfg** - object for retrieving values from the config file (*starcluster.config.StarClusterConfig*)
-3. **ec2** - object for interacting with EC2 (*starcluster.awsutils.EasyEC2*)
-4. **s3** - object for interacting with S3 (*starcluster.awsutils.EasyS3*)
+1. **cm** - manager object for clusters (``starcluster.cluster.ClusterManager``)
+2. **cfg** - object for retrieving values from the config file
+   (``starcluster.config.StarClusterConfig``)
+3. **ec2** - object for interacting with EC2 (``starcluster.awsutils.EasyEC2``)
+4. **s3** - object for interacting with S3 (``starcluster.awsutils.EasyS3``)
 
 Plugin Development Workflow
 ---------------------------
 The process of developing and testing a plugin generally goes something like
 this:
 
-1. Start a small test cluster (2-3 nodes):
+1. Start a small test cluster (2-3 nodes)::
 
-.. code-block:: none
-
-        $ starcluster start testcluster -s 2
+    $ starcluster start testcluster -s 2
 
 2. Install and configure the additional software/settings by hand and note the
-   steps involved
+   steps involved::
 
-.. code-block:: none
-
-        $ starcluster sshmaster testcluster
+    $ starcluster sshmaster testcluster
+    root@master $ apt-get install myapp
+    ...
 
 3. Write a first draft of your plugin that attempts to do these steps
    programmatically
 
 4. Add your plugin to the StarCluster configuration file
 
-5. Launch the development shell and test your plugin on your small test cluster
+5. Test your plugin on your small test cluster using the **runplugin** command::
 
-.. code-block:: none
+    $ starcluster runplugin myplugin testcluster
 
-        $ starcluster shell
-        [~]|1> cm.run_plugin('myplugin', 'testcluster')
+   Alternatively, you can also run your plugin using the development shell
+   (requires IPython_)::
+
+    $ starcluster shell
+    [~]> cm.run_plugin('myplugin', 'testcluster')
 
 6. Fix any coding errors in order to get the plugin to run from start to finish
-   using the run_plugin() method
+   using the **runplugin** command.
 
-7. Login to the master node and verify that the plugin was successful:
+7. Login to the master node and verify that the plugin was successful::
 
-.. code-block:: none
-
-        $ starcluster sshmaster testcluster
+    $ starcluster sshmaster testcluster

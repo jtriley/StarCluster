@@ -1,4 +1,9 @@
-#!/usr/bin/env python
 __all__ = [
     'ipcluster',
+    'hadoop',
+    'tmux',
+    'mycluster',
+    'pkginstaller',
+    'xvfb',
+    'mpich',
 ]

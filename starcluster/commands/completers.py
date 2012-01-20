@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-
-from starcluster import config
 from starcluster import optcomplete
 from starcluster.logger import log
 
@@ -11,15 +8,9 @@ class Completer(CmdBase):
     """
     Base class for all completer classes
     """
-    _cfg = None
-
-    def _prep_for_completion(self):
-        self._cfg = config.StarClusterConfig().load()
-        self._ec2 = self._cfg.get_easy_ec2()
 
     @property
     def completer(self):
-        self._prep_for_completion()
         return self._completer()
 
 
@@ -31,7 +22,7 @@ class ClusterCompleter(Completer):
         try:
             cm = self.cm
             clusters = cm.get_cluster_security_groups()
-            completion_list = [cm.get_tag_from_sg(sg.name) \
+            completion_list = [cm.get_tag_from_sg(sg.name)
                                for sg in clusters]
             return optcomplete.ListCompleter(completion_list)
         except Exception, e:
@@ -54,7 +45,7 @@ class NodeCompleter(Completer):
                     max_num_nodes = num_instances
             compl_list.extend(['master'])
             compl_list.extend([str(i) for i in range(0, num_instances)])
-            compl_list.extend(["node%03d" % i \
+            compl_list.extend(["node%03d" % i
                                for i in range(1, num_instances)])
             return optcomplete.ListCompleter(compl_list)
         except Exception, e:
@@ -70,6 +61,34 @@ class ImageCompleter(Completer):
         try:
             rimages = self.ec2.registered_images
             completion_list = [i.id for i in rimages]
+            return optcomplete.ListCompleter(completion_list)
+        except Exception, e:
+            log.error('something went wrong fix me: %s' % e)
+
+
+class EBSImageCompleter(Completer):
+    """
+    Returns a list of all registered EBS image ids as completion options
+    """
+    def _completer(self):
+        try:
+            rimages = self.ec2.registered_images
+            completion_list = [i.id for i in rimages if
+                               i.root_device_type == "ebs"]
+            return optcomplete.ListCompleter(completion_list)
+        except Exception, e:
+            log.error('something went wrong fix me: %s' % e)
+
+
+class S3ImageCompleter(Completer):
+    """
+    Returns a list of all registered S3 image ids as completion options
+    """
+    def _completer(self):
+        try:
+            rimages = self.ec2.registered_images
+            completion_list = [i.id for i in rimages if
+                               i.root_device_type == "instance-store"]
             return optcomplete.ListCompleter(completion_list)
         except Exception, e:
             log.error('something went wrong fix me: %s' % e)

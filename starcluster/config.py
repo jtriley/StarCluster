@@ -1,10 +1,11 @@
-#!/usr/bin/env python
 import os
 import urllib
+import StringIO
 import ConfigParser
 
 from starcluster import utils
 from starcluster import static
+from starcluster import cluster
 from starcluster import awsutils
 from starcluster import exception
 from starcluster.cluster import Cluster
@@ -33,6 +34,15 @@ def get_easy_ec2(config_file=None, cache=False):
     """
     cfg = get_config(config_file, cache)
     return cfg.get_easy_ec2()
+
+
+def get_cluster_manager(config_file=None, cache=False):
+    """
+    Factory for ClusterManager class that attempts to load AWS credentials from
+    the StarCluster config file. Returns a ClusterManager object if successful
+    """
+    cfg = get_config(config_file, cache)
+    return cfg.get_cluster_manager()
 
 
 def get_config(config_file=None, cache=False):
@@ -70,6 +80,8 @@ class StarClusterConfig(object):
 
     def __init__(self, config_file=None, cache=False):
         self.cfg_file = config_file or static.STARCLUSTER_CFG_FILE
+        self.cfg_file = os.path.expanduser(self.cfg_file)
+        self.cfg_file = os.path.expandvars(self.cfg_file)
         self.type_validators = {
             int: self._get_int,
             float: self._get_float,
@@ -103,19 +115,22 @@ class StarClusterConfig(object):
                 "error loading config from url %s\n%s" % (url, e))
 
     def _get_fp(self, cfg_file):
-        if not os.path.isdir(static.STARCLUSTER_CFG_DIR):
-            os.makedirs(static.STARCLUSTER_CFG_DIR)
         log.debug("Loading file: %s" % cfg_file)
         if os.path.exists(cfg_file):
             if not os.path.isfile(cfg_file):
                 raise exception.ConfigError(
                     'config %s exists but is not a regular file' % cfg_file)
         else:
-            raise exception.ConfigNotFound(
-                ("config file %s does not exist\n") %
-                cfg_file, cfg_file,
-            )
+            raise exception.ConfigNotFound("config file %s does not exist\n" %
+                                           cfg_file, cfg_file)
         return open(cfg_file)
+
+    def _get_cfg_fp(self, cfg_file=None):
+        cfg = cfg_file or self.cfg_file
+        if utils.is_url(cfg):
+            return self._get_urlfp(cfg)
+        else:
+            return self._get_fp(cfg)
 
     def _get_bool(self, config, section, option):
         try:
@@ -175,14 +190,35 @@ class StarClusterConfig(object):
         """
         Populates self._config with a new ConfigParser instance
         """
-        cfg = self.cfg_file
-        if utils.is_url(cfg):
-            cfg = self._get_urlfp(cfg)
-        else:
-            cfg = self._get_fp(cfg)
+        cfg = self._get_cfg_fp()
         try:
             cp = ConfigParser.ConfigParser()
             cp.readfp(cfg)
+            self._config = cp
+            try:
+                self.globals = self._load_section('global',
+                                                  self.global_settings)
+                includes = self.globals.get('include')
+                if not includes:
+                    return cp
+                mashup = StringIO.StringIO()
+                cfg = self._get_cfg_fp()
+                mashup.write(cfg.read() + '\n')
+                for include in includes:
+                    include = os.path.expanduser(include)
+                    include = os.path.expandvars(include)
+                    try:
+                        contents = self._get_cfg_fp(include).read()
+                        mashup.write(contents + '\n')
+                    except exception.ConfigNotFound:
+                        raise exception.ConfigError("include %s not found" %
+                                                    include)
+                mashup.seek(0)
+                cp = ConfigParser.ConfigParser()
+                cp.readfp(mashup)
+                self._config = cp
+            except exception.ConfigSectionMissing:
+                pass
             return cp
         except ConfigParser.MissingSectionHeaderError:
             raise exception.ConfigHasNoSections(cfg.name)
@@ -193,7 +229,7 @@ class StarClusterConfig(object):
         """
         Reloads the configuration file
         """
-        self._config = self.__load_config()
+        self.__load_config()
         return self.load()
 
     @property
@@ -262,7 +298,7 @@ class StarClusterConfig(object):
             default = settings[setting][2]
             if section_conf.get(setting) is None:
                 if DEBUG_CONFIG:
-                    log.debug('%s setting not specified. Defaulting to %s' % \
+                    log.debug('%s setting not specified. Defaulting to %s' %
                               (setting, default))
                 section_conf[setting] = default
 
@@ -275,7 +311,7 @@ class StarClusterConfig(object):
         step is a group of settings for a section in the form of a dictionary.
         A 'master' dictionary is updated with the settings at each step. This
         causes the next group of settings to override the previous, and so on.
-        The 'section_name' settings are at the top of the dep tree.
+        The 'section_name' settings are at the top of the dependency tree.
         """
         section = store[section_name]
         extends = section.get('extends')
@@ -294,12 +330,12 @@ class StarClusterConfig(object):
                     exts = ', '.join([self._get_section_name(x['__name__'])
                                       for x in extensions])
                     raise exception.ConfigError(
-                        ("Cyclical dependency between sections %s. " % exts) \
-                        + "Check your extends settings.")
+                        "Cyclical dependency between sections %s. "
+                        "Check your EXTENDS settings." % exts)
                 extensions.insert(0, section)
             except KeyError:
                 raise exception.ConfigError(
-                    "%s can't extend non-existent section %s" % \
+                    "%s can't extend non-existent section %s" %
                     (section_name, extends))
         transform = AttributeDict()
         for extension in extensions:
@@ -377,8 +413,8 @@ class StarClusterConfig(object):
             default_instance_type = instance_types[-1]
             if not default_instance_type in static.INSTANCE_TYPES:
                 raise exception.ConfigError(
-                    ("invalid node_instance_type specified: '%s'\n" +
-                     "must be one of: %s") %
+                    "invalid node_instance_type specified: '%s'\n"
+                    "must be one of: %s" %
                     (default_instance_type, choices_string))
         except IndexError:
             default_instance_type = None
@@ -387,15 +423,15 @@ class StarClusterConfig(object):
             type_spec = type_spec.split(':')
             if len(type_spec) > 3:
                 raise exception.ConfigError(
-                    "invalid node_instance_type item specified: %s" % \
+                    "invalid node_instance_type item specified: %s" %
                     type_spec)
             itype = type_spec[0]
             itype_image = None
             itype_num = 1
             if not itype in static.INSTANCE_TYPES:
                 raise exception.ConfigError(
-                    ("invalid type specified (%s) in node_instance_type " + \
-                     "item: '%s'\nmust be one of: %s") %
+                    "invalid type specified (%s) in node_instance_type "
+                    "item: '%s'\nmust be one of: %s" %
                     (itype, type_spec, choices_string))
             if len(type_spec) == 2:
                 itype, next_var = type_spec
@@ -412,8 +448,8 @@ class StarClusterConfig(object):
                 total_num_nodes += itype_num
             except (ValueError, TypeError):
                 raise exception.ConfigError(
-                    ("number of instances (%s) of type '%s' must " + \
-                     "be an integer > 1") % (itype_num, itype))
+                    "number of instances (%s) of type '%s' must "
+                    "be an integer > 1" % (itype_num, itype))
             itype_dic = AttributeDict(size=itype_num, image=itype_image,
                                       type=itype)
             itypes.append(itype_dic)
@@ -486,17 +522,17 @@ class StarClusterConfig(object):
     def _load_cluster_sections(self, cluster_sections):
         """
         Loads all cluster sections. Similar to _load_sections but also handles
-        populating specified keypair,volume,plugins,permissions,etc settings
+        populating specified keypair, volume, plugins, permissions, etc.
+        settings
         """
         clusters = cluster_sections
         cluster_store = AttributeDict()
-        for cluster in clusters:
-            name = self._get_section_name(cluster)
+        for cl in clusters:
+            name = self._get_section_name(cl)
             cluster_store[name] = AttributeDict()
-            self._load_settings(cluster, self.cluster_settings,
-                               cluster_store[name])
-        for cluster in clusters:
-            name = self._get_section_name(cluster)
+            self._load_settings(cl, self.cluster_settings, cluster_store[name])
+        for cl in clusters:
+            name = self._get_section_name(cl)
             self._load_extends_settings(name, cluster_store)
             self._load_defaults(self.cluster_settings, cluster_store[name])
             self._load_keypairs(cluster_store[name])
@@ -504,8 +540,8 @@ class StarClusterConfig(object):
             self._load_plugins(cluster_store[name])
             self._load_permissions(cluster_store[name])
             self._load_instance_types(cluster_store[name])
-            self._check_required(cluster, self.cluster_settings,
-                               cluster_store[name])
+            self._check_required(cl, self.cluster_settings,
+                                 cluster_store[name])
         return cluster_store
 
     def load(self):
@@ -598,8 +634,8 @@ class StarClusterConfig(object):
 
     def get_clusters(self):
         clusters = []
-        for cluster in self.clusters:
-            clusters.append(self.get_cluster_template(cluster))
+        for cl in self.clusters:
+            cl.append(self.get_cluster_template(cluster))
         return clusters
 
     def get_plugin(self, plugin):
@@ -639,6 +675,11 @@ class StarClusterConfig(object):
             return ec2
         except TypeError:
             raise exception.ConfigError("no aws credentials found")
+
+    def get_cluster_manager(self):
+        ec2 = self.get_easy_ec2()
+        return cluster.ClusterManager(self, ec2)
+
 
 if __name__ == "__main__":
     from pprint import pprint

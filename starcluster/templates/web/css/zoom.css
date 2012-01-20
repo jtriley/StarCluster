@@ -1,0 +1,16 @@
+#placeholder .button {
+    position: absolute;
+    cursor: pointer;
+}
+
+#placeholder div.button {
+    font-size: smaller;
+    color: #000;
+    background-color: #eee;
+    padding: 2px;
+}
+
+.message {
+    padding-left: 50px;
+    font-size: smaller;
+}

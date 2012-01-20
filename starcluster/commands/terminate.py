@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from starcluster import exception
 from starcluster.logger import log
 
@@ -30,11 +28,11 @@ class CmdTerminate(ClusterCompleter):
     def addopts(self, parser):
         parser.add_option("-c", "--confirm", dest="confirm",
                           action="store_true", default=False,
-                          help="Do not prompt for confirmation, " + \
+                          help="Do not prompt for confirmation, "
                           "just terminate the cluster")
 
     def terminate_cluster(self, cluster_name):
-        cl = self.cm.get_cluster(cluster_name)
+        cl = self.cm.get_cluster(cluster_name, require_keys=False)
         if not self.opts.confirm:
             action = 'Terminate'
             if cl.is_ebs_cluster():

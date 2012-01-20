@@ -1,17 +1,20 @@
-#!/usr/bin/env python
-
+import sys
 from completers import ClusterCompleter
 
 
 class CmdSshMaster(ClusterCompleter):
     """
-    sshmaster [options] <cluster>
+    sshmaster [options] <cluster> [<remote-command>]
 
     SSH to a cluster's master node
 
     Example:
 
         $ sshmaster mycluster
+
+    You can also execute commands without directly logging in:
+
+        $ starcluster sshmaster mycluster 'cat /etc/hosts'
     """
     names = ['sshmaster', 'sm']
 
@@ -23,5 +26,9 @@ class CmdSshMaster(ClusterCompleter):
     def execute(self, args):
         if not args:
             self.parser.error("please specify a cluster")
-        for arg in args:
-            self.cm.ssh_to_master(arg, user=self.opts.user)
+        clname = args[0]
+        cmd = ' '.join(args[1:])
+        retval = self.cm.ssh_to_master(clname, user=self.opts.user,
+                                       command=cmd)
+        if cmd and retval is not None:
+            sys.exit(retval)

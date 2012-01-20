@@ -29,6 +29,7 @@ def check_pep8(srcdir):
     print(">>> Running pep8...")
     clean = True
     pep8.process_options([''])
+    pep8.options.repeat=True
     for pyfile in findpy(srcdir):
         if pep8.Checker(pyfile).check_all() != 0:
             clean = False

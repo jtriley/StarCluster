@@ -1,6 +1,6 @@
 Contributing to StarCluster
 ===========================
-.. note:: 
+.. note::
     **Prerequisites**: You need to `install git
     <http://help.github.com/set-up-git-redirect>`_ before following these
     instructions. You should also familiarize yourself with the basic use and
@@ -11,12 +11,12 @@ Contributing to StarCluster
 Overview
 --------
 
-Sign-up for a github acount
----------------------------
-StarCluster's source code is stored on `github.com <https://github.com>`_. It is
-preferred that you use github.com to submit patches and enhancements via `pull
-requests <http://help.github.com/pull-requests/>`_. The first step is to sign
-up for a `github account <https://github.com>`_.
+Sign-up for a github account
+----------------------------
+StarCluster's source code is stored on `github.com <https://github.com>`_. It
+is preferred that you use github.com to submit patches and enhancements via
+`pull requests <http://help.github.com/pull-requests/>`_. The first step is to
+sign up for a `github account <https://github.com>`_.
 
 Fork the StarCluster project
 ----------------------------
@@ -27,7 +27,7 @@ navigate to the `StarCluster repository
 <https://github.com/jtriley/StarCluster>`_. Once there click on the **Fork**
 button towards the top right of the project page:
 
-.. image:: _static/forkproject.png 
+.. image:: _static/forkproject.png
 
 This will create your own copy of the StarCluster repository under your github
 account that you can modify and commit to. Having your own copy allows you to
@@ -39,13 +39,15 @@ Setup a virtualenv for StarCluster development
 When developing a Python project it's useful to work inside an isolated Python
 environment that lives inside your *$HOME* folder.  This helps to avoid
 dependency version mismatches between projects and also removes the need to
-obtain root priviliges to install Python modules/packages for development.
+obtain root privileges to install Python modules/packages for development.
 
 Fortunately there exists a couple of projects that make creating and managing
 isolated Python environments quick and easy:
 
-* `virtualenv <http://pypi.python.org/pypi/virtualenv>`_ - Virtual Python Environment builder
-* `virtualenvwrapper <http://pypi.python.org/pypi/virtualenvwrapper>`_ - Shell enhancements for virtualenv
+* `virtualenv <http://pypi.python.org/pypi/virtualenv>`_ - Virtual Python
+  Environment builder
+* `virtualenvwrapper <http://pypi.python.org/pypi/virtualenvwrapper>`_ - Shell
+  enhancements for virtualenv
 
 To get started you first need to install and configure virtualenv and
 virtualenvwrapper:
@@ -54,13 +56,14 @@ virtualenvwrapper:
     You need *root* access to run the *sudo* commands below.
 
 .. code-block::  ini
-        
+
     $ sudo easy_install virtualenv
     $ sudo easy_install virtualenvwrapper
-    $ mkdir $HOME/.virtualenvs 
+    $ mkdir $HOME/.virtualenvs
     $ echo "source /usr/local/bin/virtualenvwrapper.sh" >> $HOME/.bashrc
 
-*If* you're using `zsh <http://www.zsh.org>`_ then the last line should be changed to:
+*If* you're using `zsh <http://www.zsh.org>`_ then the last line should be
+changed to:
 
 .. code-block:: ini
 
@@ -87,14 +90,14 @@ virtualenvwrapper. The next step is to create a new virtual environment called
     (starcluster)$ echo $PATH
     /home/user/.virtualenvs/starcluster/bin:/usr/local/bin:/usr/bin:/bin:/opt/bin
 
-Running this command will create a new folder *$HOME/.virtualenvs/starcluster* containing your
-new isolated Python environment for StarCluster. This command will also modify
-your current shell's environment to work with the StarCluster virtual
-environment. As you can see from the *echo $PATH* command above your PATH
-environment variable has been modified to include the virtual environment's
-*bin* directory at the front of the path. This means when you type *python* or
-other Python-related commands (e.g. easy_install, pip, etc) you will be using
-the virtual environment's isolated Python installation.
+Running this command will create a new folder *$HOME/.virtualenvs/starcluster*
+containing your new isolated Python environment for StarCluster. This command
+will also modify your current shell's environment to work with the StarCluster
+virtual environment. As you can see from the *echo $PATH* command above your
+PATH environment variable has been modified to include the virtual
+environment's *bin* directory at the front of the path. This means when you
+type *python* or other Python-related commands (e.g. easy_install, pip, etc.)
+you will be using the virtual environment's isolated Python installation.
 
 To see a list of your virtual environments:
 
@@ -124,8 +127,8 @@ To *de-activate* (or leave) a virtual environment:
 
 Installing packages within your virtual environment is the same as outside the
 virtual environment except you don't need *root* privileges. You can use either
-*easy_install* or *pip* to install Python packages/modules. Since IPython_
-is required to use StarCluster's development shell let's install IPython_ now to
+*easy_install* or *pip* to install Python packages/modules. Since IPython_ is
+required to use StarCluster's development shell let's install IPython_ now to
 test this out:
 
 
@@ -145,7 +148,8 @@ using the following command:
 
 Clone your fork
 ---------------
-Now that you have a working virtual environment for StarCluster it's time to check out your fork of StarCluster:
+Now that you have a working virtual environment for StarCluster it's time to
+check out your fork of StarCluster:
 
 .. note::
     Replace **<user>** in the *git clone* command below with your github username.
@@ -167,9 +171,9 @@ command:
     (starcluster)$ cd $VIRTUAL_ENV/starcluster
     (starcluster)$ python setup.py develop
 
-The *python setup.py develop* command will install StarCluster into the
-virtual environment's site-packages in such a way that the sources
-are *linked* rather than copied to the site-packages directory.
+The *python setup.py develop* command will install StarCluster into the virtual
+environment's site-packages in such a way that the sources are *linked* rather
+than copied to the site-packages directory.
 
 .. note::
 

@@ -15,8 +15,10 @@
     	{%- block rootrellink %}
     	<li><a href="{{ pathto(master_doc) }}">{{ theme_short_title|e }}</a>{{ reldelim2 }}</li>
         <li><a href="{{ pathto('installation') }}">Install</a>{{ reldelim2 }}</li>
+        <li><a href="{{ pathto('quickstart') }}">Quick-Start</a>{{ reldelim2 }}</li>
         <li><a href="{{ pathto('manual/configuration') }}">Config</a>{{ reldelim2 }}</li>
-        <li><a href="{{ pathto('examples') }}">Examples</a>{{ reldelim2 }}</li>
+        <li><a href="{{ pathto('manual/index') }}">Manual</a>{{ reldelim2 }}</li>
+        <li><a href="{{ pathto('contribute') }}">Contribute</a>{{ reldelim2 }}</li>
         <li><a href="{{ pathto('support') }}">Support</a></li>
     	{%- endblock %}
     	{%- for parent in parents %}
@@ -32,32 +34,24 @@
   <h1>{{ project }} documentation (v. {{release}})</h1>
 
   <p>
-  Welcome to StarCluster's main documentation. StarCluster is a utility for creating
-  and managing general purpose computing clusters hosted on Amazon's Elastic
-  Compute Cloud (EC2). StarCluster utilizes Amazon's EC2 web service to create and
-  destroy clusters of Linux virtual machines on demand.
+  StarCluster is a utility for creating and managing distributed computing
+  clusters hosted on <a href="http://aws.amazon.com/ec2" title="Amazon EC2">
+  Amazon's Elastic Compute Cloud (EC2)</a>. StarCluster utilizes Amazon's EC2
+  web service to create and destroy clusters of Linux virtual machines on
+  demand.
+  </p>
 
-  StarCluster aims at being simple, hackable, and extensible.</p>
+  <p>
+  StarCluster aims to be an easy-to-use and extensible cluster computing
+  toolkit for the cloud. The sections below are divided into user and developer
+  documentation.
+  </p>
 
-  <p>StarCluster is under constant development. The main implemented features are:</p>
-  <ul>
-    <li><b>Easily Create and Configure Clusters on EC2</b> - Launch multiple clusters of 1-100 nodes using a simple <i>start</i> command</li>
-    <li><b>Automated Configuration</b> - Configures users, NFS shares, Sun Grid Engine queuing system, password-less ssh between machines, etc</b></li>
-    <li><b>Attach and NFS Share EBS Volumes</b> - Support for attaching and NFS-sharing both partitioned and unpartitioned Amazon Elastic Block Storage (EBS) volumes for persistent storage across a cluster</li>
-    <li><b>Publicly available Amazon Machine Images (AMI)</b> - Configured for scientific computing. Includes OpenMPI, ATLAS, Lapack, NumPy, SciPy, and other useful libraries</li>
-    <li><b>User-contributed Plugins</b> - Plugins allow users to perform additional setup routines on the cluster after StarCluster's defaults. Plugins are called when adding/removing a node as well as when restarting/shutting down the entire cluster</li>
-    <li><b>EBS-Backed Clusters</b> - Support for starting/stopping EBS-backed clusters on EC2</li>
-    <li><b>Cluster Compute/GPU Instances</b> - Support for the new Cluster Compute and GPU Cluster Compute instance types</li>
-    <li><b>Add/Remove Nodes</b> - Support for adding/removing nodes to a running cluster</li>
-    <li><b>Restart Clusters</b> - Reboot and reconfigure a running cluster</li>
-    <li><b>Elastic Load Balancing</b> - Shrink and expand clusters based on Sun Grid Engine queue statistics</li>
-    <li><b>Multiple Instance Types</b> - Specify multiple instance types on a per-node basis.</li>
-  </ul>
-  <h2>User Sections</h2>
+  <h2>User Documentation</h2>
    <table class="contentstable" align="center">
       <tr valign="top"><td width="50%">
       <p class="biglink">
-         <a class="biglink" href="{{ pathto('manual/getting_started') }}">
+         <a class="biglink" href="{{ pathto('overview') }}">
             Overview</a><br/>
          <span class="linkdescr">
             Introduction to {{project}}.
@@ -67,7 +61,7 @@
          <a class="biglink" href="{{ pathto('installation') }}">
             Install instructions</a><br/>
          <span class="linkdescr">
-     How to install StarCluster.
+            How to install StarCluster.
          </span></p>
 
       <p class="biglink">
@@ -77,38 +71,45 @@
             A Quick-Start tutorial for StarCluster newcomers.
          </span></p>
 
-   </td><td width="50%">
-
-     <p class="biglink">
-         <a class="biglink" href="{{ pathto('guides/index') }}">
-            Guides</a><br/>
+      <p class="biglink">
+         <a class="biglink" href="{{ pathto('support') }}">
+            Support</a><br/>
          <span class="linkdescr">
-     Task oriented guides
+            Reporting bugs, issues, questions, feature requests, etc.
          </span></p>
+
+   </td><td width="50%">
 
      <p class="biglink">
          <a class="biglink" href="{{ pathto('manual/index') }}">
             User Manual</a><br/>
          <span class="linkdescr">
-     Detailed description of the command line interface.
+            Complete user manual for StarCluster
+         </span></p>
+
+     <p class="biglink">
+         <a class="biglink" href="{{ pathto('guides/index') }}">
+            Guides</a><br/>
+         <span class="linkdescr">
+            Task-oriented guides
          </span></p>
 
      <p class="biglink">
          <a class="biglink" href="{{ pathto('plugins/index') }}">
             Plugins</a><br/>
          <span class="linkdescr">
-     Plugin documentation
+            Plugin-specific documentation
          </span></p>
 
      <p class="biglink">
          <a class="biglink" href="{{ pathto('faq') }}">
             FAQ</a><br/>
          <span class="linkdescr">
-     Frequently Asked Questions
+            Frequently Asked Questions
          </span></p>
    </td></tr></table>
 
-  <h2>StarCluster development</h2>
+  <h2>StarCluster Development</h2>
    <table class="contentstable" align="center">
       <tr valign="top"><td width="50%">
       <p class="biglink">
@@ -122,14 +123,14 @@
          <a class="biglink" href="{{ pathto('hacking') }}">
             Hacking</a><br/>
          <span class="linkdescr">
-             Design rationales, source organization.
+            Design rationales, source organization.
          </span></p>
    </td><td width="50%">
      <p class="biglink">
          <a class="biglink" href="{{ pathto('features') }}">
             Features</a><br/>
          <span class="linkdescr">
-             Current and planned features.
+            Current and planned features.
          </span></p>
 
       <p class="biglink">

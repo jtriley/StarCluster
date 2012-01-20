@@ -1,6 +1,6 @@
-#!/usr/bin/env python
-
+import sys
 import time
+import warnings
 
 from starcluster import exception
 from starcluster.logger import log
@@ -44,13 +44,17 @@ class CmdS3Image(InstanceCompleter):
         parser.add_option(
             "-r", "--remove-image-files", dest="remove_image_files",
             action="store_true", default=False,
-            help="Remove generated image files on the " + \
+            help="Remove generated image files on the "
             "instance after registering (for S3 AMIs)")
 
     def cancel_command(self, signum, frame):
         raise exception.CancelledS3ImageCreation(self.bucket, self.image_name)
 
     def execute(self, args):
+        if "createimage" in sys.argv:
+            warnings.warn("createimage is deprecated and will go away in the "
+                          "next release. please use the s3image/ebsimage "
+                          "commands instead", DeprecationWarning)
         if len(args) != 3:
             self.parser.error(
                 'you must specify an instance-id, image name, and bucket')

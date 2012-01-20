@@ -8,11 +8,14 @@ Contents:
    overview
    installation
    quickstart
-   guides/index
    manual/index
+   guides/index
    plugins/index
    faq
+   support
    contribute
    hacking
    features
    TODO
+   changelog
+   license

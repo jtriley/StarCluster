@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 default_config = {
     'default': 'smallcluster',
     'enable_experimental': 'False',
@@ -21,6 +19,12 @@ default_config = {
     'v3_device': '/dev/sdl',
     'v3_partition': 1,
     'v3_mount_path': '/volume3',
+    'v4_id': 'vol-c666666',
+    'v4_partition': 1,
+    'v4_mount_path': '/volume4',
+    'v5_id': 'vol-c555555',
+    'v5_partition': 1,
+    'v5_mount_path': '/volume5',
     'p1_class': 'starcluster.tests.mytestplugin.SetupClass',
     'p1_param1': 23,
     'p1_param2': 'skidoo',
@@ -102,6 +106,16 @@ VOLUME_ID = %(v3_id)s
 DEVICE = %(v3_device)s
 PARTITION = %(v3_partition)s
 MOUNT_PATH = %(v3_mount_path)s
+
+[volume v4]
+VOLUME_ID = %(v4_id)s
+PARTITION = %(v4_partition)s
+MOUNT_PATH = %(v4_mount_path)s
+
+[volume v5]
+VOLUME_ID = %(v5_id)s
+PARTITION = %(v5_partition)s
+MOUNT_PATH = %(v5_mount_path)s
 
 [plugin p1]
 SETUP_CLASS = %(p1_class)s

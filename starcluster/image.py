@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import os
 import time
 import string
@@ -105,10 +104,9 @@ class S3ImageCreator(ImageCreator):
 
     @print_timing
     def create_image(self):
-        log.info("Creating bucket %s" % self.bucket)
-        self.ec2.s3.create_bucket(self.bucket)
         log.info("Checking for EC2 API tools...")
         self.host_ssh.check_required(['ec2-upload-bundle', 'ec2-bundle-vol'])
+        self.ec2.s3.get_or_create_bucket(self.bucket)
         self._remove_image_files()
         self._bundle_image()
         self._upload_image()
@@ -139,10 +137,9 @@ class S3ImageCreator(ImageCreator):
         self._transfer_pem_files()
         self.clean_private_data()
         log.info('Creating the bundled image: (please be patient)')
-        conn.execute('ec2-bundle-vol -d /mnt -k /mnt/%(private_key)s \
--c /mnt/%(cert)s -p %(prefix)s -u %(userid)s -r %(arch)s -e /root/.ssh' % \
-                     config_dict,
-                     silent=False)
+        conn.execute('ec2-bundle-vol -d /mnt -k /mnt/%(private_key)s '
+                     '-c /mnt/%(cert)s -p %(prefix)s -u %(userid)s '
+                     '-r %(arch)s -e /root/.ssh' % config_dict, silent=False)
         self._cleanup_pem_files()
 
     @print_timing
@@ -150,9 +147,9 @@ class S3ImageCreator(ImageCreator):
         log.info('Uploading bundled image: (please be patient)')
         conn = self.host_ssh
         config_dict = self.config_dict
-        conn.execute('ec2-upload-bundle -b %(bucket)s \
--m /mnt/%(prefix)s.manifest.xml -a %(access_key)s -s %(secret_key)s' % \
-                     config_dict, silent=False)
+        conn.execute('ec2-upload-bundle -b %(bucket)s '
+                     '-m /mnt/%(prefix)s.manifest.xml -a %(access_key)s '
+                     '-s %(secret_key)s' % config_dict, silent=False)
 
     def _cleanup(self):
         #just in case...
@@ -213,7 +210,7 @@ class EBSImageCreator(ImageCreator):
                 return self._create_image_from_ebs(size)
             return self._create_image_from_instance_store(size)
         except:
-            log.error("Error occured while creating image")
+            log.error("Error occurred while creating image")
             if self._snap:
                 log.error("Removing generated snapshot '%s'" % self._snap)
                 self._snap.delete()

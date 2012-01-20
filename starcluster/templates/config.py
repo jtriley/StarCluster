@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 from starcluster import static
 
-config_template = """
+config_template = """\
 ####################################
 ## StarCluster Configuration File ##
 ####################################
@@ -15,6 +14,8 @@ DEFAULT_TEMPLATE=smallcluster
 ENABLE_EXPERIMENTAL=False
 # number of seconds to wait when polling instances (default: 30s)
 #REFRESH_INTERVAL=15
+# specify a web browser to launch when viewing spot history plots
+#WEB_BROWSER=chromium
 
 [aws info]
 # This is the AWS credentials section.
@@ -32,6 +33,11 @@ AWS_USER_ID= #your userid
 # Uncomment these settings when creating an instance-store (S3) AMI (OPTIONAL)
 #EC2_CERT = /path/to/your/cert-asdf0as9df092039asdfi02089.pem
 #EC2_PRIVATE_KEY = /path/to/your/pk-asdfasd890f200909.pem
+# Uncomment these settings to use a proxy host when connecting to AWS
+#aws_proxy = your.proxyhost.com
+#aws_proxy_port = 8080
+#aws_proxy_user = yourproxyuser
+#aws_proxy_pass = yourproxypass
 
 # Sections starting with "key" define your keypairs
 # (see the EC2 getting started guide tutorial on using ec2-add-keypair to learn
@@ -60,9 +66,11 @@ CLUSTER_USER = sgeadmin
 # (options: %(shells)s)
 CLUSTER_SHELL = bash
 
-# AMI for cluster nodes.
+# AMI to use for cluster nodes. These AMIs are for the us-east-1 region.
+# Use the 'listpublic' command to list StarCluster AMIs in other regions
 # The base i386 StarCluster AMI is %(x86_ami)s
 # The base x86_64 StarCluster AMI is %(x86_64_ami)s
+# The base HVM StarCluster AMI is %(hvm_ami)s
 NODE_IMAGE_ID = %(x86_ami)s
 # instance type for all cluster nodes
 # (options: %(instance_types)s)
@@ -93,6 +101,15 @@ NODE_INSTANCE_TYPE = m1.small
 # list of plugins to load after StarCluster's default setup routines (OPTIONAL)
 # see "Configuring StarCluster Plugins" below on how to define plugin sections
 #PLUGINS = myplugin, myplugin2
+
+# list of permissions (or firewall rules) to apply to the cluster's security
+# group (OPTIONAL).
+#PERMISSIONS = ssh, http
+
+# Uncomment to always create a spot cluster when creating a new cluster from
+# this template. The following example will place a $0.50 bid for each spot
+# request.
+#SPOT_BID = 0.50
 
 ###########################################
 ## Defining Additional Cluster Templates ##
@@ -176,13 +193,32 @@ NODE_INSTANCE_TYPE = m1.small
 # SOME_PARAM_FOR_MY_PLUGIN = 1
 # SOME_OTHER_PARAM = 2
 
+############################################
+## Configuring Security Group Permissions ##
+############################################
+
+# [permission ssh]
+# protocol can be: tcp, udp, or icmp
+# protocol = tcp
+# from_port = 22
+# to_port = 22
+# cidr_ip = <your_ip>/32
+
+# example for opening port 80 on the cluster to a specific IP range
+# [permission http]
+# protocol = tcp
+# from_port = 80
+# to_port = 80
+# cidr_ip = 18.0.0.0/24
 """ % {
     'x86_ami': static.BASE_AMI_32,
     'x86_64_ami': static.BASE_AMI_64,
+    'hvm_ami': static.BASE_AMI_HVM,
     'instance_types': ', '.join(static.INSTANCE_TYPES.keys()),
     'shells': ', '.join(static.AVAILABLE_SHELLS.keys()),
 }
 
 DASHES = '-' * 10
-copy_paste_template = DASHES + ' COPY BELOW THIS LINE ' + DASHES + '\n' + \
-        config_template + '\n' + DASHES + ' END COPY ' + DASHES + '\n'
+copy_below = ' '.join([DASHES, 'COPY BELOW THIS LINE', DASHES])
+end_copy = ' '.join([DASHES, 'END COPY', DASHES])
+copy_paste_template = '\n'.join([copy_below, config_template, end_copy]) + '\n'

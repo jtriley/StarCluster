@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-
-
 class LoadBalancer(object):
     """
     Base class for all load balancers

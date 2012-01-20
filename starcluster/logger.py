@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 StarCluster logging module
 """
@@ -7,6 +6,7 @@ import types
 import logging
 import logging.handlers
 import textwrap
+import StringIO
 
 from starcluster import static
 
@@ -19,8 +19,10 @@ FATAL = logging.FATAL
 
 RAW_FORMAT = "%(message)s\n"
 INFO_FORMAT = " ".join(['>>>', "%(message)s\n"])
-DEBUG_FORMAT = "%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n"
-DEBUG_FORMAT_PID = ("PID: %s " % str(static.PID)) + DEBUG_FORMAT
+_DEBUG_FORMAT = "%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n"
+DEBUG_FORMAT = "%(asctime)s " + _DEBUG_FORMAT
+DEBUG_FORMAT_PID = ' '.join(["%(asctime)s", "PID: %s" % str(static.PID),
+                             _DEBUG_FORMAT])
 DEFAULT_CONSOLE_FORMAT = "%(levelname)s - %(message)s\n"
 ERROR_CONSOLE_FORMAT = " ".join(['!!!', DEFAULT_CONSOLE_FORMAT])
 WARN_CONSOLE_FORMAT = " ".join(['***', DEFAULT_CONSOLE_FORMAT])
@@ -100,6 +102,7 @@ def get_starcluster_logger():
 
 log = get_starcluster_logger()
 console = ConsoleLogger()
+session = logging.StreamHandler(StringIO.StringIO())
 
 
 def configure_sc_logging(use_syslog=False):
@@ -108,8 +111,8 @@ def configure_sc_logging(use_syslog=False):
 
     By default StarCluster's logger has no formatters and a NullHandler so that
     other developers using StarCluster as a library can configure logging as
-    they see fit. This method is used in StarCluster's application code (ie the
-    'starcluster' command) to toggle StarCluster's application specific
+    they see fit. This method is used in StarCluster's application code (i.e.
+    the 'starcluster' command) to toggle StarCluster's application specific
     formatters/handlers
 
     use_syslog - enable logging all messages to syslog. currently only works if
@@ -117,6 +120,7 @@ def configure_sc_logging(use_syslog=False):
     """
     log.setLevel(logging.DEBUG)
     formatter = logging.Formatter(DEBUG_FORMAT_PID.rstrip())
+    static.create_sc_config_dirs()
     rfh = logging.handlers.RotatingFileHandler(static.DEBUG_FILE,
                                                maxBytes=1048576,
                                                backupCount=2)
@@ -125,6 +129,9 @@ def configure_sc_logging(use_syslog=False):
     log.addHandler(rfh)
     console.setLevel(logging.INFO)
     log.addHandler(console)
+    session.setLevel(logging.DEBUG)
+    session.setFormatter(formatter)
+    log.addHandler(session)
     syslog_device = '/dev/log'
     if use_syslog and os.path.exists(syslog_device):
         log.debug("Logging to %s" % syslog_device)
@@ -140,12 +147,13 @@ def configure_paramiko_logging():
     """
     l = logging.getLogger("paramiko")
     l.setLevel(logging.DEBUG)
+    static.create_sc_config_dirs()
     lh = logging.handlers.RotatingFileHandler(static.SSH_DEBUG_FILE,
                                               maxBytes=1048576,
                                               backupCount=2)
     lh.setLevel(logging.DEBUG)
-    format = (('PID: %s ' % str(static.PID)) + \
-              '%(levelname)-.3s [%(asctime)s.%(msecs)03d] ' + \
+    format = (('PID: %s ' % str(static.PID)) +
+              '%(levelname)-.3s [%(asctime)s.%(msecs)03d] '
               'thr=%(_threadid)-3d %(name)s: %(message)s')
     date_format = '%Y%m%d-%H:%M:%S'
     lh.setFormatter(logging.Formatter(format, date_format))
@@ -158,12 +166,13 @@ def configure_boto_logging():
     """
     l = logging.getLogger("boto")
     l.setLevel(logging.DEBUG)
+    static.create_sc_config_dirs()
     lh = logging.handlers.RotatingFileHandler(static.AWS_DEBUG_FILE,
                                               maxBytes=1048576,
                                               backupCount=2)
     lh.setLevel(logging.DEBUG)
-    format = (('PID: %s ' % str(static.PID)) + \
-              '%(levelname)-.3s [%(asctime)s.%(msecs)03d] ' + \
+    format = (('PID: %s ' % str(static.PID)) +
+              '%(levelname)-.3s [%(asctime)s.%(msecs)03d] '
               '%(name)s: %(message)s')
     date_format = '%Y%m%d-%H:%M:%S'
     lh.setFormatter(logging.Formatter(format, date_format))
