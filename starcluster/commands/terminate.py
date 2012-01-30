@@ -45,7 +45,8 @@ class CmdTerminate(ClusterCompleter):
         cl.terminate_cluster()
 
     def terminate_manually(self, cluster_name):
-        cl = self.cm.get_cluster(cluster_name, load_receipt=False)
+        cl = self.cm.get_cluster(cluster_name, load_receipt=False,
+                                 require_keys=False)
         if not self.opts.confirm:
             resp = raw_input("Terminate cluster %s (y/n)? " % cluster_name)
             if resp not in ['y', 'Y', 'yes']:
