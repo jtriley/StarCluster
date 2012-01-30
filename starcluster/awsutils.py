@@ -561,14 +561,15 @@ class EasyEC2(EasyAWS):
         print
 
     def list_all_instances(self, show_terminated=False):
+        tstates = ['shutting-down', 'terminated']
         insts = self.get_all_instances()
+        if not show_terminated:
+            insts = [i for i in insts if i.state not in tstates]
         if not insts:
             log.info("No instances found")
             return
-        tstates = ['shutting-down', 'terminated']
         for instance in insts:
-            if not instance.state in tstates or show_terminated:
-                self.show_instance(instance)
+            self.show_instance(instance)
 
     def list_images(self, images, sort_key=None, reverse=False):
         def get_key(obj):
