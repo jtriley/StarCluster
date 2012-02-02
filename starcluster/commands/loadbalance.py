@@ -3,6 +3,8 @@ from starcluster.balancers import sge
 
 from completers import ClusterCompleter
 
+##changes
+#   added A, I, z,b, q , h and S options
 
 class CmdLoadBalance(ClusterCompleter):
     """
@@ -77,6 +79,29 @@ class CmdLoadBalance(ClusterCompleter):
                           action="store_true", default=None,
                           help="Allow the master to be killed when "
                           "the queue is empty (EXPERIMENTAL).")
+        parser.add_option("-A", "--image-id", type="string", dest="image_id",
+                          action="store_true", default=None,
+                          help="AMI image id to use when adding nodes")
+        parser.add_option("-I", "--instance-type", dest="instance_type",
+                          action="store_true", type="string", default=None,
+                          help="Instance type to use when adding nodes")
+        parser.add_option("-z", "--availability-zone", dest="zone",
+                          action="store_true", type="string", default=None,
+                          help="Availability zone to use when adding nodes")
+        parser.add_option("-b", "--bid", dest="spot_bid",
+                          action="store_true", type="float", default=None,
+                          help="Spot bid to use when adding nodes")
+        parser.add_option("-q", "--queue-name", dest="queue_name",
+                          action="store_true", type="string", default='all.q',
+                          help="queue to balance (defaults to all.q)")
+        parser.add_option("-h", "--host-group", dest="host_group",
+                          action="store_true", type="string", default=None,
+                          help="host group to add nodes to")  
+        parser.add_option("-S", "--slots", dest="slots",
+                          action="store_true", type="int", default=None,
+                          help="number of slots to declare when adding nodes "
+                          "(defaults to number of cpus on machine)")  
+            
 
     def execute(self, args):
         if not self.cfg.globals.enable_experimental:

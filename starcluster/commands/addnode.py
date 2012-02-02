@@ -1,11 +1,13 @@
 from completers import ClusterCompleter
 
+##changes
+#   added image_id, instance_type, availability zone, and spot_bid options
 
 class CmdAddNode(ClusterCompleter):
     """
     addnode [options] <cluster_tag>
 
-    Add a node to a running cluster
+    Add node(s) to a running cluster
 
     Examples:
 
@@ -56,13 +58,30 @@ class CmdAddNode(ClusterCompleter):
                           action="append", type="string", default=[],
                           help="alias to give to the new node "
                           "(e.g. node007, mynode, etc.)")
-        parser.add_option("-n", "--num-nodes", dest="num_nodes",
-                          action="store", type="int", default=1,
-                          help="number of new nodes to launch")
         parser.add_option("-x", "--no-create", dest="no_create",
                           action="store_true", default=False,
                           help="do not launch new EC2 instances when "
                           "adding nodes (use existing instances instead)")
+        parser.add_option("-i", "--image-id", dest="image_id",
+                          action="store", type="string", default=None,
+                          help=("image id for new node(s) " + \
+                                "(e.g. ami-12345678)."))                                
+        parser.add_option("-I", "--instance-type", dest="instance_type",
+                          action="store", type="string", default=None,
+                          help=("instance type for new node(s) " + \
+                                "(e.g. m1.large, cg1.4xlarge, etc)"))  
+        parser.add_option("-z", "--availability-zone", dest="zone",
+                          action="store", type="string", default=None,
+                          help=("availability zone for new node(s) " + \
+                                "(e.g. us-east-1)"))                                  
+        parser.add_option("-b", "--bid", dest="spot_bid",
+                          action="store", type="float", default=None,
+                          help=("spot bid for new node(s), in dollars per hour" + \
+                                "(i.e. .24 means 24 cents/hr)"))  
+        parser.add_option("-n", "--num-nodes", dest="num_nodes",
+                          action="store", type="int", default=1,
+                          help=("number of nodes to add (defaults to 1)"))  
+
 
     def _get_duplicate(self, lst):
         d = {}
@@ -76,6 +95,7 @@ class CmdAddNode(ClusterCompleter):
         if len(args) != 1:
             self.parser.error("please specify a cluster <cluster_tag>")
         tag = self.tag = args[0]
+
         aliases = []
         for alias in self.opts.alias:
             aliases.extend(alias.split(','))
@@ -95,4 +115,8 @@ class CmdAddNode(ClusterCompleter):
             self.parser.error("you must specify one or more node aliases via "
                               "the -a option when using -x")
         self.cm.add_nodes(tag, num_nodes, aliases=aliases,
+                          image_id = self.opts.image_id,
+                          instance_type = self.opts.instance_type,
+                          zone = self.opts.zone,
+                          spot_bid = self.opts.spot_bid,
                           no_create=self.opts.no_create)

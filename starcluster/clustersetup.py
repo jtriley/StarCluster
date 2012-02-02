@@ -8,7 +8,10 @@ from starcluster import threadpool
 from starcluster.utils import print_timing
 from starcluster.templates import sge
 from starcluster.logger import log
+from starcluster import sge_utils
 
+##changes
+#    replaced _remove_node_from_sge contents with more general sge_utils function
 
 class ClusterSetup(object):
     """
@@ -441,51 +444,7 @@ class DefaultClusterSetup(ClusterSetup):
             n.remove_from_known_hosts(self._user, [node])
 
     def _remove_from_sge(self, node):
-        master = self._master
-        master.ssh.execute('qconf -shgrp @allhosts > /tmp/allhosts',
-                           source_profile=True)
-        hgrp_file = master.ssh.remote_file('/tmp/allhosts', 'r')
-        contents = hgrp_file.read().splitlines()
-        hgrp_file.close()
-        c = []
-        for line in contents:
-            line = line.replace(node.alias, '')
-            c.append(line)
-        hgrp_file = master.ssh.remote_file('/tmp/allhosts_new', 'w')
-        hgrp_file.writelines('\n'.join(c))
-        hgrp_file.close()
-        master.ssh.execute('qconf -Mhgrp /tmp/allhosts_new',
-                           source_profile=True)
-        master.ssh.execute('qconf -sq all.q > /tmp/allq', source_profile=True)
-        allq_file = master.ssh.remote_file('/tmp/allq', 'r')
-        contents = allq_file.read()
-        allq_file.close()
-        c = [l.strip() for l in contents.splitlines()]
-        s = []
-        allq = []
-        for l in c:
-            if l.startswith('slots') or l.startswith('['):
-                s.append(l)
-            else:
-                allq.append(l)
-        regex = re.compile(r"\[%s=\d+\],?" % node.alias)
-        slots = []
-        for line in s:
-            line = line.replace('\\', '')
-            slots.append(regex.sub('', line))
-        allq.append(''.join(slots))
-        f = master.ssh.remote_file('/tmp/allq_new', 'w')
-        allq[-1] = allq[-1].strip()
-        if allq[-1].endswith(','):
-            allq[-1] = allq[-1][:-1]
-        f.write('\n'.join(allq))
-        f.close()
-        master.ssh.execute('qconf -Mq /tmp/allq_new', source_profile=True)
-        master.ssh.execute('qconf -dconf %s' % node.alias, source_profile=True)
-        master.ssh.execute('qconf -de %s' % node.alias, source_profile=True)
-        node.ssh.execute('pkill -9 sge_execd')
-        nodes = filter(lambda n: n.alias != node.alias, self._nodes)
-        self._create_sge_pe(nodes=nodes)
+        sge_utils.remove_from_sge(self._master,node.alias)        
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
@@ -496,7 +455,7 @@ class DefaultClusterSetup(ClusterSetup):
         log.info("Removing node %s (%s)..." % (node.alias, node.id))
         if not self._disable_queue:
             log.info("Removing %s from SGE" % node.alias)
-            self._remove_from_sge(node)
+            #self._remove_from_sge(node)
         log.info("Removing %s from known_hosts files" % node.alias)
         self._remove_from_known_hosts(node)
         log.info("Removing %s from /etc/hosts" % node.alias)
