@@ -156,7 +156,7 @@ Dependencies:
 =============
 * Amazon AWS Account
 * Python 2.5+
-* Boto 2.0
+* Boto 2.2.1
 * Paramiko 1.7.7.1
 * WorkerPool 0.9.2
 * Jinja2 2.5.5
