@@ -32,11 +32,13 @@ class XvfbSetup(clustersetup.DefaultClusterSetup):
                                  jobid=node.alias)
         self.pool.wait(numtasks=len(nodes))
 
-    def on_add_node(self, new_node, nodes, master, user, userlist, user_shell, volumes):
+    def on_add_node(self, new_node, nodes, master, user, userlist, user_shell,
+                    volumes):
         log.info("Installing Xvfb on %s" % new_node.alias)
         self._install_xvfb(new_node)
         log.info("Launching Xvfb Server on %s" % new_node.alias)
         self._launch_xvfb(new_node)
 
-    def on_remove_node(self, node, nodes, master, user, userlist, user_shell, volumes):
+    def on_remove_node(self, node, nodes, master, user, userlist, user_shell,
+                       volumes):
         pass

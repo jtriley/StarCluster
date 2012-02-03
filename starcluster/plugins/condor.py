@@ -49,7 +49,8 @@ class CondorPlugin(clustersetup.DefaultClusterSetup):
         finally:
             self.pool.shutdown()
 
-    def on_add_node(self, node, nodes, master, user, userlist, user_shell, volumes):
+    def on_add_node(self, node, nodes, master, user, userlist, user_shell,
+                    volumes):
         self._nodes = nodes
         self._master = master
         self._user = user
@@ -59,7 +60,8 @@ class CondorPlugin(clustersetup.DefaultClusterSetup):
         log.info("Adding %s to Condor" % node.alias)
         self._add_condor_node(node)
 
-    def on_remove_node(self, node, nodes, master, user, userlist, user_shell, volumes):
+    def on_remove_node(self, node, nodes, master, user, userlist, user_shell,
+                       volumes):
         self._nodes = nodes
         self._master = master
         self._user = user

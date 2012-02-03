@@ -345,8 +345,10 @@ class MysqlCluster(DefaultClusterSetup):
         ) % {'dump_interval': self._dump_interval, 'loc': path}
         return crontab
 
-    def on_add_node(self, node, nodes, master, user, userlist, user_shell, volumes):
+    def on_add_node(self, node, nodes, master, user, userlist, user_shell,
+                    volumes):
         pass
 
-    def on_remove_node(self, node, nodes, master, user, userlist, user_shell, volumes):
+    def on_remove_node(self, node, nodes, master, user, userlist, user_shell,
+                       volumes):
         pass

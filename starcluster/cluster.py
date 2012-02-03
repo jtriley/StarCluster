@@ -1438,8 +1438,8 @@ class Cluster(object):
             self.attach_volumes_to_master()
         default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue,
                                                           self.disable_threads)
-        default_plugin.run(self.nodes, self.master_node, self.cluster_user, self.userlist,
-                           self.cluster_shell, self.volumes)
+        default_plugin.run(self.nodes, self.master_node, self.cluster_user,
+                           self.userlist, self.cluster_shell, self.volumes)
         self.run_plugins()
 
     def run_plugins(self, plugins=None, method_name="run", node=None,

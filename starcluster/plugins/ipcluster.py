@@ -52,7 +52,8 @@ class IPCluster10(ClusterSetup):
         log.info(STARTED_MSG_10 % dict(cluster=master.parent_cluster,
                                        user=user))
 
-    def on_add_node(self, node, nodes, master, user, userlist, user_shell, volumes):
+    def on_add_node(self, node, nodes, master, user, userlist, user_shell,
+                    volumes):
         log.info("Adding %s to ipcluster" % node.alias)
         self._create_cluster_file(master, nodes)
         user_home = node.getpwnam(user).pw_dir
@@ -62,7 +63,8 @@ class IPCluster10(ClusterSetup):
             "su - %s -c 'screen -d -m ipengine --furl-file %s'" %
             (user, furl_file))
 
-    def on_remove_node(self, node, nodes, master, user, userlist, user_shell, volumes):
+    def on_remove_node(self, node, nodes, master, user, userlist, user_shell,
+                       volumes):
         log.info("Removing %s from ipcluster" % node.alias)
         less_nodes = filter(lambda x: x.id != node.id, nodes)
         self._create_cluster_file(master, less_nodes)
@@ -234,7 +236,8 @@ class IPCluster11(ClusterSetup):
         master.ssh.execute("pkill -f ipengineapp.py")
         master.ssh.execute("pkill -f ipcontrollerapp.py")
 
-    def on_add_node(self, node, nodes, master, user, userlist, user_shell, volumes):
+    def on_add_node(self, node, nodes, master, user, userlist, user_shell,
+                    volumes):
         n = node.num_processors
         log.info("Adding %i engines on %s to ipcluster" % (n, node.alias))
         node.ssh.execute("ipcluster engines --n=%i --daemonize" % n,
@@ -272,17 +275,21 @@ class IPCluster(ClusterSetup):
         plug = self._get_ipcluster_plugin(master)
         plug.run(nodes, master, user, userlist, user_shell, volumes)
 
-    def on_add_node(self, node, nodes, master, user, userlist, user_shell, volumes):
+    def on_add_node(self, node, nodes, master, user, userlist, user_shell,
+                    volumes):
         if not self._check_ipython_installed(master):
             return
         plug = self._get_ipcluster_plugin(master)
-        plug.on_add_node(node, nodes, master, user, userlist, user_shell, volumes)
+        plug.on_add_node(node, nodes, master, user, userlist, user_shell,
+                         volumes)
 
-    def on_remove_node(self, node, nodes, master, user, userlist, user_shell, volumes):
+    def on_remove_node(self, node, nodes, master, user, userlist, user_shell,
+                       volumes):
         if not self._check_ipython_installed(master):
             return
         plug = self._get_ipcluster_plugin(master)
-        plug.on_remove_node(node, nodes, master, user, userlist, user_shell, volumes)
+        plug.on_remove_node(node, nodes, master, user, userlist, user_shell,
+                            volumes)
 
 
 class IPClusterStop(ClusterSetup):
