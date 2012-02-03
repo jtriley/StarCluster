@@ -48,7 +48,7 @@ class MPICH2Setup(clustersetup.DefaultClusterSetup):
         log.info(
             "Use mpicc, mpif90, mpirun, etc. to compile and run your MPI apps")
 
-    def on_add_node(self, new_node, nodes, master, user, user_shell, volumes):
+    def on_add_node(self, new_node, nodes, master, user, userlist, user_shell, volumes):
         log.info("Adding %s to MPICH2 hosts file" % new_node.alias)
         mpich2_hosts = master.ssh.remote_file(self.MPICH2_HOSTS, 'a')
         mpich2_hosts.write(new_node.alias + '\n')
@@ -56,7 +56,7 @@ class MPICH2Setup(clustersetup.DefaultClusterSetup):
         log.info("Setting MPICH2 as default MPI on %s" % new_node.alias)
         self._update_alternatives(new_node)
 
-    def on_remove_node(self, remove_node, nodes, master, user, user_shell,
+    def on_remove_node(self, remove_node, nodes, master, user, userlist, user_shell,
                        volumes):
         log.info("Removing %s from MPICH2 hosts file" % remove_node.alias)
         master.ssh.remove_lines_from_file(self.MPICH2_HOSTS, remove_node.alias)

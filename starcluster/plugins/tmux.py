@@ -138,7 +138,7 @@ class TmuxControlCenter(clustersetup.DefaultClusterSetup):
         except exception.BaseException:
             pass
 
-    def run(self, nodes, master, user, user_shell, volumes):
+    def run(self, nodes, master, user, userlist, user_shell, volumes):
         log.info("Starting TMUX Control Center...")
         self._nodes = nodes
         self._master = master
@@ -167,12 +167,12 @@ class TmuxControlCenter(clustersetup.DefaultClusterSetup):
         if orig_user != user:
             client.ssh.connect(username=orig_user)
 
-    def on_add_node(self, node, nodes, master, user, user_shell, volumes):
+    def on_add_node(self, node, nodes, master, user, userlist, user_shell, volumes):
         log.info("Adding %s to TMUX Control Center" % node.alias)
         self._add_to_tmuxcc(master, node, user='root')
         self._add_to_tmuxcc(master, node, user=user)
 
-    def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
+    def on_remove_node(self, node, nodes, master, user, userlist, user_shell, volumes):
         log.info("Removing %s from TMUX Control Center" % node.alias)
         self._remove_from_tmuxcc(master, node, user='root')
         self._remove_from_tmuxcc(master, node, user=user)
