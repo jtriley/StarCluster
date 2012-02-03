@@ -112,7 +112,13 @@ class DefaultClusterSetup(ClusterSetup):
         """
 
         first_uid = 1000
-        for login in [self._user] + self._userlist:
+
+        if self._userlist:
+            logins = [self._user] + self._userlist
+        else:
+            logins = [self._user]
+
+        for login in logins:
             mconn = self._master.ssh
             home_folder = '/home/%s' % login
 
@@ -176,7 +182,12 @@ class DefaultClusterSetup(ClusterSetup):
     def _setup_scratch_on_node(self, node):
         nconn = node.ssh
 
-        for login in [self._user] + self._userlist:
+        if self._userlist:
+            logins = [self._user] + self._userlist
+        else:
+            logins = [self._user]
+
+        for login in logins:
             user_scratch = '/mnt/%s' % login
             if not nconn.path_exists(user_scratch):
                 nconn.mkdir(user_scratch)
