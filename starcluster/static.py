@@ -187,4 +187,5 @@ CLUSTER_SETTINGS = {
     'permissions': (list, False, [], None, None),
     'disable_queue': (bool, False, False, None, None),
     'force_spot_master': (bool, False, False, None, None),
+    'static_security_groups': (list, False, [], None, None),
 }
