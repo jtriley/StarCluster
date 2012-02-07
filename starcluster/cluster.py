@@ -866,7 +866,6 @@ class Cluster(object):
                         "node with alias %s already exists" % node.alias)
             log.info("Adding node(s): %s" % ', '.join(aliases))
             self.create_nodes(aliases,
-                              count=len(aliases),
                               image_id=image_id,
                               instance_type=instance_type,
                               zone=zone,
