@@ -1855,6 +1855,12 @@ class Cluster(object):
             raise exception.ClusterValidationError(
                 "Account does not contain a key with keyname: %s" % keyname)
         fingerprint = keypair.fingerprint
+        try:
+            open(key_location, 'r').close()
+        except IOError, e:
+            raise exception.ClusterValidationError(
+                "Error loading key_location '%s':\n%s\n"
+                "Please check that the file is readable" % (key_location, e))
         if len(fingerprint) == 59:
             localfingerprint = ssh.get_private_rsa_fingerprint(key_location)
             if localfingerprint != fingerprint:
