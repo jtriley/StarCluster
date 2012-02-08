@@ -214,6 +214,9 @@ class IPCluster11(ClusterSetup):
         log.info("IPython notebook URL: https://%s:%s" %
                  (master.dns_name, notebook_port))
         log.info("The notebook password is: %s" % self.notebook_passwd)
+        log.warn("Please check your local firewall settings if you're having "
+                 "issues connecting to the IPython notebook",
+                 extra=dict(__textwrap__=True))
 
     @print_timing("IPCluster")
     def run(self, nodes, master, user, user_shell, volumes):
