@@ -1635,6 +1635,12 @@ class Cluster(object):
                           'image_id': image_id,
                           'image_platform': image_platform}
             raise exception.ClusterValidationError(error_msg % error_dict)
+        image_is_ebs = (image.root_device_type == 'ebs')
+        if instance_type in static.MICRO_INSTANCE_TYPES and not image_is_ebs:
+            error_msg = ("Instance type %s can only be used with an "
+                         "EBS-backed AMI and '%s' is not EBS-backed " %
+                         (instance_type, image.id))
+            raise exception.ClusterValidationError(error_msg)
         return True
 
     def _validate_instance_types(self):
