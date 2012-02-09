@@ -320,6 +320,7 @@ class Cluster(object):
             cluster_description=None,
             cluster_size=None,
             cluster_user=None,
+            userlist=[],
             cluster_shell=None,
             master_image_id=None,
             master_instance_type=None,
@@ -350,6 +351,7 @@ class Cluster(object):
             self.cluster_description = "Cluster created at %s" % now
         self.cluster_size = cluster_size or 0
         self.cluster_user = cluster_user
+        self.userlist = userlist
         self.cluster_shell = cluster_shell
         self.master_image_id = master_image_id
         self.master_instance_type = master_instance_type
@@ -831,7 +833,7 @@ class Cluster(object):
             node = self.get_node_by_alias(alias)
             default_plugin.on_add_node(
                 node, self.nodes, self.master_node,
-                self.cluster_user, self.cluster_shell,
+                self.cluster_user, self.userlist, self.cluster_shell,
                 self.volumes)
             self.run_plugins(method_name="on_add_node", node=node)
 
@@ -1440,7 +1442,7 @@ class Cluster(object):
         default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue,
                                                           self.disable_threads)
         default_plugin.run(self.nodes, self.master_node, self.cluster_user,
-                           self.cluster_shell, self.volumes)
+                           self.userlist, self.cluster_shell, self.volumes)
         self.run_plugins()
 
     def run_plugins(self, plugins=None, method_name="run", node=None,

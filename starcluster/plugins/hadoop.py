@@ -272,7 +272,7 @@ class Hadoop(clustersetup.ClusterSetup):
                 if not has_perm:
                     group.authorize('tcp', port, port, '0.0.0.0/0')
 
-    def run(self, nodes, master, user, user_shell, volumes):
+    def run(self, nodes, master, user, userlist, user_shell, volumes):
         try:
             self._configure_hadoop(master, nodes, user)
             self._start_hadoop(master, nodes)
