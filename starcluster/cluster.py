@@ -829,7 +829,6 @@ class Cluster(object):
                                                           self.disable_threads)
         for alias in aliases:
             node = self.get_node_by_alias(alias)
-            print('node alias', alias, node)
             default_plugin.on_add_node(
                 node, self.nodes, self.master_node,
                 self.cluster_user, self.cluster_shell,

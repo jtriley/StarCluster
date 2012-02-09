@@ -79,7 +79,7 @@ class CmdAddNode(ClusterCompleter):
             default=None, help="spot bid for new node(s) (in $ per hour)")
         parser.add_option(
             "-x", "--no-create", dest="no_create", action="store_true",
-            default=False, help="do not launch new EC2 instances when"
+            default=False, help="do not launch new EC2 instances when "
             "adding nodes (use existing instances instead)")
 
     def _get_duplicate(self, lst):
