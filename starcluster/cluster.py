@@ -130,17 +130,26 @@ class ClusterManager(managers.Manager):
             cluster_name = static.SECURITY_GROUP_TEMPLATE % cluster_name
         return cluster_name
 
-    def add_node(self, cluster_name, alias=None, no_create=False):
+    def add_node(self, cluster_name, alias=None, no_create=False,
+                 image_id=None, instance_type=None, zone=None,
+                 placement_group=None, spot_bid=None):
         cl = self.get_cluster(cluster_name)
-        cl.add_node(alias, no_create=no_create)
+        return cl.add_node(alias=alias, image_id=image_id,
+                           instance_type=instance_type, zone=zone,
+                           placement_group=placement_group, spot_bid=spot_bid,
+                           no_create=no_create)
 
-    def add_nodes(self, cluster_name, num_nodes, aliases=None,
-                  no_create=False):
+    def add_nodes(self, cluster_name, num_nodes, aliases=None, no_create=False,
+                  image_id=None, instance_type=None, zone=None,
+                  placement_group=None, spot_bid=None):
         """
         Add one or more nodes to cluster
         """
         cl = self.get_cluster(cluster_name)
-        cl.add_nodes(num_nodes, aliases=aliases, no_create=no_create)
+        return cl.add_nodes(num_nodes, aliases=aliases, image_id=image_id,
+                            instance_type=instance_type, zone=zone,
+                            placement_group=placement_group, spot_bid=spot_bid,
+                            no_create=no_create)
 
     def remove_node(self, cluster_name, alias, terminate=True):
         """
@@ -512,33 +521,17 @@ class Cluster(object):
             raise exception.ClusterValidationError("No existing nodes found!")
         log.info("Validating existing instances...")
         mazone = self.master_node.placement
-        rlmap = self._get_launch_map(reverse=True)
-        for node in nodes:
-            itype, image = rlmap.get(node.alias)
-            alias = node.alias
-            ntype = node.instance_type
-            if ntype != itype:
-                raise exception.ClusterValidationError(
-                    "%s's instance type (%s) != %s" % (alias, ntype, itype))
-            nimage = node.image_id
-            if nimage != image:
-                raise exception.ClusterValidationError(
-                    "%s's image id (%s) != %s" % (alias, nimage, image))
-            if node.key_name != self.keyname:
-                raise exception.ClusterValidationError(
-                    "%s's key_name (%s) != %s" % (alias, node.key_name,
-                                                  self.keyname))
-            nazone = node.placement
-            if mazone != nazone:
-                raise exception.ClusterValidationError(
-                    "Node '%s' zone (%s) does not match master's zone (%s)" %
-                    (alias, nazone, mazone))
         # reset zone cache
         self._zone = None
         if self.zone and self.zone != mazone:
             raise exception.ClusterValidationError(
                 "Running cluster's availability_zone (%s) != %s" %
                 (mazone, self.zone))
+        for node in nodes:
+            if node.key_name != self.keyname:
+                raise exception.ClusterValidationError(
+                    "%s's key_name (%s) != %s" % (node.alias, node.key_name,
+                                                  self.keyname))
 
     def get(self, name):
         return self.__dict__.get(name)
@@ -786,16 +779,23 @@ class Cluster(object):
         log.debug("Highest node number is %d. choosing %d." % (highest, next))
         return next
 
-    def add_node(self, alias=None, no_create=False):
+    def add_node(self, alias=None, no_create=False, image_id=None,
+                 instance_type=None, zone=None, placement_group=None,
+                 spot_bid=None):
         """
         Add a single node to this cluster
         """
         aliases = None
         if alias:
             aliases = [alias]
-        self.add_nodes(1, aliases=aliases, no_create=no_create)
+        return self.add_nodes(1, aliases=aliases, image_id=image_id,
+                              instance_type=instance_type, zone=zone,
+                              placement_group=placement_group,
+                              spot_bid=spot_bid, no_create=no_create)
 
-    def add_nodes(self, num_nodes, aliases=None, no_create=False):
+    def add_nodes(self, num_nodes, aliases=None, image_id=None,
+                  instance_type=None, zone=None, placement_group=None,
+                  spot_bid=None, no_create=False):
         """
         Add new nodes to this cluster
 
@@ -819,13 +819,17 @@ class Cluster(object):
                     raise exception.ClusterValidationError(
                         "node with alias %s already exists" % node.alias)
             log.info("Launching node(s): %s" % ', '.join(aliases))
-            self.create_nodes(aliases)
+            self.create_nodes(aliases, image_id=image_id,
+                              instance_type=instance_type, zone=zone,
+                              placement_group=placement_group,
+                              spot_bid=spot_bid)
         self.wait_for_cluster(msg="Waiting for node(s) to come up...")
         log.debug("Adding node(s): %s" % aliases)
         default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue,
                                                           self.disable_threads)
         for alias in aliases:
             node = self.get_node_by_alias(alias)
+            print('node alias', alias, node)
             default_plugin.on_add_node(
                 node, self.nodes, self.master_node,
                 self.cluster_user, self.cluster_shell,
@@ -1635,6 +1639,12 @@ class Cluster(object):
                           'image_id': image_id,
                           'image_platform': image_platform}
             raise exception.ClusterValidationError(error_msg % error_dict)
+        image_is_ebs = (image.root_device_type == 'ebs')
+        if instance_type in static.MICRO_INSTANCE_TYPES and not image_is_ebs:
+            error_msg = ("Instance type %s can only be used with an "
+                         "EBS-backed AMI and '%s' is not EBS-backed " %
+                         (instance_type, image.id))
+            raise exception.ClusterValidationError(error_msg)
         return True
 
     def _validate_instance_types(self):
@@ -1849,6 +1859,12 @@ class Cluster(object):
             raise exception.ClusterValidationError(
                 "Account does not contain a key with keyname: %s" % keyname)
         fingerprint = keypair.fingerprint
+        try:
+            open(key_location, 'r').close()
+        except IOError, e:
+            raise exception.ClusterValidationError(
+                "Error loading key_location '%s':\n%s\n"
+                "Please check that the file is readable" % (key_location, e))
         if len(fingerprint) == 59:
             localfingerprint = ssh.get_private_rsa_fingerprint(key_location)
             if localfingerprint != fingerprint:
