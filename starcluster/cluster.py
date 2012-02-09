@@ -512,33 +512,17 @@ class Cluster(object):
             raise exception.ClusterValidationError("No existing nodes found!")
         log.info("Validating existing instances...")
         mazone = self.master_node.placement
-        rlmap = self._get_launch_map(reverse=True)
-        for node in nodes:
-            itype, image = rlmap.get(node.alias)
-            alias = node.alias
-            ntype = node.instance_type
-            if ntype != itype:
-                raise exception.ClusterValidationError(
-                    "%s's instance type (%s) != %s" % (alias, ntype, itype))
-            nimage = node.image_id
-            if nimage != image:
-                raise exception.ClusterValidationError(
-                    "%s's image id (%s) != %s" % (alias, nimage, image))
-            if node.key_name != self.keyname:
-                raise exception.ClusterValidationError(
-                    "%s's key_name (%s) != %s" % (alias, node.key_name,
-                                                  self.keyname))
-            nazone = node.placement
-            if mazone != nazone:
-                raise exception.ClusterValidationError(
-                    "Node '%s' zone (%s) does not match master's zone (%s)" %
-                    (alias, nazone, mazone))
         # reset zone cache
         self._zone = None
         if self.zone and self.zone != mazone:
             raise exception.ClusterValidationError(
                 "Running cluster's availability_zone (%s) != %s" %
                 (mazone, self.zone))
+        for node in nodes:
+            if node.key_name != self.keyname:
+                raise exception.ClusterValidationError(
+                    "%s's key_name (%s) != %s" % (node.alias, node.key_name,
+                                                  self.keyname))
 
     def get(self, name):
         return self.__dict__.get(name)
