@@ -288,6 +288,8 @@ class DefaultClusterSetup(ClusterSetup):
         # setup /etc/fstab and mount each nfs share on each node
         master = self._master
         export_paths = export_paths or self._get_nfs_export_paths()
+        log.info("Mounting the following path(s) on all worker nodes:\n%s" %
+                 ' '.join(export_paths))
         for node in nodes:
             mount_map = node.get_mount_map()
             mount_paths = []
@@ -309,7 +311,6 @@ class DefaultClusterSetup(ClusterSetup):
         """
         Share /home and all EBS mount paths via NFS to all nodes
         """
-        log.info("Configuring NFS...")
         master = self._master
         # setup /etc/exports and start nfsd on master node
         nodes = nodes or self.nodes

@@ -573,6 +573,8 @@ class Node(object):
                                   export_paths=['/home', '/opt/sge6'])
         """
         # setup /etc/exports
+        log.info("Configuring NFS exports path(s):\n%s" %
+                 ' '.join(export_paths))
         nfs_export_settings = "(async,no_root_squash,no_subtree_check,rw)"
         etc_exports = self.ssh.remote_file('/etc/exports', 'r')
         contents = etc_exports.read()
@@ -601,6 +603,7 @@ class Node(object):
         self.ssh.execute('exportfs -fra')
 
     def start_nfs_server(self):
+        log.info("Starting NFS server on %s" % self.alias)
         self.ssh.execute('/etc/init.d/portmap start')
         self.ssh.execute('mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs/',
                          ignore_exit_status=True)

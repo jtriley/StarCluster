@@ -118,6 +118,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._create_sge_pe(nodes=nodes)
 
     def run(self, nodes, master, user, user_shell, volumes):
+        log.info("Configuring SGE...")
         try:
             self._nodes = nodes
             self._master = master
