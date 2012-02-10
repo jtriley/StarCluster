@@ -569,18 +569,23 @@ class Node(object):
         Example:
         # export /home and /opt/sge6 to each node in nodes
         $ node.start_nfs_server()
-        $ node.export_fs_to_nodes(\
-                nodes=[node1,node2], export_paths=['/home', '/opt/sge6']
+        $ node.export_fs_to_nodes(nodes=[node1,node2],
+                                  export_paths=['/home', '/opt/sge6'])
         """
         # setup /etc/exports
+        log.info("Configuring NFS exports path(s):\n%s" %
+                 ' '.join(export_paths))
         nfs_export_settings = "(async,no_root_squash,no_subtree_check,rw)"
-        regex = '|'.join([n.alias for n in nodes])
-        self.ssh.remove_lines_from_file('/etc/exports', regex)
+        etc_exports = self.ssh.remote_file('/etc/exports', 'r')
+        contents = etc_exports.read()
+        etc_exports.close()
         etc_exports = self.ssh.remote_file('/etc/exports', 'a')
         for node in nodes:
             for path in export_paths:
-                etc_exports.write(' '.join([path, node.alias +
-                                            nfs_export_settings + '\n']))
+                export_line = ' '.join(
+                    [path, node.alias + nfs_export_settings + '\n'])
+                if export_line not in contents:
+                    etc_exports.write(export_line)
         etc_exports.close()
         self.ssh.execute('exportfs -fra')
 
@@ -598,6 +603,7 @@ class Node(object):
         self.ssh.execute('exportfs -fra')
 
     def start_nfs_server(self):
+        log.info("Starting NFS server on %s" % self.alias)
         self.ssh.execute('/etc/init.d/portmap start')
         self.ssh.execute('mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs/',
                          ignore_exit_status=True)
@@ -615,6 +621,18 @@ class Node(object):
         # TODO: move this fix for xterm somewhere else
         self.ssh.execute('mount -t devpts none /dev/pts',
                          ignore_exit_status=True)
+        mount_map = self.get_mount_map()
+        mount_paths = []
+        for path in remote_paths:
+            network_device = "%s:%s" % (server_node.alias, path)
+            if network_device in mount_map:
+                mount_path, typ, options = mount_map.get(network_device)
+                log.debug('nfs share %s already mounted to %s on '
+                          'node %s, skipping...' %
+                          (network_device, mount_path, self.alias))
+            else:
+                mount_paths.append(path)
+        remote_paths = mount_paths
         remote_paths_regex = '|'.join(map(lambda x: x.center(len(x) + 2),
                                           remote_paths))
         self.ssh.remove_lines_from_file('/etc/fstab', remote_paths_regex)
