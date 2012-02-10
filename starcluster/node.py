@@ -621,6 +621,18 @@ class Node(object):
         # TODO: move this fix for xterm somewhere else
         self.ssh.execute('mount -t devpts none /dev/pts',
                          ignore_exit_status=True)
+        mount_map = self.get_mount_map()
+        mount_paths = []
+        for path in remote_paths:
+            network_device = "%s:%s" % (server_node.alias, path)
+            if network_device in mount_map:
+                mount_path, typ, options = mount_map.get(network_device)
+                log.debug('nfs share %s already mounted to %s on '
+                          'node %s, skipping...' %
+                          (network_device, mount_path, self.alias))
+            else:
+                mount_paths.append(path)
+        remote_paths = mount_paths
         remote_paths_regex = '|'.join(map(lambda x: x.center(len(x) + 2),
                                           remote_paths))
         self.ssh.remove_lines_from_file('/etc/fstab', remote_paths_regex)

@@ -285,24 +285,16 @@ class DefaultClusterSetup(ClusterSetup):
         return export_paths
 
     def _mount_nfs_shares(self, nodes, export_paths=None):
-        # setup /etc/fstab and mount each nfs share on each node
-        master = self._master
-        export_paths = export_paths or self._get_nfs_export_paths()
+        """
+        Setup /etc/fstab and mount each nfs share listed in export_paths on
+        each node in nodes list
+        """
         log.info("Mounting all NFS export path(s) on %d worker node(s)" %
                  len(nodes))
+        export_paths = export_paths or self._get_nfs_export_paths()
         for node in nodes:
-            mount_map = node.get_mount_map()
-            mount_paths = []
-            for path in export_paths:
-                network_device = "%s:%s" % (master.alias, path)
-                if network_device in mount_map:
-                    mount_path, type, options = mount_map.get(network_device)
-                    log.debug('nfs share %s already mounted to %s on '
-                              'node %s, skipping...' %
-                              (network_device, mount_path, node.alias))
-                else:
-                    mount_paths.append(path)
-            self.pool.simple_job(node.mount_nfs_shares, (master, mount_paths),
+            self.pool.simple_job(node.mount_nfs_shares,
+                                 (self._master, export_paths),
                                  jobid=node.alias)
         self.pool.wait(numtasks=len(nodes))
 
