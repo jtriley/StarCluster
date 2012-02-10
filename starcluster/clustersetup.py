@@ -288,8 +288,8 @@ class DefaultClusterSetup(ClusterSetup):
         # setup /etc/fstab and mount each nfs share on each node
         master = self._master
         export_paths = export_paths or self._get_nfs_export_paths()
-        log.info("Mounting the following path(s) on all worker nodes:\n%s" %
-                 ' '.join(export_paths))
+        log.info("Mounting all NFS export path(s) on %d worker node(s)" %
+                 len(nodes))
         for node in nodes:
             mount_map = node.get_mount_map()
             mount_paths = []
