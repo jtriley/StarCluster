@@ -65,7 +65,8 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             master.ssh.execute('cp -r /opt/sge6-fresh /opt/sge6')
             master.ssh.execute('chown -R %(user)s:%(user)s /opt/sge6' %
                                {'user': self._user})
-        self._setup_nfs(self.nodes, export_paths=['/opt/sge6'])
+        self._setup_nfs(self.nodes, export_paths=['/opt/sge6'],
+                        start_server=False)
         # generate /etc/profile.d/sge.sh for each node
         for node in self._nodes:
             conn = node.ssh
