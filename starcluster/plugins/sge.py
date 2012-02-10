@@ -9,7 +9,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         mssh = self._master.ssh
         mssh.execute('qconf -as %s' % node.alias, source_profile=True)
 
-    def _add_sge_administrative_host(self, node):
+    def _add_sge_admin_host(self, node):
         mssh = self._master.ssh
         mssh.execute('qconf -ah %s' % node.alias, source_profile=True)
 
@@ -99,7 +99,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         master.ssh.execute('qconf -mattr queue shell "/bin/bash" all.q',
                            source_profile=True)
         for node in self.nodes:
-            self._add_sge_administrative_host(node)
+            self._add_sge_admin_host(node)
             self._add_sge_submit_host(node)
             self.pool.simple_job(self._add_to_sge, (node,), jobid=node.alias)
         self.pool.wait(numtasks=len(self.nodes))
@@ -138,7 +138,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         log.info("Adding %s to SGE" % node.alias)
         self._setup_nfs(nodes=[node], export_paths=['/opt/sge6'],
                         start_server=False)
-        self._add_sge_administrative_host(node)
+        self._add_sge_admin_host(node)
         self._add_sge_submit_host(node)
         self._add_to_sge(node)
         self._create_sge_pe()
