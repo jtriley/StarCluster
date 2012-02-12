@@ -309,8 +309,9 @@ class DefaultClusterSetup(ClusterSetup):
         export_paths = export_paths or self._get_nfs_export_paths()
         if start_server:
             master.start_nfs_server()
-        master.export_fs_to_nodes(nodes, export_paths)
-        self._mount_nfs_shares(nodes, export_paths=export_paths)
+        if nodes:
+            master.export_fs_to_nodes(nodes, export_paths)
+            self._mount_nfs_shares(nodes, export_paths=export_paths)
 
     def run(self, nodes, master, user, user_shell, volumes):
         """Start cluster configuration"""
