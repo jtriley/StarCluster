@@ -414,7 +414,7 @@ class Node(object):
         authorized_keys = posixpath.join(ssh_folder, 'authorized_keys')
         key_exists = self.ssh.isfile(private_key)
         if key_exists and not ignore_existing:
-            log.info("Using existing key: %s" % private_key)
+            log.debug("Using existing key: %s" % private_key)
             key = self.ssh.load_remote_rsa_key(private_key)
         else:
             key = self.ssh.generate_rsa_key()
