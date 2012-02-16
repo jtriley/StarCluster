@@ -48,10 +48,15 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
         self._user_shell = user_shell
         self._volumes = volumes
         log.info("Creating %d cluster users" % self._num_users)
-        self._create_batch_user_file(master, self._usernames, user_shell)
+        if not master.ssh.isfile(self.BATCH_USER_FILE):
+            newusers = self._create_batch_user_file(master, self._usernames, user_shell)
+        else:
+            bfile = master.ssh.remote_file(self.BATCH_USER_FILE, 'r')
+            newusers = bfile.read()
+            bfile.close()
         for node in nodes:
             self.pool.simple_job(node.ssh.execute,
-                                 ("newusers %s" % self.BATCH_USER_FILE),
+                                 ("echo '%s' | newusers" % newusers),
                                  jobid=node.alias)
         self.pool.wait(numtasks=len(nodes))
         log.info("Configuring passwordless ssh for %d cluster users" %
@@ -107,6 +112,7 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
         bfile = master.ssh.remote_file(batch_file, 'w')
         bfile.write(bfilecontents)
         bfile.close()
+        return bfilecontents
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
