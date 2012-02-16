@@ -121,16 +121,13 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
         self._user_shell = user_shell
         self._volumes = volumes
         log.info("Creating %d users on %s" % (self._num_users, node.alias))
-        if not node.ssh.isfile(self.BATCH_USER_FILE):
-            if not master.ssh.isfile(self.BATCH_USER_FILE):
-                log.error("Unable to create users" % self.BATCH_USER_FILE)
-                log.error("Cannot find batch user file (%s) on the master node"
-                          % self.BATCH_USER_FILE)
-                return
-            node.ssh.execute('scp master:%(batch)s %(batch)s' %
-                             dict(batch=self.BATCH_USER_FILE))
-        node.ssh.execute("newusers %s" % self.BATCH_USER_FILE)
-        node.ssh.unlink(self.BATCH_USER_FILE)
+        if not master.ssh.isfile(self.BATCH_USER_FILE):
+            newusers = self._create_batch_user_file(master, self._usernames, user_shell)
+        else:
+            bfile = master.ssh.remote_file(self.BATCH_USER_FILE, 'r')
+            newusers = bfile.read()
+            bfile.close()
+        node.ssh.execute("echo '%s' | newusers" % newusers)
         log.info("Adding %s to known_hosts for %d users" %
                  (node.alias, self._num_users))
         pbar = self.pool.progress_bar.reset()
