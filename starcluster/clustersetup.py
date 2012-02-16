@@ -178,25 +178,29 @@ class DefaultClusterSetup(ClusterSetup):
                                  jobid=node.alias)
         self.pool.wait(numtasks=len(nodes))
 
-    def _setup_scratch_on_node(self, node):
+    def _setup_scratch_on_node(self, node, users=None):
         nconn = node.ssh
-        user_scratch = '/mnt/%s' % self._user
-        if not nconn.path_exists(user_scratch):
-            nconn.mkdir(user_scratch)
-        nconn.execute('chown -R %(user)s:%(user)s /mnt/%(user)s' %
-                      {'user': self._user})
-        scratch = '/scratch'
-        if not nconn.path_exists(scratch):
-            nconn.mkdir(scratch)
-        if not nconn.path_exists(posixpath.join(scratch, self._user)):
-            nconn.execute('ln -s %s %s' % (user_scratch, scratch))
+        users = users or [self._user]
+        for user in users:
+            user_scratch = '/mnt/%s' % user
+            if not nconn.path_exists(user_scratch):
+                nconn.mkdir(user_scratch)
+            nconn.execute('chown -R %(user)s:%(user)s /mnt/%(user)s' %
+                          {'user': user})
+            scratch = '/scratch'
+            if not nconn.path_exists(scratch):
+                nconn.mkdir(scratch)
+            if not nconn.path_exists(posixpath.join(scratch, user)):
+                nconn.execute('ln -s %s %s' % (user_scratch, scratch))
 
-    def _setup_scratch(self, nodes=None):
+    def _setup_scratch(self, nodes=None, users=None):
         """ Configure scratch space on all StarCluster nodes """
-        log.info("Configuring scratch space for user: %s" % self._user)
+        users = users or [self._user]
+        log.info("Configuring scratch space for user(s): %s" %
+                 ', '.join(users), extra=dict(__textwrap__=True))
         nodes = nodes or self._nodes
         for node in nodes:
-            self.pool.simple_job(self._setup_scratch_on_node, (node,),
+            self.pool.simple_job(self._setup_scratch_on_node, (node, users),
                                  jobid=node.alias)
         self.pool.wait(numtasks=len(nodes))
 
