@@ -69,6 +69,7 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
             master.add_to_known_hosts(user, nodes)
             pbar.update(i + 1)
         pbar.finish()
+        self._setup_scratch(nodes, self._usernames)
         if self._download_keys:
             self._download_user_keys(master, self._usernames)
 
@@ -136,6 +137,7 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
             master.add_to_known_hosts(user, [node])
             pbar.update(i + 1)
         pbar.finish()
+        self._setup_scratch(nodes=[node], users=self._usernames)
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         pass
