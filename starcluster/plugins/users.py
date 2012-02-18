@@ -1,4 +1,5 @@
 import os
+import posixpath
 
 from starcluster import utils
 from starcluster import static
@@ -13,7 +14,7 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
     """
 
     DOWNLOAD_KEYS_DIR = os.path.join(static.STARCLUSTER_CFG_DIR, 'user_keys')
-    BATCH_USER_FILE = "/root/cluster_users.txt"
+    BATCH_USER_FILE = "/root/.users/users.txt"
 
     def __init__(self, num_users=None, usernames=None, download_keys=True,
                  download_keys_dir=None):
@@ -69,11 +70,17 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
             self._download_user_keys(master, self._usernames)
 
     def _download_user_keys(self, master, usernames):
-        keys = ['/home/%s/.ssh/id_rsa' % user for user in usernames]
-        cluster_tag = master.cluster_groups[0].name.replace('@sc-', '')
+        pardir = posixpath.dirname(self.BATCH_USER_FILE)
+        if not master.ssh.isdir(pardir):
+            master.ssh.makedirs(pardir)
         log.info("Tarring all SSH keys for cluster users...")
-        tarfile = "/root/%s-%s.tar.gz" % (cluster_tag, master.region.name)
-        master.ssh.execute("tar czf %s %s" % (tarfile, ' '.join(keys)))
+        for user in usernames:
+            master.ssh.execute(
+                "cp /home/%(user)s/.ssh/id_rsa %(keydest)s" %
+                dict(user=user, keydest=posixpath.join(pardir, user + '.rsa')))
+        cluster_tag = master.cluster_groups[0].name.replace('@sc-', '')
+        tarfile = "%s-%s.tar.gz" % (cluster_tag, master.region.name)
+        master.ssh.execute("tar -C %s -czf ~/%s *.rsa" % (pardir, tarfile))
         if not os.path.exists(self._download_keys_dir):
             os.makedirs(self._download_keys_dir)
         log.info("Copying cluster users SSH keys to: %s" %
