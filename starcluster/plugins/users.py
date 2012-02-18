@@ -48,12 +48,7 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
         self._user_shell = user_shell
         self._volumes = volumes
         log.info("Creating %d cluster users" % self._num_users)
-        if not master.ssh.isfile(self.BATCH_USER_FILE):
-            newusers = self._create_batch_user_file(master, self._usernames, user_shell)
-        else:
-            bfile = master.ssh.remote_file(self.BATCH_USER_FILE, 'r')
-            newusers = bfile.read()
-            bfile.close()
+        newusers = self._get_newusers_batch_file(master, self._usernames, user_shell)
         for node in nodes:
             self.pool.simple_job(node.ssh.execute,
                                  ("echo '%s' | newusers" % newusers),
@@ -86,8 +81,14 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
         master.ssh.get(tarfile, self._download_keys_dir)
         master.ssh.unlink(tarfile)
 
-    def _create_batch_user_file(self, master, usernames, shell,
-                                batch_file=None):
+    def _get_newusers_batch_file(self, master, usernames, shell,
+                                 batch_file=None):
+        batch_file = batch_file or self.BATCH_USER_FILE
+        if master.ssh.isfile(batch_file):
+            bfile = master.ssh.remote_file(batch_file, 'r')
+            bfilecontents = bfile.read()
+            bfile.close()
+            return bfilecontents
         bfilecontents = ''
         tmpl = "%(username)s:%(password)s:%(uid)d:%(gid)d:"
         tmpl += "Cluster user account %(username)s:"
@@ -109,7 +110,9 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
             passwd = utils.generate_passwd(8)
             ctx.update(username=user, uid=uid, gid=gid, password=passwd)
             bfilecontents += tmpl % ctx
-        batch_file = batch_file or self.BATCH_USER_FILE
+        pardir = posixpath.dirname(batch_file)
+        if not master.ssh.isdir(pardir):
+            master.ssh.makedirs(pardir)
         bfile = master.ssh.remote_file(batch_file, 'w')
         bfile.write(bfilecontents)
         bfile.close()
@@ -122,12 +125,7 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
         self._user_shell = user_shell
         self._volumes = volumes
         log.info("Creating %d users on %s" % (self._num_users, node.alias))
-        if not master.ssh.isfile(self.BATCH_USER_FILE):
-            newusers = self._create_batch_user_file(master, self._usernames, user_shell)
-        else:
-            bfile = master.ssh.remote_file(self.BATCH_USER_FILE, 'r')
-            newusers = bfile.read()
-            bfile.close()
+        newusers = self._get_newusers_batch_file(master, self._usernames, user_shell)
         node.ssh.execute("echo '%s' | newusers" % newusers)
         log.info("Adding %s to known_hosts for %d users" %
                  (node.alias, self._num_users))
