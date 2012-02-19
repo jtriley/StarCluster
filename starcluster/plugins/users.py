@@ -71,6 +71,7 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
 
     def _download_user_keys(self, master, usernames):
         pardir = posixpath.dirname(self.BATCH_USER_FILE)
+        bfile = posixpath.basename(self.BATCH_USER_FILE)
         if not master.ssh.isdir(pardir):
             master.ssh.makedirs(pardir)
         log.info("Tarring all SSH keys for cluster users...")
@@ -80,7 +81,8 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
                 dict(user=user, keydest=posixpath.join(pardir, user + '.rsa')))
         cluster_tag = master.cluster_groups[0].name.replace('@sc-', '')
         tarfile = "%s-%s.tar.gz" % (cluster_tag, master.region.name)
-        master.ssh.execute("tar -C %s -czf ~/%s *.rsa" % (pardir, tarfile))
+        master.ssh.execute("tar -C %s -czf ~/%s . --exclude=%s" %
+                           (pardir, tarfile, bfile))
         if not os.path.exists(self._download_keys_dir):
             os.makedirs(self._download_keys_dir)
         log.info("Copying cluster users SSH keys to: %s" %
