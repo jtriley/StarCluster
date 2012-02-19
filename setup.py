@@ -13,7 +13,7 @@ try:
     extra = dict(test_suite="starcluster.tests",
                  tests_require="nose",
                  install_requires=["paramiko==1.7.7.1", "boto==2.2.1",
-                                   "workerpool==0.9.2", "Jinja2==2.5.5",
+                                   "workerpool==0.9.2", "Jinja2==2.6",
                                    "decorator==3.3.1", "pyasn1==0.0.13b"],
                  include_package_data=True,
                  entry_points=dict(console_scripts=console_scripts),

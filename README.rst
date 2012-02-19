@@ -159,7 +159,7 @@ Dependencies:
 * Boto 2.2.1
 * Paramiko 1.7.7.1
 * WorkerPool 0.9.2
-* Jinja2 2.5.5
+* Jinja2 2.6
 * decorator 3.3.1
 * pyasn1 0.0.13b
 
