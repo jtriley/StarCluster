@@ -16,7 +16,7 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
     DOWNLOAD_KEYS_DIR = os.path.join(static.STARCLUSTER_CFG_DIR, 'user_keys')
     BATCH_USER_FILE = "/root/.users/users.txt"
 
-    def __init__(self, num_users=None, usernames=None, download_keys=True,
+    def __init__(self, num_users=None, usernames=None, download_keys=None,
                  download_keys_dir=None):
         if usernames:
             usernames = [user.strip() for user in usernames.split(',')]
