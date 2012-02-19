@@ -92,7 +92,53 @@ class DefaultClusterSetup(ClusterSetup):
             self.pool.simple_job(node.set_hostname, (), jobid=node.alias)
         self.pool.wait(numtasks=len(nodes))
 
-    def _setup_cluster_user(self):
+    def _get_max_unused_user_id(self):
+        first_uid = 1000
+        uid, gid = first_uid, first_uid
+        mconn = self._master.ssh
+        umap = self._master.get_user_map(key_by_uid=True)
+        uid_db = {}
+        files = mconn.ls('/home')
+        for file in files:
+            if mconn.isdir(file):
+                f = mconn.stat(file)
+                uid_db[f.st_uid] = (file, f.st_gid)
+        if uid_db.keys():
+            max_uid = max(uid_db.keys())
+            max_gid = uid_db[max_uid][1]
+            uid, gid = max_uid + 1, max_gid + 1
+            # make sure the newly selected uid/gid is >= 1000
+            uid = max(uid, first_uid)
+            gid = max(gid, first_uid)
+        # make sure newly selected uid is not already in /etc/passwd
+        while umap.get(uid):
+            uid += 1
+            gid += 1
+        return uid, gid
+
+    def _get_new_user_id(self, user):
+        """
+        Get the appropriate UID and GID for a new cluster user. If the user's
+        home folder exists but the user doesn't exist the UID/GID owning the
+        home folder is returned. Otherwise it chooses the next available UID
+        and GID for a new user.
+        """
+        user = user or self._user
+        home_folder = '/home/%s' % user
+        mconn = self._master.ssh
+        if mconn.path_exists(home_folder):
+            # get /home/user's owner/group uid and create
+            # user with that uid/gid
+            s = mconn.stat(home_folder)
+            uid = s.st_uid
+            gid = s.st_gid
+        else:
+            # get highest uid/gid of dirs in /home/*,
+            # increment by 1 and create user with that uid/gid
+            uid, gid = self._get_max_unused_user_id()
+        return uid, gid
+
+    def _setup_cluster_user(self, user=None):
         """
         Create cluster user on all StarCluster nodes
 
@@ -103,39 +149,9 @@ class DefaultClusterSetup(ClusterSetup):
         the new user to be the existing uid/gid of the dir in EBS rather than
         chowning potentially terabytes of data.
         """
-        mconn = self._master.ssh
-        home_folder = '/home/%s' % self._user
-        first_uid = 1000
-        uid, gid = first_uid, first_uid
-        umap = self._master.get_user_map(key_by_uid=True)
-        if mconn.path_exists(home_folder):
-            # get /home/user's owner/group uid and create
-            # user with that uid/gid
-            s = mconn.stat(home_folder)
-            uid = s.st_uid
-            gid = s.st_gid
-        else:
-            # get highest uid/gid of dirs in /home/*,
-            # increment by 1 and create user with that uid/gid
-            uid_db = {}
-            files = mconn.ls('/home')
-            for file in files:
-                if mconn.isdir(file):
-                    f = mconn.stat(file)
-                    uid_db[f.st_uid] = (file, f.st_gid)
-            if uid_db.keys():
-                max_uid = max(uid_db.keys())
-                max_gid = uid_db[max_uid][1]
-                uid, gid = max_uid + 1, max_gid + 1
-                # make sure the newly selected uid/gid is >= 1000
-                uid = max(uid, first_uid)
-                gid = max(gid, first_uid)
-            # make sure newly selected uid is not already in /etc/passwd
-            while umap.get(uid):
-                uid += 1
-                gid += 1
-        log.info("Creating cluster user: %s (uid: %d, gid: %d)" % (self._user,
-                                                                   uid, gid))
+        uid, gid = self._get_new_user_id(user)
+        log.info("Creating cluster user: %s (uid: %d, gid: %d)" %
+                 (user, uid, gid))
         self._add_user_to_nodes(uid, gid, self._nodes)
 
     def _add_user_to_node(self, uid, gid, node):
@@ -162,25 +178,29 @@ class DefaultClusterSetup(ClusterSetup):
                                  jobid=node.alias)
         self.pool.wait(numtasks=len(nodes))
 
-    def _setup_scratch_on_node(self, node):
+    def _setup_scratch_on_node(self, node, users=None):
         nconn = node.ssh
-        user_scratch = '/mnt/%s' % self._user
-        if not nconn.path_exists(user_scratch):
-            nconn.mkdir(user_scratch)
-        nconn.execute('chown -R %(user)s:%(user)s /mnt/%(user)s' %
-                      {'user': self._user})
-        scratch = '/scratch'
-        if not nconn.path_exists(scratch):
-            nconn.mkdir(scratch)
-        if not nconn.path_exists(posixpath.join(scratch, self._user)):
-            nconn.execute('ln -s %s %s' % (user_scratch, scratch))
+        users = users or [self._user]
+        for user in users:
+            user_scratch = '/mnt/%s' % user
+            if not nconn.path_exists(user_scratch):
+                nconn.mkdir(user_scratch)
+            nconn.execute('chown -R %(user)s:%(user)s /mnt/%(user)s' %
+                          {'user': user})
+            scratch = '/scratch'
+            if not nconn.path_exists(scratch):
+                nconn.mkdir(scratch)
+            if not nconn.path_exists(posixpath.join(scratch, user)):
+                nconn.execute('ln -s %s %s' % (user_scratch, scratch))
 
-    def _setup_scratch(self, nodes=None):
+    def _setup_scratch(self, nodes=None, users=None):
         """ Configure scratch space on all StarCluster nodes """
-        log.info("Configuring scratch space for user: %s" % self._user)
+        users = users or [self._user]
+        log.info("Configuring scratch space for user(s): %s" %
+                 ', '.join(users), extra=dict(__textwrap__=True))
         nodes = nodes or self._nodes
         for node in nodes:
-            self.pool.simple_job(self._setup_scratch_on_node, (node,),
+            self.pool.simple_job(self._setup_scratch_on_node, (node, users),
                                  jobid=node.alias)
         self.pool.wait(numtasks=len(nodes))
 
