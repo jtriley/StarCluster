@@ -491,7 +491,7 @@ class SSHClient(object):
 
     def execute(self, command, silent=True, only_printable=False,
                 ignore_exit_status=False, log_output=True, detach=False,
-                source_profile=False):
+                source_profile=False, raise_on_failure=False):
         """
         Execute a remote command and return stdout/stderr
 
@@ -507,6 +507,7 @@ class SSHClient(object):
                  after the SSH connection closes (does NOT return output or
                  check for non-zero exit status if detach=True)
         source_profile - if True prefix the command with "source /etc/profile"
+        raise_on_failure - raise exception.SSHError if command fails
         returns List of output lines
         """
         channel = self.transport.open_session()
@@ -534,6 +535,8 @@ class SSHClient(object):
         if log_output:
             for line in output:
                 log.debug(line.strip())
+        if exit_status != 0 and raise_on_failure:
+            raise exception.SSHError(msg)
         return output
 
     def has_required(self, progs):
