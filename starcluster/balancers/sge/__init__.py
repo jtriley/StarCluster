@@ -395,7 +395,7 @@ class SGELoadBalancer(LoadBalancer):
         self._keep_polling = True
         self._visualizer = None
         self.__last_cluster_mod_time = datetime.datetime.utcnow()
-        self.stat = None
+        self.stat = SGEStats()
         self.polling_interval = interval
         self.max_nodes = max_nodes
         self.longest_allowed_queue_time = wait_time
@@ -472,9 +472,9 @@ class SGELoadBalancer(LoadBalancer):
 
     def get_qatime(self, now):
         """
-        this function takes the lookback window and creates a string
+        This function takes the lookback window and creates a string
         representation of the past few hours, to feed to qacct to
-        limit the data set qacct returns.
+        limit the dataset qacct returns.
         """
         if self.stat.is_jobstats_empty():
             log.info("Loading full job history")
@@ -487,46 +487,54 @@ class SGELoadBalancer(LoadBalancer):
         str = now.strftime("%Y%m%d%H%M")
         return str
 
+    def _get_stats(self):
+        master = self._cluster.master_node
+        now = self.get_remote_time()
+        qatime = self.get_qatime(now)
+        qacct_cmd = 'qacct -j -b ' + qatime
+        qstat_cmd = 'qstat -q all.q -u \"*\" -xml'
+        qhostxml = '\n'.join(master.ssh.execute('qhost -xml',
+                                                log_output=True,
+                                                source_profile=True,
+                                                raise_on_failure=True))
+        qstatxml = '\n'.join(master.ssh.execute(qstat_cmd, log_output=True,
+                                                source_profile=True,
+                                                raise_on_failure=True))
+        qacct = '\n'.join(master.ssh.execute(qacct_cmd, log_output=True,
+                                             ignore_exit_status=True,
+                                             source_profile=True))
+        log.debug("sizes: qhost: %d, qstat: %d, qacct: %d" %
+                  (len(qhostxml), len(qstatxml), len(qacct)))
+        stats = SGEStats()
+        stats.parse_qhost(qhostxml)
+        stats.parse_qstat(qstatxml)
+        stats.parse_qacct(qacct, now)
+        return stats
+
     #@print_timing
     def get_stats(self):
         """
-        this function will ssh to the SGE master and get load & queue stats.
-        it will feed these stats to SGEStats, which parses the XML.
-        it will return two arrays: one of hosts, each host has a hash with its
-        host information inside. The job array contains a hash for every job,
+        This method will ssh to the SGE master and get load & queue stats. It
+        will feed these stats to SGEStats, which parses the XML. It will return
+        two arrays: one of hosts, each host has a hash with its host
+        information inside. The job array contains a hash for every job,
         containing statistics about the job name, priority, etc.
         """
         log.debug("starting get_stats")
-        master = self._cluster.master_node
-        self.stat = SGEStats()
-
-        qhostxml = ""
-        qstatxml = ""
-        qacct = ""
-        try:
-            now = self.get_remote_time()
-            qatime = self.get_qatime(now)
-            qacct_cmd = 'qacct -j -b ' + qatime
-            qstat_cmd = 'qstat -q all.q -u \"*\" -xml'
-            qhostxml = '\n'.join(master.ssh.execute('qhost -xml',
-                                                    log_output=True,
-                                                    source_profile=True))
-            qstatxml = '\n'.join(master.ssh.execute(qstat_cmd,
-                                                    log_output=True,
-                                                    source_profile=True))
-            qacct = '\n'.join(master.ssh.execute(qacct_cmd, log_output=True,
-                                                 ignore_exit_status=True,
-                                                 source_profile=True))
-        except Exception, e:
-            log.error("Error occurred getting SGE stats via ssh. "
-                      "Cluster terminated?")
-            log.error(e)
-            return -1
-        log.debug("sizes: qhost: %d, qstat: %d, qacct: %d" %
-                  (len(qhostxml), len(qstatxml), len(qacct)))
-        self.stat.parse_qhost(qhostxml)
-        self.stat.parse_qstat(qstatxml)
-        self.stat.parse_qacct(qacct, now)
+        retries = 5
+        for i in range(retries):
+            try:
+                self.stat = self._get_stats()
+                return self.stat
+            except Exception:
+                log.warn("Failed to retrieve stats (%d/%d):" %
+                         (i + 1, retries))
+                log.debug(traceback.format_exc())
+                log.warn("Retrying in %ds" % self.polling_interval)
+                time.sleep(self.polling_interval)
+        raise exception.BaseException(
+            "Failed to retrieve SGE stats after trying %d times, exiting..." %
+            retries)
 
     def run(self, cluster):
         """
@@ -578,9 +586,7 @@ class SGELoadBalancer(LoadBalancer):
                 log.info("Waiting for all nodes to come up...")
                 time.sleep(self.polling_interval)
                 continue
-            if self.get_stats() == -1:
-                log.error("Failed to get stats. LoadBalancer is terminating")
-                return
+            self.get_stats()
             log.info("Cluster size: %d" % len(self.stat.hosts), extra=raw)
             log.info("Queued jobs: %d" % len(self.stat.get_queued_jobs()),
                      extra=raw)
