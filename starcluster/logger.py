@@ -7,6 +7,7 @@ import logging
 import logging.handlers
 import textwrap
 import StringIO
+import colorama
 
 from starcluster import static
 
@@ -105,7 +106,7 @@ console = ConsoleLogger()
 session = logging.StreamHandler(StringIO.StringIO())
 
 
-def configure_sc_logging(use_syslog=False):
+def configure_sc_logging(use_syslog=False, use_color=True):
     """
     Configure logging for StarCluster *application* code
 
@@ -139,6 +140,14 @@ def configure_sc_logging(use_syslog=False):
         syslog_handler.setFormatter(formatter)
         syslog_handler.setLevel(logging.DEBUG)
         log.addHandler(syslog_handler)
+    if use_color:
+        console.formatters[ERROR] = logging.Formatter("".join([
+            colorama.Fore.RED, colorama.Style.BRIGHT, ERROR_CONSOLE_FORMAT,
+            colorama.Style.RESET_ALL, colorama.Fore.RESET]))
+        console.formatters[WARN] = logging.Formatter("".join([
+            colorama.Fore.YELLOW, colorama.Style.BRIGHT, WARN_CONSOLE_FORMAT,
+            colorama.Style.RESET_ALL, colorama.Fore.RESET]))
+        colorama.init(autoreset=True)
 
 
 def configure_paramiko_logging():
