@@ -1228,10 +1228,14 @@ class Cluster(object):
         """
         interval = self.refresh_interval
         log.info("%s %s" % (msg, "(updating every %ds)" % interval))
-        self.wait_for_active_spots()
-        self.wait_for_active_instances()
-        self.wait_for_running_instances()
-        self.wait_for_ssh()
+        try:
+            self.wait_for_active_spots()
+            self.wait_for_active_instances()
+            self.wait_for_running_instances()
+            self.wait_for_ssh()
+        except Exception:
+            self.progress_bar.finish()
+            raise
 
     def is_cluster_stopped(self):
         """

@@ -117,6 +117,12 @@ class SSHClient(object):
             raise exception.SSHError(str(e))
         self.close()
         self._transport = transport
+        try:
+            assert self.sftp is not None
+        except paramiko.SFTPError, e:
+            if 'Garbage packet received' in e:
+                raise exception.SSHAccessDeniedViaAuthKeys(username)
+            raise
         return self
 
     @property

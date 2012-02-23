@@ -109,3 +109,23 @@ This may or may not be a problem depending on what's changed between these \
 versions, however, it's highly recommended that you use version \
 %(new_version)s when using the '%(cluster)s' cluster.\
 """
+
+authkeys_access_denied = """\
+Remote SSH access for user '%(user)s' denied via authorized_keys
+
+This usually means the AMI you're using has been configured to deny SSH \
+access for the '%(user)s' user. Either fix your AMI or use one of the \
+StarCluster supported AMIs. You can obtain a list of StarCluster supported \
+AMIs using the 'listpublic' command:
+
+    $ starcluster listpublic
+
+If you need to customize one of the StarCluster supported AMIs simply launch \
+an instance of the AMI, login remotely, configure the instance, and then use \
+the 'ebsimage' command to create a new EBS AMI from the instance with your \
+changes:
+
+    $ starcluster ebsimage <instance-id> <image-name>
+
+Pass the --help flag to the 'ebsimage' command for more details.
+"""

@@ -278,10 +278,10 @@ class StarClusterCLI(object):
         except exception.BaseException, e:
             log.error(e.msg, extra={'__textwrap__': True})
             sys.exit(1)
-        except SystemExit, e:
+        except SystemExit:
             # re-raise SystemExit to avoid the bug-catcher below
-            raise e
-        except Exception, e:
+            raise
+        except Exception:
             if not gopts.DEBUG:
                 traceback.print_exc()
             log.debug(traceback.format_exc())
