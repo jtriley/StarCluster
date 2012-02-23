@@ -147,7 +147,7 @@ def configure_sc_logging(use_syslog=False, use_color=True):
         console.formatters[WARN] = logging.Formatter("".join([
             colorama.Fore.YELLOW, colorama.Style.BRIGHT, WARN_CONSOLE_FORMAT,
             colorama.Style.RESET_ALL, colorama.Fore.RESET]))
-        colorama.init(autoreset=True)
+        colorama.init()
 
 
 def configure_paramiko_logging():

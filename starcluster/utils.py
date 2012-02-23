@@ -35,7 +35,7 @@ def ipy_shell(*args, **kwargs):
         log.error("Unable to load IPython:\n\n%s\n" % e)
         log.error("Please check that IPython is installed and working.")
         log.error("If not, you can install it via: easy_install ipython")
-    colorama.init(autoreset=True)
+    colorama.init()
 
 try:
     import pudb
