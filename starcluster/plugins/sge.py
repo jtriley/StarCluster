@@ -118,6 +118,9 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._create_sge_pe(nodes=nodes)
 
     def run(self, nodes, master, user, user_shell, volumes):
+        if not master.ssh.isdir("/opt/sge6-fresh"):
+            log.error("SGE is not installed on this AMI, skipping...")
+            return
         log.info("Configuring SGE...")
         try:
             self._nodes = nodes
