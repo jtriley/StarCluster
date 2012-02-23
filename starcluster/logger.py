@@ -141,13 +141,25 @@ def configure_sc_logging(use_syslog=False, use_color=True):
         syslog_handler.setLevel(logging.DEBUG)
         log.addHandler(syslog_handler)
     if use_color:
-        console.formatters[ERROR] = logging.Formatter("".join([
+        enable_color()
+
+
+def enable_color():
+    for red_level in [ERROR, CRITICAL, FATAL]:
+        console.formatters[red_level] = logging.Formatter("".join([
             colorama.Fore.RED, colorama.Style.BRIGHT, ERROR_CONSOLE_FORMAT,
             colorama.Style.RESET_ALL, colorama.Fore.RESET]))
-        console.formatters[WARN] = logging.Formatter("".join([
-            colorama.Fore.YELLOW, colorama.Style.BRIGHT, WARN_CONSOLE_FORMAT,
-            colorama.Style.RESET_ALL, colorama.Fore.RESET]))
-        colorama.init()
+    console.formatters[WARN] = logging.Formatter("".join([
+        colorama.Fore.YELLOW, colorama.Style.BRIGHT, WARN_CONSOLE_FORMAT,
+        colorama.Style.RESET_ALL, colorama.Fore.RESET]))
+    colorama.init()
+
+
+def disable_color():
+    colorama.deinit()
+    for red_level in [ERROR, CRITICAL, FATAL]:
+        console.formatters[red_level] = logging.Formatter(ERROR_CONSOLE_FORMAT)
+    console.formatters[WARN] = logging.Formatter(WARN_CONSOLE_FORMAT)
 
 
 def configure_paramiko_logging():
