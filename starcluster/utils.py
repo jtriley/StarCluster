@@ -11,6 +11,7 @@ import random
 import inspect
 import calendar
 import urlparse
+import colorama
 import decorator
 from datetime import datetime
 
@@ -18,20 +19,23 @@ from starcluster import iptools
 from starcluster import exception
 from starcluster.logger import log
 
-try:
-    import IPython
-    if IPython.__version__ < '0.11':
-        from IPython.Shell import IPShellEmbed
-        ipy_shell = IPShellEmbed(argv=[])
-    else:
-        from IPython import embed
-        ipy_shell = lambda local_ns=None: embed(user_ns=local_ns)
-except ImportError, e:
 
-    def ipy_shell(local_ns=None):
+def ipy_shell(*args, **kwargs):
+    colorama.deinit()
+    try:
+        import IPython
+        if IPython.__version__ < '0.11':
+            from IPython.Shell import IPShellEmbed
+            ipy_shell = IPShellEmbed(argv=[])
+        else:
+            from IPython import embed
+            ipy_shell = lambda local_ns=None: embed(user_ns=local_ns)
+        ipy_shell(*args, **kwargs)
+    except ImportError, e:
         log.error("Unable to load IPython:\n\n%s\n" % e)
         log.error("Please check that IPython is installed and working.")
         log.error("If not, you can install it via: easy_install ipython")
+    colorama.init(autoreset=True)
 
 try:
     import pudb
