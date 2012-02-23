@@ -11,17 +11,20 @@ import random
 import inspect
 import calendar
 import urlparse
-import colorama
+import platform
 import decorator
 from datetime import datetime
 
 from starcluster import iptools
 from starcluster import exception
-from starcluster.logger import log
+from starcluster import logger
+log = logger.log
 
 
 def ipy_shell(*args, **kwargs):
-    colorama.deinit()
+    is_win32 = platform.system() in ['Windows', 'Microsoft']
+    if is_win32:
+        logger.disable_color()
     try:
         import IPython
         if IPython.__version__ < '0.11':
@@ -35,7 +38,9 @@ def ipy_shell(*args, **kwargs):
         log.error("Unable to load IPython:\n\n%s\n" % e)
         log.error("Please check that IPython is installed and working.")
         log.error("If not, you can install it via: easy_install ipython")
-    colorama.init()
+    finally:
+        if is_win32:
+            logger.enable_color()
 
 try:
     import pudb
