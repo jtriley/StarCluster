@@ -84,7 +84,7 @@ class CmdShell(CmdBase):
 
     def execute(self, args):
         local_ns = dict(cfg=self.cfg, ec2=self.ec2, s3=self.s3, cm=self.cm,
-                        starcluster=starcluster)
+                        starcluster=starcluster, log=log)
         if self.opts.ipcluster:
             log.info("Loading parallel IPython library")
             try:
