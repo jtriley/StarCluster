@@ -1,53 +1,50 @@
 active_ebs_cluster = """EBS Cluster '%(cluster_name)s' already exists.
 
-Either choose a different tag name, or stop the EBS cluster using:
-
-    $ starcluster stop %(cluster_name)s
-
-This command will put all nodes into a 'stopped' state and preserve their \
-local disks. The cluster can later be resumed by passing the -x option to \
-the start command. Another option is to terminate the existing EBS Cluster \
+Either choose a different tag name, or terminate the existing EBS cluster \
 using:
 
     $ starcluster terminate %(cluster_name)s
 
-NOTE: Terminating an EBS cluster will destroy the local disks (volumes) \
+WARNING: Terminating an EBS cluster will destroy the local disks (volumes) \
 backing the nodes.
+
+If you encountered an issue while starting or using '%(cluster_name)s' you \
+can reboot and reconfigure the cluster using the 'restart' command:
+
+    $ starcluster restart %(cluster_name)s
+
+This will reboot all existing nodes and completely reconfigure the cluster \
+without wasting instance hours.
+
 """
 
 stopped_ebs_cluster = """Stopped EBS Cluster '%(cluster_name)s' already exists.
 
-Either choose a different tag name, or start the stopped EBS cluster using:
+Either choose a different tag name, or start the 'stopped' cluster using:
 
     $ starcluster start -x %(cluster_name)s
 
-Another option is to terminate the existing EBS Cluster using:
+Another option is to terminate the stopped EBS Cluster using:
 
     $ starcluster terminate %(cluster_name)s
 
-NOTE: Terminating an EBS cluster will destroy the local disks (volumes) \
+WARNING: Terminating an EBS cluster will destroy the local disks (volumes) \
 backing the nodes.
 """
 
-cluster_exists = """Cluster with tag name %(cluster_name)s already exists.
+cluster_exists = """Cluster '%(cluster_name)s' already exists.
 
-If the cluster is a 'stopped' EBS cluster that you wish to 'start' or if you \
-have yet to configure the existing cluster nodes, pass the -x option to the \
-start command:
+Either choose a different tag name, or terminate the existing cluster using:
 
-    $ starcluster start -x %(cluster_name)s
+    $ starcluster terminate %(cluster_name)s
 
-If you wish to reconfigure the existing instances use the 'restart' command:
+If you encountered an issue while starting or using '%(cluster_name)s' you \
+can reboot and reconfigure the cluster using the 'restart' command:
 
     $ starcluster restart %(cluster_name)s
 
-This will reboot all of the instances and configure the cluster starting from \
-scratch.
-
-Otherwise either choose a different tag name, or terminate the existing \
-cluster using:
-
-    $ starcluster terminate %(cluster_name)s
+This will reboot all existing nodes and completely reconfigure the cluster
+without wasting instance hours.
 
 """
 
