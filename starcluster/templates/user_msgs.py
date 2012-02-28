@@ -43,7 +43,7 @@ can reboot and reconfigure the cluster using the 'restart' command:
 
     $ starcluster restart %(cluster_name)s
 
-This will reboot all existing nodes and completely reconfigure the cluster
+This will reboot all existing nodes and completely reconfigure the cluster \
 without wasting instance hours.
 
 """
