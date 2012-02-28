@@ -1913,7 +1913,7 @@ class Cluster(object):
         if command:
             orig_user = node.ssh.get_current_user()
             node.ssh.switch_user(user)
-            node.ssh.execute(command, silent=False)
+            node.ssh.execute(command, silent=False, source_profile=True)
             node.ssh.switch_user(orig_user)
             return node.ssh.get_last_status()
         else:
