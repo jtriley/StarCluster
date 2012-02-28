@@ -49,35 +49,34 @@ without wasting instance hours.
 """
 
 cluster_started_msg = """
-The cluster is now ready to use. To login to the master node as \
-root, run:
+The cluster is now ready to use. To login to the master node as root, run:
 
     $ starcluster sshmaster %(tag)s
 
-When you are finished using the cluster and wish to terminate it and stop \
+If you're having issues with the cluster you can reboot the instances and \
+completely reconfigure the cluster from scratch using:
+
+    $ starcluster restart %(tag)s
+
+When you're finished using the cluster and wish to terminate it and stop \
 paying for service:
 
     $ starcluster terminate %(tag)s
 
-NOTE: Terminating an EBS cluster will destroy all EBS volumes backing the \
-nodes.
-
 Alternatively, if the cluster uses EBS instances, you can use the 'stop' \
-command to put all nodes into a 'stopped' state:
+command to shutdown all nodes and put them into a 'stopped' state preserving \
+the EBS volumes backing the nodes:
 
     $ starcluster stop %(tag)s
 
-NOTE: Any data stored in ephemeral storage (usually /mnt) will be lost!
+WARNING: Any data stored in ephemeral storage (usually /mnt) will be lost!
 
-This will shutdown all nodes in the cluster and put them in a 'stopped' state \
-that preserves the EBS volumes backing the nodes. A 'stopped' cluster may \
-then be restarted at a later time, without losing data on the local disks, by \
-passing the -x option to the 'start' command:
+You can activate a 'stopped' cluster by passing the -x option to the 'start' \
+command:
 
     $ starcluster start -x %(tag)s
 
-This will start all 'stopped' EBS instances and reconfigure the cluster.
-
+This will start all 'stopped' nodes and reconfigure the cluster.
 """
 
 spotmsg = """SPOT INSTANCES ARE NOT GUARANTEED TO COME UP
