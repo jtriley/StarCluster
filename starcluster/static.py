@@ -42,7 +42,7 @@ try:
     CURRENT_USER = getpass.getuser()
 except:
     pass
-SSH_TEMPLATE = 'ssh -i %s %s@%s'
+SSH_TEMPLATE = 'ssh %(opts)s %(user)s@%(host)s'
 
 STARCLUSTER_CFG_DIR = os.path.join(os.path.expanduser('~'), '.starcluster')
 STARCLUSTER_CFG_FILE = os.path.join(STARCLUSTER_CFG_DIR, 'config')

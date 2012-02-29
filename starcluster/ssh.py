@@ -613,7 +613,7 @@ class SSHClient(object):
         self.switch_user(user)
         try:
             chan = self._invoke_shell()
-            log.info('Starting interactive shell...')
+            log.info('Starting Pure-Python SSH shell...')
             if HAS_TERMIOS:
                 self._posix_shell(chan)
             else:

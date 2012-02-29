@@ -1,8 +1,8 @@
-import os
 import time
 import stat
 import base64
 import posixpath
+import subprocess
 
 from starcluster import ssh
 from starcluster import utils
@@ -886,7 +886,7 @@ class Node(object):
                                       private_key=self.key_location)
         return self._ssh
 
-    def shell(self, user=None):
+    def shell(self, user=None, forward_x11=False, command=None):
         """
         Attempts to launch an interactive shell by first trying the system's
         ssh client. If the system does not have the ssh command it falls back
@@ -907,13 +907,27 @@ class Node(object):
                                                label=label)
         user = user or self.user
         if utils.has_required(['ssh']):
-            log.debug("using system's ssh client")
-            ssh_cmd = static.SSH_TEMPLATE % (self.key_location, user,
-                                             self.dns_name)
+            log.debug("Using native OpenSSH client")
+            sshopts = '-i %s' % self.key_location
+            if forward_x11:
+                sshopts += ' -Y'
+            ssh_cmd = static.SSH_TEMPLATE % dict(opts=sshopts, user=user,
+                                                 host=self.dns_name)
+            if command:
+                command = "'source /etc/profile && %s'" % command
+                ssh_cmd = ' '.join([ssh_cmd, command])
             log.debug("ssh_cmd: %s" % ssh_cmd)
-            os.system(ssh_cmd)
+            return subprocess.call(ssh_cmd, shell=True)
         else:
-            log.debug("using pure-python ssh client")
+            log.debug("Using Pure-Python SSH client")
+            if forward_x11:
+                log.warn("X11 Forwarding not available in Python SSH client")
+            if command:
+                orig_user = self.ssh.get_current_user()
+                self.ssh.switch_user(user)
+                self.ssh.execute(command, silent=False, source_profile=True)
+                self.ssh.switch_user(orig_user)
+                return self.ssh.get_last_status()
             self.ssh.interactive_shell(user=user)
 
     def get_hosts_entry(self):
