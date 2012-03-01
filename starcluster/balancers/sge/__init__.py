@@ -347,8 +347,8 @@ class SGELoadBalancer(LoadBalancer):
 
     *** All times are in SECONDS unless otherwise specified ***
 
-    The polling interval in seconds. recommended: 60-300. any more frequent is
-    very wasteful. the polling loop with visualizer takes about 15 seconds.
+    The polling interval in seconds. Must be less than 300 seconds. The
+    polling loop with visualizer takes about 15 seconds.
     polling_interval = 60
 
     VERY IMPORTANT: Set this to the max nodes you're willing to have in your
@@ -357,10 +357,10 @@ class SGELoadBalancer(LoadBalancer):
     max_nodes = 5
 
     IMPORTANT: Set this to the longest time a job can wait before another host
-    is added to the cluster to help. Recommended: 300-900 seconds (5-15 mins).
-    Do not use a value less than 300 seconds because that is how long an
-    instance will take to start up.
-    longest_allowed_queue_time = 900
+    is added to the cluster to help. Must be at least 300 seconds. Recommended:
+    300 - 900 secs (5-15 mins). The minimum value is 300 seconds because that's
+    approximately how long an instance will take to start up.
+    wait_time = 900
 
     Keep this at 1 - your master, for now.
     min_nodes = 1
@@ -396,18 +396,15 @@ class SGELoadBalancer(LoadBalancer):
         self._visualizer = None
         self.__last_cluster_mod_time = datetime.datetime.utcnow()
         self.stat = SGEStats()
-        self.polling_interval = interval
-        self.max_nodes = max_nodes
-        self.longest_allowed_queue_time = wait_time
-        self.add_nodes_per_iteration = add_pi
+        self.polling_interval = min(interval, 300)
         self.kill_after = kill_after
+        self.max_nodes = max_nodes
+        self.longest_allowed_queue_time = max(300, wait_time)
+        self.add_nodes_per_iteration = add_pi
         self.stabilization_time = stab
         self.lookback_window = lookback_win
         self.min_nodes = min_nodes
         self.allow_master_kill = allow_master_kill
-        if self.longest_allowed_queue_time < 300:
-            log.warn("The recommended wait_time should be >= 300 seconds "
-                     "(it takes ~5 min to launch a new EC2 node)")
         self.dump_stats = dump_stats
         self.stats_file = stats_file
         self.plot_stats = plot_stats

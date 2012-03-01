@@ -50,7 +50,8 @@ class CmdLoadBalance(ClusterCompleter):
                           "<cluster_tag>")
         parser.add_option("-i", "--interval", dest="interval",
                           action="store", type="int", default=None,
-                          help="Polling interval for load balancer")
+                          help="Load balancer polling interval in seconds "
+                          "(max: 300s)")
         parser.add_option("-m", "--max_nodes", dest="max_nodes",
                           action="store", type="int", default=None,
                           help="Maximum # of nodes in cluster")
@@ -66,7 +67,8 @@ class CmdLoadBalance(ClusterCompleter):
                           help="Minutes after which a node can be killed")
         parser.add_option("-s", "--stabilization_time", dest="stab",
                           action="store", type="int", default=None,
-                          help="Seconds to wait before cluster stabilizes")
+                          help="Seconds to wait before cluster "
+                          "stabilizes (min: 300s)")
         parser.add_option("-l", "--lookback_window", dest="lookback_win",
                           action="store", type="int", default=None,
                           help="Minutes to look back for past job history")
