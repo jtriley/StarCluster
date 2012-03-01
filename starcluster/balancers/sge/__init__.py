@@ -366,7 +366,7 @@ class SGELoadBalancer(LoadBalancer):
     min_nodes = 1
 
     This would allow the master to be killed when the queue empties. UNTESTED.
-    allow_master_kill = False
+    kill_cluster = False
 
     How many nodes to add per iteration. Setting it > 1 opens up possibility
     of spending too much $$
@@ -389,7 +389,7 @@ class SGELoadBalancer(LoadBalancer):
 
     def __init__(self, interval=60, max_nodes=None, wait_time=900,
                  add_pi=1, kill_after=45, stab=180, lookback_win=3,
-                 min_nodes=1, allow_master_kill=False, plot_stats=False,
+                 min_nodes=1, kill_cluster=False, plot_stats=False,
                  plot_output_dir=None, dump_stats=False, stats_file=None):
         self._cluster = None
         self._keep_polling = True
@@ -403,8 +403,8 @@ class SGELoadBalancer(LoadBalancer):
         self.add_nodes_per_iteration = add_pi
         self.stabilization_time = stab
         self.lookback_window = lookback_win
-        self.min_nodes = min_nodes
-        self.allow_master_kill = allow_master_kill
+        self.kill_cluster = kill_cluster
+        self.min_nodes = min_nodes if not kill_cluster else 0
         self.dump_stats = dump_stats
         self.stats_file = stats_file
         self.plot_stats = plot_stats
@@ -610,7 +610,11 @@ class SGELoadBalancer(LoadBalancer):
                     self.visualizer.graph_all()
                 except IOError, e:
                     raise exception.BaseException(str(e))
-            #sleep for the specified number of seconds
+            #evaluate if cluster should be terminated
+            if self.kill_cluster:
+                if self._eval_terminate_cluster():
+                    log.info("Terminating cluster and exiting...")
+                    return self._cluster.terminate_cluster()
             log.info("Sleeping...(looping again in %d secs)\n" %
                      self.polling_interval)
             time.sleep(self.polling_interval)
@@ -712,6 +716,17 @@ class SGELoadBalancer(LoadBalancer):
                 log.info("Not removing nodes: already at or below minimum (%d)"
                          % self.min_nodes)
 
+    def _eval_terminate_cluster(self):
+        """
+        This method determines whether to terminate the cluster based on the
+        following conditions:
+        1. Only the master node exists
+        2. The master node is idle
+        """
+        if len(self._cluster.running_nodes) != 1:
+            return False
+        return not self.stat.is_node_working(self._cluster.master_node)
+
     def _find_node_for_removal(self):
         """
         This function will find a suitable node to remove from the cluster.
@@ -720,11 +735,10 @@ class SGELoadBalancer(LoadBalancer):
         2. The node must have been up for 50-60 minutes past its start time
         3. The node must not be the master, or allow_master_kill=True
         """
-        nodes = self._cluster.running_nodes
         to_rem = []
+        nodes = [n for n in self._cluster.running_nodes if not n.is_master()]
         for node in nodes:
-            if not self.allow_master_kill and node.is_master():
-                log.debug("not removing master node")
+            if self.stat.is_node_working(node):
                 continue
             is_working = self.stat.is_node_working(node)
             mins_up = self._minutes_uptime(node) % 60

@@ -75,10 +75,9 @@ class CmdLoadBalance(ClusterCompleter):
         parser.add_option("-n", "--min_nodes", dest="min_nodes",
                           action="store", type="int", default=None,
                           help="Minimum number of nodes in cluster")
-        parser.add_option("-K", "--kill-master", dest="allow_master_kill",
-                          action="store_true", default=None,
-                          help="Allow the master to be killed when "
-                          "the queue is empty (EXPERIMENTAL).")
+        parser.add_option("-K", "--kill-cluster", dest="kill_cluster",
+                          action="store_true", default=False,
+                          help="Terminate the cluster when the queue is empty")
 
     def execute(self, args):
         if not self.cfg.globals.enable_experimental:
