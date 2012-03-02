@@ -543,6 +543,8 @@ class EasyEC2(EasyAWS):
         instance_type = instance.instance_type or 'N/A'
         keypair = instance.key_name or 'N/A'
         uptime = utils.get_elapsed_time(instance.launch_time) or 'N/A'
+        if state == 'stopped':
+            uptime = 'N/A'
         print "id: %s" % id
         print "dns_name: %s" % dns_name
         print "private_dns_name: %s" % private_dns_name
