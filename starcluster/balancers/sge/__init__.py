@@ -682,34 +682,32 @@ class SGELoadBalancer(LoadBalancer):
         remove a node from the cluster.
         """
         qlen = len(self.stat.get_queued_jobs())
-        if qlen == 0:
-            if not self.has_cluster_stabilized():
-                return 0
-            #if at 0, remove all nodes but master
-            if len(self.stat.hosts) > self.min_nodes:
-                log.info("Checking to remove a node...")
-                to_kill = self._find_node_for_removal()
-                if not to_kill:
-                    log.info("No nodes can be killed at this time")
-                #kill the nodes returned
-                for n in to_kill:
-                    if n.update() == "running":
-                        log.info("***REMOVING NODE: %s (%s)" % (n.id,
-                                                                n.dns_name))
-                        try:
-                            self._cluster.remove_node(n)
-                        except Exception:
-                            log.error("Failed to remove node %s" % n.alias)
-                            log.debug(traceback.format_exc())
-                            return -1
-                        #successfully removed node
-                        now = datetime.datetime.utcnow()
-                        self.__last_cluster_mod_time = now
-                    else:
-                        log.error("Trying to kill dead node %s" % n.alias)
-            else:
-                log.info("Not removing nodes: already at or below minimum (%d)"
-                         % self.min_nodes)
+        if qlen != 0:
+            return
+        if not self.has_cluster_stabilized():
+            return
+        if len(self.stat.hosts) <= self.min_nodes:
+            log.info("Not removing nodes: already at or below minimum (%d)"
+                     % self.min_nodes)
+            return
+        max_remove = len(self.stat.hosts) - self.min_nodes
+        log.info("Looking for nodes to remove...")
+        remove_nodes = self._find_nodes_for_removal(max_remove=max_remove)
+        if not remove_nodes:
+            log.info("No nodes can be removed at this time")
+        for node in remove_nodes:
+            if node.update() != "running":
+                log.error("Node %s is already dead - not removing" %
+                          node.alias)
+                continue
+            log.warn("Removing %s: %s (%s)" %
+                     (node.alias, node.id, node.dns_name))
+            try:
+                self._cluster.remove_node(node)
+                self.__last_cluster_mod_time = datetime.datetime.utcnow()
+            except Exception:
+                log.error("Failed to remove node %s" % node.alias)
+                log.debug(traceback.format_exc())
 
     def _eval_terminate_cluster(self):
         """
@@ -722,30 +720,45 @@ class SGELoadBalancer(LoadBalancer):
             return False
         return not self.stat.is_node_working(self._cluster.master_node)
 
-    def _find_node_for_removal(self):
+    def _should_remove(self, node):
         """
-        This function will find a suitable node to remove from the cluster.
-        The criteria for removal are:
+        Determines whether a node is eligible to be removed based on:
+
         1. The node must not be running any SGE job
-        2. The node must have been up for 50-60 minutes past its start time
-        3. The node must not be the master, or allow_master_kill=True
+        2. The node must have been up for self.kill_after min past the hour
         """
-        to_rem = []
-        nodes = [n for n in self._cluster.running_nodes if not n.is_master()]
-        for node in nodes:
-            if self.stat.is_node_working(node):
+        if self.stat.is_node_working(node):
+            return False
+        mins_up = self._minutes_uptime(node) % 60
+        idle_msg = ("Idle node %s (%s) has been up for %d minutes past "
+                    "the hour" % (node.alias, node.id, mins_up))
+        if mins_up >= self.kill_after:
+            log.info(idle_msg)
+            return True
+        else:
+            log.debug(idle_msg)
+            return False
+
+    def _find_nodes_for_removal(self, max_remove=None):
+        """
+        This function returns one or more suitable worker nodes to remove from
+        the cluster. The criteria for removal are:
+        1. The node must be a worker node (ie not master)
+        2. The node must not be running any SGE job
+        3. The node must have been up for self.kill_after min past the hour
+
+        If max_remove is specified up to max_remove nodes will be returned for
+        removal.
+        """
+        remove_nodes = []
+        for node in self._cluster.running_nodes:
+            if max_remove is not None and len(remove_nodes) >= max_remove:
+                return remove_nodes
+            if node.is_master():
                 continue
-            is_working = self.stat.is_node_working(node)
-            mins_up = self._minutes_uptime(node) % 60
-            if not is_working:
-                log.info("Idle Node %s (%s) has been up for %d minutes "
-                         "past the hour" % (node.id, node.alias, mins_up))
-            if self.polling_interval > 300:
-                self.kill_after = max(45,
-                                      60 - (2 * self.polling_interval / 60))
-            if not is_working and mins_up >= self.kill_after:
-                to_rem.append(node)
-        return to_rem
+            if self._should_remove(node):
+                remove_nodes.append(node)
+        return remove_nodes
 
     def _minutes_uptime(self, node):
         """
