@@ -123,13 +123,13 @@ The following parameters are also available for fine-tuning, however, the
 majority of users shouldn't need them:
 
 #. **Polling interval** (-i INTERVAL or --interval=INTERVAL) - How often, in
-   seconds, to collect statistics and make decisions
+   seconds, to collect statistics and make decisions (maximum: 300s)
 #. **Wait Time** (-w WAIT_TIME, --job_wait_time=WAIT_TIME) - Maximum wait time,
    in seconds, for a job before adding nodes
 #. **Kill after** (-k KILL_AFTER, --kill_after=KILL_AFTER) - Minutes after
    which a node can be killed
 #. **Stabilization time** (-s STAB, --stabilization_time=STAB) - How long, in
-   seconds, to wait before cluster "stabilizes"
+   seconds, to wait before cluster "stabilizes" (minimum: 300s)
 #. **Lookback window** (-l LOOKBACK_WIN, --lookback_window=LOOKBACK_WIN) - How
    long, in minutes, to look back for past job history
 
@@ -140,13 +140,13 @@ the cluster alive and functional. However, there are times when you might want
 to destroy the master if the cluster is completely idle and there are no more
 nodes left to remove. For example, you may wish to launch 10000 jobs and have
 the cluster shutdown when the last job has completed. In this case you can use
-the experimental *-K*, or *--kill-master*, option::
+the experimental *-K*, or *--kill-cluster*, option::
 
-    $ starcluster loadbalance --kill-master mycluster
+    $ starcluster loadbalance --kill-cluster mycluster
 
 The above command will load balance *mycluster* as usual, however, once all
 jobs have completed and all worker nodes have been shutdown by the load
-balancer the master node will also be terminated.
+balancer the cluster will be terminated.
 
 ************
 How it Works
