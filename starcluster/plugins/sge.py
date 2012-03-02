@@ -54,6 +54,15 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             mssh.execute('qconf -mattr queue pe_list "%s" %s' % (name, queue),
                          source_profile=True)
 
+    def _setup_sge_profile(self, node):
+        conn = node.ssh
+        conn.execute('pkill -9 sge', ignore_exit_status=True)
+        conn.execute('rm /etc/init.d/sge*', ignore_exit_status=True)
+        sge_profile = conn.remote_file("/etc/profile.d/sge.sh", "w")
+        arch = conn.execute("/opt/sge6/util/arch")[0]
+        sge_profile.write(sge.sgeprofile_template % dict(arch=arch))
+        sge_profile.close()
+
     def _setup_sge(self):
         """
         Install Sun Grid Engine with a default parallel
@@ -68,14 +77,8 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._setup_nfs(self.nodes, export_paths=['/opt/sge6'],
                         start_server=False)
         # generate /etc/profile.d/sge.sh for each node
-        for node in self._nodes:
-            conn = node.ssh
-            conn.execute('pkill -9 sge', ignore_exit_status=True)
-            conn.execute('rm /etc/init.d/sge*', ignore_exit_status=True)
-            sge_profile = conn.remote_file("/etc/profile.d/sge.sh")
-            arch = conn.execute("/opt/sge6/util/arch")[0]
-            print >> sge_profile, sge.sgeprofile_template % {'arch': arch}
-            sge_profile.close()
+        log.info("Configuring SGE profile on all nodes")
+        self.pool.map(self._setup_sge_profile, self._nodes)
         # setup sge auto install file
         default_cell = '/opt/sge6/default'
         if master.ssh.isdir(default_cell):
