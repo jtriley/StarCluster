@@ -15,9 +15,9 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
 
     def _add_to_sge(self, node):
         # generate /etc/profile.d/sge.sh
-        sge_profile = node.ssh.remote_file("/etc/profile.d/sge.sh")
+        sge_profile = node.ssh.remote_file("/etc/profile.d/sge.sh", "w")
         arch = node.ssh.execute("/opt/sge6/util/arch")[0]
-        print >> sge_profile, sge.sgeprofile_template % {'arch': arch}
+        sge_profile.write(sge.sgeprofile_template % dict(arch=arch))
         sge_profile.close()
         node.ssh.execute('cd /opt/sge6 && TERM=rxvt ./inst_sge -x -noremote '
                          '-auto ./ec2_sge.conf')
@@ -42,7 +42,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         nodes = nodes or self._nodes
         num_processors = sum(self.pool.map(lambda n: n.num_processors, nodes))
         penv = mssh.remote_file("/tmp/pe.txt", "w")
-        print >> penv, sge.sge_pe_template % (name, num_processors)
+        penv.write(sge.sge_pe_template % (name, num_processors))
         penv.close()
         if not pe_exists:
             mssh.execute("qconf -Ap %s" % penv.name, source_profile=True)
@@ -85,13 +85,14 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             log.info("Removing previous SGE installation...")
             master.ssh.execute('rm -rf %s' % default_cell)
             master.ssh.execute('exportfs -fr')
-        admin_list = ' '.join(map(lambda n: n.alias, self._nodes))
-        exec_list = admin_list
-        submit_list = admin_list
-        ec2_sge_conf = master.ssh.remote_file("/opt/sge6/ec2_sge.conf")
-        # TODO: add sge section to config values for some of the below
-        conf = sge.sgeinstall_template % (admin_list, exec_list, submit_list)
-        print >> ec2_sge_conf, conf
+        admin_hosts = ' '.join(map(lambda n: n.alias, self._nodes))
+        submit_hosts = admin_hosts
+        exec_hosts = admin_hosts
+        ec2_sge_conf = master.ssh.remote_file("/opt/sge6/ec2_sge.conf", "w")
+        conf = sge.sgeinstall_template % dict(admin_hosts=admin_hosts,
+                                              submit_hosts=submit_hosts,
+                                              exec_hosts=exec_hosts)
+        ec2_sge_conf.write(conf)
         ec2_sge_conf.close()
         # installs sge in /opt/sge6 and starts qmaster/schedd on master node
         log.info("Installing Sun Grid Engine...")
