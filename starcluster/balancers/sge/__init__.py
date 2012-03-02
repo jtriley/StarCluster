@@ -506,7 +506,7 @@ class SGELoadBalancer(LoadBalancer):
         stats.parse_qacct(qacct, now)
         return stats
 
-    #@print_timing
+    @utils.print_timing("Fetching SGE stats", debug=True)
     def get_stats(self):
         """
         This method will ssh to the SGE master and get load & queue stats. It

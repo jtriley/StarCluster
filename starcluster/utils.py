@@ -56,7 +56,7 @@ class AttributeDict(dict):
             return super(AttributeDict, self).__getattribute__(name)
 
 
-def print_timing(msg=None):
+def print_timing(msg=None, debug=False):
     """
     Decorator for printing execution time (in mins) of a function
     Optionally takes a user-friendly msg as argument. This msg will
@@ -86,7 +86,11 @@ def print_timing(msg=None):
         time1 = time.time()
         res = func(*arg, **kargs)
         time2 = time.time()
-        log.info('%s took %0.3f mins' % (prefix, (time2 - time1) / 60.0))
+        msg = '%s took %0.3f mins' % (prefix, (time2 - time1) / 60.0)
+        if debug:
+            log.debug(msg)
+        else:
+            log.info(msg)
         return res
 
     if type(msg) == types.FunctionType:
