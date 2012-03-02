@@ -713,12 +713,13 @@ class SGELoadBalancer(LoadBalancer):
         """
         This method determines whether to terminate the cluster based on the
         following conditions:
-        1. Only the master node exists
-        2. The master node is idle
+        1. Only the master node exists (no worker nodes)
+        2. The master node is not running any SGE jobs
+        3. The master node has been up for at least self.kill_after mins
         """
         if len(self._cluster.running_nodes) != 1:
             return False
-        return not self.stat.is_node_working(self._cluster.master_node)
+        return self._should_remove(self._cluster.master_node)
 
     def _should_remove(self, node):
         """
