@@ -13,14 +13,17 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         mssh = self._master.ssh
         mssh.execute('qconf -ah %s' % node.alias, source_profile=True)
 
-    def _add_to_sge(self, node):
-        # generate /etc/profile.d/sge.sh
+    def _setup_sge_profile(self, node):
         sge_profile = node.ssh.remote_file("/etc/profile.d/sge.sh", "w")
         arch = node.ssh.execute("/opt/sge6/util/arch")[0]
         sge_profile.write(sge.sgeprofile_template % dict(arch=arch))
         sge_profile.close()
-        node.ssh.execute('cd /opt/sge6 && TERM=rxvt ./inst_sge -x -noremote '
-                         '-auto ./ec2_sge.conf')
+
+    def _add_to_sge(self, node):
+        node.ssh.execute('pkill -9 sge', ignore_exit_status=True)
+        node.ssh.execute('rm /etc/init.d/sge*', ignore_exit_status=True)
+        self._setup_sge_profile(node)
+        self._inst_sge(node, exec_host=True)
 
     def _create_sge_pe(self, name="orte", nodes=None, queue="all.q"):
         """
@@ -54,14 +57,14 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             mssh.execute('qconf -mattr queue pe_list "%s" %s' % (name, queue),
                          source_profile=True)
 
-    def _setup_sge_profile(self, node):
-        conn = node.ssh
-        conn.execute('pkill -9 sge', ignore_exit_status=True)
-        conn.execute('rm /etc/init.d/sge*', ignore_exit_status=True)
-        sge_profile = conn.remote_file("/etc/profile.d/sge.sh", "w")
-        arch = conn.execute("/opt/sge6/util/arch")[0]
-        sge_profile.write(sge.sgeprofile_template % dict(arch=arch))
-        sge_profile.close()
+    def _inst_sge(self, node, exec_host=True):
+        inst_sge = 'cd /opt/sge6 && TERM=rxvt ./inst_sge '
+        if node.is_master():
+            inst_sge += '-m '
+        if exec_host:
+            inst_sge += '-x '
+        inst_sge += '-noremote -auto ./ec2_sge.conf'
+        node.ssh.execute(inst_sge, silent=True, only_printable=True)
 
     def _setup_sge(self):
         """
@@ -76,9 +79,6 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
                                {'user': self._user})
         self._setup_nfs(self.nodes, export_paths=['/opt/sge6'],
                         start_server=False)
-        # generate /etc/profile.d/sge.sh for each node
-        log.info("Configuring SGE profile on all nodes")
-        self.pool.map(self._setup_sge_profile, self._nodes)
         # setup sge auto install file
         default_cell = '/opt/sge6/default'
         if master.ssh.isdir(default_cell):
@@ -94,11 +94,9 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
                                               exec_hosts=exec_hosts)
         ec2_sge_conf.write(conf)
         ec2_sge_conf.close()
-        # installs sge in /opt/sge6 and starts qmaster/schedd on master node
         log.info("Installing Sun Grid Engine...")
-        master.ssh.execute(
-            'cd /opt/sge6 && TERM=rxvt ./inst_sge -m -x -noremote '
-            '-auto ./ec2_sge.conf', silent=True, only_printable=True)
+        self._inst_sge(master)
+        self._setup_sge_profile(master)
         # set all.q shell to bash
         master.ssh.execute('qconf -mattr queue shell "/bin/bash" all.q',
                            source_profile=True)
