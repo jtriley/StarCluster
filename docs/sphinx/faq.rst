@@ -20,14 +20,14 @@ are not using a compatible StarCluster AMI::
       File "/usr/lib/python2.6/site-packages/starcluster/ssh.py", line 284, in remote_file
         rfile = self.sftp.open(file, mode)
       File "/usr/lib/python2.6/site-packages/starcluster/ssh.py", line 174, in sftp
-        self._sftp = paramiko.SFTPClient.from_transport(self.transport)
-      File "/usr/lib/python2.6/site-packages/paramiko/sftp_client.py", line 106, in from_transport
+        self._sftp = ssh.SFTPClient.from_transport(self.transport)
+      File "/usr/lib/python2.6/site-packages/ssh/sftp_client.py", line 106, in from_transport
         return cls(chan)
-      File "/usr/lib/python2.6/site-packages/paramiko/sftp_client.py", line 87, in __init__
+      File "/usr/lib/python2.6/site-packages/ssh/sftp_client.py", line 87, in __init__
         server_version = self._send_version()
-      File "/usr/lib/python2.6/site-packages/paramiko/sftp.py", line 108, in _send_version
+      File "/usr/lib/python2.6/site-packages/ssh/sftp.py", line 108, in _send_version
         t, data = self._read_packet()
-      File "/usr/lib/python2.6/site-packages/paramiko/sftp.py", line 179, in _read_packet
+      File "/usr/lib/python2.6/site-packages/ssh/sftp.py", line 179, in _read_packet
         raise SFTPError('Garbage packet received')
     SFTPError: Garbage packet received
 

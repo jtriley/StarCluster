@@ -8,11 +8,11 @@ import base64
 import cPickle
 import traceback
 
-from starcluster import ssh
 from starcluster import utils
 from starcluster import static
 from starcluster import spinner
 from starcluster import iptools
+from starcluster import sshutils
 from starcluster import managers
 from starcluster import exception
 from starcluster import progressbar
@@ -1884,12 +1884,12 @@ class Cluster(object):
                 "Error loading key_location '%s':\n%s\n"
                 "Please check that the file is readable" % (key_location, e))
         if len(fingerprint) == 59:
-            localfingerprint = ssh.get_private_rsa_fingerprint(key_location)
-            if localfingerprint != fingerprint:
+            keyfingerprint = sshutils.get_private_rsa_fingerprint(key_location)
+            if keyfingerprint != fingerprint:
                 raise exception.ClusterValidationError(
                     "Incorrect fingerprint for key_location '%s'\n\n"
                     "local fingerprint: %s\n\nkeypair fingerprint: %s"
-                    % (key_location, localfingerprint, fingerprint))
+                    % (key_location, keyfingerprint, fingerprint))
         else:
             # Skip fingerprint validation for keys created using EC2 import
             # keys until I can figure out the mystery behind the import keys

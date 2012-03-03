@@ -158,7 +158,7 @@ class StarClusterCLI(object):
         crashfile.write("StarCluster: %s\n" % __version__)
         crashfile.write("Python: %s\n" % sys.version.replace('\n', ' '))
         crashfile.write("Platform: %s\n" % platform.platform())
-        dependencies = ['boto', 'paramiko', 'Crypto', 'jinja2', 'decorator']
+        dependencies = ['boto', 'ssh', 'Crypto', 'jinja2', 'decorator']
         for dep in dependencies:
             self.__write_module_version(dep, crashfile)
         crashfile.close()

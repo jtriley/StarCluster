@@ -4,9 +4,9 @@ import base64
 import posixpath
 import subprocess
 
-from starcluster import ssh
 from starcluster import utils
 from starcluster import static
+from starcluster import sshutils
 from starcluster import awsutils
 from starcluster import managers
 from starcluster import exception
@@ -51,8 +51,8 @@ class Node(object):
     This class represents a single compute node in a StarCluster.
 
     It contains all useful metadata for the node such as the internal/external
-    hostnames, ips, etc. as well as a paramiko ssh object for executing
-    commands, creating/modifying files on the node.
+    hostnames, ips, etc. as well as an ssh object for executing commands,
+    creating/modifying files on the node.
 
     'instance' arg must be an instance of boto.ec2.instance.Instance
 
@@ -881,9 +881,9 @@ class Node(object):
     @property
     def ssh(self):
         if not self._ssh:
-            self._ssh = ssh.SSHClient(self.instance.dns_name,
-                                      username=self.user,
-                                      private_key=self.key_location)
+            self._ssh = sshutils.SSHClient(self.instance.dns_name,
+                                           username=self.user,
+                                           private_key=self.key_location)
         return self._ssh
 
     def shell(self, user=None, forward_x11=False, command=None):

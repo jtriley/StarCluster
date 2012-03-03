@@ -144,7 +144,7 @@ To launch StarCluster's development shell, use the *shell* command::
     >>> Importing module templates
     >>> Importing module optcomplete
     >>> Importing module boto
-    >>> Importing module paramiko
+    >>> Importing module ssh
 
     [~]|1>
 

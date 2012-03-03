@@ -25,7 +25,7 @@ class CmdShell(CmdBase):
         s3 - starcluster.awsutils.EasyS3 instance
 
     All StarCluster modules are automatically imported in the IPython session
-    along with all StarCluster dependencies (e.g. boto, paramiko, etc.)
+    along with all StarCluster dependencies (e.g. boto, ssh, etc.)
 
     If the --ipcluster=CLUSTER (-p) is passed, the IPython session will be
     automatically be configured to connect to the remote CLUSTER using
@@ -126,7 +126,7 @@ class CmdShell(CmdBase):
             local_ns['ipview'] = rc[:]
         modules = [(starcluster.__name__ + '.' + module, module)
                    for module in starcluster.__all__]
-        modules += [('boto', 'boto'), ('paramiko', 'paramiko'),
+        modules += [('boto', 'boto'), ('ssh', 'ssh'),
                     ('workerpool', 'workerpool'), ('jinja2', 'jinja2')]
         for fullname, modname in modules:
             log.info('Importing module %s' % modname)
