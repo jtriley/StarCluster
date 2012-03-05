@@ -59,17 +59,20 @@ class SGEStats(object):
                 self.hosts.append(hash)
         return self.hosts
 
-    def parse_qstat(self, qstat_out, fields=None):
+    def parse_qstat(self, qstat_out, fields=None, queues=None):
         """
         This method parses qstat -xml output and makes a neat array
         """
         self.jobs = []  # clear the old jobs
-        if fields == None:
-            fields = self._default_fields
+        fields = fields or self._default_fields
         doc = xml.dom.minidom.parseString(qstat_out)
         for job in doc.getElementsByTagName("job_list"):
+            qname = job.getAttribute("queue_name")
+            if queues:
+                if qname not in queues:
+                    continue
             jstate = job.getAttribute("state")
-            hash = {"job_state": jstate}
+            hash = dict(job_state=jstate, queue_name=qname)
             for tag in fields:
                 es = job.getElementsByTagName(tag)
                 for node in es:
@@ -483,7 +486,7 @@ class SGELoadBalancer(LoadBalancer):
         now = self.get_remote_time()
         qatime = self.get_qatime(now)
         qacct_cmd = 'qacct -j -b ' + qatime
-        qstat_cmd = 'qstat -q all.q -u \"*\" -xml'
+        qstat_cmd = 'qstat -u \* -xml'
         qhostxml = '\n'.join(master.ssh.execute('qhost -xml',
                                                 log_output=True,
                                                 source_profile=True,
@@ -494,12 +497,12 @@ class SGELoadBalancer(LoadBalancer):
         qacct = '\n'.join(master.ssh.execute(qacct_cmd, log_output=True,
                                              ignore_exit_status=True,
                                              source_profile=True))
-        log.debug("sizes: qhost: %d, qstat: %d, qacct: %d" %
-                  (len(qhostxml), len(qstatxml), len(qacct)))
         stats = SGEStats()
         stats.parse_qhost(qhostxml)
-        stats.parse_qstat(qstatxml)
+        stats.parse_qstat(qstatxml, queues=["all.q", ""])
         stats.parse_qacct(qacct, now)
+        log.debug("sizes: qhost: %d, qstat: %d, qacct: %d" %
+                  (len(qhostxml), len(qstatxml), len(qacct)))
         return stats
 
     @utils.print_timing("Fetching SGE stats", debug=True)
