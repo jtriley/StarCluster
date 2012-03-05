@@ -202,11 +202,13 @@ class SGEStats(object):
 
     def slots_per_host(self):
         """
-        returns the number of slots per host.
-        If for some reason the cluster is inconsistent, this will return -1
-        for example, if you have m1.large and m1.small in the same cluster
+        Returns the number of slots per host. If for some reason the cluster is
+        inconsistent, this will return -1 for example, if you have m1.large and
+        m1.small in the same cluster
         """
         total = self.count_total_slots()
+        if total == 0:
+            return total
         if self.hosts[0][u'num_proc'] == '-':
             self.hosts[0][u'num_proc'] = 0
         single = int(self.hosts[0][u'num_proc'])
@@ -641,10 +643,13 @@ class SGELoadBalancer(LoadBalancer):
         qlen = len(self.stat.get_queued_jobs())
         sph = self.stat.slots_per_host()
         ts = self.stat.count_total_slots()
-        #calculate job duration
-        avg_duration = self.stat.avg_job_duration()
+        num_exec_hosts = len(self.stat.hosts)
         #calculate estimated time to completion
-        ettc = avg_duration * qlen / len(self.stat.hosts)
+        ettc = 0
+        if num_exec_hosts > 0:
+            #calculate job duration
+            avg_duration = self.stat.avg_job_duration()
+            ettc = avg_duration * qlen / num_exec_hosts
         if qlen > ts:
             if not self.has_cluster_stabilized():
                 return
@@ -657,8 +662,8 @@ class SGELoadBalancer(LoadBalancer):
                 log.info("A job has been waiting for %d sec, longer than "
                          "max %d" % (age_delta.seconds,
                                      self.longest_allowed_queue_time))
-                need_to_add = qlen / sph
-                if ettc < 600 and not self.stat.on_first_job():
+                need_to_add = qlen / sph if sph != 0 else 1
+                if 0 < ettc < 600 and not self.stat.on_first_job():
                     log.warn("There is a possibility that the job queue is"
                              " shorter than 10 minutes in duration")
         max_add = self.max_nodes - len(self.stat.hosts)
