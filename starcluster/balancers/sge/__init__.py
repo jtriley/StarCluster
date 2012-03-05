@@ -30,15 +30,13 @@ class SGEStats(object):
 
     @property
     def first_job_id(self):
-        if not self.jobs:
-            return
-        return int(self.jobs[0]['JB_job_number'])
+        if self.jobs:
+            return int(self.jobs[0]['JB_job_number'])
 
     @property
     def last_job_id(self):
-        if not self.jobs:
-            return
-        return int(self.jobs[-1]['JB_job_number'])
+        if self.jobs:
+            return int(self.jobs[-1]['JB_job_number'])
 
     def parse_qhost(self, qhost_out):
         """
@@ -65,9 +63,9 @@ class SGEStats(object):
         """
         This method parses qstat -xml output and makes a neat array
         """
+        self.jobs = []  # clear the old jobs
         if fields == None:
             fields = self._default_fields
-        self.jobs = []  # clear the old jobs
         doc = xml.dom.minidom.parseString(qstat_out)
         for job in doc.getElementsByTagName("job_list"):
             jstate = job.getAttribute("state")
@@ -232,24 +230,22 @@ class SGEStats(object):
         """
         nodename = node.alias
         for j in self.jobs:
-            if 'queue_name' in j:
-                qn = j['queue_name']
-                if qn.find(nodename) > 0:
-                    log.debug("Node %s is working" % node.id)
-                    return True
+            qn = j.get('queue_name', '')
+            if nodename in qn:
+                log.debug("Node %s is working" % node.alias)
+                return True
         log.debug("Node %s is IDLE" % node.id)
         return False
 
     def num_slots_for_job(self, job_id):
         """
         returns the number of slots requested for the given job id
-        returns -1 if job_id is invalid
+        returns None if job_id is invalid
         """
         ujid = unicode(job_id)
         for j in self.jobs:
             if j['JB_job_number'] == ujid:
                 return int(j['slots'])
-        return -1
 
     def avg_job_duration(self):
         count = 0
@@ -257,10 +253,10 @@ class SGEStats(object):
         for job in self.jobstats:
             if job != None:
                 delta = job['end'] - job['start']
-                total_seconds = total_seconds + delta.seconds
-                count = count + 1
+                total_seconds += delta.seconds
+                count += 1
         if count == 0:
-            return 0
+            return count
         else:
             return total_seconds / count
 
@@ -270,10 +266,10 @@ class SGEStats(object):
         for job in self.jobstats:
             if job != None:
                 delta = job['start'] - job['queued']
-                total_seconds = total_seconds + delta.seconds
-                count = count + 1
+                total_seconds += delta.seconds
+                count += 1
         if count == 0:
-            return 0
+            return count
         else:
             return total_seconds / count
 
@@ -582,7 +578,7 @@ class SGELoadBalancer(LoadBalancer):
                 time.sleep(self.polling_interval)
                 continue
             self.get_stats()
-            log.info("Cluster size: %d" % len(self.stat.hosts), extra=raw)
+            log.info("Execution hosts: %d" % len(self.stat.hosts), extra=raw)
             log.info("Queued jobs: %d" % len(self.stat.get_queued_jobs()),
                      extra=raw)
             oldest_queued_job_age = self.stat.oldest_queued_job_age()
