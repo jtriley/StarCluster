@@ -7,6 +7,7 @@ The links below are for plugin-specific docs. Please see the :ref:`plugin guide
 .. toctree::
    :maxdepth: 2
 
+   sge
    users
    ipython
    tmux
