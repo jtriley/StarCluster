@@ -1,8 +1,8 @@
 ##########################
 Frequently Asked Questions
 ##########################
-Below are the answers to some frequently asked questions on the StarCluster
-mailing list.
+Below are answers to some frequently asked questions on the StarCluster mailing
+list.
 
 ***********************
 Garbage Packet Received
