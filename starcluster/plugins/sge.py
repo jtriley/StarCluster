@@ -5,6 +5,10 @@ from starcluster.logger import log
 
 class SGEPlugin(clustersetup.DefaultClusterSetup):
 
+    def __init__(self, master_is_exec_host=True, **kwargs):
+        self.master_is_exec_host = str(master_is_exec_host).lower() == "true"
+        super(SGEPlugin, self).__init__(**kwargs)
+
     def _add_sge_submit_host(self, node):
         mssh = self._master.ssh
         mssh.execute('qconf -as %s' % node.alias, source_profile=True)
@@ -95,7 +99,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         ec2_sge_conf.write(conf)
         ec2_sge_conf.close()
         log.info("Installing Sun Grid Engine...")
-        self._inst_sge(master)
+        self._inst_sge(master, exec_host=self.master_is_exec_host)
         self._setup_sge_profile(master)
         # set all.q shell to bash
         master.ssh.execute('qconf -mattr queue shell "/bin/bash" all.q',
