@@ -1,3 +1,5 @@
+.. _sge-plugin:
+
 ######################
 Sun Grid Engine Plugin
 ######################
