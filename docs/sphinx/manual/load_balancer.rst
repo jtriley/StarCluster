@@ -1,6 +1,6 @@
-#################################
-StarCluster Elastic Load Balancer
-#################################
+#####################
+Elastic Load Balancer
+#####################
 StarCluster's load balancer grows and shrinks an Oracle Grid Engine cluster
 according to the length of the cluster's job queue. When the cluster is heavily
 loaded and processing a long job queue, the load balancer can gradually add

@@ -1,5 +1,5 @@
-Launching a StarCluster on Amazon EC2
-=====================================
+Launching a Cluster on Amazon EC2
+=================================
 Use the **start** command in StarCluster to launch a new cluster on Amazon EC2.
 The start command takes two arguments: the cluster template and a tagname for
 cluster identification.

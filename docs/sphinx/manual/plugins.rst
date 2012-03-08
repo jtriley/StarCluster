@@ -1,7 +1,7 @@
 .. _plugin_system:
 
-StarCluster Plugin System
-=========================
+Plugin System
+=============
 StarCluster has support for user contributed plugins. Plugins allow developers
 to further configure the cluster in addition to the default cluster
 configuration provided by StarCluster. Plugins are used to provide custom
