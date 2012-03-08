@@ -17,6 +17,11 @@ News
 Version 0.93.2 of StarCluster fixes several bugs and adds a couple new
 features. See the "Bug Fixes" section below for details.
 
+* Amazon recently announced a new instance type ``m1.medium`` which is now
+  supported. Amazon also enabled the m1.small and c1.medium instance types to
+  be compatible with both 32bit *and* 64bit AMIs now. StarCluster now supports
+  the new ``m1.medium`` instance type as well as the new changes to
+  ``m1.small`` and ``c1.medium``.
 * Switched from paramiko to actively maintained fork called `ssh` (1.7.13)
 * loadbalancer: ``--kill-master`` option renamed to ``--kill-cluster``
 * Bumped boto dep to 2.2.2
