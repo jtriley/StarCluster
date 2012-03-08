@@ -1,12 +1,12 @@
-import os
 import time
 import stat
 import base64
 import posixpath
+import subprocess
 
-from starcluster import ssh
 from starcluster import utils
 from starcluster import static
+from starcluster import sshutils
 from starcluster import awsutils
 from starcluster import managers
 from starcluster import exception
@@ -51,8 +51,8 @@ class Node(object):
     This class represents a single compute node in a StarCluster.
 
     It contains all useful metadata for the node such as the internal/external
-    hostnames, ips, etc. as well as a paramiko ssh object for executing
-    commands, creating/modifying files on the node.
+    hostnames, ips, etc. as well as an ssh object for executing commands,
+    creating/modifying files on the node.
 
     'instance' arg must be an instance of boto.ec2.instance.Instance
 
@@ -414,7 +414,7 @@ class Node(object):
         authorized_keys = posixpath.join(ssh_folder, 'authorized_keys')
         key_exists = self.ssh.isfile(private_key)
         if key_exists and not ignore_existing:
-            log.info("Using existing key: %s" % private_key)
+            log.debug("Using existing key: %s" % private_key)
             key = self.ssh.load_remote_rsa_key(private_key)
         else:
             key = self.ssh.generate_rsa_key()
@@ -569,18 +569,23 @@ class Node(object):
         Example:
         # export /home and /opt/sge6 to each node in nodes
         $ node.start_nfs_server()
-        $ node.export_fs_to_nodes(\
-                nodes=[node1,node2], export_paths=['/home', '/opt/sge6']
+        $ node.export_fs_to_nodes(nodes=[node1,node2],
+                                  export_paths=['/home', '/opt/sge6'])
         """
         # setup /etc/exports
+        log.info("Configuring NFS exports path(s):\n%s" %
+                 ' '.join(export_paths))
         nfs_export_settings = "(async,no_root_squash,no_subtree_check,rw)"
-        regex = '|'.join([n.alias for n in nodes])
-        self.ssh.remove_lines_from_file('/etc/exports', regex)
+        etc_exports = self.ssh.remote_file('/etc/exports', 'r')
+        contents = etc_exports.read()
+        etc_exports.close()
         etc_exports = self.ssh.remote_file('/etc/exports', 'a')
         for node in nodes:
             for path in export_paths:
-                etc_exports.write(' '.join([path, node.alias +
-                                            nfs_export_settings + '\n']))
+                export_line = ' '.join(
+                    [path, node.alias + nfs_export_settings + '\n'])
+                if export_line not in contents:
+                    etc_exports.write(export_line)
         etc_exports.close()
         self.ssh.execute('exportfs -fra')
 
@@ -598,6 +603,7 @@ class Node(object):
         self.ssh.execute('exportfs -fra')
 
     def start_nfs_server(self):
+        log.info("Starting NFS server on %s" % self.alias)
         self.ssh.execute('/etc/init.d/portmap start')
         self.ssh.execute('mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs/',
                          ignore_exit_status=True)
@@ -615,6 +621,18 @@ class Node(object):
         # TODO: move this fix for xterm somewhere else
         self.ssh.execute('mount -t devpts none /dev/pts',
                          ignore_exit_status=True)
+        mount_map = self.get_mount_map()
+        mount_paths = []
+        for path in remote_paths:
+            network_device = "%s:%s" % (server_node.alias, path)
+            if network_device in mount_map:
+                mount_path, typ, options = mount_map.get(network_device)
+                log.debug('nfs share %s already mounted to %s on '
+                          'node %s, skipping...' %
+                          (network_device, mount_path, self.alias))
+            else:
+                mount_paths.append(path)
+        remote_paths = mount_paths
         remote_paths_regex = '|'.join(map(lambda x: x.center(len(x) + 2),
                                           remote_paths))
         self.ssh.remove_lines_from_file('/etc/fstab', remote_paths_regex)
@@ -863,12 +881,12 @@ class Node(object):
     @property
     def ssh(self):
         if not self._ssh:
-            self._ssh = ssh.SSHClient(self.instance.dns_name,
-                                      username=self.user,
-                                      private_key=self.key_location)
+            self._ssh = sshutils.SSHClient(self.instance.dns_name,
+                                           username=self.user,
+                                           private_key=self.key_location)
         return self._ssh
 
-    def shell(self, user=None):
+    def shell(self, user=None, forward_x11=False, command=None):
         """
         Attempts to launch an interactive shell by first trying the system's
         ssh client. If the system does not have the ssh command it falls back
@@ -889,13 +907,27 @@ class Node(object):
                                                label=label)
         user = user or self.user
         if utils.has_required(['ssh']):
-            log.debug("using system's ssh client")
-            ssh_cmd = static.SSH_TEMPLATE % (self.key_location, user,
-                                             self.dns_name)
+            log.debug("Using native OpenSSH client")
+            sshopts = '-i %s' % self.key_location
+            if forward_x11:
+                sshopts += ' -Y'
+            ssh_cmd = static.SSH_TEMPLATE % dict(opts=sshopts, user=user,
+                                                 host=self.dns_name)
+            if command:
+                command = "'source /etc/profile && %s'" % command
+                ssh_cmd = ' '.join([ssh_cmd, command])
             log.debug("ssh_cmd: %s" % ssh_cmd)
-            os.system(ssh_cmd)
+            return subprocess.call(ssh_cmd, shell=True)
         else:
-            log.debug("using pure-python ssh client")
+            log.debug("Using Pure-Python SSH client")
+            if forward_x11:
+                log.warn("X11 Forwarding not available in Python SSH client")
+            if command:
+                orig_user = self.ssh.get_current_user()
+                self.ssh.switch_user(user)
+                self.ssh.execute(command, silent=False, source_profile=True)
+                self.ssh.switch_user(orig_user)
+                return self.ssh.get_last_status()
             self.ssh.interactive_shell(user=user)
 
     def get_hosts_entry(self):

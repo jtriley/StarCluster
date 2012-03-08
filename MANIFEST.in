@@ -1,6 +1,7 @@
 include COPYING
 include COPYING.LESSER
 include README.rst
+include Changelog
 include *.py
 recursive-include docs *
 recursive-include utils *

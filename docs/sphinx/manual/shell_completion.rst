@@ -1,5 +1,5 @@
-Enabling Tab Completion for Bash/Zsh
-====================================
+StarCluster Shell Completion (Bash/Zsh)
+=======================================
 StarCluster has support for tab completion in both Bash and Zsh. If you're not
 familiar with tab completion, try typing **ls /** at a command prompt and then
 pressing the **Tab** key::
@@ -22,14 +22,14 @@ options for you to choose from. Typing a few more characters and pressing
 Typing a **b** and pressing **Tab** would then automatically complete to **ls
 /sbin**.
 
-Enabling StarCluster Tab Completion in BASH
+Enabling Tab Completion in BASH
 -------------------------------------------
 To enable StarCluster bash-completion support for every shell you open, add the
 following line to your ~/.bashrc file::
 
     source /path/to/starcluster/completion/starcluster-completion.sh
 
-Enabling StarCluster Tab Completion in ZSH
+Enabling Tab Completion in ZSH
 -------------------------------------------
 To enable StarCluster zsh-completion support for every
 shell you open, add the following to the top of your ~/.zshrc file::

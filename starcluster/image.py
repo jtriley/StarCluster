@@ -2,8 +2,8 @@ import os
 import time
 import string
 
-from starcluster import ssh
 from starcluster import utils
+from starcluster import sshutils
 from starcluster import exception
 from starcluster.spinner import Spinner
 from starcluster.utils import print_timing
@@ -30,8 +30,8 @@ class ImageCreator(object):
         if self.host.state != 'running':
             raise exception.InstanceNotRunning(self.host.id, self.host.state,
                                                self.host.dns_name)
-        self.host_ssh = ssh.SSHClient(self.host.dns_name, username='root',
-                                      private_key=key_location)
+        self.host_ssh = sshutils.SSHClient(self.host.dns_name, username='root',
+                                           private_key=key_location)
         self.description = description
         self.kernel_id = kernel_id or self.host.kernel
         self.ramdisk_id = ramdisk_id or self.host.ramdisk

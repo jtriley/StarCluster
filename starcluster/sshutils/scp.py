@@ -45,7 +45,7 @@ class SCPClient(object):
         """
         Create an scp1 client.
 
-        @param transport: an existing paramiko L{Transport}
+        @param transport: an existing ssh L{Transport}
         @type transport: L{Transport}
         @param buff_size: size of the scp send buffer.
         @type buff_size: int

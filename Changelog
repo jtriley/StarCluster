@@ -5,6 +5,76 @@ Version History
 .. contents::
     :local:
 
+.. _version-0.93.2:
+
+0.93.2
+======
+
+.. _v0932-news:
+
+News
+----
+Version 0.93.2 of StarCluster fixes several bugs and adds a couple new
+features. See the "Bug Fixes" section below for details.
+
+* Amazon recently announced a new instance type ``m1.medium`` which is now
+  supported. Amazon also enabled the m1.small and c1.medium instance types to
+  be compatible with both 32bit *and* 64bit AMIs now. StarCluster now supports
+  the new ``m1.medium`` instance type as well as the new changes to
+  ``m1.small`` and ``c1.medium``.
+* Switched from paramiko to actively maintained fork called `ssh` (1.7.13)
+* loadbalancer: ``--kill-master`` option renamed to ``--kill-cluster``
+* Bumped boto dep to 2.2.2
+* Bumped jinja dep to 2.6
+
+.. _v0932-features:
+
+Features
+--------
+* SGE setup code has been moved to a plugin that is executed by default (**no
+  configuration changes required**). This plugin supports an optional setting
+  ``master_is_exec_host`` which controls whether or not the master node
+  executes jobs. This is set to ``True`` by default. To change this you will
+  need to set ``disable_queue=True`` in your cluster config and then manually
+  define and add the SGE plugin in order to configure the new plugin's
+  settings. See :ref:`sge-plugin` for more details.
+* Added the following new options to ``addnode`` command: ``--image-id``,
+  ``--instance-type``, ``--availability-zone``, ``--bid``. Thanks to Dan Yamins
+  for his contributions. (issue 76)
+* New ``CreateUsers`` plugin that creates multiple cluster users and configures
+  passwordless SSH. Either number of users or a list of usernames can be
+  specified. Also has options to tar and download all SSH keys for generated
+  users. See :ref:`users-plugin` for more details.
+* Added -X option to ``sshmaster`` and ``sshnode`` commands for forwarding X11.
+  Can be used both when logging in interactively and when executing remote
+  commands.
+
+.. _v0932-fixes:
+
+Bug Fixes
+---------
+* catch `Garbage packet received` exception and warn users about incompatible
+  AMI
+* ``createvolume``: support new /dev/xvd* device names
+* fix textwrap error with python 2.5 (issue 85)
+* ``sshmaster``, ``sshnode``: load /etc/profile by default when executing
+  remote cmds
+* ``terminate``: handle Ctrl-D gracefully when prompting for input (issue 80)
+* ``terminate``: ignore keys when terminating manually
+* validate key_location is readable (issue 77)
+* relax validation constraints for running instances when using ``starcluster
+  start -x`` (issue 78)
+* fix cluster validation for `t1.micro` AMIs/instance types
+* ``loadbalance``: fix _get_stats when no exec hosts
+* ``loadbalance``: respect min_nodes when removing nodes (issue 75)
+* ``loadbalance``: fix -K option to kill cluster when queue is empty (issue 86)
+* ``loadbalance``: retry fetching stats 5x before failing (issue 65)
+* skip NFS exports setup when there are no worker nodes
+* sge: configure SGE profile on all nodes concurrently
+* sge: use qconf's -\*attr commands to update cluster config (replaced a bunch
+  of ugly code that parsed SGE's console output)
+* add Changelog to MANIFEST.in in order to include Changelog in future release
+  dists
 
 .. _version-0.93.1:
 

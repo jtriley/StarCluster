@@ -55,6 +55,16 @@ class SSHNoCredentialsError(SSHError):
         self.msg = "No password or key specified"
 
 
+class SSHAccessDeniedViaAuthKeys(BaseException):
+    """
+    Raised when SSH access for a given user has been restricted via
+    authorized_keys (common approach on UEC AMIs to allow root SSH access to be
+    'toggled' via cloud-init)
+    """
+    def __init__(self, user):
+        self.msg = user_msgs.authkeys_access_denied % dict(user=user)
+
+
 class SCPException(BaseException):
     """SCP exception class"""
     pass

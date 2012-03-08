@@ -50,9 +50,11 @@ class ConsoleLogger(logging.StreamHandler):
         return result
 
     def _wrap(self, msg):
-        msg = textwrap.wrap(msg, width=60, replace_whitespace=False,
-                            drop_whitespace=True, break_on_hyphens=False)
-        return msg or ['']
+        tw = textwrap.TextWrapper(width=60, replace_whitespace=False,
+                                  drop_whitespace=True)
+        if hasattr(tw, 'break_on_hyphens'):
+            tw.break_on_hyphens = False
+        return tw.wrap(msg) or ['']
 
     def _emit_textwrap(self, record):
         lines = []
@@ -141,11 +143,11 @@ def configure_sc_logging(use_syslog=False):
         log.addHandler(syslog_handler)
 
 
-def configure_paramiko_logging():
+def configure_ssh_logging():
     """
-    Configure paramiko to log to a file for debug
+    Configure ssh to log to a file for debug
     """
-    l = logging.getLogger("paramiko")
+    l = logging.getLogger("ssh")
     l.setLevel(logging.DEBUG)
     static.create_sc_config_dirs()
     lh = logging.handlers.RotatingFileHandler(static.SSH_DEBUG_FILE,

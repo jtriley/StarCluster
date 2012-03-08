@@ -158,7 +158,7 @@ class StarClusterCLI(object):
         crashfile.write("StarCluster: %s\n" % __version__)
         crashfile.write("Python: %s\n" % sys.version.replace('\n', ' '))
         crashfile.write("Platform: %s\n" % platform.platform())
-        dependencies = ['boto', 'paramiko', 'Crypto', 'jinja2', 'decorator']
+        dependencies = ['boto', 'ssh', 'Crypto', 'jinja2', 'decorator']
         for dep in dependencies:
             self.__write_module_version(dep, crashfile)
         crashfile.close()
@@ -278,10 +278,10 @@ class StarClusterCLI(object):
         except exception.BaseException, e:
             log.error(e.msg, extra={'__textwrap__': True})
             sys.exit(1)
-        except SystemExit, e:
+        except SystemExit:
             # re-raise SystemExit to avoid the bug-catcher below
-            raise e
-        except Exception, e:
+            raise
+        except Exception:
             if not gopts.DEBUG:
                 traceback.print_exc()
             log.debug(traceback.format_exc())

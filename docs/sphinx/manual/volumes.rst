@@ -209,9 +209,9 @@ successfully creating the new volume::
 
 .. _managing-ebs-volumes:
 
-*************************************
-Managing EBS Volumes with StarCluster
-*************************************
+********************
+Managing EBS Volumes
+********************
 In addition to creating and formatting new EBS volumes StarCluster also allows
 you to browse and remove your EBS volumes.
 

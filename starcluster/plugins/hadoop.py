@@ -249,15 +249,15 @@ class Hadoop(clustersetup.ClusterSetup):
         master.ssh.execute('/etc/init.d/hadoop-0.20-namenode restart')
         log.info("Starting secondary namenode...")
         master.ssh.execute('/etc/init.d/hadoop-0.20-secondarynamenode restart')
+        log.info("Starting datanode on all nodes...")
         for node in nodes:
-            log.info("Starting datanode on %s..." % node.alias)
             self.pool.simple_job(self._start_datanode, (node,),
                                  jobid=node.alias)
         self.pool.wait()
         log.info("Starting jobtracker...")
         master.ssh.execute('/etc/init.d/hadoop-0.20-jobtracker restart')
+        log.info("Starting tasktracker on all nodes...")
         for node in nodes:
-            log.info("Starting tasktracker on %s..." % node.alias)
             self.pool.simple_job(self._start_tasktracker, (node,),
                                  jobid=node.alias)
         self.pool.wait()

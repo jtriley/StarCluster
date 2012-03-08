@@ -1,19 +1,27 @@
-Listing All Public StarCluster AMIs
-===================================
-From time to time StarCluster may provide updated AMIs. These AMIs might simply
-contain new OS versions or could fix a bug experienced by StarCluster users.
-Either way, it's useful to be able to look at the *latest* available
-StarCluster AMIs.
+#####################################
+Listing the Official StarCluster AMIs
+#####################################
+From time to time new StarCluster AMIs may become available. These AMIs might
+simply contain new OS versions or could fix a bug experienced by StarCluster
+users. In any case it's useful to look at the *latest* available StarCluster
+AMIs.
 
-To look at a list of all currently available public StarCluster AMIs, including
-32bit and 64bit, run the **listpublic** command::
-
-    $ starcluster listpublic
-
-At the time of writing this doc the output looks like::
+To look at a list of all currently available public StarCluster AMIs run the
+``listpublic`` command::
 
     $ starcluster listpublic
-    StarCluster - (http://web.mit.edu/starcluster) (v. 0.9999)
+
+This will show all available AMIs in the current region. Unless you've
+specified a region in your config the default region is `us-east-1`. To view
+AMIs in other regions either specify a region in your ``[aws info]`` config or
+use the global ``-r`` option::
+
+    $ starcluster -r eu-west-1 listpublic
+
+At the time of writing this document the output for `us-east-1` looks like::
+
+    $ starcluster listpublic
+    StarCluster - (http://web.mit.edu/starcluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
