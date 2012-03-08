@@ -129,8 +129,8 @@ To login to the master node as root::
 
     $ starcluster sshmaster physicscluster
 
-You can also login as a different user using the ``--user`` (``-u``) option.
-For example, to login as the ``sgeadmin`` user::
+You can login as a different user using the ``--user`` (``-u``) option. For
+example, to login as the ``sgeadmin`` user::
 
     $ starcluster sshmaster -u sgeadmin physicscluster
 
@@ -144,6 +144,20 @@ You can also login as a different user using the ``--user`` (``-u``) option.
 For example, to login as the ``sgeadmin`` user::
 
     $ starcluster sshnode -u sgeadmin physicscluster node001
+
+Running X11 (Graphical) Applications on the Cluster
+---------------------------------------------------
+If you have OpenSSH installed and an X server you can enable X11 forwarding
+over SSH using the ``--forward-x11 (-X)`` option. This allows you to run
+graphical applications on the cluster and display them on your local computer::
+
+    $ starcluster sshmaster -X mycluster
+
+When you login you should be able to run graphical applications, for example
+`xterm`, on the cluster and display them on your local computer. The
+``sshnode`` command also supports the ``-X`` option::
+
+    $ starcluster sshnode -X mycluster node001
 
 Rebooting a Cluster
 -------------------
