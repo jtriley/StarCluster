@@ -22,7 +22,7 @@ After the software has been installed, the next step is to setup the
 configuration file::
 
     $ starcluster help
-    StarCluster - (http://web.mit.edu/starcluster) (v. 0.9999)
+    StarCluster - (http://web.mit.edu/starcluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 

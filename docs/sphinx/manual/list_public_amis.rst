@@ -13,7 +13,7 @@ To look at a list of all currently available public StarCluster AMIs, including
 At the time of writing this doc the output looks like::
 
     $ starcluster listpublic
-    StarCluster - (http://web.mit.edu/starcluster) (v. 0.9999)
+    StarCluster - (http://web.mit.edu/starcluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
