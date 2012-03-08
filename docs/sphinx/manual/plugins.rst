@@ -1,7 +1,7 @@
 .. _plugin_system:
 
-StarCluster Plugin System
-=========================
+Plugin System
+=============
 StarCluster has support for user contributed plugins. Plugins allow developers
 to further configure the cluster in addition to the default cluster
 configuration provided by StarCluster. Plugins are used to provide custom
@@ -123,7 +123,7 @@ Using the Development Shell
 To launch StarCluster's development shell, use the *shell* command::
 
     $ starcluster shell
-    StarCluster - (http://web.mit.edu/starcluster) (v. 0.9999)
+    StarCluster - (http://web.mit.edu/starcluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 

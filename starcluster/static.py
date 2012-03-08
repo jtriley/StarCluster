@@ -32,7 +32,7 @@ def create_sc_config_dirs():
     __makedirs(STARCLUSTER_LOG_DIR)
 
 
-VERSION = "0.9999"
+VERSION = "0.93.2"
 PID = os.getpid()
 TMP_DIR = tempfile.gettempdir()
 if os.path.exists("/tmp"):
@@ -81,10 +81,11 @@ VOLUME_ATTACH_STATUS = ['attaching', 'attached', 'detaching', 'detached']
 
 INSTANCE_TYPES = {
     't1.micro': ['i386', 'x86_64'],
-    'm1.small': ['i386'],
+    'm1.small': ['i386', 'x86_64'],
+    'm1.medium': ['i386', 'x86_64'],
     'm1.large': ['x86_64'],
     'm1.xlarge': ['x86_64'],
-    'c1.medium': ['i386'],
+    'c1.medium': ['i386', 'x86_64'],
     'c1.xlarge': ['x86_64'],
     'm2.xlarge': ['x86_64'],
     'm2.2xlarge': ['x86_64'],

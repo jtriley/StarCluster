@@ -1,9 +1,10 @@
-######################################################
-Running Remote Commands on a Cluster from Command Line
-######################################################
+#########################################
+Running Remote Commands from Command Line
+#########################################
 StarCluster's **sshmaster**, **sshnode**, and **sshinstance** commands now
 support executing remote commands on a cluster node without logging in
-interactively. To do so simply pass the command you wish to run remotely as an
+interactively. This is especially useful for users looking to script these
+commands. To do so simply pass the command you wish to run remotely as an
 additional quoted argument to any of the **sshmaster**, **sshnode**, and
 **sshinstance** commands.
 
@@ -65,3 +66,17 @@ exit code::
 This allows you to use the **sshmaster**, **sshnode**, and **sshinstance**
 commands in scripts and check whether or not the remote command finished
 successfully.
+
+************************************
+Running X11 (Graphical) Applications
+************************************
+If you have OpenSSH installed and an X server you can enable X11 forwarding
+over SSH using the ``--forward-x11 (-X)`` option. This allows you to run
+graphical applications on the cluster and display them on your local computer.
+For example, to run `xterm` on the master node of `mycluster`::
+
+    $ starcluster sshmaster -X mycluster xterm
+
+The ``sshnode`` command also supports the ``-X`` option::
+
+    $ starcluster sshnode -X mycluster node001 xterm
