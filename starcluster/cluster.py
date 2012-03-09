@@ -831,7 +831,7 @@ class Cluster(object):
         log.debug("Adding node(s): %s" % aliases)
         default_plugin = clustersetup.DefaultClusterSetup(self.disable_threads)
         if not self.disable_queue:
-            sge_plugin = sge.SGEPlugin(self.disable_threads)
+            sge_plugin = sge.SGEPlugin(disable_threads=self.disable_threads)
         for alias in aliases:
             node = self.get_node_by_alias(alias)
             default_plugin.on_add_node(node, self.nodes, self.master_node,
@@ -855,7 +855,7 @@ class Cluster(object):
         """
         default_plugin = clustersetup.DefaultClusterSetup(self.disable_threads)
         if not self.disable_queue:
-            sge_plugin = sge.SGEPlugin(self.disable_threads)
+            sge_plugin = sge.SGEPlugin(disable_threads=self.disable_threads)
         for node in nodes:
             if node.is_master():
                 raise exception.InvalidOperation("cannot remove master node")
@@ -1457,7 +1457,7 @@ class Cluster(object):
         default_plugin.run(self.nodes, self.master_node, self.cluster_user,
                            self.cluster_shell, self.volumes)
         if not self.disable_queue:
-            sge_plugin = sge.SGEPlugin(self.disable_threads)
+            sge_plugin = sge.SGEPlugin(disable_threads=self.disable_threads)
             sge_plugin.run(self.nodes, self.master_node, self.cluster_user,
                            self.cluster_shell, self.volumes)
         self.run_plugins()
