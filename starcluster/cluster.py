@@ -623,7 +623,9 @@ class Cluster(object):
                     log.info("Opening %s port range %s-%s for CIDR %s" %
                              (ip_protocol, from_port, to_port, cidr_ip))
                     sg.authorize(ip_protocol, from_port, to_port, cidr_ip)
-                if ip_protocol == 'tcp' and from_port <= ssh_port <= to_port:
+                includes_ssh = from_port <= ssh_port <= to_port
+                open_to_world = cidr_ip == static.WORLD_CIDRIP
+                if ip_protocol == 'tcp' and includes_ssh and not open_to_world:
                     sg.revoke(ip_protocol, ssh_port, ssh_port,
                               static.WORLD_CIDRIP)
             self._cluster_group = sg
