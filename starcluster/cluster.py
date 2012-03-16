@@ -1541,6 +1541,7 @@ class Cluster(object):
             self._has_all_required_settings()
             self._validate_spot_bid()
             self._validate_cluster_size()
+            self._validate_cluster_user()
             self._validate_shell_setting()
             self._validate_permission_settings()
             self._validate_credentials()
@@ -1592,6 +1593,12 @@ class Cluster(object):
             raise exception.ClusterValidationError(
                 "total number of nodes specified in node_instance_type (%s) "
                 "must be <= cluster_size-1 (%s)" % (num_itypes, num_nodes))
+        return True
+
+    def _validate_cluster_user(self):
+        if self.cluster_user == "root":
+            raise exception.ClusterValidationError(
+                'cluster_user cannot be "root"')
         return True
 
     def _validate_shell_setting(self):
