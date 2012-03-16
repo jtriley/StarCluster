@@ -173,6 +173,7 @@ AWS_SETTINGS = {
     'aws_proxy_port': (int, False, None, None, None),
     'aws_proxy_user': (str, False, None, None, None),
     'aws_proxy_pass': (str, False, None, None, None),
+    'aws_validate_certs': (bool, False, True, None, None),
 }
 
 KEY_SETTINGS = {
