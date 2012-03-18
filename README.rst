@@ -156,7 +156,7 @@ Dependencies:
 =============
 * Amazon AWS Account
 * Python 2.5+
-* Boto 2.2.1
+* Boto 2.3.0
 * Python SSH 1.7.13
 * WorkerPool 0.9.2
 * Jinja2 2.6
