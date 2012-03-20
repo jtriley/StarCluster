@@ -13,8 +13,6 @@ A StarCluster plugin is simply a Python class that extends
 **starcluster.clustersetup.ClusterSetup** and implements a *run* method.  This
 class must live in a module that is on the PYTHONPATH. By default, StarCluster
 will add the ~/.starcluster/plugins directory to the PYTHONPATH automatically.
-The ~/.starcluster/plugins directory is not created automatically so you will
-need to create it if it does not exist.
 
 Below is a very simple example of a StarCluster plugin that installs a package
 on each node using apt-get after the cluster has been configured:
