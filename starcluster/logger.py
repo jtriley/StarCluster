@@ -50,10 +50,11 @@ class ConsoleLogger(logging.StreamHandler):
         return result
 
     def _wrap(self, msg):
-        tw = textwrap.TextWrapper(width=60, replace_whitespace=False,
-                                  drop_whitespace=True)
+        tw = textwrap.TextWrapper(width=60, replace_whitespace=False)
         if hasattr(tw, 'break_on_hyphens'):
             tw.break_on_hyphens = False
+        if hasattr(tw, 'drop_whitespace'):
+            tw.drop_whitespace = True
         return tw.wrap(msg) or ['']
 
     def _emit_textwrap(self, record):

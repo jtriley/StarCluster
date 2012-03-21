@@ -121,6 +121,7 @@ class SSHClient(object):
             assert self.sftp is not None
         except ssh.SFTPError, e:
             if 'Garbage packet received' in e:
+                log.debug("Garbage packet received", exc_info=True)
                 raise exception.SSHAccessDeniedViaAuthKeys(username)
             raise
         return self

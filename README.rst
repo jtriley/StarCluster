@@ -1,8 +1,8 @@
 ===================
-StarCluster v0.93.2
+StarCluster v0.93.3
 ===================
 :StarCluster: Cluster Computing Toolkit for the Cloud
-:Version: 0.93.2
+:Version: 0.93.3
 :Author: Justin Riley <justin.t.riley@gmail.com>
 :Team: Software Tools for Academics and Researchers (http://web.mit.edu/star)
 :Homepage: http://web.mit.edu/starcluster
@@ -156,7 +156,7 @@ Dependencies:
 =============
 * Amazon AWS Account
 * Python 2.5+
-* Boto 2.2.1
+* Boto 2.3.0
 * Python SSH 1.7.13
 * WorkerPool 0.9.2
 * Jinja2 2.6

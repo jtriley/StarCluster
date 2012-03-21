@@ -623,7 +623,9 @@ class Cluster(object):
                     log.info("Opening %s port range %s-%s for CIDR %s" %
                              (ip_protocol, from_port, to_port, cidr_ip))
                     sg.authorize(ip_protocol, from_port, to_port, cidr_ip)
-                if ip_protocol == 'tcp' and from_port <= ssh_port <= to_port:
+                includes_ssh = from_port <= ssh_port <= to_port
+                open_to_world = cidr_ip == static.WORLD_CIDRIP
+                if ip_protocol == 'tcp' and includes_ssh and not open_to_world:
                     sg.revoke(ip_protocol, ssh_port, ssh_port,
                               static.WORLD_CIDRIP)
             self._cluster_group = sg
@@ -831,7 +833,7 @@ class Cluster(object):
         log.debug("Adding node(s): %s" % aliases)
         default_plugin = clustersetup.DefaultClusterSetup(self.disable_threads)
         if not self.disable_queue:
-            sge_plugin = sge.SGEPlugin(self.disable_threads)
+            sge_plugin = sge.SGEPlugin(disable_threads=self.disable_threads)
         for alias in aliases:
             node = self.get_node_by_alias(alias)
             default_plugin.on_add_node(node, self.nodes, self.master_node,
@@ -855,7 +857,7 @@ class Cluster(object):
         """
         default_plugin = clustersetup.DefaultClusterSetup(self.disable_threads)
         if not self.disable_queue:
-            sge_plugin = sge.SGEPlugin(self.disable_threads)
+            sge_plugin = sge.SGEPlugin(disable_threads=self.disable_threads)
         for node in nodes:
             if node.is_master():
                 raise exception.InvalidOperation("cannot remove master node")
@@ -1457,7 +1459,7 @@ class Cluster(object):
         default_plugin.run(self.nodes, self.master_node, self.cluster_user,
                            self.cluster_shell, self.volumes)
         if not self.disable_queue:
-            sge_plugin = sge.SGEPlugin(self.disable_threads)
+            sge_plugin = sge.SGEPlugin(disable_threads=self.disable_threads)
             sge_plugin.run(self.nodes, self.master_node, self.cluster_user,
                            self.cluster_shell, self.volumes)
         self.run_plugins()
@@ -1539,6 +1541,7 @@ class Cluster(object):
             self._has_all_required_settings()
             self._validate_spot_bid()
             self._validate_cluster_size()
+            self._validate_cluster_user()
             self._validate_shell_setting()
             self._validate_permission_settings()
             self._validate_credentials()
@@ -1590,6 +1593,12 @@ class Cluster(object):
             raise exception.ClusterValidationError(
                 "total number of nodes specified in node_instance_type (%s) "
                 "must be <= cluster_size-1 (%s)" % (num_itypes, num_nodes))
+        return True
+
+    def _validate_cluster_user(self):
+        if self.cluster_user == "root":
+            raise exception.ClusterValidationError(
+                'cluster_user cannot be "root"')
         return True
 
     def _validate_shell_setting(self):

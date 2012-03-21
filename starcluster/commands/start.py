@@ -181,7 +181,8 @@ class CmdStart(ClusterCompleter):
             scluster.key_location = key.key_location
         if not self.opts.refresh_interval:
             interval = self.cfg.globals.get("refresh_interval")
-            scluster.refresh_interval = interval
+            if interval is not None:
+                scluster.refresh_interval = interval
         if self.opts.spot_bid is not None and not self.opts.no_create:
             msg = user_msgs.spotmsg % {'size': scluster.cluster_size,
                                        'tag': tag}
