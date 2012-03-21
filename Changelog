@@ -5,6 +5,33 @@ Version History
 .. contents::
     :local:
 
+.. _version-0.93.3:
+
+0.93.3
+======
+
+.. _v0933-news:
+
+News
+----
+Version 0.93.3 of StarCluster is a patch release that fixes several bugs. See
+the "Bug Fixes" section below for details.
+
+* Bumped boto dep to 2.3.0
+* Updated and improved default config template
+
+.. _v0933-fixes:
+
+Bug Fixes
+---------
+* sge: fix bug where master could never be an exec host even when toggling the
+  ``master_is_exec_host`` plugin setting (issue 89)
+* fix bug when setting custom SSH permission without ``cidr_ip`` (issue 91)
+* start-cmd: fix bug where ``refresh_interval`` is always ``None`` if
+  ``[global]`` is not defined in the config (issue 90)
+* dont allow ``cluster_user=root`` when validating cluster settings (issue 92)
+* fix another textwrap error with python 2.5
+
 .. _version-0.93.2:
 
 0.93.2
