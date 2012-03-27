@@ -2,8 +2,8 @@
 import os
 import sys
 
-hook_dir = os.path.dirname(__file__)
-repo_root = os.path.abspath(os.path.join('..', '..', hook_dir))
+hook_dir = os.path.abspath(os.path.dirname(__file__) or '.')
+repo_root = os.path.abspath(os.path.join(hook_dir, '..', '..'))
 sys.path.append(repo_root)
 
 import check
