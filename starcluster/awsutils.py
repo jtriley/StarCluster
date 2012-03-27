@@ -531,6 +531,8 @@ class EasyEC2(EasyAWS):
             print
         if not spots:
             log.info("No spot instance requests found...")
+        else:
+            print 'Total: %s' % len(spots)
 
     def show_instance(self, instance):
         id = instance.id or 'N/A'
@@ -574,6 +576,7 @@ class EasyEC2(EasyAWS):
             return
         for instance in insts:
             self.show_instance(instance)
+        print 'Total: %s' % len(insts)
 
     def list_images(self, images, sort_key=None, reverse=False):
         def get_key(obj):
