@@ -851,6 +851,10 @@ class Node(object):
         except exception.SSHError:
             return False
 
+    def wait(self, interval=30):
+        while not self.is_up():
+            time.sleep(interval)
+
     def is_up(self):
         if self.update() != 'running':
             return False

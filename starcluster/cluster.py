@@ -15,6 +15,7 @@ from starcluster import iptools
 from starcluster import sshutils
 from starcluster import managers
 from starcluster import exception
+from starcluster import threadpool
 from starcluster import progressbar
 from starcluster import clustersetup
 from starcluster.node import Node
@@ -386,6 +387,7 @@ class Cluster(object):
         self._plugins = plugins
         self._cluster_group = None
         self._placement_group = None
+        self._pool = None
 
     def __repr__(self):
         return '<Cluster: %s (%s-node)>' % (self.cluster_tag,
@@ -1159,6 +1161,13 @@ class Cluster(object):
             self._progress_bar = pbar
         return self._progress_bar
 
+    @property
+    def pool(self):
+        if not self._pool:
+            self._pool = threadpool.get_thread_pool(
+                size=self.num_threads, disable_threads=self.disable_threads)
+        return self._pool
+
     def wait_for_active_spots(self, spots=None):
         """
         Wait for all open spot requests for this cluster to transition to
@@ -1216,17 +1225,7 @@ class Cluster(object):
         """
         log.info("Waiting for SSH to come up on all nodes...")
         nodes = nodes or self.get_nodes_or_raise()
-        pbar = self.progress_bar.reset()
-        pbar.maxval = len(nodes)
-        pbar.update(0)
-        while not pbar.finished:
-            active_nodes = filter(lambda n: n.is_up(), nodes)
-            pbar.maxval = len(nodes)
-            pbar.update(len(active_nodes))
-            if not pbar.finished:
-                time.sleep(self.refresh_interval)
-                nodes = self.get_nodes_or_raise()
-        pbar.finish()
+        self.pool.map(lambda n: n.wait(interval=self.refresh_interval), nodes)
 
     @print_timing("Waiting for cluster to come up")
     def wait_for_cluster(self, msg="Waiting for cluster to come up..."):
