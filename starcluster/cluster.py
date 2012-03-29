@@ -1891,7 +1891,8 @@ class Cluster(object):
         keypair = self.ec2.get_keypair_or_none(keyname)
         if not keypair:
             raise exception.ClusterValidationError(
-                "Account does not contain a key with keyname: %s" % keyname)
+                "Keypair '%s' does not exist in region '%s'" %
+                (keyname, self.ec2.region.name))
         fingerprint = keypair.fingerprint
         try:
             open(key_location, 'r').close()
@@ -1911,13 +1912,7 @@ class Cluster(object):
             # keys until I can figure out the mystery behind the import keys
             # fingerprint. I'm able to match ssh-keygen's public key
             # fingerprint, however, Amazon doesn't for some reason...
-            log.warn("Skipping keypair fingerprint validation...")
-        if self.zone:
-            z = self.ec2.get_zone(self.zone)
-            if keypair.region != z.region:
-                raise exception.ClusterValidationError(
-                    'Keypair %s not in availability zone region %s' %
-                    (keyname, z.region))
+            log.warn("Unable to validate imported keypair fingerprint...")
         return True
 
     def ssh_to_master(self, user='root', command=None, forward_x11=False):
