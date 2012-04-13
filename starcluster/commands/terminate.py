@@ -31,7 +31,7 @@ class CmdTerminate(ClusterCompleter):
                           help="Do not prompt for confirmation, "
                           "just terminate the cluster")
 
-    def terminate_cluster(self, cluster_name):
+    def _terminate_cluster(self, cluster_name):
         cl = self.cm.get_cluster(cluster_name, require_keys=False)
         if not self.opts.confirm:
             action = 'Terminate'
@@ -44,8 +44,9 @@ class CmdTerminate(ClusterCompleter):
                 return
         cl.terminate_cluster()
 
-    def terminate_manually(self, cluster_name):
-        cl = self.cm.get_cluster(cluster_name, load_receipt=False)
+    def _terminate_manually(self, cluster_name):
+        cl = self.cm.get_cluster(cluster_name, load_receipt=False,
+                                 require_keys=False)
         if not self.opts.confirm:
             resp = raw_input("Terminate cluster %s (y/n)? " % cluster_name)
             if resp not in ['y', 'Y', 'yes']:
@@ -57,11 +58,18 @@ class CmdTerminate(ClusterCompleter):
             inst.terminate()
         cl.terminate_cluster()
 
+    def terminate(self, cluster_name):
+        try:
+            self._terminate_cluster(cluster_name)
+        except exception.IncompatibleCluster:
+            self._terminate_manually(cluster_name)
+
     def execute(self, args):
         if not args:
             self.parser.error("please specify a cluster")
         for cluster_name in args:
             try:
-                self.terminate_cluster(cluster_name)
-            except exception.IncompatibleCluster:
-                self.terminate_manually(cluster_name)
+                self.terminate(cluster_name)
+            except EOFError:
+                print 'Interrupted, exiting...'
+                return

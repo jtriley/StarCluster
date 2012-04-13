@@ -32,7 +32,8 @@ class VolumeCreator(cluster.Cluster):
         self._host_instance = host_instance
         self._instance = None
         self._volume = None
-        self._device = device or '/dev/sdz'
+        self._aws_block_device = device or '/dev/sdz'
+        self._real_device = None
         self._image_id = image_id or static.BASE_AMI_32
         self._instance_type = instance_type or 'm1.small'
         self._shutdown = shutdown_instance
@@ -107,8 +108,20 @@ class VolumeCreator(cluster.Cluster):
         for char in string.lowercase[::-1]:
             dev = '/dev/sd%s' % char
             if not block_dev_map.get(dev):
-                self._device = dev
-                return self._device
+                self._aws_block_device = dev
+                return self._aws_block_device
+
+    def _get_volume_device(self, device=None):
+        dev = device or self._aws_block_device
+        inst = self._instance
+        if inst.ssh.path_exists(dev):
+            self._real_device = dev
+            return dev
+        xvdev = '/dev/xvd' + dev[-1]
+        if inst.ssh.path_exists(xvdev):
+            self._real_device = xvdev
+            return xvdev
+        raise exception.BaseException("Can't find volume device")
 
     def _attach_volume(self, vol, instance_id, device):
         s = self.get_spinner("Attaching volume %s to instance %s..." %
@@ -188,12 +201,13 @@ class VolumeCreator(cluster.Cluster):
             return False
 
     def _partition_volume(self):
-        self._instance.ssh.execute('echo ",,L" | sfdisk %s' % self._device,
-                                   silent=False)
+        self._instance.ssh.execute('echo ",,L" | sfdisk %s' %
+                                   self._real_device, silent=False)
 
     def _format_volume(self):
         log.info("Formatting volume...")
-        self._instance.ssh.execute('%s -F %s' % (self._mkfs_cmd, self._device),
+        self._instance.ssh.execute('%s -F %s' %
+                                   (self._mkfs_cmd, self._real_device),
                                    silent=False)
 
     def _warn_about_volume_hosts(self):
@@ -234,7 +248,7 @@ class VolumeCreator(cluster.Cluster):
     @print_timing("Creating volume")
     def create(self, volume_size, volume_zone, name=None, tags=None):
         try:
-            self.validate(volume_size, volume_zone, self._device)
+            self.validate(volume_size, volume_zone, self._aws_block_device)
             instance = self._request_instance(volume_zone)
             self._validate_required_progs([self._mkfs_cmd.split()[0]])
             self._determine_device()
@@ -249,7 +263,9 @@ class VolumeCreator(cluster.Cluster):
                     vol.add_tag(tag, tagval)
             if name:
                 vol.add_tag("Name", name)
-            self._attach_volume(self._volume, instance.id, self._device)
+            self._attach_volume(self._volume, instance.id,
+                                self._aws_block_device)
+            self._get_volume_device(self._aws_block_device)
             self._format_volume()
             self.shutdown()
             self._warn_about_volume_hosts()
@@ -285,7 +301,7 @@ class VolumeCreator(cluster.Cluster):
         is required. this is currently not implemented.
         """
         try:
-            self._validate_device(self._device)
+            self._validate_device(self._aws_block_device)
             self._validate_resize(vol, size)
             zone = vol.zone
             if dest_zone:
@@ -296,10 +312,9 @@ class VolumeCreator(cluster.Cluster):
             self._determine_device()
             snap = self.ec2.create_snapshot(vol, wait_for_snapshot=True)
             new_vol = self._create_volume(size, zone, snap.id)
-            self._attach_volume(new_vol, host.id, self._device)
-            devs = filter(lambda x: x.startswith(self._device),
-                          host.ssh.ls('/dev'))
-            device = self._device
+            self._attach_volume(new_vol, host.id, self._aws_block_device)
+            device = self._get_volume_device()
+            devs = filter(lambda x: x.startswith(device), host.ssh.ls('/dev'))
             if len(devs) == 1:
                 log.info("No partitions found, resizing entire device")
             elif len(devs) == 2:

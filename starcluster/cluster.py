@@ -8,16 +8,17 @@ import base64
 import cPickle
 import traceback
 
-from starcluster import ssh
 from starcluster import utils
 from starcluster import static
 from starcluster import spinner
 from starcluster import iptools
+from starcluster import sshutils
 from starcluster import managers
 from starcluster import exception
 from starcluster import progressbar
 from starcluster import clustersetup
 from starcluster.node import Node
+from starcluster.plugins import sge
 from starcluster.utils import print_timing
 from starcluster.templates import user_msgs
 from starcluster.logger import log
@@ -106,17 +107,19 @@ class ClusterManager(managers.Manager):
         """
         return self.get_cluster_or_none(tag_name) is not None
 
-    def ssh_to_master(self, cluster_name, user='root', command=None):
+    def ssh_to_master(self, cluster_name, user='root', command=None,
+                      forward_x11=False):
         """
         ssh to master node of cluster_name
 
         user keyword specifies an alternate user to login as
         """
         cluster = self.get_cluster(cluster_name)
-        return cluster.ssh_to_master(user=user, command=command)
+        return cluster.ssh_to_master(user=user, command=command,
+                                     forward_x11=forward_x11)
 
     def ssh_to_cluster_node(self, cluster_name, node_id, user='root',
-                            command=None):
+                            command=None, forward_x11=False):
         """
         ssh to a node in cluster_name that has either an id,
         dns name, or alias matching node_id
@@ -124,7 +127,8 @@ class ClusterManager(managers.Manager):
         user keyword specifies an alternate user to login as
         """
         cluster = self.get_cluster(cluster_name)
-        return cluster.ssh_to_node(node_id, user=user, command=command)
+        return cluster.ssh_to_node(node_id, user=user, command=command,
+                                   forward_x11=forward_x11)
 
     def _get_cluster_name(self, cluster_name):
         """
@@ -169,7 +173,6 @@ class ClusterManager(managers.Manager):
                                 placement_group=placement_group,
                                 spot_bid=spot_bid,
                                 no_create=no_create)
-
 
     def remove_node(self, cluster_name, alias, terminate=True):
         """
@@ -541,33 +544,17 @@ class Cluster(object):
             raise exception.ClusterValidationError("No existing nodes found!")
         log.info("Validating existing instances...")
         mazone = self.master_node.placement
-        rlmap = self._get_launch_map(reverse=True)
-        for node in nodes:
-            itype, image = rlmap.get(node.alias)
-            alias = node.alias
-            ntype = node.instance_type
-            if ntype != itype:
-                raise exception.ClusterValidationError(
-                    "%s's instance type (%s) != %s" % (alias, ntype, itype))
-            nimage = node.image_id
-            if nimage != image:
-                raise exception.ClusterValidationError(
-                    "%s's image id (%s) != %s" % (alias, nimage, image))
-            if node.key_name != self.keyname:
-                raise exception.ClusterValidationError(
-                    "%s's key_name (%s) != %s" % (alias, node.key_name,
-                                                  self.keyname))
-            nazone = node.placement
-            if mazone != nazone:
-                raise exception.ClusterValidationError(
-                    "Node '%s' zone (%s) does not match master's zone (%s)" %
-                    (alias, nazone, mazone))
         # reset zone cache
         self._zone = None
         if self.zone and self.zone != mazone:
             raise exception.ClusterValidationError(
                 "Running cluster's availability_zone (%s) != %s" %
                 (mazone, self.zone))
+        for node in nodes:
+            if node.key_name != self.keyname:
+                raise exception.ClusterValidationError(
+                    "%s's key_name (%s) != %s" % (node.alias, node.key_name,
+                                                  self.keyname))
 
     def get(self, name):
         return self.__dict__.get(name)
@@ -655,7 +642,9 @@ class Cluster(object):
                     log.info("Opening %s port range %s-%s for CIDR %s" %
                              (ip_protocol, from_port, to_port, cidr_ip))
                     sg.authorize(ip_protocol, from_port, to_port, cidr_ip)
-                if ip_protocol == 'tcp' and from_port <= ssh_port <= to_port:
+                includes_ssh = from_port <= ssh_port <= to_port
+                open_to_world = cidr_ip == static.WORLD_CIDRIP
+                if ip_protocol == 'tcp' and includes_ssh and not open_to_world:
                     sg.revoke(ip_protocol, ssh_port, ssh_port,
                               static.WORLD_CIDRIP)
             self._cluster_group = sg
@@ -829,6 +818,7 @@ class Cluster(object):
                  placement_group=None,
                  spot_bid=None,
                  no_create=False):
+
         """
         Add a single node to this cluster
         """
@@ -875,25 +865,25 @@ class Cluster(object):
                 if node.alias in aliases:
                     raise exception.ClusterValidationError(
                         "node with alias %s already exists" % node.alias)
-            log.info("Adding node(s): %s" % ', '.join(aliases))
-            self.create_nodes(aliases, 
-                              count=len(aliases),
-                              image_id=image_id,
-                              instance_type=instance_type,
-                              zone=zone,
+            log.info("Launching node(s): %s" % ', '.join(aliases))
+            self.create_nodes(aliases, image_id=image_id,
+                              instance_type=instance_type, zone=zone,
                               placement_group=placement_group,
                               spot_bid=spot_bid)
         self.wait_for_cluster(msg="Waiting for node(s) to come up...")
         log.debug("Adding node(s): %s" % aliases)
-        default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue,
-                                                          self.disable_threads)
+        default_plugin = clustersetup.DefaultClusterSetup(self.disable_threads)
+        if not self.disable_queue:
+            sge_plugin = sge.SGEPlugin(disable_threads=self.disable_threads)
         for alias in aliases:
             node = self.get_node_by_alias(alias)
-            print('node alias', alias, node)
-            default_plugin.on_add_node(
-                node, self.nodes, self.master_node,
-                self.cluster_user, self.cluster_shell,
-                self.volumes)
+            default_plugin.on_add_node(node, self.nodes, self.master_node,
+                                       self.cluster_user, self.cluster_shell,
+                                       self.volumes)
+            if not self.disable_queue:
+                sge_plugin.on_add_node(node, self.nodes, self.master_node,
+                                       self.cluster_user, self.cluster_shell,
+                                       self.volumes)
             self.run_plugins(method_name="on_add_node", node=node)
         
         return aliases
@@ -908,17 +898,21 @@ class Cluster(object):
         """
         Remove a list of nodes from this cluster
         """
-        default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue,
-                                                          self.disable_threads)
+        default_plugin = clustersetup.DefaultClusterSetup(self.disable_threads)
+        if not self.disable_queue:
+            sge_plugin = sge.SGEPlugin(disable_threads=self.disable_threads)
         for node in nodes:
             if node.is_master():
                 raise exception.InvalidOperation("cannot remove master node")
             self.run_plugins(method_name="on_remove_node",
                              node=node, reverse=True)
-            default_plugin.on_remove_node(
-                node, self.nodes, self.master_node,
-                self.cluster_user, self.cluster_shell,
-                self.volumes)
+            if not self.disable_queue:
+                sge_plugin.on_remove_node(node, self.nodes, self.master_node,
+                                          self.cluster_user,
+                                          self.cluster_shell, self.volumes)
+            default_plugin.on_remove_node(node, self.nodes, self.master_node,
+                                          self.cluster_user,
+                                          self.cluster_shell, self.volumes)
             if not terminate:
                 continue
             if node.spot_id:
@@ -1282,10 +1276,14 @@ class Cluster(object):
         """
         interval = self.refresh_interval
         log.info("%s %s" % (msg, "(updating every %ds)" % interval))
-        self.wait_for_active_spots()
-        self.wait_for_active_instances()
-        self.wait_for_running_instances()
-        self.wait_for_ssh()
+        try:
+            self.wait_for_active_spots()
+            self.wait_for_active_instances()
+            self.wait_for_running_instances()
+            self.wait_for_ssh()
+        except Exception:
+            self.progress_bar.finish()
+            raise
 
     def is_cluster_stopped(self):
         """
@@ -1500,9 +1498,12 @@ class Cluster(object):
         log.info("Setting up the cluster...")
         if self.volumes:
             self.attach_volumes_to_master()
-        default_plugin = clustersetup.DefaultClusterSetup(self.disable_queue,
-                                                          self.disable_threads)
+        default_plugin = clustersetup.DefaultClusterSetup(self.disable_threads)
         default_plugin.run(self.nodes, self.master_node, self.cluster_user,
+                           self.cluster_shell, self.volumes)
+        if not self.disable_queue:
+            sge_plugin = sge.SGEPlugin(disable_threads=self.disable_threads)
+            sge_plugin.run(self.nodes, self.master_node, self.cluster_user,
                            self.cluster_shell, self.volumes)
         self.run_plugins()
 
@@ -1583,6 +1584,7 @@ class Cluster(object):
             self._has_all_required_settings()
             self._validate_spot_bid()
             self._validate_cluster_size()
+            self._validate_cluster_user()
             self._validate_shell_setting()
             self._validate_permission_settings()
             self._validate_credentials()
@@ -1634,6 +1636,12 @@ class Cluster(object):
             raise exception.ClusterValidationError(
                 "total number of nodes specified in node_instance_type (%s) "
                 "must be <= cluster_size-1 (%s)" % (num_itypes, num_nodes))
+        return True
+
+    def _validate_cluster_user(self):
+        if self.cluster_user == "root":
+            raise exception.ClusterValidationError(
+                'cluster_user cannot be "root"')
         return True
 
     def _validate_shell_setting(self):
@@ -1701,6 +1709,12 @@ class Cluster(object):
                           'image_id': image_id,
                           'image_platform': image_platform}
             raise exception.ClusterValidationError(error_msg % error_dict)
+        image_is_ebs = (image.root_device_type == 'ebs')
+        if instance_type in static.MICRO_INSTANCE_TYPES and not image_is_ebs:
+            error_msg = ("Instance type %s can only be used with an "
+                         "EBS-backed AMI and '%s' is not EBS-backed " %
+                         (instance_type, image.id))
+            raise exception.ClusterValidationError(error_msg)
         return True
 
     def _validate_instance_types(self):
@@ -1915,13 +1929,19 @@ class Cluster(object):
             raise exception.ClusterValidationError(
                 "Account does not contain a key with keyname: %s" % keyname)
         fingerprint = keypair.fingerprint
+        try:
+            open(key_location, 'r').close()
+        except IOError, e:
+            raise exception.ClusterValidationError(
+                "Error loading key_location '%s':\n%s\n"
+                "Please check that the file is readable" % (key_location, e))
         if len(fingerprint) == 59:
-            localfingerprint = ssh.get_private_rsa_fingerprint(key_location)
-            if localfingerprint != fingerprint:
+            keyfingerprint = sshutils.get_private_rsa_fingerprint(key_location)
+            if keyfingerprint != fingerprint:
                 raise exception.ClusterValidationError(
                     "Incorrect fingerprint for key_location '%s'\n\n"
                     "local fingerprint: %s\n\nkeypair fingerprint: %s"
-                    % (key_location, localfingerprint, fingerprint))
+                    % (key_location, keyfingerprint, fingerprint))
         else:
             # Skip fingerprint validation for keys created using EC2 import
             # keys until I can figure out the mystery behind the import keys
@@ -1936,23 +1956,17 @@ class Cluster(object):
                     (keyname, z.region))
         return True
 
-    def ssh_to_master(self, user='root', command=None):
-        return self.ssh_to_node('master', user=user, command=command)
+    def ssh_to_master(self, user='root', command=None, forward_x11=False):
+        return self.ssh_to_node('master', user=user, command=command,
+                                forward_x11=forward_x11)
 
-    def ssh_to_node(self, alias, user='root', command=None):
+    def ssh_to_node(self, alias, user='root', command=None, forward_x11=False):
         node = self.get_node_by_alias(alias)
         node = node or self.get_node_by_dns_name(alias)
         node = node or self.get_node_by_id(alias)
         if not node:
             raise exception.InstanceDoesNotExist(alias, label='node')
-        if command:
-            orig_user = node.ssh.get_current_user()
-            node.ssh.switch_user(user)
-            node.ssh.execute(command, silent=False)
-            node.ssh.switch_user(orig_user)
-            return node.ssh.get_last_status()
-        else:
-            node.shell(user=user)
+        return node.shell(user=user, forward_x11=forward_x11, command=command)
 
 if __name__ == "__main__":
     from starcluster.config import StarClusterConfig

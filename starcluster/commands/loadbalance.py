@@ -52,7 +52,8 @@ class CmdLoadBalance(ClusterCompleter):
                           "<cluster_tag>")
         parser.add_option("-i", "--interval", dest="interval",
                           action="store", type="int", default=None,
-                          help="Polling interval for load balancer")
+                          help="Load balancer polling interval in seconds "
+                          "(max: 300s)")
         parser.add_option("-m", "--max_nodes", dest="max_nodes",
                           action="store", type="int", default=None,
                           help="Maximum # of nodes in cluster")
@@ -68,13 +69,15 @@ class CmdLoadBalance(ClusterCompleter):
                           help="Minutes after which a node can be killed")
         parser.add_option("-s", "--stabilization_time", dest="stab",
                           action="store", type="int", default=None,
-                          help="Seconds to wait before cluster stabilizes")
+                          help="Seconds to wait before cluster "
+                          "stabilizes (min: 300s)")
         parser.add_option("-l", "--lookback_window", dest="lookback_win",
                           action="store", type="int", default=None,
                           help="Minutes to look back for past job history")
         parser.add_option("-n", "--min_nodes", dest="min_nodes",
                           action="store", type="int", default=None,
                           help="Minimum number of nodes in cluster")
+<<<<<<< HEAD
         parser.add_option("-K", "--kill-master", dest="allow_master_kill",
                           action="store_true", default=None,
                           help="Allow the master to be killed when "
@@ -102,6 +105,11 @@ class CmdLoadBalance(ClusterCompleter):
                           help="number of slots to declare when adding nodes "
                           "(defaults to number of cpus on machine)")  
             
+=======
+        parser.add_option("-K", "--kill-cluster", dest="kill_cluster",
+                          action="store_true", default=False,
+                          help="Terminate the cluster when the queue is empty")
+>>>>>>> upstream/master
 
     def execute(self, args):
         if not self.cfg.globals.enable_experimental:

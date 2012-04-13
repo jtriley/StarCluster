@@ -1,86 +1,82 @@
 active_ebs_cluster = """EBS Cluster '%(cluster_name)s' already exists.
 
-Either choose a different tag name, or stop the EBS cluster using:
-
-    $ starcluster stop %(cluster_name)s
-
-This command will put all nodes into a 'stopped' state and preserve their \
-local disks. The cluster can later be resumed by passing the -x option to \
-the start command. Another option is to terminate the existing EBS Cluster \
+Either choose a different tag name, or terminate the existing EBS cluster \
 using:
 
     $ starcluster terminate %(cluster_name)s
 
-NOTE: Terminating an EBS cluster will destroy the local disks (volumes) \
+WARNING: Terminating an EBS cluster will destroy the local disks (volumes) \
 backing the nodes.
+
+If you encountered an issue while starting or using '%(cluster_name)s' you \
+can reboot and reconfigure the cluster using the 'restart' command:
+
+    $ starcluster restart %(cluster_name)s
+
+This will reboot all existing nodes and completely reconfigure the cluster \
+without wasting instance hours.
+
 """
 
 stopped_ebs_cluster = """Stopped EBS Cluster '%(cluster_name)s' already exists.
 
-Either choose a different tag name, or start the stopped EBS cluster using:
+Either choose a different tag name, or start the 'stopped' cluster using:
 
     $ starcluster start -x %(cluster_name)s
 
-Another option is to terminate the existing EBS Cluster using:
+Another option is to terminate the stopped EBS Cluster using:
 
     $ starcluster terminate %(cluster_name)s
 
-NOTE: Terminating an EBS cluster will destroy the local disks (volumes) \
+WARNING: Terminating an EBS cluster will destroy the local disks (volumes) \
 backing the nodes.
 """
 
-cluster_exists = """Cluster with tag name %(cluster_name)s already exists.
+cluster_exists = """Cluster '%(cluster_name)s' already exists.
 
-If the cluster is a 'stopped' EBS cluster that you wish to 'start' or if you \
-have yet to configure the existing cluster nodes, pass the -x option to the \
-start command:
+Either choose a different tag name, or terminate the existing cluster using:
 
-    $ starcluster start -x %(cluster_name)s
+    $ starcluster terminate %(cluster_name)s
 
-If you wish to reconfigure the existing instances use the 'restart' command:
+If you encountered an issue while starting or using '%(cluster_name)s' you \
+can reboot and reconfigure the cluster using the 'restart' command:
 
     $ starcluster restart %(cluster_name)s
 
-This will reboot all of the instances and configure the cluster starting from \
-scratch.
-
-Otherwise either choose a different tag name, or terminate the existing \
-cluster using:
-
-    $ starcluster terminate %(cluster_name)s
+This will reboot all existing nodes and completely reconfigure the cluster \
+without wasting instance hours.
 
 """
 
 cluster_started_msg = """
-The cluster is now ready to use. To login to the master node as \
-root, run:
+The cluster is now ready to use. To login to the master node as root, run:
 
     $ starcluster sshmaster %(tag)s
 
-When you are finished using the cluster and wish to terminate it and stop \
+If you're having issues with the cluster you can reboot the instances and \
+completely reconfigure the cluster from scratch using:
+
+    $ starcluster restart %(tag)s
+
+When you're finished using the cluster and wish to terminate it and stop \
 paying for service:
 
     $ starcluster terminate %(tag)s
 
-NOTE: Terminating an EBS cluster will destroy all EBS volumes backing the \
-nodes.
-
 Alternatively, if the cluster uses EBS instances, you can use the 'stop' \
-command to put all nodes into a 'stopped' state:
+command to shutdown all nodes and put them into a 'stopped' state preserving \
+the EBS volumes backing the nodes:
 
     $ starcluster stop %(tag)s
 
-NOTE: Any data stored in ephemeral storage (usually /mnt) will be lost!
+WARNING: Any data stored in ephemeral storage (usually /mnt) will be lost!
 
-This will shutdown all nodes in the cluster and put them in a 'stopped' state \
-that preserves the EBS volumes backing the nodes. A 'stopped' cluster may \
-then be restarted at a later time, without losing data on the local disks, by \
-passing the -x option to the 'start' command:
+You can activate a 'stopped' cluster by passing the -x option to the 'start' \
+command:
 
     $ starcluster start -x %(tag)s
 
-This will start all 'stopped' EBS instances and reconfigure the cluster.
-
+This will start all 'stopped' nodes and reconfigure the cluster.
 """
 
 spotmsg = """SPOT INSTANCES ARE NOT GUARANTEED TO COME UP
@@ -108,4 +104,24 @@ The cluster '%(cluster)s' was created with a newer version of StarCluster \
 This may or may not be a problem depending on what's changed between these \
 versions, however, it's highly recommended that you use version \
 %(new_version)s when using the '%(cluster)s' cluster.\
+"""
+
+authkeys_access_denied = """\
+Remote SSH access for user '%(user)s' denied via authorized_keys
+
+This usually means the AMI you're using has been configured to deny SSH \
+access for the '%(user)s' user. Either fix your AMI or use one of the \
+StarCluster supported AMIs. You can obtain a list of StarCluster supported \
+AMIs using the 'listpublic' command:
+
+    $ starcluster listpublic
+
+If you need to customize one of the StarCluster supported AMIs simply launch \
+an instance of the AMI, login remotely, configure the instance, and then use \
+the 'ebsimage' command to create a new EBS AMI from the instance with your \
+changes:
+
+    $ starcluster ebsimage <instance-id> <image-name>
+
+Pass the --help flag to the 'ebsimage' command for more details.
 """

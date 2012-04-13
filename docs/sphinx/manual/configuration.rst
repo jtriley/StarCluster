@@ -1,6 +1,6 @@
-******************************
-StarCluster Configuration File
-******************************
+******************
+Configuration File
+******************
 The StarCluster configuration file uses `ini formatting
 <http://en.wikipedia.org/wiki/INI_file>`_. It is made up of various sections
 which are described here in detail. This document explains how to configure the

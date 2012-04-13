@@ -1,7 +1,7 @@
 .. _plugin_system:
 
-StarCluster Plugin System
-=========================
+Plugin System
+=============
 StarCluster has support for user contributed plugins. Plugins allow developers
 to further configure the cluster in addition to the default cluster
 configuration provided by StarCluster. Plugins are used to provide custom
@@ -13,8 +13,6 @@ A StarCluster plugin is simply a Python class that extends
 **starcluster.clustersetup.ClusterSetup** and implements a *run* method.  This
 class must live in a module that is on the PYTHONPATH. By default, StarCluster
 will add the ~/.starcluster/plugins directory to the PYTHONPATH automatically.
-The ~/.starcluster/plugins directory is not created automatically so you will
-need to create it if it does not exist.
 
 Below is a very simple example of a StarCluster plugin that installs a package
 on each node using apt-get after the cluster has been configured:
@@ -123,7 +121,7 @@ Using the Development Shell
 To launch StarCluster's development shell, use the *shell* command::
 
     $ starcluster shell
-    StarCluster - (http://web.mit.edu/starcluster) (v. 0.9999)
+    StarCluster - (http://web.mit.edu/starcluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
@@ -144,7 +142,7 @@ To launch StarCluster's development shell, use the *shell* command::
     >>> Importing module templates
     >>> Importing module optcomplete
     >>> Importing module boto
-    >>> Importing module paramiko
+    >>> Importing module ssh
 
     [~]|1>
 
