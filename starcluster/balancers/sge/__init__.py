@@ -478,12 +478,7 @@ class SGELoadBalancer(LoadBalancer):
         and returns a datetime object with the master's time
         instead of fetching it from local machine, maybe inaccurate.
         """
-<<<<<<< HEAD
-        cl = self._cluster
-        str = '\n'.join(cl.master_node.ssh.execute('date -u'))
-=======
         str = '\n'.join(self._cluster.master_node.ssh.execute('date'))
->>>>>>> upstream/master
         return datetime.datetime.strptime(str, "%a %b %d %H:%M:%S UTC %Y")
 
     def get_qatime(self, now):
@@ -537,42 +532,6 @@ class SGELoadBalancer(LoadBalancer):
         containing statistics about the job name, priority, etc.
         """
         log.debug("starting get_stats")
-<<<<<<< HEAD
-        master = self._cluster.master_node
-        qname = self.queue_name
-        instance_type = self.instance_type or self._cluster.node_instance_type
-        default_slots = DEFAULT_SLOTS[instance_type]
-        
-        self.stat = SGEStats(default_slots,queue_name = qname)
-
-        qhostxml = ""
-        qstatxml = ""
-        qacct = ""
-        try:
-            now = self.get_remote_time()
-            qatime = self.get_qatime(now)
-            qacct_cmd = 'source /etc/profile && qacct -l qname=' + qname + ' -j -b ' + qatime
-            qstat_cmd = 'source /etc/profile && qstat -l qname=' + qname + ' -u \"*\" -xml'
-            qhost_cmd = 'source /etc/profile && qhost -xml -q'            
-            qhostxml = '\n'.join(master.ssh.execute(qhost_cmd, log_output=True))
-            qstatxml = '\n'.join(master.ssh.execute(qstat_cmd,
-                                                    log_output=True,
-                                                    source_profile=True))
-            qacct = '\n'.join(master.ssh.execute(qacct_cmd, log_output=True,
-                                                 ignore_exit_status=True,
-                                                 source_profile=True))
-        except Exception, e:
-            log.error("Error occurred getting SGE stats via ssh. "
-                      "Cluster terminated?")
-            log.error(e)
-            return -1
-        log.debug("sizes: qhost: %d, qstat: %d, qacct: %d" %
-                  (len(qhostxml), len(qstatxml), len(qacct)))
-        self.stat.parse_qhost(qhostxml)
-        #self.stat.parse_qstat(qstatxml)
-        self.stat.get_qstat(master)
-        self.stat.parse_qacct(qacct, now)
-=======
         retries = 5
         for i in range(retries):
             try:
@@ -587,7 +546,6 @@ class SGELoadBalancer(LoadBalancer):
         raise exception.BaseException(
             "Failed to retrieve SGE stats after trying %d times, exiting..." %
             retries)
->>>>>>> upstream/master
 
     def create_queue(self):
         sge_utils.create_queue(self._cluster.master_node,self.queue_name)
@@ -749,17 +707,6 @@ class SGELoadBalancer(LoadBalancer):
         ts = self.stat.count_total_slots()
         num_exec_hosts = len(self.stat.hosts)
         #calculate estimated time to completion
-<<<<<<< HEAD
-        if qlen > ts: 
-            now = datetime.datetime.utcnow()
-            mod_delta = (now - self.__last_cluster_mod_time).seconds
-            if mod_delta < self.stabilization_time:
-                log.info("Cluster change made less than %d seconds ago (%s)." %
-                         (self.stabilization_time,
-                          self.__last_cluster_mod_time))
-                log.info("Not changing cluster size until cluster stabilizes.")
-                return 0
-=======
         ettc = 0
         if num_exec_hosts > 0:
             #calculate job duration
@@ -768,7 +715,6 @@ class SGELoadBalancer(LoadBalancer):
         if qlen > ts:
             if not self.has_cluster_stabilized():
                 return
->>>>>>> upstream/master
             #there are more jobs queued than will be consumed with one
             #cycle of job processing from all nodes
             oldest_job_dt = self.stat.oldest_queued_job_age()
@@ -776,20 +722,6 @@ class SGELoadBalancer(LoadBalancer):
             age_delta = now - oldest_job_dt
             if age_delta.seconds > self.longest_allowed_queue_time:
                 log.info("A job has been waiting for %d sec, longer than "
-<<<<<<< HEAD
-                         "max %d." % (age_delta.seconds,
-                                      self.longest_allowed_queue_time))           
-                if len(self.stat.hosts) > 0:
-                    need_to_add = qlen / sph 
-                    ettc = avg_duration * qlen / len(self.stat.hosts)
-                    if ettc < 600 and not self.stat.on_first_job():
-                        log.warn("There is a possibility that the job queue is"
-                                 " shorter than 10 minutes in duration.")
-                        #need_to_add = 0
-                else:
-                    need_to_add = max(1,qlen/sph)
-        max_add = self.max_nodes - len(self.stat.hosts)
-=======
                          "max %d" % (age_delta.seconds,
                                      self.longest_allowed_queue_time))
                 need_to_add = qlen / sph if sph != 0 else 1
@@ -797,28 +729,16 @@ class SGELoadBalancer(LoadBalancer):
                     log.warn("There is a possibility that the job queue is"
                              " shorter than 10 minutes in duration")
         max_add = self.max_nodes - len(self._cluster.running_nodes)
->>>>>>> upstream/master
         need_to_add = min(self.add_nodes_per_iteration, need_to_add, max_add)
         
         if need_to_add > 0:
             log.warn("Adding %d nodes at %s" %
                      (need_to_add, str(datetime.datetime.utcnow())))
             try:
-<<<<<<< HEAD
-                aliases = self._cluster.add_nodes(need_to_add,
-                                        image_id=self.image_id,
-                                        instance_type=self.instance_type,
-                                        zone=self.zone,spot_bid=self.spot_bid)
-                if self.host_group:
-                    self.add_to_host_group(aliases)
-                else:
-                    self.add_to_queue(aliases)
-=======
                 self._cluster.add_nodes(need_to_add)
                 self.__last_cluster_mod_time = datetime.datetime.utcnow()
                 log.info("Done adding nodes at %s" %
                          str(datetime.datetime.utcnow()))
->>>>>>> upstream/master
             except Exception:
                 log.error("Failed to add new host")
                 log.debug(traceback.format_exc())
@@ -873,24 +793,6 @@ class SGELoadBalancer(LoadBalancer):
         Determines whether a node is eligible to be removed based on:
 
         1. The node must not be running any SGE job
-<<<<<<< HEAD
-        2. The node must have been up for 50-60 minutes past its start time
-        3. The node must not be the master, or allow_master_kill=True
-        4. The node must be in self.queue_name, or in a host group that is 
-           in self.queue_name
-        """
-        nodes = self._cluster.running_nodes
-        
-        #now filter for actually being in the queue
-        #Q: should we do this with self.stat.hosts instead, which might be old?
-        current_hostnames = self.hosts_in_queue().keys()
-        nodes = [n for n in nodes if n.alias in current_hostnames]
-        
-        to_rem = []
-        for node in nodes:
-            if not self.allow_master_kill and node.is_master():
-                log.debug("not removing master node")
-=======
         2. The node must have been up for self.kill_after min past the hour
         """
         if self.stat.is_node_working(node):
@@ -921,7 +823,6 @@ class SGELoadBalancer(LoadBalancer):
             if max_remove is not None and len(remove_nodes) >= max_remove:
                 return remove_nodes
             if node.is_master():
->>>>>>> upstream/master
                 continue
             if self._should_remove(node):
                 remove_nodes.append(node)
