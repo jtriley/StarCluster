@@ -200,9 +200,14 @@ class VolumeCreator(cluster.Cluster):
             log.error(e.msg)
             return False
 
-    def _partition_volume(self):
-        self._instance.ssh.execute('echo ",,L" | sfdisk %s' %
-                                   self._real_device, silent=False)
+    def _repartition_volume(self):
+        conn = self._instance.ssh
+        partmap = self._instance.get_partition_map()
+        part = self._real_device + '1'
+        start = partmap.get(part)[0]
+        conn.execute('echo "%s,,L" | sfdisk -f -uS %s' %
+                     (start, self._real_device), silent=False)
+        conn.execute('e2fsck -p -f %s' % part, silent=False)
 
     def _format_volume(self):
         log.info("Formatting volume...")
@@ -320,7 +325,7 @@ class VolumeCreator(cluster.Cluster):
                 log.info("No partitions found, resizing entire device")
             elif len(devs) == 2:
                 log.info("One partition found, resizing partition...")
-                self._partition_volume()
+                self._repartition_volume()
                 device += '1'
             else:
                 raise exception.InvalidOperation(
