@@ -1628,11 +1628,17 @@ class Cluster(object):
         if not image or image.id != node_image_id:
             raise exception.ClusterValidationError(
                 'node_image_id %s does not exist' % node_image_id)
+        if image.state != 'available':
+            raise exception.ClusterValidationError(
+                'node_image_id %s is not available' % node_image_id)
         if master_image_id:
             master_image = conn.get_image_or_none(master_image_id)
             if not master_image or master_image.id != master_image_id:
                 raise exception.ClusterValidationError(
                     'master_image_id %s does not exist' % master_image_id)
+            if master_image.state != 'available':
+                raise exception.ClusterValidationError(
+                    'master_image_id %s is not available' % master_image_id)
         return True
 
     def _validate_zone(self):
