@@ -1002,10 +1002,10 @@ class Cluster(object):
 
     def _create_spot_cluster(self):
         """
-        Launches cluster using all spot instances. This method makes a single
-        spot request for each node in the cluster since spot instances
-        *always* have an ami_launch_index of 0. This is needed in order to
-        correctly assign aliases to nodes.
+        Launches cluster using spot instances for all worker nodes. This method
+        makes a single spot request for each node in the cluster since spot
+        instances *always* have an ami_launch_index of 0. This is needed in
+        order to correctly assign aliases to nodes.
         """
         (mtype, mimage) = self._get_type_and_image_id('master')
         log.info("Launching master node (ami: %s, type: %s)..." %
@@ -1751,25 +1751,6 @@ class Cluster(object):
                         'can only be used with HVM images.\n'
                         'Image %s is NOT an HVM image.' % (type, image))
 
-    def _validate_ebs_aws_settings(self):
-        """
-        Verify EBS volumes exists and that each volume's zone matches this
-        cluster's zone setting.
-        """
-        for vol in self.volumes:
-            v = self.volumes.get(vol)
-            vol_id = v.get('volume_id')
-            vol = self.ec2.get_volume(vol_id)
-            if vol.status != 'available':
-                try:
-                    if vol.attach_data.instance_id == self.master_node.id:
-                        continue
-                except exception.MasterDoesNotExist:
-                    pass
-                msg = "volume %s is not available (status: %s)" % (vol_id,
-                                                                   vol.status)
-                raise exception.ClusterValidationError(msg)
-
     def _validate_permission_settings(self):
         permissions = self.permissions
         for perm in permissions:
@@ -1858,6 +1839,24 @@ class Cluster(object):
                 raise exception.ClusterValidationError(
                     "Can't mount more than one volume on %s" % path)
         return True
+
+    def _validate_ebs_aws_settings(self):
+        """
+        Verify that all EBS volumes exist and are available.
+        """
+        for vol in self.volumes:
+            v = self.volumes.get(vol)
+            vol_id = v.get('volume_id')
+            vol = self.ec2.get_volume(vol_id)
+            if vol.status != 'available':
+                try:
+                    if vol.attach_data.instance_id == self.master_node.id:
+                        continue
+                except exception.MasterDoesNotExist:
+                    pass
+                raise exception.ClusterValidationError(
+                    "Volume '%s' is not available (status: %s)" %
+                    (vol_id, vol.status))
 
     def _has_all_required_settings(self):
         has_all_required = True
