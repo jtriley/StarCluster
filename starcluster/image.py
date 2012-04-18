@@ -227,6 +227,8 @@ class EBSImageCreator(ImageCreator):
         log.info("Waiting for AMI %s to become available..." % imgid,
                  extra=dict(__nonewline__=True))
         img = self.ec2.get_image(imgid)
+        snap = img.block_device_mapping['/dev/sda1'].snapshot_id
+        self.ec2.wait_for_snapshot(snap)
         s = Spinner()
         s.start()
         while img.state == "pending":
