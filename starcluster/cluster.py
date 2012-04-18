@@ -395,35 +395,38 @@ class Cluster(object):
 
     @property
     def zone(self):
-        """
-        If volumes are specified, this method determines the common
-        availability zone between those volumes. If an availability zone
-        is explicitly specified in the config and does not match the common
-        availability zone of the volumes, an exception is raised. If all
-        volumes are not in the same availability zone an exception is raised.
-        If no volumes are specified, returns the user specified availability
-        zone if it exists.
-        """
-        if not self._zone:
-            zone = None
-            if self.availability_zone:
-                zone = self.ec2.get_zone(self.availability_zone).name
-            common_zone = None
-            for volume in self.volumes:
-                volid = self.volumes.get(volume).get('volume_id')
-                vol = self.ec2.get_volume(volid)
-                if not common_zone:
-                    common_zone = vol.zone
-                elif vol.zone != common_zone:
-                    vols = [self.volumes.get(v).get('volume_id')
-                            for v in self.volumes]
-                    raise exception.VolumesZoneError(vols)
-            if common_zone and zone and zone != common_zone:
-                raise exception.InvalidZone(zone, common_zone)
-            if not zone and common_zone:
-                zone = common_zone
-            self._zone = zone
+        if not self._zone and self.availability_zone or self.volumes:
+            self._zone = self._get_cluster_zone()
         return self._zone
+
+    def _get_cluster_zone(self):
+        """
+        Returns the cluster's zone. If volumes are specified, this method
+        determines the common zone between those volumes. If a zone is
+        explicitly specified in the config and does not match the common zone
+        of the volumes, an exception is raised. If all volumes are not in the
+        same zone an exception is raised. If no volumes are specified, returns
+        the user-specified zone if it exists. Returns None if no volumes and no
+        zone is specified.
+        """
+        zone = None
+        if self.availability_zone:
+            zone = self.ec2.get_zone(self.availability_zone)
+        common_zone = None
+        for volume in self.volumes:
+            volid = self.volumes.get(volume).get('volume_id')
+            vol = self.ec2.get_volume(volid)
+            if not common_zone:
+                common_zone = vol.zone
+            elif vol.zone != common_zone:
+                vols = [self.volumes.get(v).get('volume_id')
+                        for v in self.volumes]
+                raise exception.VolumesZoneError(vols)
+        if common_zone and zone and zone.name != common_zone:
+            raise exception.InvalidZone(zone.name, common_zone)
+        if not zone and common_zone:
+            zone = self.ec2.get_zone(common_zone)
+        return zone
 
     def load_volumes(self, vols):
         """
@@ -531,10 +534,10 @@ class Cluster(object):
         mazone = self.master_node.placement
         # reset zone cache
         self._zone = None
-        if self.zone and self.zone != mazone:
+        if self.zone and self.zone.name != mazone:
             raise exception.ClusterValidationError(
                 "Running cluster's availability_zone (%s) != %s" %
-                (mazone, self.zone))
+                (mazone, self.zone.name))
         for node in nodes:
             if node.key_name != self.keyname:
                 raise exception.ClusterValidationError(
@@ -762,7 +765,8 @@ class Cluster(object):
                       min_count=count, max_count=count, count=count,
                       key_name=self.keyname, security_groups=[cluster_sg],
                       availability_zone_group=cluster_sg,
-                      launch_group=cluster_sg, placement=zone or self.zone,
+                      launch_group=cluster_sg,
+                      placement=zone or self.zone.name,
                       user_data='|'.join(aliases),
                       placement_group=placement_group)
         resvs = []
@@ -1780,8 +1784,8 @@ class Cluster(object):
 
     def _validate_ebs_settings(self):
         """
-        Check EBS vols for missing/duplicate DEVICE/PARTITION/MOUNT_PATHs
-        and validate these settings. Does not require AWS credentials.
+        Check EBS vols for missing/duplicate DEVICE/PARTITION/MOUNT_PATHs and
+        validate these settings.
         """
         volmap = {}
         devmap = {}
