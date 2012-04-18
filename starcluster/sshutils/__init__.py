@@ -488,7 +488,7 @@ class SSHClient(object):
                     print line,
             for line in stderr.readlines():
                 output.append(line)
-                print line
+                print line,
         if only_printable:
             output = map(lambda line: ''.join(c for c in line if c in
                                               string.printable), output)
