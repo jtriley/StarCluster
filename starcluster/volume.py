@@ -222,11 +222,12 @@ class VolumeCreator(cluster.Cluster):
                      ', '.join(vol_hosts))
             log.warn("Run 'starcluster terminate %s' to terminate *all* "
                      "volume host instances once they're no longer needed" %
-                     static.VOLUME_GROUP_NAME)
+                     static.VOLUME_GROUP_NAME, extra=dict(__textwrap__=True))
         else:
             log.info("No active volume hosts found. Run 'starcluster "
                      "terminate %(g)s' to remove the '%(g)s' group" %
-                     {'g': static.VOLUME_GROUP_NAME})
+                     {'g': static.VOLUME_GROUP_NAME},
+                     extra=dict(__textwrap__=True))
 
     def shutdown(self):
         vol = self._volume
