@@ -1636,16 +1636,17 @@ class Cluster(object):
         return True
 
     def _validate_zone(self):
-        availability_zone = self.availability_zone
-        if availability_zone:
-            zone = self.ec2.get_zone(availability_zone)
-            if not zone:
-                azone = self.availability_zone
-                raise exception.ClusterValidationError(
-                    'availability_zone = %s does not exist' % azone)
-            if zone.state != 'available':
-                log.warn('The availability_zone = %s '
-                         'is not available at this time' % zone)
+        """
+        Validates that the cluster's availability zone exists and is available.
+        The 'zone' property additionally checks that all EBS volumes are in the
+        same zone and that the cluster's availability zone setting, if
+        specified, matches the EBS volume(s) zone.
+        """
+        zone = self.zone
+        if zone and zone.state != 'available':
+            raise exception.ClusterValidationError(
+                "The '%s' availability zone is not available at this time" %
+                zone.name)
         return True
 
     def __check_platform(self, image_id, instance_type):
