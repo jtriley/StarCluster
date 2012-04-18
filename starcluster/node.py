@@ -1,3 +1,4 @@
+import re
 import time
 import stat
 import base64
@@ -653,6 +654,35 @@ class Node(object):
             dev, on_label, path, type_label, fstype, options = line.split()
             mount_map[dev] = [path, fstype, options]
         return mount_map
+
+    def get_device_map(self):
+        """
+        Returns a dictionary mapping devices->(# of blocks) based on
+        /proc/partitions
+        """
+        parts = self.ssh.remote_file('/proc/partitions', 'r').read()
+        r = re.compile('(\d+)\s+((?:xv|s)d[a-z])(?:\s+|\\n)')
+        devs = r.findall(parts)
+        devmap = {}
+        for blocks, dev in devs:
+            devname = '/dev/' + dev
+            if self.ssh.path_exists(devname):
+                devmap[devname] = blocks
+        return devmap
+
+    def get_partition_map(self):
+        """
+        Returns a dictionary mapping partitions->(start, end, blocks, id) based
+        on 'fdisk -l'
+        """
+        fdiskout = '\n'.join(self.ssh.execute("fdisk -l 2>/dev/null"))
+        r = re.compile(
+            '(/dev/(?:xv|s)d[a-z][1-9][0-9]?)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)')
+        partmap = {}
+        for match in r.findall(fdiskout):
+            part, start, end, blocks, id = match
+            partmap[part] = [start, end, blocks, id]
+        return partmap
 
     def mount_device(self, device, path):
         """
