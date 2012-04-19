@@ -410,6 +410,7 @@ class Node(object):
         ssh_folder = posixpath.join(home_folder, '.ssh')
         if not self.ssh.isdir(ssh_folder):
             self.ssh.mkdir(ssh_folder)
+        self.ssh.chown(user.pw_uid, user.pw_gid, ssh_folder)
         private_key = posixpath.join(ssh_folder, 'id_rsa')
         public_key = private_key + '.pub'
         authorized_keys = posixpath.join(ssh_folder, 'authorized_keys')
