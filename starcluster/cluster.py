@@ -766,7 +766,7 @@ class Cluster(object):
                       key_name=self.keyname, security_groups=[cluster_sg],
                       availability_zone_group=cluster_sg,
                       launch_group=cluster_sg,
-                      placement=zone or self.zone.name,
+                      placement=zone or getattr(self.zone, 'name', None),
                       user_data='|'.join(aliases),
                       placement_group=placement_group)
         resvs = []
