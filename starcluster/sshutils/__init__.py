@@ -319,21 +319,17 @@ class SSHClient(object):
         except IOError:
             return False
 
-    def chown(self, uid, gid, remote_file):
+    def chown(self, uid, gid, remote_path):
         """
-        Apply permissions (mode) to remote_file
+        Set user (uid) and group (gid) owner for remote_path
         """
-        f = self.remote_file(remote_file, 'r')
-        f.chown(uid, gid, remote_file)
-        f.close()
+        return self.sftp.chown(remote_path, uid, gid)
 
-    def chmod(self, mode, remote_file):
+    def chmod(self, mode, remote_path):
         """
-        Apply permissions (mode) to remote_file
+        Apply permissions (mode) to remote_path
         """
-        f = self.remote_file(remote_file, 'r')
-        f.chmod(mode)
-        f.close()
+        return self.sftp.chmod(remote_path, mode)
 
     def ls(self, path):
         """
