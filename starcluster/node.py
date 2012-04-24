@@ -936,15 +936,6 @@ class Node(object):
         etc_hosts_line = etc_hosts_line % self.network_names
         return etc_hosts_line
 
-    def yum_command(self, cmd):
-        """
-        Run a yum command with all necessary options for non-interactive use.
-        "-d 0 -e 0 -y"
-        """
-        yum_opts = ['-d', '0', '-e', '0', '-y']
-        cmd = "yum " + " ".join(yum_opts) + " " + cmd
-        self.ssh.execute(cmd)
-
     def apt_command(self, cmd):
         """
         Run an apt-get command with all the necessary options for
@@ -963,6 +954,46 @@ class Node(object):
         space
         """
         self.apt_command('install %s' % pkgs)
+
+    def yum_command(self, cmd):
+        """
+        Run a yum command with all necessary options for non-interactive use.
+        "-d 0 -e 0 -y"
+        """
+        yum_opts = ['-d', '0', '-e', '0', '-y']
+        cmd = "yum " + " ".join(yum_opts) + " " + cmd
+        self.ssh.execute(cmd)
+
+    def yum_install(self, pkgs):
+        """
+        Install a set of packages via yum.
+
+        pkgs is a string that contains one or more packages separated by a
+        space
+        """
+        self.yum_command('install %s' % pkgs)
+
+    @property
+    def package_provider(self):
+        """
+        In order to determine which packaging system to use, check to see if
+        /usr/bin/apt exists on the node, and use apt if it exists. Otherwise
+        test to see if /usr/bin/yum exists and use that.
+        """
+        if self.ssh.isfile('/usr/bin/apt'):
+            return "apt"
+        elif self.ssh.isfile('/usr/bin/yum'):
+            return "yum"
+
+    def package_install(self, pkgs):
+        """
+        Provides a declarative install packages on systems, regardless
+        of the system's packging type (apt/yum).
+        """
+        if self.package_provider == "apt":
+            self.apt_install(pkgs)
+        elif self.package_provider == "yum":
+            self.yum_install(pkgs)
 
     def __del__(self):
         if self._ssh:
