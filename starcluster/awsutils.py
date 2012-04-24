@@ -168,12 +168,10 @@ class EasyEC2(EasyAWS):
             ssh_port = static.DEFAULT_SSH_PORT
             sg.authorize('tcp', ssh_port, ssh_port, static.WORLD_CIDRIP)
         if auth_group_traffic:
-            sg.authorize('icmp', -1, -1,
-                         src_group=self.get_group_or_none(name))
-            sg.authorize('tcp', 1, 65535,
-                         src_group=self.get_group_or_none(name))
-            sg.authorize('udp', 1, 65535,
-                         src_group=self.get_group_or_none(name))
+            src_group = self.get_group_or_none(name)
+            sg.authorize('icmp', -1, -1, src_group=src_group)
+            sg.authorize('tcp', 1, 65535, src_group=src_group)
+            sg.authorize('udp', 1, 65535, src_group=src_group)
         return sg
 
     def get_all_security_groups(self, groupnames=[]):
