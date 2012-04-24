@@ -971,6 +971,15 @@ class Node(object):
         etc_hosts_line = etc_hosts_line % self.network_names
         return etc_hosts_line
 
+    def yum_command(self, cmd):
+        """
+        Run a yum command with all necessary options for non-interactive use.
+        "-d 0 -e 0 -y"
+        """
+        yum_opts = ['-d', '0', '-e', '0', '-y']
+        cmd = "yum " + " ".join(yum_opts) + " " + cmd
+        self.ssh.execute(cmd)
+
     def apt_command(self, cmd):
         """
         Run an apt-get command with all the necessary options for
