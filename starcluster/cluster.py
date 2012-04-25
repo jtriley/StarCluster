@@ -60,8 +60,17 @@ class ClusterManager(managers.Manager):
             cltag = self.get_tag_from_sg(clname)
             if not group:
                 group = self.ec2.get_security_group(clname)
-            cl = Cluster(ec2_conn=self.ec2, cluster_tag=cltag,
-                         cluster_group=group)
+
+            #VPCLuster alwasy loaded from cluster file
+            #TODO : manage cluster config differently cloudinit,
+            #dynamodb? Wed Apr 25 10:32:58 2012
+            default_template = self.cfg.get_default_cluster_template()
+            cl = self.cfg.get_cluster_template(default_template, cltag,
+                                               self.ec2)
+            if not issubclass(type(cl), Cluster):
+                cl = Cluster(ec2_conn=self.ec2, cluster_tag=cltag,
+                             cluster_group=group)
+
             if load_receipt:
                 cl.load_receipt(load_plugins=load_plugins,
                                 load_volumes=load_volumes)
@@ -644,6 +653,15 @@ class Cluster(object):
     def _security_group(self):
         return static.SECURITY_GROUP_TEMPLATE % self.cluster_tag
 
+    def securitygroup_from_clusterprops(self):
+        desc = base64.b64encode(zlib.compress(cPickle.dumps(self)))
+        desc = '-'.join([static.VERSION, desc])
+        sg = self.ec2.get_or_create_group(self._security_group,
+                                              desc,
+                                              auth_ssh=True,
+                                              auth_group_traffic=True)
+        return sg
+
     @property
     def cluster_group(self):
         if self._cluster_group is None:
@@ -674,6 +692,7 @@ class Cluster(object):
                 if not static.USER_TAG in sg.tags:
                     sg.add_tag('@sc-user', user_settings)
             ssh_port = static.DEFAULT_SSH_PORT
+            sg = self.securitygroup_from_clusterprops()
             for p in self.permissions:
                 perm = self.permissions.get(p)
                 ip_protocol = perm.get('ip_protocol', 'tcp')
@@ -867,7 +886,8 @@ class Cluster(object):
                       launch_group=cluster_sg,
                       placement=zone or getattr(self.zone, 'name', None),
                       user_data=user_data,
-                      placement_group=placement_group)
+                      placement_group=placement_group,
+                      subnet_id=getattr(self, 'subnet_id', None))
         resvs = []
         if spot_bid:
             for alias in aliases:
@@ -1487,7 +1507,9 @@ class Cluster(object):
                 pg.delete()
         sg = self.ec2.get_group_or_none(self._security_group)
         if sg:
-            self.ec2.delete_group(sg)
+            log.info("Removing %s security group" % sg.name)
+            self.ec2.conn.delete_security_group(group_id=sg.id)
+            #sg.delete()
 
     def start(self, create=True, create_only=False, validate=True,
               validate_only=False, validate_running=False):
@@ -2120,3 +2142,48 @@ class ClusterValidator(validators.Validator):
                 "User data scripts combined and compressed must be <= 16KB\n"
                 "NOTE: StarCluster uses anywhere from 0.5-2KB "
                 "to store internal metadata" % ud_size_kb)
+
+    def ssh_to_master(self, user='root', command=None, forward_x11=False):
+        return self.ssh_to_node('master', user=user, command=command,
+                                forward_x11=forward_x11)
+
+    def ssh_to_node(self, alias, user='root', command=None, forward_x11=False):
+        node = self.get_node_by_alias(alias)
+        node = node or self.get_node_by_dns_name(alias)
+        node = node or self.get_node_by_id(alias)
+        if not node:
+            raise exception.InstanceDoesNotExist(alias, label='node')
+        return node.shell(user=user, forward_x11=forward_x11, command=command)
+
+
+class VPCCluster(Cluster):
+    """VPCCluster : defines a vpc cluster by subclassing Cluster
+    and requiring a vpc_id and subnet_id"""
+
+    def __init__(self, *args, **kwargs):
+        super(VPCCluster, self).__init__(*args, **kwargs)
+
+        self.vpc_id = kwargs['vpc_id']
+        self.subnet_id = kwargs['subnet_id']
+
+    def load_receipt(self, load_plugins=True):
+        #can't save pickle in description
+        pass
+
+    def securitygroup_from_clusterprops(self):
+        #use a dummy description
+        desc = 'sample'
+        sg = self.ec2.get_or_create_group(self._security_group,
+                                          desc,
+                                          vpc_id=self.vpc_id,
+                                          auth_ssh=True,
+                                          auth_group_traffic=True)
+        return sg
+
+
+if __name__ == "__main__":
+    from starcluster.config import StarClusterConfig
+    cfg = StarClusterConfig().load()
+    sc = cfg.get_cluster_template('smallcluster', 'mynewcluster')
+    if sc.is_valid():
+        sc.start(create=True)
