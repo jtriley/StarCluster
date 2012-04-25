@@ -1018,7 +1018,11 @@ class Node(object):
     @property
     def ssh(self):
         if not self._ssh:
-            self._ssh = sshutils.SSHClient(self.instance.dns_name,
+            if self.instance.vpc_id:
+                addr = self.instance.private_ip_address
+            else:
+                addr = self.instance.dns_name
+            self._ssh = sshutils.SSHClient(addr,
                                            username=self.user,
                                            private_key=self.key_location)
         return self._ssh
