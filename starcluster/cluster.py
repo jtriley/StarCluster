@@ -1014,7 +1014,7 @@ class Cluster(object):
         (mtype, mimage) = self._get_type_and_image_id('master')
         log.info("Launching master node (ami: %s, type: %s)..." %
                  (mimage, mtype))
-        force_flat = not self.force_spot_master and self.cluster_size > 1
+        force_flat = not self.force_spot_master
         master_response = self.create_node('master',
                                            image_id=mimage,
                                            instance_type=mtype,
