@@ -47,7 +47,7 @@ def get_cluster_manager(config_file=None, cache=False):
 
 def get_config(config_file=None, cache=False):
     """Factory for StarClusterConfig object"""
-    return StarClusterConfig(config_file, cache)
+    return StarClusterConfig(config_file, cache).load()
 
 
 class StarClusterConfig(object):
