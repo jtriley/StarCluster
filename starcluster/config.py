@@ -27,6 +27,7 @@ from starcluster import awsutils
 from starcluster import deathrow
 from starcluster import exception
 from starcluster.cluster import Cluster
+from starcluster.cluster import VPCCluster
 from starcluster.utils import AttributeDict
 
 from starcluster.logger import log
@@ -620,7 +621,11 @@ class StarClusterConfig(object):
                                                        debug=DEBUG_CONFIG)
             if not ec2_conn:
                 ec2_conn = self.get_easy_ec2()
-            clust = Cluster(ec2_conn, **kwargs)
+
+            if 'vpc_id'  in kwargs and 'subnet_id' in kwargs:
+                clust = VPCCluster(ec2_conn, **kwargs)
+            else:
+                clust = Cluster(ec2_conn, **kwargs)
             return clust
         except KeyError:
             raise exception.ClusterTemplateDoesNotExist(template_name)
