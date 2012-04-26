@@ -1056,8 +1056,11 @@ class Node(object):
                 sshopts += ' -Y'
             if forward_agent:
                 sshopts += ' -A'
+            addr = self.dns_name
+            if self.instance.vpc_id:
+                addr = self.private_ip_address
             ssh_cmd = static.SSH_TEMPLATE % dict(opts=sshopts, user=user,
-                                                 host=self.dns_name)
+                                                 host=addr)
             if command:
                 command = "'source /etc/profile && %s'" % command
                 ssh_cmd = ' '.join([ssh_cmd, command])
