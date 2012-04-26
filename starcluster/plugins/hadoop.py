@@ -287,7 +287,9 @@ class Hadoop(clustersetup.ClusterSetup):
                 has_perm = ec2.has_permission(group, 'tcp', port, port,
                                               '0.0.0.0/0')
                 if not has_perm:
-                    group.authorize('tcp', port, port, '0.0.0.0/0')
+                    ec2.conn.authorize_security_group(group_id=group.id,
+                            ip_protocol='tcp', from_port=port,
+                            to_port=port, cidr_ip='0.0.0.0/0')
 
     def run(self, nodes, master, user, user_shell, volumes):
         self._configure_hadoop(master, nodes, user)
