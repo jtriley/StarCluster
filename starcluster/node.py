@@ -1017,7 +1017,11 @@ class Node(object):
     @property
     def addr(self):
         if self.instance.vpc_id:
-            return self.instance.private_ip_address
+            #if instance has an elastic ip
+            if self.instance.ip_address:
+                return self.instance.ip_adress
+            else:
+                return self.instance.private_ip_address
         else:
             return self.instance.dns_name
 
