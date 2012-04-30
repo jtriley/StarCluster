@@ -34,6 +34,25 @@ To use this plugin add a plugin section to your starcluster config file:
     [plugin hadoop]
     setup_class = starcluster.plugins.hadoop.Hadoop
 
+You can optionally specify a local output directory. The plugin will output the
+following config files to that directory
+    - core-site.xml
+    - hdfs-site.xml
+    - mapred-site.xml
+
+.. code-block:: ini
+
+    [plugin hadoop]
+    setup_class = starcluster.plugins.hadoop.Hadoop
+    local_output_dir=/tmp/hadoop/
+
+This is handy as it allows to run hadoop jobs from your local workstation.
+
+.. code-block:: ini
+    export HADOOP_CONF_DIR=/tmp/hadoop
+
+Please make sure that your client and cluster hadoop versions are identical
+
 Next update the ``PLUGINS`` setting of one or more of your cluster templates to
 include the hadoop plugin:
 
