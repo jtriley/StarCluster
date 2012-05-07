@@ -22,6 +22,7 @@ __all__ = [
     "commands",
     "logger",
     "utils",
+    "cloudinit",
     "iptools",
     "webtools",
     "threadpool",
