@@ -1,6 +1,6 @@
 from starcluster import exception
 from starcluster.balancers import sge
-
+from starcluster.balancers import slurm
 from completers import ClusterCompleter
 
 
@@ -31,8 +31,14 @@ class CmdLoadBalance(ClusterCompleter):
     """
 
     names = ['loadbalance', 'bal']
+    balancers = ['sge', 'slurm']
 
     def addopts(self, parser):
+        parser.add_option("-b", "--balancer", dest="balancer",
+                          action="store", default="sge",
+                          help="Load Balancer Type "
+                          "(default: sge) "
+                          "Available: sge, slurm" )
         parser.add_option("-d", "--dump-stats", dest="dump_stats",
                           action="store_true", default=False,
                           help="Output stats to a csv file at each iteration")
@@ -86,5 +92,12 @@ class CmdLoadBalance(ClusterCompleter):
             self.parser.error("please specify a <cluster_tag>")
         cluster_tag = args[0]
         cluster = self.cm.get_cluster(cluster_tag)
-        lb = sge.SGELoadBalancer(**self.specified_options_dict)
+        balancer = self.specified_options_dict['balancer']
+        args = {k: v for k,v in self.specified_options_dict.items() if k != 'balancer'}
+        if balancer == 'sge':
+            lb = sge.SGELoadBalancer(**args)
+        elif balancer == 'slurm':
+            lb = slurm.SlurmLoadBalancer(**args)
+        else:
+            raise exception.InvalidBalancer(str(balancer))
         lb.run(cluster)
