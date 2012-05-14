@@ -267,12 +267,13 @@ NODE_INSTANCE_TYPE = m1.small
 # SETUP_CLASS = starcluster.plugins.sge.SGEPlugin
 # MASTER_IS_EXEC_HOST = False
 #
+# SLURM Plugin <http://computing.llnl.gov/linux/slurm/>
 # Use this plugin to configure a SLURM cluster instead of an SGE cluster.
 # This plugin has only been test with Ubuntu 10.04.
 # You can disable SGE (not required) by setting DISABLE_QUEUE=TRUE in your
 # cluster template.
 # [plugin slurm]
-# SETUP_CLASS = slurm.SlurmPlugin
+# SETUP_CLASS = starcluster.plugins.slurm.SlurmPlugin
 # If True, then the master node will also be a compute node.
 # Default is True
 # COMPUTE_ON_MASTER = True
