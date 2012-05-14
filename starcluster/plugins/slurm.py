@@ -56,28 +56,29 @@ class SlurmPlugin(clustersetup.DefaultClusterSetup):
 
     # Commands needed to initialize MySQL
     slurm_mysql_commands = [
-                          "sed -i 's/127.0.0.1/%(master-private-ip)s/g' " \
-                          + "/etc/mysql/my.cnf",
-                          "/etc/init.d/mysql stop",
-                          "/etc/init.d/mysql start",
-                          "mysql -u root -e "
-                          "\"grant all on slurm_acct_db.* TO 'root'@'localhost'"
-                          " identified by '%(dbpassword)s' with grant option;\"",
-                          "mysql -u root -e "
-                          "\"grant all on slurm_acct_db.* TO 'root'@'%(master)s'"
-                          " identified by '%(dbpassword)s' with grant option;\""]
+        "sed -i 's/127.0.0.1/%(master-private-ip)s/g' " \
+        + "/etc/mysql/my.cnf",
+        "/etc/init.d/mysql stop",
+        "/etc/init.d/mysql start",
+        "mysql -u root -e "
+        "\"grant all on slurm_acct_db.* TO 'root'@'localhost'"
+        " identified by '%(dbpassword)s' with grant option;\"",
+        "mysql -u root -e "
+        "\"grant all on slurm_acct_db.* TO 'root'@'%(master)s'"
+        " identified by '%(dbpassword)s' with grant option;\""]
 
     # Commands to initialize slurm accounting
     slurm_sacctmgr_commands = [
-                          "sacctmgr add cluster %(cluster-name)s -i",
-                          "sacctmgr add account root -i"]
+        "sacctmgr add cluster %(cluster-name)s -i",
+        "sacctmgr add account root -i"]
 
     # Command to add a user and account
     slurm_sacct_add_account = "sacctmgr add account %s -i"
     slurm_sacct_add_user = "sacctmgr add user %s account=%s -i"
 
     # Command to change MySQL root password
-    mysqladmin_password_command = "mysqladmin -u root password '%(dbpassword)s'"
+    mysqladmin_password_command = \
+        "mysqladmin -u root password '%(dbpassword)s'"
 
     # Command to drain SLURM nodes
     scontrol_disable_master_command = "scontrol update nodename=%(master)s " \
@@ -247,7 +248,7 @@ class SlurmPlugin(clustersetup.DefaultClusterSetup):
         The starcluster remove_from_etc_hosts conflicts with the behavior
         needed to create a hidden partition in SLURM.
         """
-        pass        
+        pass
 
     def _configure_node(self, master, node):
         """
@@ -285,7 +286,7 @@ class SlurmPlugin(clustersetup.DefaultClusterSetup):
             self._on_add_node(*args, **kwargs)
         except SlurmPluginError, e:
             log.error(str(e))
-            
+
     def _on_add_node(self, new_node, nodes, master, user, user_shell, volumes):
         log.info("Adding " + new_node.alias + " to the SLURM partition")
         # Update /etc/hosts to remove the fake node entry for this node
@@ -317,7 +318,8 @@ class SlurmPlugin(clustersetup.DefaultClusterSetup):
                 "scontrol update nodename=" + new_node.alias + " state=idle",
                 raise_on_failure=True)
         except self.remote_exceptions, e:
-            raise SlurmControllerError("Unable to update node state: " + str(e))
+            raise SlurmControllerError(
+                "Unable to update node state: " + str(e))
 
     def _force_restart_slurm(self, master):
         """
@@ -347,7 +349,6 @@ class SlurmPlugin(clustersetup.DefaultClusterSetup):
             # If scontrol failed, use a hammer
             self._force_restart_slurm(master)
 
-    
     def on_remove_node(self, *args, **kwargs):
         """
         Called whenever a compute node is removed from the cluster.
@@ -359,15 +360,17 @@ class SlurmPlugin(clustersetup.DefaultClusterSetup):
             self._on_remove_node(*args, **kwargs)
         except SlurmPluginError, e:
             log.error(str(e))
-             
+
     def _on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         try:
             # Remove this nodes entry from /etc/hosts
             master.ssh.remove_lines_from_file('/etc/hosts', node.alias)
         except self.remote_exceptions, e:
-            raise RemoteCommandError("Failed to remove node from hosts file: " + str(e))
+            raise RemoteCommandError(
+                "Failed to remove node from hosts file: " + str(e))
 
-        # Override StarCluster function that conflicts with the behavior we need
+        # Override StarCluster function that conflicts with the
+        # behavior we need
         starcluster.node.Node.remove_from_etc_hosts = \
             self.remove_from_etc_hosts
 
@@ -456,7 +459,7 @@ class SlurmPlugin(clustersetup.DefaultClusterSetup):
         Disallows compute jobs to run on the master
         """
         log.info("Not using master as a compute node")
-        try:        
+        try:
             master.ssh.execute(
                 self.scontrol_disable_master_command % self.slurm_attributes)
         except self.remote_exceptions, e:
@@ -486,7 +489,7 @@ class SlurmPlugin(clustersetup.DefaultClusterSetup):
             if not self.add_users:
                 return
             try:
-                userfile = master.ssh.remote_file(self.user_file,"r")
+                userfile = master.ssh.remote_file(self.user_file, "r")
             except self.remote_exceptions, e:
                 raise RemoteCommandError(
                     "Unable to read: " + self.user_file + ": " + str(e)
@@ -511,7 +514,7 @@ class SlurmPlugin(clustersetup.DefaultClusterSetup):
                         silent=True
                     )
                     master.ssh.execute(
-                        self.slurm_sacct_add_user % (user,user),
+                        self.slurm_sacct_add_user % (user, user),
                         ignore_exit_status=True,
                         silent=True
                     )
@@ -666,7 +669,8 @@ class SlurmPlugin(clustersetup.DefaultClusterSetup):
 
         # Make the log file
         try:
-            log_file = master.ssh.remote_file(self.packages_installed_file, "w")
+            log_file = master.ssh.remote_file(
+                self.packages_installed_file, "w")
         except self.remote_exceptions, e:
             raise RemoteCommandError("Unable to open file: " + \
                 self.packages_installed_file + ": " + str(e))
