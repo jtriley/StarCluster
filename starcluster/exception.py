@@ -460,6 +460,10 @@ class CancelledEBSImageCreation(BaseException):
             self.msg += "   $ starcluster listsnapshots\n\n"
             self.msg += "and clean up any unwanted volumes or snapshots"
 
+class InvalidBalancer(BaseException):
+    def __init__(self, argument):
+        self.msg = "%s is not a recognized load balancer." % argument
+
 
 class ExperimentalFeature(BaseException):
     def __init__(self, feature_name):
