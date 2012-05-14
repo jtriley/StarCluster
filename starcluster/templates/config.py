@@ -268,6 +268,7 @@ NODE_INSTANCE_TYPE = m1.small
 # MASTER_IS_EXEC_HOST = False
 #
 # Use this plugin to configure a SLURM cluster instead of an SGE cluster.
+# This plugin has only been test with Ubuntu 10.04.
 # You can disable SGE (not required) by setting DISABLE_QUEUE=TRUE in your
 # cluster template.
 # [plugin slurm]
@@ -299,8 +300,8 @@ NODE_INSTANCE_TYPE = m1.small
 #    nodelist:  Comma separated list of compute nodes (master included).
 #    partitionlist:  Comma separated list of compute nodes (master included if
 #        COMPUTE_ON_MASTER is True
-#    To substitute a term, use %(term)s in the template file.
-#    PartitionName=compute Nodes=%(partitionlist)s Default=YES MaxTime=INFINITE State=UP
+#    To substitute a term, use %%(term)s in the template file.
+#    PartitionName=compute Nodes=%%(partitionlist)s Default=YES MaxTime=INFINITE State=UP
 # The default configuration should be enough to get started.
 # SLURM_CONF_TEMPLATE = /path/to/slurm.conf
 #
@@ -348,7 +349,7 @@ NODE_INSTANCE_TYPE = m1.small
     'x86_64_ami': static.BASE_AMI_64,
     'hvm_ami': static.BASE_AMI_HVM,
     'instance_types': ', '.join(static.INSTANCE_TYPES.keys()),
-    'shells': ', '.join(static.AVAILABLE_SHELLS.keys()),
+    'shells': ', '.join(static.AVAILABLE_SHELLS.keys())
 }
 
 DASHES = '-' * 10
