@@ -3,8 +3,6 @@ StarCluster plugin to configure a cluster.
 using the SLURM cluster scheduling/management system.
 See: http://computing.llnl.gov/linux/slurm/
 
-Author: Jharrod LaFon, OpenEye Scientific Software
-http://www.eyesopen.com
 """
 import starcluster
 from ssh import SFTPError
@@ -17,7 +15,7 @@ from starcluster.exception import SSHError
 
 class SlurmPlugin(clustersetup.DefaultClusterSetup):
     """
-    This plugin installs SLURM (https://computing.llnl.gov)
+    This plugin installs SLURM (http://computing.llnl.gov/linux/slurm)
 
     """
 
