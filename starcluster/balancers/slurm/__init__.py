@@ -22,7 +22,6 @@ class SlurmLoadBalancer(LoadBalancer):
     This class is a load balancer for SLURM.
     """
 
-
     def __init__(self, interval=60, max_nodes=None, wait_time=300,
                  add_pi=1, kill_after=45, stab=180, lookback_win=3,
                  min_nodes=1, kill_cluster=False, plot_stats=False,
@@ -44,17 +43,19 @@ class SlurmLoadBalancer(LoadBalancer):
         self.min_nodes = min_nodes if not kill_cluster else 0
         self._pending_operation = False
 
-    def _format_info_log_message(self, prefix, suffix,fill=".",width=76):
+    def _format_info_log_message(self, prefix, suffix, fill=".", width=76):
         """
         Format a message and send to info
         prefix.....suffix (width chars wide)
         """
-        log.info(str(prefix) + str(fill)*(width-len(str(prefix)+str(suffix)))+str(suffix))
+        log.info(str(prefix) + str(fill) * (width - len(str(prefix) \
+            + str(suffix))) + str(suffix))
 
     @property
     def pending_operation(self):
         """
-        Returns true if there is a pending operation (adding or removing node(s))
+        Returns true if there is a pending operation
+        (adding or removing node(s))
         """
         return self._pending_operation
 
@@ -88,7 +89,8 @@ class SlurmLoadBalancer(LoadBalancer):
                 sys.exit()
             except KeyboardInterrupt:
                 if self.pending_operation:
-                    log.warn("Load balancer interrupted while modifying the cluster."
+                    log.warn(
+                    "Load balancer interrupted while modifying the cluster."
                     " The operation may or may not be complete.")
                 else:
                     log.warn("Load balancer terminated.  ")
@@ -98,7 +100,8 @@ class SlurmLoadBalancer(LoadBalancer):
         log.info("Starting load balancer (Use ctrl-c to exit)")
         self._format_info_log_message("Maximum cluster size:", self.max_nodes)
         self._format_info_log_message("Minimum cluster size:", self.min_nodes)
-        self._format_info_log_message("Cluster growth rate:", "%d nodes/iteration" % \
+        self._format_info_log_message("Cluster growth rate:",
+            "%d nodes/iteration" % \
                  self.add_nodes_per_iteration)
 
     def _print_stats(self):
@@ -106,23 +109,28 @@ class SlurmLoadBalancer(LoadBalancer):
         Print out job statistics
         """
         log.info("\n")
-        self._format_info_log_message("Cluster Size:",len(self.state.nodes))
-        self._format_info_log_message("Slots per host:",self.state.slots_per_host)
-        self._format_info_log_message("Queued jobs:",len(self.state.queued_jobs))
-        self._format_info_log_message("Pending jobs:",len(self.state.pending_jobs))
-        self._format_info_log_message("Running jobs:",len(self.state.running_jobs))
-        self._format_info_log_message("Completed jobs:",len(self.state.completed_jobs))
+        self._format_info_log_message("Cluster Size:", len(self.state.nodes))
+        self._format_info_log_message("Slots per host:",
+            self.state.slots_per_host)
+        self._format_info_log_message("Queued jobs:",
+            len(self.state.queued_jobs))
+        self._format_info_log_message("Pending jobs:",
+            len(self.state.pending_jobs))
+        self._format_info_log_message("Running jobs:",
+            len(self.state.running_jobs))
+        self._format_info_log_message("Completed jobs:",
+            len(self.state.completed_jobs))
         if self.state.has_pending_jobs:
             self._format_info_log_message("Oldest pending job:", \
                       self.state.oldest_pending_job_age)
-        self._format_info_log_message("Average job duration per node:",  "%6.2fs" \
-                 % self.state.average_job_duration)
+        self._format_info_log_message("Average job duration per node:",
+            "%6.2fs" % self.state.average_job_duration)
         self._format_info_log_message("Average job wait time:", "%6.2fs" \
                  % self.state.average_job_wait)
         self._format_info_log_message("Last cluster modification time:",
              self.__last_cluster_mod_time.strftime("%Y-%m-%d %X UTC"))
-        self._format_info_log_message("Estimated Time to Completion:", "%.2fs" \
-                 % self.state.est_time_to_completion)
+        self._format_info_log_message("Estimated Time to Completion:",
+            "%.2fs" % self.state.est_time_to_completion)
 
     def _balance_loop(self):
         """
@@ -223,7 +231,8 @@ class SlurmLoadBalancer(LoadBalancer):
         else:
             # Shorter than X minutes
             log.info(
-                "Oldest job has not waited at least %s seconds, not adding nodes." \
+                "Oldest job has not waited at least %s seconds,"
+                " not adding nodes." \
                 % self.longest_allowed_queue_time)
             return
 
@@ -578,11 +587,11 @@ class SlurmState(object):
         "| egrep -v '\.batch'"
     slurm_time_format = "%Y-%m-%dT%H:%M:%S"
     slurm_replacement_fields = \
-        [('submittime','submit'),
+        [('submittime', 'submit'),
          ('starttime', 'start'),
          ('endtime', 'end'),
-         ('userid','user'),
-         ('numnodes','nnodes')]
+         ('userid', 'user'),
+         ('numnodes', 'nnodes')]
     remote_exceptions = (SFTPError, SSHError, IOError)
 
     def __init__(self, cluster):
@@ -750,7 +759,8 @@ class SlurmState(object):
                     continue
             for job in self.running_jobs:
                 sum += ((self.remote_time \
-                        - self._str_to_date(job.start)).seconds) / float(job.nnodes)
+                        - self._str_to_date(job.start)).seconds) \
+                            / float(job.nnodes)
                 count += 1
             self._average_job_duration = sum / float(count)
 
@@ -962,7 +972,7 @@ class SlurmState(object):
         job_dict = {}
         output = output.lower()
         for key, replacement in self.slurm_replacement_fields:
-            output = output.replace(key,replacement)
+            output = output.replace(key, replacement)
         for field in output.split(' '):
             try:
                 k, v = field.split('=')
