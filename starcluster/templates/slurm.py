@@ -1,7 +1,5 @@
 """
 Templates for slurm.conf and slurmdbd.conf
-Author: Jharrod LaFon, OpenEye Scientific Software
-http://www.eyesopen.com
 """
 
 slurm_conf_template = """
