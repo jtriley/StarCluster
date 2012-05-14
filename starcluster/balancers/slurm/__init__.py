@@ -1,7 +1,5 @@
 """
 SLURM Load Balancer for StarCluster
-Author: Jharrod LaFon, OpenEye Scientific Software
-http://www.eyesopen.com
 """
 
 import time
