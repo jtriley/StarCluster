@@ -301,6 +301,9 @@ NODE_INSTANCE_TYPE = m1.small
 #    nodelist:  Comma separated list of compute nodes (master included).
 #    partitionlist:  Comma separated list of compute nodes (master included if
 #        COMPUTE_ON_MASTER is True
+#    fake-nodes:  List of nodes configured but not allocated.
+#       If you have a master and one compute node allocated,
+#        and 20 nodes configured, this list would be node002 through node020
 #    To substitute a term, use %%(term)s in the template file.
 #    PartitionName=compute Nodes=%%(partitionlist)s Default=YES MaxTime=INFINITE State=UP
 # The default configuration should be enough to get started.
