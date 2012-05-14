@@ -57,7 +57,7 @@ class SlurmPlugin(clustersetup.DefaultClusterSetup):
     # Commands needed to initialize MySQL
     slurm_mysql_commands = [
         "sed -i 's/127.0.0.1/%(master-private-ip)s/g' " \
-        + "/etc/mysql/my.cnf",
+            + "/etc/mysql/my.cnf",
         "/etc/init.d/mysql stop",
         "/etc/init.d/mysql start",
         "mysql -u root -e "
@@ -135,7 +135,7 @@ class SlurmPlugin(clustersetup.DefaultClusterSetup):
             self.slurm_conf_template = slurm.slurm_conf_template
         super(SlurmPlugin, self).__init__()
 
-    @print_timing("Installing & Configuring SLURM ")
+    @print_timing("Installing & Configuring SLURM")
     def run(self, *args, **kwargs):
         """
         Wrapper for function to run plugin
@@ -144,6 +144,10 @@ class SlurmPlugin(clustersetup.DefaultClusterSetup):
             self._run(*args, **kwargs)
         except SlurmPluginError, e:
             log.error(str(e))
+            return
+        log.info("Your SLURM cluster is now configured.  ")
+        log.info("See http://computing.llnl.gov/linux/slurm for documentation,")
+        log.info("or see `man slurm`.")
 
     def _run(self, nodes, master, user, user_shell, volumes):
         """
