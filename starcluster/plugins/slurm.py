@@ -190,10 +190,6 @@ class SlurmPlugin(clustersetup.DefaultClusterSetup):
             self.slurm_conf_template = template.read()
         except IOError, e:
             raise SlurmPluginError("Unable to open template file: " + str(e))
-        try:
-            self.slurm_conf_template % self.slurm_attributes
-        except KeyError, e:
-            raise SlurmPluginError("Invalid slurm.conf template: " + str(e))
 
     def _update_fake_entries_to_etc_hosts(self,
                                           master,
