@@ -8,7 +8,7 @@ class CmdLoadBalance(ClusterCompleter):
     """
     loadbalance <cluster_tag>
 
-    Start the SGE Load Balancer.
+    Start the StarCluster Load Balancer (default SGE).
 
     Example:
 
@@ -25,8 +25,12 @@ class CmdLoadBalance(ClusterCompleter):
 
         $ starcluster loadbalance -d mycluster
 
+    To start the SLURM load balancer instead:
+
+        $ starcluster loadbalance -b slurm mycluster
+
     See "starcluster loadbalance --help" for more details on the '-p' and '-d'
-    options as well as other options for tuning the SGE load balancer
+    options as well as other options for tuning the load balancer
     algorithm.
     """
 
