@@ -16,9 +16,17 @@ starts_with_mappings = {
     '#cloud-config-archive': 'text/cloud-config-archive',
     '#upstart-job': 'text/upstart-job',
     '#part-handler': 'text/part-handler',
-    '#cloud-boothook': 'text/cloud-boothook'
+    '#cloud-boothook': 'text/cloud-boothook',
+    '#sc-store': 'text/sc-store'
 }
 
+sc_part_handler = """\
+#part-handler
+def list_types():
+    return(["text/sc-store"])
+def handle_part(data, ctype, filename, payload):
+    pass
+"""
 
 def get_type(fp):
     line = fp.readline()
