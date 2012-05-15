@@ -59,11 +59,14 @@ class SlurmPlugin(clustersetup.DefaultClusterSetup):
         "/etc/init.d/mysql stop",
         "/etc/init.d/mysql start",
         "mysql -u root -e "
-        "\"grant all on slurm_acct_db.* TO 'root'@'localhost'"
-        " identified by '%(dbpassword)s' with grant option;\"",
+            "\"grant all on slurm_acct_db.* TO 'root'@'localhost'"
+                " identified by '%(dbpassword)s' with grant option;\"",
         "mysql -u root -e "
-        "\"grant all on slurm_acct_db.* TO 'root'@'%(master)s'"
-        " identified by '%(dbpassword)s' with grant option;\""]
+            "\"grant all on slurm_acct_db.* TO 'root'@'%(master)s'"
+                " identified by '%(dbpassword)s' with grant option;\"",
+        "mysql -u root -e "
+            "\"grant all on slurm_acct_db.* TO 'root'@'%(master-private-ip)s'"
+                " identified by '%(dbpassword)s' with grant option;\""]
 
     # Commands to initialize slurm accounting
     slurm_sacctmgr_commands = [
@@ -737,8 +740,7 @@ class SlurmPlugin(clustersetup.DefaultClusterSetup):
         # if specified by user
         if not self.compute_on_master:
             conf.write(
-                (self.slurm_conf_template \
-                 + slurm.slurm_master_partition_template)
+                self.slurm_conf_template \
                        % self.slurm_attributes)
 
         # Otherwise include master
