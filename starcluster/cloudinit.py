@@ -28,7 +28,7 @@ def handle_part(data, ctype, filename, payload):
     pass
 """
 
-def get_type(fp):
+def _get_type_from_fp(fp):
     line = fp.readline()
     fp.seek(0)
     # slist is sorted longest first
@@ -37,7 +37,7 @@ def get_type(fp):
     for sstr in slist:
         if line.startswith(sstr):
             return starts_with_mappings[sstr]
-    raise exception.BaseException("invalid user data type")
+    raise exception.BaseException("invalid user data type: %s" % line)
 
 
 def mp_userdata_from_strings(strings, compress=False):
@@ -48,7 +48,7 @@ def mp_userdata_from_strings(strings, compress=False):
 def mp_userdata_from_files(files, compress=False):
     outer = MIMEMultipart()
     for i, fp in enumerate(files):
-        mtype = get_type(fp)
+        mtype = _get_type_from_fp(fp)
         maintype, subtype = mtype.split('/', 1)
         if maintype == 'text':
             # Note: we should handle calculating the charset
