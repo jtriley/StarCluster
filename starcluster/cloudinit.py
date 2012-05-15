@@ -3,9 +3,9 @@ import gzip
 import StringIO
 
 from email import encoders
-from email.mime.base import MIMEBase
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+from email.mime import base
+from email.mime import text
+from email.mime import multipart
 
 from starcluster import exception
 
@@ -28,6 +28,11 @@ def handle_part(data, ctype, filename, payload):
     pass
 """
 
+part_handler_mappings = {
+    'text/sc-store': sc_part_handler
+}
+
+
 def _get_type_from_fp(fp):
     line = fp.readline()
     fp.seek(0)
@@ -46,25 +51,37 @@ def mp_userdata_from_strings(strings, compress=False):
 
 
 def mp_userdata_from_files(files, compress=False):
-    outer = MIMEMultipart()
+    outer = multipart.MIMEMultipart()
+    mtypes = []
     for i, fp in enumerate(files):
         mtype = _get_type_from_fp(fp)
+        mtypes.append(mtype)
         maintype, subtype = mtype.split('/', 1)
         if maintype == 'text':
             # Note: we should handle calculating the charset
-            msg = MIMEText(fp.read(), _subtype=subtype)
+            msg = text.MIMEText(fp.read(), _subtype=subtype)
             fp.close()
         else:
             fp = open(fp.name, 'rb')
-            msg = MIMEBase(maintype, subtype)
+            msg = base.MIMEBase(maintype, subtype)
             msg.set_payload(fp.read())
             fp.close()
             # Encode the payload using Base64
             encoders.encode_base64(msg)
         # Set the filename parameter
+        fname = getattr(fp, 'name', "sc_%d" % i)
         msg.add_header('Content-Disposition', 'attachment',
-                       filename=os.path.basename(getattr(fp, 'name', str(i))))
+                       filename=os.path.basename(fname))
         outer.attach(msg)
+    for mtype in mtypes:
+        if mtype in part_handler_mappings:
+            fp = StringIO.StringIO(part_handler_mappings.get(mtype))
+            maintype, subtype = mtype.split('/', 1)
+            msg = text.MIMEText(fp.read(), _subtype="part-handler")
+            fp.close()
+            msg.add_header('Content-Disposition', 'attachment',
+                           filename="%s-%s-handler.txt" % (maintype, subtype))
+            outer.attach(msg)
     userdata = outer.as_string()
     if compress:
         s = StringIO.StringIO()
