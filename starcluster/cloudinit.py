@@ -1,5 +1,6 @@
 import os
 import gzip
+import email
 import StringIO
 
 from email import encoders
@@ -91,3 +92,12 @@ def mp_userdata_from_files(files, compress=False):
         s.seek(0)
         userdata = s.read()
     return userdata
+
+
+def get_mp_from_userdata(userdata, decompress=False):
+    if decompress:
+        zfile = StringIO.StringIO(userdata)
+        gfile = gzip.GzipFile(fileobj=zfile, mode='r')
+        userdata = gfile.read()
+        gfile.close()
+    return email.message_from_string(userdata)
