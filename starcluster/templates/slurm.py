@@ -158,13 +158,9 @@ SlurmSchedLogLevel=4
 # 
 # 
 # COMPUTE NODES 
-NodeName=%(nodelist)s  State=UNKNOWN
+NodeName=%(partitionlist)s  State=UNKNOWN
+NodeName=%(fake-node)s State=FUTURE
 PartitionName=compute Nodes=%(partitionlist)s Default=YES MaxTime=INFINITE State=UP
-PartitionName=hidden Nodes=%(fake-nodes)s Default=No Hidden=YES MaxTime=INFINITE State=UP
-"""
-slurm_master_partition_template = \
-"""
-PartitionName=master Nodes=%(master)s Default=NO Hidden=YES
 """
 
 slurmdbd_conf_template = \
