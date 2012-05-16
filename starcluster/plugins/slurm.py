@@ -147,7 +147,7 @@ class SlurmPlugin(clustersetup.DefaultClusterSetup):
             log.error(str(e))
             return
         log.info("Your SLURM cluster is now configured.  ")
-        log.info("See http://computing.llnl.gov/linux/slurm for documentation,")
+        log.info("See http://computing.llnl.gov/linux/slurm for documentation")
         log.info("or see `man slurm`.")
 
     def _run(self, nodes, master, user, user_shell, volumes):
@@ -446,7 +446,7 @@ class SlurmPlugin(clustersetup.DefaultClusterSetup):
         cmd = "scontrol update nodename=" + self.fake_nodes[0]
         for node in self.fake_nodes[1:]:
             cmd += "," + node
-        cmd += " state=drain reason=fake"
+        cmd += " state=future reason=fake"
         try:
             master.ssh.execute(cmd,
                                silent=True,
