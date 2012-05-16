@@ -159,8 +159,8 @@ SlurmSchedLogLevel=4
 # 
 # COMPUTE NODES 
 NodeName=%(partitionlist)s  State=UNKNOWN
-NodeName=%(fake-node)s State=FUTURE
-PartitionName=compute Nodes=%(partitionlist)s Default=YES MaxTime=INFINITE State=UP
+NodeName=%(fake-nodes)s State=FUTURE
+PartitionName=compute Nodes=%(nodelist)s Default=YES MaxTime=INFINITE State=UP
 """
 
 slurmdbd_conf_template = \
