@@ -20,7 +20,7 @@ try:
                  zip_safe=False)
 except ImportError:
     import string
-    from distutils.core import setup
+    from distutils.core import setup  # pyflakes:ignore
 
     def convert_path(pathname):
         """
@@ -42,7 +42,7 @@ except ImportError:
             return os.curdir
         return os.path.join(*paths)
 
-    def find_packages(where='.', exclude=()):
+    def find_packages(where='.', exclude=()):  # pyflakes:ignore
         """
         Local copy of setuptools.find_packages (only used with distutils which
         is missing the find_packages feature)
