@@ -350,8 +350,8 @@ class SlurmLoadBalancer(LoadBalancer):
         Returns True is a node is busy with a job.
         False, otherwise.
         """
-        for job in self.state.queued_jobs:
-            if node.alias in job.nodelist.split(','):
+        for job in self.state.queued_jobs + self.state.running_jobs:
+            if node.alias in job.get_node_list():
                 return True
         return False
 
@@ -392,6 +392,94 @@ class cachedproperty(object):
         return self._cache[obj][0]
 
 
+class NodeParserStateMachine(object):
+    """
+    Class to parse nodelists from SLURM
+    """
+    def __init__(self):
+        self.state = 'A'
+        self.output = ''
+        self.a_state_chars = ['[', ']', ',']
+        self.lower = None
+        self.upper = None
+        self.word = ''
+
+    def parse_next(self, char):
+        """
+        Parses one character from the nodelist
+        """
+        if self.state == 'A':
+            self._A(char)
+        elif self.state == 'B':
+            self._B(char)
+        elif self.state == 'C':
+            self._C(char)
+
+    def _A(self, char):
+        """
+        Will remain at state A for the following characters:
+            ^[\[\],]
+        """
+        if not char in self.a_state_chars:
+            self.word += char
+        elif char == ',':
+            self.output += self.word + ','
+            self.word = ''
+        elif char == '[':
+            self.state = 'B'
+            self.lower = ''
+
+    def _B(self, char):
+        """
+        Will remain at state B for the following characters:
+            [0-9]
+        """
+        if char in [str(i) for i in xrange(10)]:
+            self.lower += char
+        elif char == ',':
+            self.output += self.word + self.lower + ','
+            self.lower = ''
+        elif char == '-':
+            self.state = 'C'
+            self.upper = ''
+        elif char == ']':
+            self.output += self.word + self.lower + ','
+            self.state = 'A'
+            self.word = ''
+            self.lower = ''
+            self.upper = ''
+
+    def _C(self, char):
+        """
+        Final state for a range: node[002-008,010]
+        """
+        if char in [str(i) for i in xrange(10)]:
+            self.upper += char
+        elif char == ']' or char == ',':
+            width = len(self.lower)
+            format = "%0" + str(width) + "d"
+            for i in xrange(int(self.lower), int(self.upper) + 1):
+                self.output += self.word + (format % i) + ','
+            if char == ']':
+                self.word = ''
+                self.state = 'A'
+            elif char == ',':
+                self.lower = ''
+                self.upper = ''
+                self.state = 'B'
+
+    def finalize(self):
+        if self.state == 'A':
+            self.output += self.word
+        self.nodes = filter(lambda i: len(i), self.output.split(','))
+
+    def parse_node_list(self, nodelist):
+        for char in nodelist:
+            self.parse_next(char)
+        self.finalize()
+        return self.nodes
+
+
 class SlurmJob(object):
     """
     Class representing a SLURM job
@@ -415,6 +503,10 @@ class SlurmJob(object):
         # Note that if this gets called, getting attributes failed
         # to find the desired attribute in any of the normal places
         return 'N/A'
+
+    def get_node_list(self):
+        parser = NodeParserStateMachine()
+        return parser.parse_node_list(self.nodelist)
 
     def update(self, **kwargs):
         """
@@ -589,7 +681,8 @@ class SlurmState(object):
          ('starttime', 'start'),
          ('endtime', 'end'),
          ('userid', 'user'),
-         ('numnodes', 'nnodes')]
+         ('numnodes', 'nnodes'),
+         ('jobstate', 'state')]
     remote_exceptions = (SFTPError, SSHError, IOError)
 
     def __init__(self, cluster):
