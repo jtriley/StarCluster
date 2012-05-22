@@ -64,17 +64,11 @@ BASE_AMI_HVM = "ami-4583572c"
 
 SECURITY_GROUP_PREFIX = "@sc"
 SECURITY_GROUP_TEMPLATE = '-'.join([SECURITY_GROUP_PREFIX, "%s"])
-MASTER_GROUP_NAME = "masters"
-MASTER_GROUP = SECURITY_GROUP_TEMPLATE % MASTER_GROUP_NAME
-MASTER_GROUP_DESCRIPTION = "StarCluster Master Nodes"
 VOLUME_GROUP_NAME = "volumecreator"
 VOLUME_GROUP = SECURITY_GROUP_TEMPLATE % VOLUME_GROUP_NAME
 
-IGNORE_GROUPS = [MASTER_GROUP]
-
 INSTANCE_STATES = ['pending', 'running', 'shutting-down',
                    'terminated', 'stopping', 'stopped']
-
 VOLUME_STATUS = ['creating', 'available', 'in-use',
                  'deleting', 'deleted', 'error']
 VOLUME_ATTACH_STATUS = ['attaching', 'attached', 'detaching', 'detached']
