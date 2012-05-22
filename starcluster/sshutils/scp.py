@@ -323,7 +323,8 @@ class SCPClient(object):
                 path = self._recv_dir
         except:
             self.channel.send('\x01')
-            raise exception.SCPException('Bad directory format')
+            raise exception.SCPException(
+                'Bad directory format (cmd: %s)' % cmd)
         try:
             if not os.path.exists(path):
                 os.mkdir(path, mode)
