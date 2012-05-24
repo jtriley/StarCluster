@@ -160,6 +160,7 @@ class SSHClient(object):
                                                            private_key_pass)
             else:
                 rsa_key = ssh.RSAKey.from_private_key(private_key, private_key_pass)
+                private_key.seek(0)
             log.debug("Using private key %s (rsa)" % private_key)
             return rsa_key
         except ssh.SSHException:
@@ -173,6 +174,7 @@ class SSHClient(object):
                                                            private_key_pass)
             else:
                 dsa_key = ssh.DSSKey.from_private_key(private_key, private_key_pass)
+                private_key.seek(0)
             log.info("Using private key %s (dsa)" % private_key)
             return dsa_key
         except ssh.SSHException:
@@ -794,6 +796,7 @@ def get_private_rsa_fingerprint(key_location):
             k = RSAKey.from_private_key_file(key_location)
         else:
             k = RSAKey.from_private_key(key_location)
+            key_location.seek(0)
     except ssh.SSHException:
         raise exception.SSHError("Invalid RSA private key file: %s" %
                                  key_location)
