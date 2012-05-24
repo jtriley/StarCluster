@@ -73,16 +73,9 @@ class SSHClient(object):
     def load_private_key(self, private_key, private_key_pass=None):
         # Use Private Key.
         log.debug('loading private key %s' % private_key)
-        if private_key.endswith('rsa') or private_key.count('rsa'):
-            pkey = self._load_rsa_key(private_key, private_key_pass)
-        elif private_key.endswith('dsa') or private_key.count('dsa'):
+        pkey = self._load_rsa_key(private_key, private_key_pass)
+        if pkey is None:
             pkey = self._load_dsa_key(private_key, private_key_pass)
-        else:
-            log.debug(
-                "specified key does not end in either rsa or dsa, trying both")
-            pkey = self._load_rsa_key(private_key, private_key_pass)
-            if pkey is None:
-                pkey = self._load_dsa_key(private_key, private_key_pass)
         return pkey
 
     def connect(self, host=None, username=None, password=None,
@@ -160,20 +153,26 @@ class SSHClient(object):
         return sock
 
     def _load_rsa_key(self, private_key, private_key_pass=None):
-        private_key_file = os.path.expanduser(private_key)
         try:
-            rsa_key = ssh.RSAKey.from_private_key_file(private_key_file,
-                                                       private_key_pass)
+            if isinstance(private_key, basestring):
+                private_key_file = os.path.expanduser(private_key)
+                rsa_key = ssh.RSAKey.from_private_key_file(private_key_file,
+                                                           private_key_pass)
+            else:
+                rsa_key = ssh.RSAKey.from_private_key(private_key, private_key_pass)
             log.debug("Using private key %s (rsa)" % private_key)
             return rsa_key
         except ssh.SSHException:
             log.error('invalid rsa key or passphrase specified')
 
     def _load_dsa_key(self, private_key, private_key_pass=None):
-        private_key_file = os.path.expanduser(private_key)
         try:
-            dsa_key = ssh.DSSKey.from_private_key_file(private_key_file,
-                                                       private_key_pass)
+            if isinstance(private_key, basestring):
+                private_key_file = os.path.expanduser(private_key)
+                dsa_key = ssh.DSSKey.from_private_key_file(private_key_file,
+                                                           private_key_pass)
+            else:
+                dsa_key = ssh.DSSKey.from_private_key(private_key, private_key_pass)
             log.info("Using private key %s (dsa)" % private_key)
             return dsa_key
         except ssh.SSHException:
@@ -786,7 +785,10 @@ def get_private_rsa_fingerprint(key_location):
     computed using a SHA1 digest of the DER encoded RSA private key.
     """
     try:
-        k = RSAKey.from_private_key_file(key_location)
+        if isinstance(key_location, basestring):
+            k = RSAKey.from_private_key_file(key_location)
+        else:
+            k = RSAKey.from_private_key(key_location)
     except ssh.SSHException:
         raise exception.SSHError("Invalid RSA private key file: %s" %
                                  key_location)

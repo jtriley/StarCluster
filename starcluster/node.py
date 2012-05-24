@@ -53,8 +53,9 @@ class Node(object):
 
     'instance' arg must be an instance of boto.ec2.instance.Instance
 
-    'key_location' arg is a string that contains the full path to the
-    private key corresponding to the keypair used to launch this node
+    'key_location' arg is either a string that contains the full path to the
+    private key or a file-like object corresponding to the keypair used to 
+    launch this node 
 
     'alias' keyword arg optionally names the node. If no alias is provided,
     the alias is retrieved from the node's user_data based on the node's
