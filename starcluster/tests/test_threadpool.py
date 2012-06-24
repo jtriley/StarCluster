@@ -16,7 +16,7 @@ class TestThreadPool(tests.StarClusterTest):
     @property
     def pool(self):
         if not self._pool:
-            self._pool = threadpool.get_thread_pool(10, disable_threads=False)
+            self._pool = threadpool.ThreadPool(10, disable_threads=False)
             fd = tempfile.TemporaryFile()
             self._pool.progress_bar.fd = fd
         return self._pool
