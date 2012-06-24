@@ -11,6 +11,8 @@ from starcluster import exception
 from starcluster import progressbar
 from starcluster.logger import log
 
+class AintJava(Exception):
+    pass
 
 class DaemonWorker(workerpool.workers.Worker):
     """
@@ -148,3 +150,6 @@ class ThreadPool(workerpool.WorkerPool):
         self.shutdown()
         self.join()
 
+def get_thread_pool(*args, **kwargs):
+    msg = 'Please convert this object call from get_thread_pool to ThreadPool'
+    raise AintJava(msg)
