@@ -9,6 +9,8 @@ if sys.version_info < (2, 5):
 
 try:
     from setuptools import setup, find_packages
+    setup
+    find_packages
     console_scripts = ['starcluster = starcluster.cli:main']
     extra = dict(test_suite="starcluster.tests",
                  tests_require="nose",
@@ -20,7 +22,7 @@ try:
                  zip_safe=False)
 except ImportError:
     import string
-    from distutils.core import setup  # pyflakes:ignore
+    from distutils.core import setup
 
     def convert_path(pathname):
         """
@@ -42,7 +44,7 @@ except ImportError:
             return os.curdir
         return os.path.join(*paths)
 
-    def find_packages(where='.', exclude=()):  # pyflakes:ignore
+    def find_packages(where='.', exclude=()):
         """
         Local copy of setuptools.find_packages (only used with distutils which
         is missing the find_packages feature)
@@ -53,8 +55,9 @@ except ImportError:
             where, prefix = stack.pop(0)
             for name in os.listdir(where):
                 fn = os.path.join(where, name)
-                if ('.' not in name and os.path.isdir(fn) and
-                    os.path.isfile(os.path.join(fn, '__init__.py'))):
+                isdir = os.path.isdir(fn)
+                has_init = os.path.isfile(os.path.join(fn, '__init__.py'))
+                if '.' not in name and isdir and has_init:
                     out.append(prefix + name)
                     stack.append((fn, prefix + name + '.'))
         for pat in list(exclude) + ['ez_setup', 'distribute_setup']:
