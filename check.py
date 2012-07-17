@@ -10,20 +10,6 @@ import pep8
 from pyflakes import checker
 
 
-CHECKS = [
-    #{
-        #'start_msg': 'Running Pyflakes...',
-        #'command': 'pyflakes %s',
-        #'match_files': ['.*\.py$'],
-    #},
-    #{
-        #'start_msg': 'Running pep8...',
-        #'command': 'pep8 -r %s',
-        #'match_files': ['.*\.py$'],
-    #},
-]
-
-
 def check(codeString, filename):
     """
     Check the Python source given by C{codeString} for flakes.
@@ -117,11 +103,6 @@ def check_files(files, check):
             clean = False
     if not clean:
         raise Exception("ERROR: checks failed on some source files")
-
-
-def check_commands(files):
-    for check in CHECKS:
-        check_files(files, check)
 
 
 def find_py_files(path):
