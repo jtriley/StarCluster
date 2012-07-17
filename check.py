@@ -173,7 +173,7 @@ def main(git_index=False, filetypes=['.py']):
                     files.append(f)
     else:
         src = os.path.join(os.path.dirname(__file__), 'starcluster')
-        files = find_py_files(src)
+        files = list(find_py_files(src))
     if not files:
         return
     try:
