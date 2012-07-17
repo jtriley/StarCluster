@@ -43,14 +43,14 @@ class CmdBase(optcomplete.CmdComplete):
         """
         Returns global options dictionary
         """
-        return dict(self.gopts.__dict__)
+        return dict(getattr(self.gopts, '__dict__', {}))
 
     @property
     def options_dict(self):
         """
         Returns dictionary of options for this command
         """
-        return dict(self.opts.__dict__)
+        return dict(getattr(self.opts, '__dict__', {}))
 
     @property
     def specified_options_dict(self):
