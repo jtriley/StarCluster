@@ -198,7 +198,72 @@ class ReverseBar(Bar):
 default_widgets = [Percentage(), ' ', Bar()]
 
 
-class ProgressBar(object):
+class ProgressBarBase(object):
+    """ Base progress bar class, independent of UI
+    """
+    def __init__(self, maxval=100, force_update=False):
+        assert maxval > 0
+        self.maxval = maxval
+        self.force_update = force_update
+
+        self.currval = 0
+        self.finished = False
+        self.prev_percentage = -1
+        self.start_time = None
+        self.seconds_elapsed = 0
+
+    def percentage(self):
+        "Returns the percentage of the progress."
+        return self.currval * 100.0 / self.maxval
+
+    def reset(self):
+        if not self.finished and self.start_time:
+            self.finish()
+        self.finished = False
+        self.currval = 0
+        self.start_time = None
+        self.seconds_elapsed = None
+        self.prev_percentage = None
+        return self
+
+    def _need_update(self):
+        if self.force_update:
+            return True
+        return int(self.percentage()) != int(self.prev_percentage)
+
+    def update(self, value):
+        "Updates the progress bar to a new value."
+        assert 0 <= value <= self.maxval
+        self.currval = value
+        if not self._need_update() or self.finished:
+            return
+        if not self.start_time:
+            self.start_time = time.time()
+        self.seconds_elapsed = time.time() - self.start_time
+        self.prev_percentage = self.percentage()
+        if value == self.maxval:
+            self.finished = True
+
+    def start(self):
+        """Start measuring time, and prints the bar at 0%.
+
+        It returns self so you can use it like this:
+        >>> pbar = ProgressBar().start()
+        >>> for i in xrange(100):
+        ...    # do something
+        ...    pbar.update(i+1)
+        ...
+        >>> pbar.finish()
+        """
+        self.update(0)
+        return self
+
+    def finish(self):
+        """Used to tell the progress is finished."""
+        self.update(self.maxval)
+    
+
+class ProgressBar(ProgressBarBase):
     """This is the ProgressBar class, it updates and prints the bar.
 
     The term_width parameter may be an integer. Or None, in which case
@@ -230,8 +295,7 @@ class ProgressBar(object):
     """
     def __init__(self, maxval=100, widgets=default_widgets, term_width=79,
                  fd=sys.stderr, force_update=False):
-        assert maxval > 0
-        self.maxval = maxval
+        super(ProgressBar, self).__init__(maxval, force_update=force_update)
         self.widgets = widgets
         self.fd = fd
         self.signal_set = False
@@ -245,20 +309,9 @@ class ProgressBar(object):
         else:
             self.term_width = term_width
 
-        self.currval = 0
-        self.finished = False
-        self.prev_percentage = -1
-        self.start_time = None
-        self.seconds_elapsed = 0
-        self.force_update = force_update
-
     def handle_resize(self, signum, frame):
         h, w = array('h', ioctl(self.fd, termios.TIOCGWINSZ, '\0' * 8))[:2]
         self.term_width = w
-
-    def percentage(self):
-        "Returns the percentage of the progress."
-        return self.currval * 100.0 / self.maxval
 
     def _format_widgets(self):
         r = []
@@ -285,54 +338,15 @@ class ProgressBar(object):
     def _format_line(self):
         return ''.join(self._format_widgets()).ljust(self.term_width)
 
-    def _need_update(self):
-        if self.force_update:
-            return True
-        return int(self.percentage()) != int(self.prev_percentage)
-
-    def reset(self):
-        if not self.finished and self.start_time:
-            self.finish()
-        self.finished = False
-        self.currval = 0
-        self.start_time = None
-        self.seconds_elapsed = None
-        self.prev_percentage = None
-        return self
-
     def update(self, value):
         "Updates the progress bar to a new value."
-        assert 0 <= value <= self.maxval
-        self.currval = value
-        if not self._need_update() or self.finished:
-            return
-        if not self.start_time:
-            self.start_time = time.time()
-        self.seconds_elapsed = time.time() - self.start_time
-        self.prev_percentage = self.percentage()
-        if value != self.maxval:
-            self.fd.write(self._format_line() + '\r')
-        else:
-            self.finished = True
-            self.fd.write(self._format_line() + '\n')
-
-    def start(self):
-        """Start measuring time, and prints the bar at 0%.
-
-        It returns self so you can use it like this:
-        >>> pbar = ProgressBar().start()
-        >>> for i in xrange(100):
-        ...    # do something
-        ...    pbar.update(i+1)
-        ...
-        >>> pbar.finish()
-        """
-        self.update(0)
-        return self
+        super(ProgressBar, self).update(value)
+        term = '\r' if value != self.maxval else '\n'
+        self.fd.write(self._format_line() + term)
 
     def finish(self):
         """Used to tell the progress is finished."""
-        self.update(self.maxval)
+        super(ProgressBar, self).finish()
         if self.signal_set:
             signal.signal(signal.SIGWINCH, signal.SIG_DFL)
 
