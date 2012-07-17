@@ -145,13 +145,11 @@ def check_pyflakes(files):
 
 def check_pep8(files):
     print(">>> Running pep8...")
-    clean = True
-    pep8.process_options([''])
-    pep8.options.repeat = True
-    for pyfile in files:
-        if pep8.Checker(pyfile).check_all() != 0:
-            clean = False
-    if not clean:
+    sg = pep8.StyleGuide(parse_argv=False, config_file=False)
+    sg.options.repeat = True
+    sg.options.show_pep8 = True
+    report = sg.check_files(files)
+    if report.total_errors:
         raise Exception("ERROR: pep8 failed on some source files")
 
 
