@@ -1891,12 +1891,19 @@ class Cluster(object):
         if not key_location:
             raise exception.ClusterValidationError(
                 "no key_location specified for key '%s'" % self.keyname)
-        if not os.path.exists(key_location):
-            raise exception.ClusterValidationError(
-                "key_location '%s' does not exist" % key_location)
-        elif not os.path.isfile(key_location):
-            raise exception.ClusterValidationError(
-                "key_location '%s' is not a file" % key_location)
+        if isinstance(key_location, basestring):
+            if not os.path.exists(key_location):
+                raise exception.ClusterValidationError(
+                    "key_location '%s' does not exist" % key_location)
+            elif not os.path.isfile(key_location):
+                raise exception.ClusterValidationError(
+                    "key_location '%s' is not a file" % key_location)
+            try:
+                open(key_location, 'r').close()
+            except IOError, e:
+                raise exception.ClusterValidationError(
+                    "Error loading key_location '%s':\n%s\n"
+                    "Please check that the file is readable" % (key_location, e))
         keyname = self.keyname
         keypair = self.ec2.get_keypair_or_none(keyname)
         if not keypair:
@@ -1904,12 +1911,6 @@ class Cluster(object):
                 "Keypair '%s' does not exist in region '%s'" %
                 (keyname, self.ec2.region.name))
         fingerprint = keypair.fingerprint
-        try:
-            open(key_location, 'r').close()
-        except IOError, e:
-            raise exception.ClusterValidationError(
-                "Error loading key_location '%s':\n%s\n"
-                "Please check that the file is readable" % (key_location, e))
         if len(fingerprint) == 59:
             keyfingerprint = sshutils.get_private_rsa_fingerprint(key_location)
             if keyfingerprint != fingerprint:
