@@ -3,6 +3,7 @@
 *.pyo
 *.pkl
 *~
+pip-log.txt
 MANIFEST
 build
 dist
