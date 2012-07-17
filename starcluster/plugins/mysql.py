@@ -2,8 +2,7 @@ import posixpath
 from starcluster.clustersetup import DefaultClusterSetup
 from starcluster.logger import log
 
-ndb_mgmd_template = \
-'''
+ndb_mgmd_template = """
 [NDBD DEFAULT]
 NoOfReplicas=%(num_replicas)s
 DataMemory=%(data_memory)s    # How much memory to allocate for data storage
@@ -16,18 +15,16 @@ IndexMemory=%(index_memory)s   # How much memory to allocate for index storage
 # IP address of the management node (this system)
 HostName=%(mgm_ip)s
 # Section for the storage nodes
-'''
+"""
 
-ndb_mgmd_storage = \
-'''
+ndb_mgmd_storage = """
 [NDBD]
 HostName=%(storage_ip)s
 DataDir=%(data_dir)s
 BackupDataDir=%(backup_data_dir)s
-'''
+"""
 
-MY_CNF = \
-'''
+MY_CNF = """
 #
 # The MySQL database server configuration file.
 #
@@ -164,7 +161,7 @@ ndb-connectstring=%(mgm_ip)s
 #   The files must end with '.cnf', otherwise they'll be ignored.
 #
 !includedir /etc/mysql/conf.d/
-'''
+"""
 
 
 class MysqlCluster(DefaultClusterSetup):

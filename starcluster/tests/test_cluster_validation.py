@@ -61,7 +61,7 @@ class TestClusterValidation(StarClusterTest):
             cases, '_validate_shell_setting')
         if failed:
             raise Exception('cluster allows invalid cluster shell (cases: %s)'
-                           % failed)
+                            % failed)
 
     def test_keypair_validation(self):
         tmpfile = tempfile.NamedTemporaryFile()

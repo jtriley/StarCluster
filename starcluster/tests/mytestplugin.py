@@ -4,8 +4,9 @@ from starcluster.clustersetup import ClusterSetup
 
 class SetupClass(ClusterSetup):
     def __init__(self, my_arg, my_other_arg):
-        log.debug("setupclass: my_arg = %s, my_other_arg = %s" % (my_arg,
-                                                                 my_other_arg))
+        log.debug(
+            "setupclass: my_arg = %s, my_other_arg = %s" % (my_arg,
+                                                            my_other_arg))
 
     def run(self, nodes, master, user, shell, volumes):
         log.debug('Hello from MYPLUGIN :D')

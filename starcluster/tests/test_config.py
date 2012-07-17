@@ -267,13 +267,14 @@ class TestStarClusterConfig(tests.StarClusterTest):
         Test that config properly handles multiple instance types syntax
         (within node_instance_type setting)
         """
-        invalid_cases = [{'c1_node_type': 'c1.xlarge:ami-asdffdas'},
-                 {'c1_node_type': 'c1.xlarge:3'},
-                 {'c1_node_type': 'c1.xlarge:ami-asdffdas:3'},
-                 {'c1_node_type': 'c1.xlarge:asdf:asdf:asdf,m1.small'},
-                 {'c1_node_type': 'c1.asdf:4, m1.small'},
-                 {'c1_node_type': 'c1.xlarge: 0, m1.small'},
-                 {'c1_node_type': 'c1.xlarge:-1, m1.small'}]
+        invalid_cases = [
+            {'c1_node_type': 'c1.xlarge:ami-asdffdas'},
+            {'c1_node_type': 'c1.xlarge:3'},
+            {'c1_node_type': 'c1.xlarge:ami-asdffdas:3'},
+            {'c1_node_type': 'c1.xlarge:asdf:asdf:asdf,m1.small'},
+            {'c1_node_type': 'c1.asdf:4, m1.small'},
+            {'c1_node_type': 'c1.xlarge: 0, m1.small'},
+            {'c1_node_type': 'c1.xlarge:-1, m1.small'}]
         for case in invalid_cases:
             try:
                 self.get_custom_config(**case)

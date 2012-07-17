@@ -30,7 +30,7 @@ class TmuxControlCenter(clustersetup.DefaultClusterSetup):
     def _select_layout(self, node, envname, layout="main-vertical", window=''):
         if layout not in self._layouts:
             raise exception.PluginError("unknown layout (options: %s)" %
-                                          ", ".join(self._layouts))
+                                        ", ".join(self._layouts))
         cmd = 'tmux select-layout -t %s:%s %s'
         return node.ssh.get_status(cmd % (envname, window, layout))
 

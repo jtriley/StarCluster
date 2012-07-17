@@ -78,7 +78,7 @@ def print_timing(msg=None, debug=False):
     My function took 0.000 mins
     """
     prefix = msg
-    if type(msg) == types.FunctionType:
+    if isinstance(msg, types.FunctionType):
         prefix = msg.func_name
 
     def wrap_f(func, *arg, **kargs):
@@ -93,7 +93,7 @@ def print_timing(msg=None, debug=False):
             log.info(msg)
         return res
 
-    if type(msg) == types.FunctionType:
+    if isinstance(msg, types.FunctionType):
         return decorator.decorator(wrap_f, msg)
     else:
         return decorator.decorator(wrap_f)

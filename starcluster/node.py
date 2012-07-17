@@ -329,8 +329,8 @@ class Node(object):
             key = name
             if key_by_uid:
                 key = uid
-            user_map[key] = utils.struct_passwd([name, passwd, uid, gid,
-                                               gecos, home, shell])
+            user_map[key] = utils.struct_passwd([name, passwd, uid, gid, gecos,
+                                                 home, shell])
         return user_map
 
     def getgrgid(self, gid):
@@ -477,8 +477,8 @@ class Node(object):
         for node in nodes:
             server_pkey = node.ssh.get_server_public_key()
             node_names = {}.fromkeys([node.alias, node.private_dns_name,
-                                       node.private_dns_name_short],
-                                      node.private_ip_address)
+                                      node.private_dns_name_short],
+                                     node.private_ip_address)
             node_names[node.public_dns_name] = node.ip_address
             for name, ip in node_names.items():
                 name_ip = "%s,%s" % (name, ip)

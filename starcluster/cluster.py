@@ -270,8 +270,8 @@ class ClusterManager(managers.Manager):
                         d = devices.get(dev)
                         vol_id = d.volume_id
                         status = d.status
-                        print '    %s on %s:%s (status: %s)' % \
-                                (vol_id, node_id, dev, status)
+                        print('    %s on %s:%s (status: %s)' %
+                              (vol_id, node_id, dev, status))
             else:
                 print 'EBS volumes: N/A'
             spot_reqs = cl.spot_requests
@@ -290,7 +290,7 @@ class ClusterManager(managers.Manager):
                 print 'Cluster nodes:'
                 for node in nodes:
                     nodeline = "    %7s %s %s %s" % (node.alias, node.state,
-                                                        node.id, node.dns_name)
+                                                     node.id, node.dns_name)
                     if node.spot_id:
                         nodeline += ' (spot %s)' % node.spot_id
                     if show_ssh_status:
@@ -319,31 +319,31 @@ class ClusterManager(managers.Manager):
 
 class Cluster(object):
     def __init__(self,
-            ec2_conn=None,
-            spot_bid=None,
-            cluster_tag=None,
-            cluster_description=None,
-            cluster_size=None,
-            cluster_user=None,
-            cluster_shell=None,
-            master_image_id=None,
-            master_instance_type=None,
-            node_image_id=None,
-            node_instance_type=None,
-            node_instance_types=[],
-            availability_zone=None,
-            keyname=None,
-            key_location=None,
-            volumes=[],
-            plugins=[],
-            permissions=[],
-            refresh_interval=30,
-            disable_queue=False,
-            num_threads=20,
-            disable_threads=False,
-            cluster_group=None,
-            force_spot_master=False,
-            **kwargs):
+                 ec2_conn=None,
+                 spot_bid=None,
+                 cluster_tag=None,
+                 cluster_description=None,
+                 cluster_size=None,
+                 cluster_user=None,
+                 cluster_shell=None,
+                 master_image_id=None,
+                 master_instance_type=None,
+                 node_image_id=None,
+                 node_instance_type=None,
+                 node_instance_types=[],
+                 availability_zone=None,
+                 keyname=None,
+                 key_location=None,
+                 volumes=[],
+                 plugins=[],
+                 permissions=[],
+                 refresh_interval=30,
+                 disable_queue=False,
+                 num_threads=20,
+                 disable_threads=False,
+                 cluster_group=None,
+                 force_spot_master=False,
+                 **kwargs):
 
         now = time.strftime("%Y%m%d%H%M")
         self.ec2 = ec2_conn

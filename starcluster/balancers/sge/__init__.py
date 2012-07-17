@@ -142,7 +142,7 @@ class SGEStats(object):
                 else:
                     end = self.qacct_to_datetime_tuple(l[13:len(l)])
             if l.find('==========') != -1:
-                if qd != None:
+                if qd is not None:
                     self.max_job_id = job_id
                     hash = {'queued': qd, 'start': start, 'end': end}
                     self.jobstats[job_id % self.jobstat_cachesize] = hash
@@ -256,7 +256,7 @@ class SGEStats(object):
         count = 0
         total_seconds = 0
         for job in self.jobstats:
-            if job != None:
+            if job is not None:
                 delta = job['end'] - job['start']
                 total_seconds += delta.seconds
                 count += 1
@@ -269,7 +269,7 @@ class SGEStats(object):
         count = 0
         total_seconds = 0
         for job in self.jobstats:
-            if job != None:
+            if job is not None:
                 delta = job['start'] - job['queued']
                 total_seconds += delta.seconds
                 count += 1
@@ -410,7 +410,7 @@ class SGELoadBalancer(LoadBalancer):
         self.plot_stats = plot_stats
         self.plot_output_dir = plot_output_dir
         if plot_stats:
-            assert self.visualizer != None
+            assert self.visualizer is not None
 
     @property
     def visualizer(self):

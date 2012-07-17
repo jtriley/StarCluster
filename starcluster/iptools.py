@@ -56,11 +56,8 @@
 """
 __version__ = '0.5.0-dev'
 
-__all__ = (
-        'validate_ip', 'ip2long', 'long2ip', 'ip2hex', 'hex2ip',
-        'validate_cidr', 'cidr2block',
-        'IpRange', 'IpRangeList',
-        )
+__all__ = ('validate_ip', 'ip2long', 'long2ip', 'ip2hex', 'hex2ip',
+           'validate_cidr', 'cidr2block', 'IpRange', 'IpRangeList')
 
 import re
 

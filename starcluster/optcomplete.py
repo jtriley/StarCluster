@@ -198,10 +198,10 @@ def extract_word(line, point):
 
 
 def autocomplete(parser,
-                  arg_completer=None,  # means use default.
-                  opt_completer=None,
-                  subcmd_completer=None,
-                  subcommands=None):
+                 arg_completer=None,  # means use default.
+                 opt_completer=None,
+                 subcmd_completer=None,
+                 subcommands=None):
 
     """Automatically detect if we are requested completing and if so generate
     completion automatically from given parser.
@@ -266,8 +266,7 @@ def autocomplete(parser,
         assert isinstance(subcommands, types.DictType)
         value = guess_first_nonoption(parser, subcommands)
         if value:
-            if isinstance(value, types.ListType) or \
-               isinstance(value, types.TupleType):
+            if isinstance(value, (types.ListType, types.TupleType)):
                 parser = value[0]
                 if len(value) > 1 and value[1]:
                     # override completer for command if it is present.
@@ -335,16 +334,13 @@ def autocomplete(parser,
     if completer and (not prefix or not prefix.startswith('-')):
 
         # Call appropriate completer depending on type.
-        if isinstance(completer, types.StringType) or \
-               isinstance(completer, types.ListType) or \
-               isinstance(completer, types.TupleType):
+        if isinstance(completer, (types.StringType, types.ListType,
+                                  types.TupleType)):
             completer = RegexCompleter(completer)
             completions += completer(os.getcwd(), cline,
                                      cpoint, prefix, suffix)
-        elif isinstance(completer, types.FunctionType) or \
-             isinstance(completer, types.LambdaType) or \
-             isinstance(completer, types.ClassType) or \
-             isinstance(completer, types.ObjectType):
+        elif isinstance(completer, (types.FunctionType, types.LambdaType,
+                                    types.ClassType, types.ObjectType)):
             completions += completer(os.getcwd(), cline,
                                      cpoint, prefix, suffix)
 
