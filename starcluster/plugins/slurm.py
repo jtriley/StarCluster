@@ -209,8 +209,9 @@ class SlurmPlugin(clustersetup.DefaultClusterSetup):
             raise RemoteCommandError("Unable to read /etc/hosts on master: "\
                                      + str(e))
         new_hosts_file = ""
+
         # All nodes are fake at first
-        fake_nodes = ["node{:03d}".format(n) \
+        fake_nodes = ["node{0:03d}".format(n) \
                       for n in xrange(1, self.max_nodes)]
 
         # Filter out all real nodes
