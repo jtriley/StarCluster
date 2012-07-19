@@ -14,6 +14,7 @@ __all__ = [
     "plugins",
     "balancers",
     "managers",
+    "validators",
     "image",
     "volume",
     "awsutils",
