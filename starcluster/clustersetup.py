@@ -361,7 +361,7 @@ class DefaultClusterSetup(ClusterSetup):
                 master = n
 
         master.remove_from_etc_hosts([node])
-        master.master.copy_remote_file_to_nodes('/etc/hosts', nodes)
+        master.copy_remote_file_to_nodes('/etc/hosts', nodes)
 
     def _remove_nfs_exports(self, node):
         self._master.stop_exporting_fs_to_nodes([node])
