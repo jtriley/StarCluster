@@ -1,6 +1,7 @@
 """
 clustersetup.py
 """
+import os
 import posixpath
 
 from starcluster import threadpool
@@ -376,8 +377,9 @@ class DefaultClusterSetup(ClusterSetup):
         master.remove_from_known_hosts('root', [node])
         master.remove_from_known_hosts(self._user, [node])
 
+        user_homedir = os.path.expanduser('~' + self._user)
         targets = [posixpath.join('/root', '.ssh','known_hosts'),
-                   posixpath.join(self._user.pw_dir, '.ssh','known_hosts'),]
+                   posixpath.join(user_homedir, '.ssh','known_hosts'),]
 
         for target in targets:
             master.copy_remote_file_to_nodes(target, nodes)
