@@ -97,8 +97,10 @@ class CmdLoadBalance(ClusterCompleter):
         cluster_tag = args[0]
         cluster = self.cm.get_cluster(cluster_tag)
         balancer = self.specified_options_dict['balancer']
-        args = {k: v for k, v in self.specified_options_dict.items() \
-                if k != 'balancer'}
+        args = {}
+        for k,v in self.specified_options_dict.items():
+            if k != 'balancer':
+                args[k] = v
         if balancer == 'sge':
             lb = sge.SGELoadBalancer(**args)
         elif balancer == 'slurm':
