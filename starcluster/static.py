@@ -87,6 +87,7 @@ INSTANCE_TYPES = {
     'cc1.4xlarge': ['x86_64'],
     'cc2.8xlarge': ['x86_64'],
     'cg1.4xlarge': ['x86_64'],
+    'hi1.4xlarge': ['x86_64'],
 }
 
 MICRO_INSTANCE_TYPES = ['t1.micro']
