@@ -16,6 +16,7 @@ from starcluster import sshutils
 from starcluster import managers
 from starcluster import exception
 from starcluster import threadpool
+from starcluster import validators
 from starcluster import progressbar
 from starcluster import clustersetup
 from starcluster.node import Node
@@ -54,7 +55,7 @@ class ClusterManager(managers.Manager):
                     raise
                 cl.key_location = ''
             if require_keys:
-                cl._validate_keypair()
+                cl.validator.validate_keypair()
             return cl
         except exception.SecurityGroupDoesNotExist:
             raise exception.ClusterDoesNotExist(cluster_name)
@@ -374,20 +375,14 @@ class Cluster(object):
         self.disable_threads = disable_threads
         self.force_spot_master = force_spot_master
 
-        self.__instance_types = static.INSTANCE_TYPES
-        self.__cluster_settings = static.CLUSTER_SETTINGS
-        self.__available_shells = static.AVAILABLE_SHELLS
-        self.__protocols = static.PROTOCOLS
-        self._progress_bar = None
-        self._master_reservation = None
-        self._node_reservation = None
-        self._nodes = []
-        self._master = None
-        self._zone = None
-        self._plugins = plugins
         self._cluster_group = None
         self._placement_group = None
+        self._zone = None
+        self._master = None
+        self._nodes = []
+        self._plugins = plugins
         self._pool = None
+        self._progress_bar = None
 
     def __repr__(self):
         return '<Cluster: %s (%s-node)>' % (self.cluster_tag,
@@ -521,28 +516,6 @@ class Cluster(object):
         for key in kwargs.keys():
             if hasattr(self, key):
                 self.__dict__[key] = kwargs[key]
-
-    def _validate_running_instances(self):
-        """
-        Validate existing instances against this cluster's settings
-        """
-        self.wait_for_active_spots()
-        nodes = self.nodes
-        if not nodes:
-            raise exception.ClusterValidationError("No existing nodes found!")
-        log.info("Validating existing instances...")
-        mazone = self.master_node.placement
-        # reset zone cache
-        self._zone = None
-        if self.zone and self.zone.name != mazone:
-            raise exception.ClusterValidationError(
-                "Running cluster's availability_zone (%s) != %s" %
-                (mazone, self.zone.name))
-        for node in nodes:
-            if node.key_name != self.keyname:
-                raise exception.ClusterValidationError(
-                    "%s's key_name (%s) != %s" % (node.alias, node.key_name,
-                                                  self.keyname))
 
     def get(self, name):
         return self.__dict__.get(name)
@@ -1172,6 +1145,10 @@ class Cluster(object):
                 size=self.num_threads, disable_threads=self.disable_threads)
         return self._pool
 
+    @property
+    def validator(self):
+        return ClusterValidator(self)
+
     def wait_for_active_spots(self, spots=None):
         """
         Wait for all open spot requests for this cluster to transition to
@@ -1407,15 +1384,16 @@ class Cluster(object):
                            being used against this cluster's settings
         """
         if validate:
+            validator = self.validator
             if not create and validate_running:
                 try:
-                    self._validate_running_instances()
+                    validator.validate_running_instances()
                 except exception.ClusterValidationError, e:
                     msg = "Existing nodes are not compatible with cluster "
                     msg += "settings:\n"
                     e.msg = msg + e.msg
                     raise
-            self._validate()
+            validator.validate()
             if validate_only:
                 return
         else:
@@ -1530,39 +1508,94 @@ class Cluster(object):
                 traceback.print_exc()
                 log.debug(traceback.format_exc())
 
+    def ssh_to_master(self, user='root', command=None, forward_x11=False):
+        return self.ssh_to_node('master', user=user, command=command,
+                                forward_x11=forward_x11)
+
+    def ssh_to_node(self, alias, user='root', command=None, forward_x11=False):
+        node = self.get_node_by_alias(alias)
+        node = node or self.get_node_by_dns_name(alias)
+        node = node or self.get_node_by_id(alias)
+        if not node:
+            raise exception.InstanceDoesNotExist(alias, label='node')
+        return node.shell(user=user, forward_x11=forward_x11, command=command)
+
+
+class ClusterValidator(validators.Validator):
+    """
+    Validates that cluster settings define a sane launch configuration.
+    Throws exception.ClusterValidationError for all validation failures
+    """
+    def __init__(self, cluster):
+        self.cluster = cluster
+
     def is_running_valid(self):
         """
         Checks whether the current running instances are compatible
         with this cluster template's settings
         """
         try:
-            self._validate_running_instances()
+            self.validate_running_instances()
             return True
         except exception.ClusterValidationError, e:
             log.error(e.msg)
             return False
 
-    def _validate(self):
+    def validate_required_settings(self):
+        has_all_required = True
+        for opt in static.CLUSTER_SETTINGS:
+            requirements = static.CLUSTER_SETTINGS[opt]
+            name = opt
+            required = requirements[1]
+            if required and self.cluster.get(name.lower()) is None:
+                log.warn('Missing required setting %s' % name)
+                has_all_required = False
+        return has_all_required
+
+    def validate_running_instances(self):
         """
-        Checks that all cluster template settings are valid. Raises a
-        ClusterValidationError exception if not.
+        Validate existing instances against this cluster's settings
+        """
+        cluster = self.cluster
+        cluster.wait_for_active_spots()
+        nodes = cluster.nodes
+        if not nodes:
+            raise exception.ClusterValidationError("No existing nodes found!")
+        log.info("Validating existing instances...")
+        mazone = cluster.master_node.placement
+        # reset zone cache
+        cluster._zone = None
+        if cluster.zone and cluster.zone.name != mazone:
+            raise exception.ClusterValidationError(
+                "Running cluster's availability_zone (%s) != %s" %
+                (mazone, cluster.zone.name))
+        for node in nodes:
+            if node.key_name != self.keyname:
+                raise exception.ClusterValidationError(
+                    "%s's key_name (%s) != %s" % (node.alias, node.key_name,
+                                                  self.keyname))
+
+    def validate(self):
+        """
+        Checks that all cluster template settings are valid and raises an
+        exception.ClusterValidationError exception if not.
         """
         log.info("Validating cluster template settings...")
         try:
-            self._has_all_required_settings()
-            self._validate_spot_bid()
-            self._validate_cluster_size()
-            self._validate_cluster_user()
-            self._validate_shell_setting()
-            self._validate_permission_settings()
-            self._validate_credentials()
-            self._validate_keypair()
-            self._validate_zone()
-            self._validate_ebs_settings()
-            self._validate_ebs_aws_settings()
-            self._validate_image_settings()
-            self._validate_instance_types()
-            self._validate_cluster_compute()
+            self.validate_required_settings()
+            self.validate_spot_bid()
+            self.validate_cluster_size()
+            self.validate_cluster_user()
+            self.validate_shell_setting()
+            self.validate_permission_settings()
+            self.validate_credentials()
+            self.validate_keypair()
+            self.validate_zone()
+            self.validate_ebs_settings()
+            self.validate_ebs_aws_settings()
+            self.validate_image_settings()
+            self.validate_instance_types()
+            self.validate_cluster_compute()
             log.info('Cluster template settings are valid')
             return True
         except exception.ClusterValidationError, e:
@@ -1574,56 +1607,60 @@ class Cluster(object):
         Returns True if all cluster template settings are valid
         """
         try:
-            self._validate()
+            self.validate()
             return True
         except exception.ClusterValidationError, e:
             log.error(e.msg)
             return False
 
-    def _validate_spot_bid(self):
-        if self.spot_bid is not None:
-            if type(self.spot_bid) not in [int, float]:
+    def validate_spot_bid(self):
+        cluster = self.cluster
+        if cluster.spot_bid is not None:
+            if type(cluster.spot_bid) not in [int, float]:
                 raise exception.ClusterValidationError(
                     'spot_bid must be integer or float')
-            if self.spot_bid <= 0:
+            if cluster.spot_bid <= 0:
                 raise exception.ClusterValidationError(
                     'spot_bid must be an integer or float > 0')
         return True
 
-    def _validate_cluster_size(self):
+    def validate_cluster_size(self):
+        cluster = self.cluster
         try:
-            int(self.cluster_size)
-            if self.cluster_size < 1:
+            int(cluster.cluster_size)
+            if cluster.cluster_size < 1:
                 raise ValueError
         except (ValueError, TypeError):
             raise exception.ClusterValidationError(
                 'cluster_size must be an integer >= 1')
-        num_itypes = sum([i.get('size') for i in self.node_instance_types])
-        num_nodes = self.cluster_size - 1
+        num_itypes = sum([i.get('size') for i in
+                          cluster.node_instance_types])
+        num_nodes = cluster.cluster_size - 1
         if num_itypes > num_nodes:
             raise exception.ClusterValidationError(
                 "total number of nodes specified in node_instance_type (%s) "
                 "must be <= cluster_size-1 (%s)" % (num_itypes, num_nodes))
         return True
 
-    def _validate_cluster_user(self):
-        if self.cluster_user == "root":
+    def validate_cluster_user(self):
+        if self.cluster.cluster_user == "root":
             raise exception.ClusterValidationError(
                 'cluster_user cannot be "root"')
         return True
 
-    def _validate_shell_setting(self):
-        cluster_shell = self.cluster_shell
-        if not self.__available_shells.get(cluster_shell):
+    def validate_shell_setting(self):
+        cluster_shell = self.cluster.cluster_shell
+        if not static.AVAILABLE_SHELLS.get(cluster_shell):
             raise exception.ClusterValidationError(
                 'Invalid user shell specified. Options are %s' %
-                ' '.join(self.__available_shells.keys()))
+                ' '.join(static.AVAILABLE_SHELLS.keys()))
         return True
 
-    def _validate_image_settings(self):
-        master_image_id = self.master_image_id
-        node_image_id = self.node_image_id
-        conn = self.ec2
+    def validate_image_settings(self):
+        cluster = self.cluster
+        master_image_id = cluster.master_image_id
+        node_image_id = cluster.node_image_id
+        conn = cluster.ec2
         image = conn.get_image_or_none(node_image_id)
         if not image or image.id != node_image_id:
             raise exception.ClusterValidationError(
@@ -1641,14 +1678,14 @@ class Cluster(object):
                     'master_image_id %s is not available' % master_image_id)
         return True
 
-    def _validate_zone(self):
+    def validate_zone(self):
         """
         Validates that the cluster's availability zone exists and is available.
         The 'zone' property additionally checks that all EBS volumes are in the
         same zone and that the cluster's availability zone setting, if
         specified, matches the EBS volume(s) zone.
         """
-        zone = self.zone
+        zone = self.cluster.zone
         if zone and zone.state != 'available':
             raise exception.ClusterValidationError(
                 "The '%s' availability zone is not available at this time" %
@@ -1661,20 +1698,21 @@ class Cluster(object):
         instance_type. image_id_setting and instance_type_setting are the
         setting labels in the config file.
         """
-        image = self.ec2.get_image_or_none(image_id)
+        image = self.cluster.ec2.get_image_or_none(image_id)
         if not image:
             raise exception.ClusterValidationError('Image %s does not exist' %
                                                    image_id)
         image_platform = image.architecture
         image_is_hvm = (image.virtualization_type == "hvm")
-        if image_is_hvm and not instance_type in static.CLUSTER_TYPES:
+        instance_is_hvm = instance_type in static.CLUSTER_TYPES
+        if image_is_hvm and not instance_is_hvm:
             cctypes_list = ', '.join(static.CLUSTER_TYPES)
             raise exception.ClusterValidationError(
                 "Image '%s' is a Cluster Compute/GPU image (HVM) and cannot "
                 "be used with instance type '%s'\nThe instance type "
                 "for a Cluster Compute/GPU image (HVM) must be one of: %s" %
                 (image_id, instance_type, cctypes_list))
-        instance_platforms = self.__instance_types[instance_type]
+        instance_platforms = static.INSTANCE_TYPES[instance_type]
         if image_platform not in instance_platforms:
             error_msg = "Instance type %(instance_type)s is for an " \
                         "%(instance_platform)s platform while " \
@@ -1692,12 +1730,13 @@ class Cluster(object):
             raise exception.ClusterValidationError(error_msg)
         return True
 
-    def _validate_instance_types(self):
-        master_image_id = self.master_image_id
-        node_image_id = self.node_image_id
-        master_instance_type = self.master_instance_type
-        node_instance_type = self.node_instance_type
-        instance_types = self.__instance_types
+    def validate_instance_types(self):
+        cluster = self.cluster
+        master_image_id = cluster.master_image_id
+        node_image_id = cluster.node_image_id
+        master_instance_type = cluster.master_instance_type
+        node_instance_type = cluster.node_instance_type
+        instance_types = static.INSTANCE_TYPES
         instance_type_list = ', '.join(instance_types.keys())
         if not node_instance_type in instance_types:
             raise exception.ClusterValidationError(
@@ -1736,7 +1775,7 @@ class Cluster(object):
                 raise exception.ClusterValidationError(
                     'Incompatible node_image_id and master_instance_type\n' +
                     e.msg)
-        for itype in self.node_instance_types:
+        for itype in cluster.node_instance_types:
             type = itype.get('type')
             img = itype.get('image') or node_image_id
             if not type in instance_types:
@@ -1751,23 +1790,24 @@ class Cluster(object):
                     (type, e.msg))
         return True
 
-    def _validate_cluster_compute(self):
-        lmap = self._get_launch_map()
+    def validate_cluster_compute(self):
+        cluster = self.cluster
+        lmap = cluster._get_launch_map()
         for (type, image) in lmap:
             if type in static.CLUSTER_TYPES:
-                img = self.ec2.get_image(image)
+                img = cluster.ec2.get_image(image)
                 if img.virtualization_type != 'hvm':
                     raise exception.ClusterValidationError(
                         'Cluster Compute/GPU instance type %s '
                         'can only be used with HVM images.\n'
                         'Image %s is NOT an HVM image.' % (type, image))
 
-    def _validate_permission_settings(self):
-        permissions = self.permissions
+    def validate_permission_settings(self):
+        permissions = self.cluster.permissions
         for perm in permissions:
             permission = permissions.get(perm)
             protocol = permission.get('ip_protocol')
-            if protocol not in self.__protocols:
+            if protocol not in static.PROTOCOLS:
                 raise exception.InvalidProtocol(protocol)
             from_port = permission.get('from_port')
             to_port = permission.get('to_port')
@@ -1789,7 +1829,7 @@ class Cluster(object):
             if not iptools.validate_cidr(cidr_ip):
                 raise exception.InvalidCIDRSpecified(cidr_ip)
 
-    def _validate_ebs_settings(self):
+    def validate_ebs_settings(self):
         """
         Check EBS vols for missing/duplicate DEVICE/PARTITION/MOUNT_PATHs and
         validate these settings.
@@ -1797,9 +1837,10 @@ class Cluster(object):
         volmap = {}
         devmap = {}
         mount_paths = []
-        for vol in self.volumes:
+        cluster = self.cluster
+        for vol in cluster.volumes:
             vol_name = vol
-            vol = self.volumes.get(vol)
+            vol = cluster.volumes.get(vol)
             vol_id = vol.get('volume_id')
             device = vol.get('device')
             partition = vol.get('partition')
@@ -1851,17 +1892,18 @@ class Cluster(object):
                     "Can't mount more than one volume on %s" % path)
         return True
 
-    def _validate_ebs_aws_settings(self):
+    def validate_ebs_aws_settings(self):
         """
         Verify that all EBS volumes exist and are available.
         """
-        for vol in self.volumes:
-            v = self.volumes.get(vol)
+        cluster = self.cluster
+        for vol in cluster.volumes:
+            v = cluster.volumes.get(vol)
             vol_id = v.get('volume_id')
-            vol = self.ec2.get_volume(vol_id)
+            vol = cluster.ec2.get_volume(vol_id)
             if vol.status != 'available':
                 try:
-                    if vol.attach_data.instance_id == self.master_node.id:
+                    if vol.attach_data.instance_id == cluster.master_node.id:
                         continue
                 except exception.MasterDoesNotExist:
                     pass
@@ -1869,40 +1911,31 @@ class Cluster(object):
                     "Volume '%s' is not available (status: %s)" %
                     (vol_id, vol.status))
 
-    def _has_all_required_settings(self):
-        has_all_required = True
-        for opt in self.__cluster_settings:
-            requirements = self.__cluster_settings[opt]
-            name = opt
-            required = requirements[1]
-            if required and self.get(name.lower()) is None:
-                log.warn('Missing required setting %s' % name)
-                has_all_required = False
-        return has_all_required
-
-    def _validate_credentials(self):
-        if not self.ec2.is_valid_conn():
+    def validate_credentials(self):
+        if not self.cluster.ec2.is_valid_conn():
             raise exception.ClusterValidationError(
                 'Invalid AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY combination.')
         return True
 
-    def _validate_keypair(self):
-        key_location = self.key_location
+    def validate_keypair(self):
+        cluster = self.cluster
+        key_location = cluster.key_location
         if not key_location:
             raise exception.ClusterValidationError(
-                "no key_location specified for key '%s'" % self.keyname)
+                "no key_location specified for key '%s'" %
+                cluster.keyname)
         if not os.path.exists(key_location):
             raise exception.ClusterValidationError(
                 "key_location '%s' does not exist" % key_location)
         elif not os.path.isfile(key_location):
             raise exception.ClusterValidationError(
                 "key_location '%s' is not a file" % key_location)
-        keyname = self.keyname
-        keypair = self.ec2.get_keypair_or_none(keyname)
+        keyname = cluster.keyname
+        keypair = cluster.ec2.get_keypair_or_none(keyname)
         if not keypair:
             raise exception.ClusterValidationError(
                 "Keypair '%s' does not exist in region '%s'" %
-                (keyname, self.ec2.region.name))
+                (keyname, cluster.ec2.region.name))
         fingerprint = keypair.fingerprint
         try:
             open(key_location, 'r').close()
@@ -1924,22 +1957,3 @@ class Cluster(object):
             # fingerprint, however, Amazon doesn't for some reason...
             log.warn("Unable to validate imported keypair fingerprint...")
         return True
-
-    def ssh_to_master(self, user='root', command=None, forward_x11=False):
-        return self.ssh_to_node('master', user=user, command=command,
-                                forward_x11=forward_x11)
-
-    def ssh_to_node(self, alias, user='root', command=None, forward_x11=False):
-        node = self.get_node_by_alias(alias)
-        node = node or self.get_node_by_dns_name(alias)
-        node = node or self.get_node_by_id(alias)
-        if not node:
-            raise exception.InstanceDoesNotExist(alias, label='node')
-        return node.shell(user=user, forward_x11=forward_x11, command=command)
-
-if __name__ == "__main__":
-    from starcluster.config import StarClusterConfig
-    cfg = StarClusterConfig().load()
-    sc = cfg.get_cluster_template('smallcluster', 'mynewcluster')
-    if sc.is_valid():
-        sc.start(create=True)
