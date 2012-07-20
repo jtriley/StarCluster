@@ -1718,6 +1718,11 @@ class ClusterValidator(validators.Validator):
                 "be used with instance type '%s'\nThe instance type "
                 "for a Cluster Compute/GPU image (HVM) must be one of: %s" %
                 (image_id, instance_type, cctypes_list))
+        if instance_is_hvm and not image_is_hvm:
+            raise exception.ClusterValidationError(
+                "The '%s' instance type can only be used with hardware "
+                "virtual machine (HVM) images. Image '%s' is not an HVM "
+                "image." % (instance_type, image_id))
         instance_platforms = static.INSTANCE_TYPES[instance_type]
         if image_platform not in instance_platforms:
             error_msg = "Instance type %(instance_type)s is for an " \
