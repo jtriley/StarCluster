@@ -1149,6 +1149,12 @@ class Cluster(object):
     def validator(self):
         return ClusterValidator(self)
 
+    def is_valid(self):
+        return self.validator.is_valid()
+
+    def validate(self):
+        return self.validator.validate()
+
     def wait_for_active_spots(self, spots=None):
         """
         Wait for all open spot requests for this cluster to transition to
