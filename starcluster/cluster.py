@@ -1711,12 +1711,13 @@ class ClusterValidator(validators.Validator):
         image_platform = image.architecture
         image_is_hvm = (image.virtualization_type == "hvm")
         instance_is_hvm = instance_type in static.CLUSTER_TYPES
-        if image_is_hvm and not instance_is_hvm:
-            cctypes_list = ', '.join(static.CLUSTER_TYPES)
+        instance_is_hi_io = instance_type in static.HI_IO_TYPES
+        if image_is_hvm and not instance_is_hvm and not instance_is_hi_io:
+            cctypes_list = ', '.join(static.CLUSTER_TYPES + static.HI_IO_TYPES)
             raise exception.ClusterValidationError(
-                "Image '%s' is a Cluster Compute/GPU image (HVM) and cannot "
-                "be used with instance type '%s'\nThe instance type "
-                "for a Cluster Compute/GPU image (HVM) must be one of: %s" %
+                "Image '%s' is a hardware virtual machine (HVM) image and "
+                "cannot be used with instance type '%s'.\n\nHVM images "
+                "require one of the following HVM instance types:\n%s" %
                 (image_id, instance_type, cctypes_list))
         if instance_is_hvm and not image_is_hvm:
             raise exception.ClusterValidationError(

@@ -98,6 +98,8 @@ CLUSTER_GPU_TYPES = ['cg1.4xlarge']
 
 CLUSTER_TYPES = CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES
 
+HI_IO_TYPES = ['hi1.4xlarge']
+
 CLUSTER_REGIONS = ['us-east-1']
 
 PROTOCOLS = ['tcp', 'udp', 'icmp']
