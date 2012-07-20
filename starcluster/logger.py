@@ -2,6 +2,7 @@
 StarCluster logging module
 """
 import os
+import sys
 import types
 import logging
 import logging.handlers
@@ -104,7 +105,7 @@ def get_starcluster_logger():
 
 
 log = get_starcluster_logger()
-console = ConsoleLogger()
+console = ConsoleLogger(sys.stdout)
 session = logging.StreamHandler(StringIO.StringIO())
 
 
