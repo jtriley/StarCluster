@@ -41,6 +41,10 @@ class ConsoleLogger(logging.StreamHandler):
         'raw': logging.Formatter(RAW_FORMAT),
     }
 
+    def __init__(self, strm=sys.stdout, error_stream=sys.stderr):
+        self.error_stream = error_stream or sys.stderr
+        logging.StreamHandler.__init__(self, strm=strm or sys.stdout)
+
     def format(self, record):
         if hasattr(record, '__raw__'):
             result = self.formatters['raw'].format(record)
@@ -71,14 +75,17 @@ class ConsoleLogger(logging.StreamHandler):
     def _emit(self, record):
         msg = self.format(record)
         fs = "%s"
+        stream = self.stream
+        if record.levelno in [ERROR, CRITICAL, FATAL]:
+            stream = self.error_stream
         if not hasattr(types, "UnicodeType"):
              # if no unicode support...
-            self.stream.write(fs % msg)
+            stream.write(fs % msg)
         else:
             try:
-                self.stream.write(fs % msg)
+                stream.write(fs % msg)
             except UnicodeError:
-                self.stream.write(fs % msg.encode("UTF-8"))
+                stream.write(fs % msg.encode("UTF-8"))
         self.flush()
 
     def emit(self, record):
@@ -105,7 +112,7 @@ def get_starcluster_logger():
 
 
 log = get_starcluster_logger()
-console = ConsoleLogger(sys.stdout)
+console = ConsoleLogger()
 session = logging.StreamHandler(StringIO.StringIO())
 
 
