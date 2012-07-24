@@ -41,9 +41,9 @@ class ConsoleLogger(logging.StreamHandler):
         'raw': logging.Formatter(RAW_FORMAT),
     }
 
-    def __init__(self, strm=sys.stdout, error_stream=sys.stderr):
+    def __init__(self, stream=sys.stdout, error_stream=sys.stderr):
         self.error_stream = error_stream or sys.stderr
-        logging.StreamHandler.__init__(self, strm=strm or sys.stdout)
+        logging.StreamHandler.__init__(self, stream or sys.stdout)
 
     def format(self, record):
         if hasattr(record, '__raw__'):
