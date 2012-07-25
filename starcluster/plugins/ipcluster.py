@@ -79,7 +79,7 @@ http://web.mit.edu/starcluster/docs/latest/plugins/ipython.html
 
 class IPCluster11(ClusterSetup):
     """
-    Start an IPython (0.11) cluster
+    Start an IPython (>= 0.11) cluster
     """
     def __init__(self, enable_notebook=False, notebook_passwd=None):
         self.enable_notebook = enable_notebook
@@ -110,6 +110,27 @@ class IPCluster11(ClusterSetup):
             "c.SGEControllerLauncher.queue='all.q@master'",
             "c.IPClusterEngines.engine_launcher_class='SGEEngineSetLauncher'",
             # "c.Application.log_level = 'DEBUG'",
+            "",
+            # workaround IPython bug #2171 in IPython 0.13
+            "controller_template = '''",
+            "#$ -V",
+            "#$ -q all.q@master",
+            "#$ -S /bin/sh",
+            "#$ -N ipcontroller",
+            'ipcontroller --log-to-file --profile-dir="{profile_dir}" --cluster-id="{cluster_id}"',
+            "'''",
+            "engine_template = '''",
+            "#$ -V",
+            "#$ -t 1-{n}",
+            "#$ -S /bin/sh",
+            "#$ -N ipengine",
+            'ipengine --log-to-file --profile-dir="{profile_dir}" --cluster-id="{cluster_id}"',
+            "'''",
+            # only apply workaround for affected version 0.13:
+            "import IPython",
+            "if IPython.__version__ == '0.13':",
+            "    c.SGEControllerLauncher.batch_template = controller_template",
+            "    c.SGEEngineSetLauncher.batch_template = engine_template",
             "",
         ]))
         f.close()
