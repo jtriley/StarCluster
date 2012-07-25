@@ -9,7 +9,6 @@ import shlex
 import socket
 import optparse
 import platform
-import traceback
 
 from boto.exception import BotoServerError, EC2ResponseError, S3ResponseError
 
@@ -286,10 +285,8 @@ class StarClusterCLI(object):
             # re-raise SystemExit to avoid the bug-catcher below
             raise
         except Exception:
-            if not gopts.DEBUG:
-                traceback.print_exc()
-            log.debug(traceback.format_exc())
             print
+            log.error("Unhandled exception occured", exc_info=True)
             self.bug_found()
 
 
