@@ -268,7 +268,11 @@ class StarClusterCLI(object):
             self.bug_found()
         except exception.ClusterDoesNotExist, e:
             cm = gopts.CONFIG.get_cluster_manager()
-            cls = cm.get_clusters()
+            cls = ''
+            try:
+                cls = cm.get_clusters(load_plugins=False, load_receipt=False)
+            except:
+                log.debug("Error fetching cluster list", exc_info=True)
             log.error(e.msg)
             if cls:
                 taglist = ', '.join([c.cluster_tag for c in cls])
