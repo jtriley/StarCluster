@@ -17,6 +17,7 @@ WARN = logging.WARN
 ERROR = logging.ERROR
 CRITICAL = logging.CRITICAL
 FATAL = logging.FATAL
+RAW = "raw"
 
 RAW_FORMAT = "%(message)s\n"
 INFO_FORMAT = " ".join(['>>>', "%(message)s\n"])
@@ -38,7 +39,7 @@ class ConsoleLogger(logging.StreamHandler):
         ERROR: logging.Formatter(ERROR_CONSOLE_FORMAT),
         CRITICAL: logging.Formatter(ERROR_CONSOLE_FORMAT),
         FATAL: logging.Formatter(ERROR_CONSOLE_FORMAT),
-        'raw': logging.Formatter(RAW_FORMAT),
+        RAW: logging.Formatter(RAW_FORMAT),
     }
 
     def __init__(self, stream=sys.stdout, error_stream=sys.stderr):
@@ -47,7 +48,7 @@ class ConsoleLogger(logging.StreamHandler):
 
     def format(self, record):
         if hasattr(record, '__raw__'):
-            result = self.formatters['raw'].format(record)
+            result = self.formatters[RAW].format(record)
         else:
             result = self.formatters[record.levelno].format(record)
         if hasattr(record, '__nonewline__'):
