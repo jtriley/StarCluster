@@ -261,9 +261,7 @@ class StarClusterCLI(object):
             log.error("Check your internet connection?")
             sys.exit(1)
         except exception.ThreadPoolException, e:
-            if not gopts.DEBUG:
-                e.print_excs()
-            log.debug(e.format_excs())
+            log.error(e.format_excs())
             self.bug_found()
         except exception.ClusterDoesNotExist, e:
             cm = gopts.CONFIG.get_cluster_manager()
