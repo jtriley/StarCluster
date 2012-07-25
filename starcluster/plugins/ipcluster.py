@@ -117,14 +117,16 @@ class IPCluster11(ClusterSetup):
             "#$ -q all.q@master",
             "#$ -S /bin/sh",
             "#$ -N ipcontroller",
-            'ipcontroller --log-to-file --profile-dir="{profile_dir}" --cluster-id="{cluster_id}"',
+            'ipcontroller --log-to-file --profile-dir="{profile_dir}" '
+            '--cluster-id="{cluster_id}"',
             "'''",
             "engine_template = '''",
             "#$ -V",
             "#$ -t 1-{n}",
             "#$ -S /bin/sh",
             "#$ -N ipengine",
-            'ipengine --log-to-file --profile-dir="{profile_dir}" --cluster-id="{cluster_id}"',
+            'ipengine --log-to-file --profile-dir="{profile_dir}" '
+            '--cluster-id="{cluster_id}"',
             "'''",
             # only apply workaround for affected version 0.13:
             "import IPython",
