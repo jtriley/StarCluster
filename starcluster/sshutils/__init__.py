@@ -607,18 +607,13 @@ class SSHClient(object):
     def interactive_shell(self, user='root'):
         orig_user = self.get_current_user()
         self.switch_user(user)
-        try:
-            chan = self._invoke_shell()
-            log.info('Starting Pure-Python SSH shell...')
-            if HAS_TERMIOS:
-                self._posix_shell(chan)
-            else:
-                self._windows_shell(chan)
-            chan.close()
-        except Exception, e:
-            import traceback
-            print '*** Caught exception: %s: %s' % (e.__class__, e)
-            traceback.print_exc()
+        chan = self._invoke_shell()
+        log.info('Starting Pure-Python SSH shell...')
+        if HAS_TERMIOS:
+            self._posix_shell(chan)
+        else:
+            self._windows_shell(chan)
+        chan.close()
         self.switch_user(orig_user)
 
     def _posix_shell(self, chan):
