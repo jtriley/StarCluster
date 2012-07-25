@@ -161,6 +161,7 @@ class StarClusterCLI(object):
         for dep in dependencies:
             self.__write_module_version(dep, crashfile)
         crashfile.close()
+        print
         log.error("Oops! Looks like you've found a bug in StarCluster")
         log.error("Crash report written to: %s" % static.CRASH_FILE)
         log.error("Please remove any sensitive data from the crash report")
@@ -263,7 +264,6 @@ class StarClusterCLI(object):
             if not gopts.DEBUG:
                 e.print_excs()
             log.debug(e.format_excs())
-            print
             self.bug_found()
         except exception.ClusterDoesNotExist, e:
             cm = gopts.CONFIG.get_cluster_manager()
@@ -285,7 +285,6 @@ class StarClusterCLI(object):
             # re-raise SystemExit to avoid the bug-catcher below
             raise
         except Exception:
-            print
             log.error("Unhandled exception occured", exc_info=True)
             self.bug_found()
 
