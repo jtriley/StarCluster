@@ -19,15 +19,16 @@ CRITICAL = logging.CRITICAL
 FATAL = logging.FATAL
 RAW = "raw"
 
-RAW_FORMAT = "%(message)s\n"
-INFO_FORMAT = " ".join(['>>>', "%(message)s\n"])
-_DEBUG_FORMAT = "%(filename)s:%(lineno)d - %(levelname)s - %(message)s\n"
-DEBUG_FORMAT = "%(asctime)s " + _DEBUG_FORMAT
-DEBUG_FORMAT_PID = ' '.join(["%(asctime)s", "PID: %s" % str(static.PID),
-                             _DEBUG_FORMAT])
-DEFAULT_CONSOLE_FORMAT = "%(levelname)s - %(message)s\n"
-ERROR_CONSOLE_FORMAT = " ".join(['!!!', DEFAULT_CONSOLE_FORMAT])
-WARN_CONSOLE_FORMAT = " ".join(['***', DEFAULT_CONSOLE_FORMAT])
+RAW_FORMAT = "%(message)s"
+INFO_FORMAT = " ".join([">>>", RAW_FORMAT])
+DEFAULT_CONSOLE_FORMAT = " - ".join(["%(levelname)s", RAW_FORMAT])
+ERROR_CONSOLE_FORMAT = " ".join(["!!!", DEFAULT_CONSOLE_FORMAT])
+WARN_CONSOLE_FORMAT = " ".join(["***", DEFAULT_CONSOLE_FORMAT])
+FILE_INFO_FORMAT = " - ".join(["%(filename)s:%(lineno)d",
+                               DEFAULT_CONSOLE_FORMAT])
+DEBUG_FORMAT = " ".join(["%(asctime)s", FILE_INFO_FORMAT])
+DEBUG_FORMAT_PID = " ".join(["%(asctime)s", "PID: %s" % str(static.PID),
+                             FILE_INFO_FORMAT])
 
 
 class ConsoleLogger(logging.StreamHandler):
@@ -51,8 +52,6 @@ class ConsoleLogger(logging.StreamHandler):
             result = self.formatters[RAW].format(record)
         else:
             result = self.formatters[record.levelno].format(record)
-        if hasattr(record, '__nonewline__'):
-            result = result.rstrip()
         return result
 
     def _wrap(self, msg):
@@ -75,7 +74,10 @@ class ConsoleLogger(logging.StreamHandler):
 
     def _emit(self, record):
         msg = self.format(record)
-        fs = "%s"
+        fs = "%s\n"
+        if hasattr(record, '__nonewline__'):
+            msg = msg.rstrip()
+            fs = "%s"
         stream = self.stream
         if record.levelno in [ERROR, CRITICAL, FATAL]:
             stream = self.error_stream
@@ -131,7 +133,7 @@ def configure_sc_logging(use_syslog=False):
     /dev/log exists on the system (standard for most Linux distros)
     """
     log.setLevel(logging.DEBUG)
-    formatter = logging.Formatter(DEBUG_FORMAT_PID.rstrip())
+    formatter = logging.Formatter(DEBUG_FORMAT_PID)
     static.create_sc_config_dirs()
     rfh = logging.handlers.RotatingFileHandler(static.DEBUG_FILE,
                                                maxBytes=1048576,
