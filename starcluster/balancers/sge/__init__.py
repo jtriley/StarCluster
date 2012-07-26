@@ -1,7 +1,6 @@
 import os
 import time
 import datetime
-import traceback
 import xml.dom.minidom
 
 from starcluster import utils
@@ -524,8 +523,7 @@ class SGELoadBalancer(LoadBalancer):
                 return self.stat
             except Exception:
                 log.warn("Failed to retrieve stats (%d/%d):" %
-                         (i + 1, retries))
-                log.debug(traceback.format_exc())
+                         (i + 1, retries), exc_info=True)
                 log.warn("Retrying in %ds" % self.polling_interval)
                 time.sleep(self.polling_interval)
         raise exception.BaseException(
@@ -677,8 +675,7 @@ class SGELoadBalancer(LoadBalancer):
                 log.info("Done adding nodes at %s" %
                          str(datetime.datetime.utcnow()))
             except Exception:
-                log.error("Failed to add new host")
-                log.debug(traceback.format_exc())
+                log.error("Failed to add new host", exc_info=True)
 
     def _eval_remove_node(self):
         """
@@ -710,8 +707,8 @@ class SGELoadBalancer(LoadBalancer):
                 self._cluster.remove_node(node)
                 self.__last_cluster_mod_time = datetime.datetime.utcnow()
             except Exception:
-                log.error("Failed to remove node %s" % node.alias)
-                log.debug(traceback.format_exc())
+                log.error("Failed to remove node %s" % node.alias,
+                          exc_info=True)
 
     def _eval_terminate_cluster(self):
         """

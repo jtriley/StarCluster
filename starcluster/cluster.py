@@ -6,7 +6,6 @@ import string
 import pprint
 import base64
 import cPickle
-import traceback
 
 from starcluster import utils
 from starcluster import static
@@ -1505,14 +1504,11 @@ class Cluster(object):
         except exception.MasterDoesNotExist:
             raise
         except Exception, e:
-            log.error("Error occurred while running plugin '%s':" %
-                      plugin_name)
+            msg = "Error occurred while running plugin '%s':" % plugin_name
             if isinstance(e, exception.ThreadPoolException):
-                e.print_excs()
-                log.debug(e.format_excs())
+                log.error('\n'.join(msg, e.format_excs()))
             else:
-                traceback.print_exc()
-                log.debug(traceback.format_exc())
+                log.error(msg, exc_info=True)
 
     def ssh_to_master(self, user='root', command=None, forward_x11=False):
         return self.ssh_to_node('master', user=user, command=command,
