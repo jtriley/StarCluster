@@ -257,7 +257,7 @@ class StarClusterCLI(object):
             log.error("%s: %s" % (e.error_code, e.error_message))
             sys.exit(1)
         except socket.error, e:
-            log.error("Unable to connect: %s" % e)
+            log.exception("Connection error:")
             log.error("Check your internet connection?")
             sys.exit(1)
         except exception.ThreadPoolException, e:
