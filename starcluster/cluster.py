@@ -105,7 +105,7 @@ class ClusterManager(managers.Manager):
         return self.get_cluster_or_none(tag_name) is not None
 
     def ssh_to_master(self, cluster_name, user='root', command=None,
-                      forward_x11=False):
+                      forward_x11=False, forward_agent=False):
         """
         ssh to master node of cluster_name
 
@@ -113,10 +113,12 @@ class ClusterManager(managers.Manager):
         """
         cluster = self.get_cluster(cluster_name)
         return cluster.ssh_to_master(user=user, command=command,
-                                     forward_x11=forward_x11)
+                                     forward_x11=forward_x11,
+                                     forward_agent=forward_agent)
 
     def ssh_to_cluster_node(self, cluster_name, node_id, user='root',
-                            command=None, forward_x11=False):
+                            command=None, forward_x11=False,
+                            forward_agent=False):
         """
         ssh to a node in cluster_name that has either an id,
         dns name, or alias matching node_id
@@ -125,7 +127,8 @@ class ClusterManager(managers.Manager):
         """
         cluster = self.get_cluster(cluster_name)
         return cluster.ssh_to_node(node_id, user=user, command=command,
-                                   forward_x11=forward_x11)
+                                   forward_x11=forward_x11,
+                                   forward_agent=forward_agent)
 
     def _get_cluster_name(self, cluster_name):
         """
@@ -1510,17 +1513,21 @@ class Cluster(object):
             else:
                 log.error(msg, exc_info=True)
 
-    def ssh_to_master(self, user='root', command=None, forward_x11=False):
+    def ssh_to_master(self, user='root', command=None, forward_x11=False,
+                      forward_agent=False):
         return self.ssh_to_node('master', user=user, command=command,
-                                forward_x11=forward_x11)
+                                forward_x11=forward_x11,
+                                forward_agent=forward_agent)
 
-    def ssh_to_node(self, alias, user='root', command=None, forward_x11=False):
+    def ssh_to_node(self, alias, user='root', command=None, forward_x11=False,
+                    forward_agent=False):
         node = self.get_node_by_alias(alias)
         node = node or self.get_node_by_dns_name(alias)
         node = node or self.get_node_by_id(alias)
         if not node:
             raise exception.InstanceDoesNotExist(alias, label='node')
-        return node.shell(user=user, forward_x11=forward_x11, command=command)
+        return node.shell(user=user, forward_x11=forward_x11,
+                          forward_agent=forward_agent, command=command)
 
 
 class ClusterValidator(validators.Validator):
