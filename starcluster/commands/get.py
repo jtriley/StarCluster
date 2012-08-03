@@ -31,7 +31,7 @@ class CmdGet(ClusterCompleter):
         parser.add_option("-u", "--user", dest="user", default=None,
                           help="Transfer files as USER ")
         parser.add_option("-n", "--node", dest="node", default="master",
-                          help="Transfer files to NODE (defaults to master)")
+                          help="Transfer files from NODE (defaults to master)")
 
     def execute(self, args):
         if len(args) < 3:
