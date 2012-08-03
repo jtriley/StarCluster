@@ -921,7 +921,8 @@ class Node(object):
                                            private_key=self.key_location)
         return self._ssh
 
-    def shell(self, user=None, forward_x11=False, command=None):
+    def shell(self, user=None, forward_x11=False, forward_agent=False,
+              command=None):
         """
         Attempts to launch an interactive shell by first trying the system's
         ssh client. If the system does not have the ssh command it falls back
@@ -946,6 +947,8 @@ class Node(object):
             sshopts = '-i %s' % self.key_location
             if forward_x11:
                 sshopts += ' -Y'
+            if forward_agent:
+                sshopts += ' -A'
             ssh_cmd = static.SSH_TEMPLATE % dict(opts=sshopts, user=user,
                                                  host=self.dns_name)
             if command:
@@ -957,6 +960,9 @@ class Node(object):
             log.debug("Using Pure-Python SSH client")
             if forward_x11:
                 log.warn("X11 Forwarding not available in Python SSH client")
+            if forward_agent:
+                log.warn("Authentication agent forwarding not available in " +
+                         "Python SSH client")
             if command:
                 orig_user = self.ssh.get_current_user()
                 self.ssh.switch_user(user)
