@@ -24,6 +24,12 @@ class CmdSshInstance(InstanceCompleter):
         parser.add_option("-u", "--user", dest="user", action="store",
                           type="string", default='root',
                           help="login as USER (defaults to root)")
+        parser.add_option("-X", "--forward-x11", dest="forward_x11",
+                          action="store_true", default=False,
+                          help="enable X11 forwarding")
+        parser.add_option("-A", "--forward-agent", dest="forward_agent",
+                          action="store_true", default=False,
+                          help="enable authentication agent forwarding")
 
     def execute(self, args):
         if not args:
@@ -32,6 +38,8 @@ class CmdSshInstance(InstanceCompleter):
         instance = args[0]
         cmd = ' '.join(args[1:])
         retval = self.nm.ssh_to_node(instance, user=self.opts.user,
-                                     command=cmd)
+                                     command=cmd,
+                                     forward_x11=self.opts.forward_x11,
+                                     forward_agent=self.opts.forward_agent)
         if cmd and retval is not None:
             sys.exit(retval)
