@@ -1572,10 +1572,10 @@ class ClusterValidator(validators.Validator):
                 "Running cluster's availability_zone (%s) != %s" %
                 (mazone, cluster.zone.name))
         for node in nodes:
-            if node.key_name != self.keyname:
+            if node.key_name != cluster.keyname:
                 raise exception.ClusterValidationError(
                     "%s's key_name (%s) != %s" % (node.alias, node.key_name,
-                                                  self.keyname))
+                                                  cluster.keyname))
 
     def validate(self):
         """
