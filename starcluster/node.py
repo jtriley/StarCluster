@@ -18,16 +18,11 @@ class NodeManager(managers.Manager):
     """
     Manager class for Node objects
     """
-    def ssh_to_node(self, node_id, user='root', command=None):
+    def ssh_to_node(self, node_id, user='root', command=None,
+                    forward_x11=False, forward_agent=False):
         node = self.get_node(node_id, user=user)
-        if command:
-            current_user = node.ssh.get_current_user()
-            node.ssh.switch_user(user)
-            node.ssh.execute(command, silent=False)
-            node.ssh.switch_user(current_user)
-            return node.ssh.get_last_status()
-        else:
-            node.shell(user=user)
+        return node.shell(user=user, command=command, forward_x11=forward_x11,
+                          forward_agent=forward_agent)
 
     def get_node(self, node_id, user='root'):
         """Factory for Node class"""
@@ -921,7 +916,8 @@ class Node(object):
                                            private_key=self.key_location)
         return self._ssh
 
-    def shell(self, user=None, forward_x11=False, command=None):
+    def shell(self, user=None, forward_x11=False, forward_agent=False,
+              command=None):
         """
         Attempts to launch an interactive shell by first trying the system's
         ssh client. If the system does not have the ssh command it falls back
@@ -946,6 +942,8 @@ class Node(object):
             sshopts = '-i %s' % self.key_location
             if forward_x11:
                 sshopts += ' -Y'
+            if forward_agent:
+                sshopts += ' -A'
             ssh_cmd = static.SSH_TEMPLATE % dict(opts=sshopts, user=user,
                                                  host=self.dns_name)
             if command:
@@ -957,6 +955,9 @@ class Node(object):
             log.debug("Using Pure-Python SSH client")
             if forward_x11:
                 log.warn("X11 Forwarding not available in Python SSH client")
+            if forward_agent:
+                log.warn("Authentication agent forwarding not available in " +
+                         "Python SSH client")
             if command:
                 orig_user = self.ssh.get_current_user()
                 self.ssh.switch_user(user)
