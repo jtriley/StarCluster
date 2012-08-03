@@ -25,6 +25,9 @@ class CmdSshMaster(ClusterCompleter):
         parser.add_option("-X", "--forward-x11", dest="forward_x11",
                           action="store_true", default=False,
                           help="enable X11 forwarding")
+        parser.add_option("-A", "--forward-agent", dest="forward_agent",
+                          action="store_true", default=False,
+                          help="enable authentication agent forwarding")
 
     def execute(self, args):
         if not args:
@@ -33,6 +36,7 @@ class CmdSshMaster(ClusterCompleter):
         cmd = ' '.join(args[1:])
         retval = self.cm.ssh_to_master(clname, user=self.opts.user,
                                        command=cmd,
-                                       forward_x11=self.opts.forward_x11)
+                                       forward_x11=self.opts.forward_x11,
+                                       forward_agent=self.opts.forward_agent)
         if cmd and retval is not None:
             sys.exit(retval)
