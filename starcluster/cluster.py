@@ -737,6 +737,7 @@ class Cluster(object):
         if not placement_group and instance_type in static.CLUSTER_TYPES:
             placement_group = self.placement_group.name
         image_id = image_id or self.node_image_id
+        security_groups = [cluster_sg] + self.static_security_groups
         count = len(aliases) if not spot_bid else 1
         kwargs = dict(price=spot_bid, instance_type=instance_type,
                       min_count=count, max_count=count, count=count,
@@ -1586,6 +1587,14 @@ class ClusterValidator(validators.Validator):
                     "%s's key_name (%s) != %s" % (node.alias, node.key_name,
                                                   cluster.keyname))
 
+    def validate_static_groups(self):
+        """
+        Check that the specified security groups actually exist.
+        """
+        for group in self.static_security_groups:
+			# This will throw an exception if the security group does not exist.
+			self.ec2.get_security_groups(filters={'group-name': group})
+
     def validate(self):
         """
         Checks that all cluster template settings are valid and raises an
@@ -1607,6 +1616,7 @@ class ClusterValidator(validators.Validator):
             self.validate_image_settings()
             self.validate_instance_types()
             self.validate_cluster_compute()
+            self.validate_static_groups()
             log.info('Cluster template settings are valid')
             return True
         except exception.ClusterValidationError, e:
