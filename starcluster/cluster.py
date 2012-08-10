@@ -341,7 +341,7 @@ class Cluster(object):
                  plugins=[],
                  permissions=[],
                  static_security_groups=[],
-                 refresh_interval=30,ssh
+                 refresh_interval=30,
                  disable_queue=False,
                  num_threads=20,
                  disable_threads=False,
@@ -1592,8 +1592,12 @@ class ClusterValidator(validators.Validator):
         Check that the specified security groups actually exist.
         """
         for group in self.static_security_groups:
-			# This will throw an exception if the security group does not exist.
-			self.ec2.get_security_groups(filters={'group-name': group})
+            # This will throw an exception if the security group does not exist.
+            try:
+                self.ec2.get_security_groups(filters={'group-name': group})
+            except:
+                raise exception.ClusterValidationError(
+                    "Specified security group does not exist: {0}".format(group))
 
     def validate(self):
         """
