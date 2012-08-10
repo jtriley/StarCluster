@@ -430,18 +430,33 @@ will be NFS-shared to the rest of the cluster nodes.
 
 .. _config_permissions:
 
-Amazon Security Group Permissions
----------------------------------
+Amazon Security Groups
+----------------------
 When starting a cluster each node is added to a common security group. This
 security group is created by StarCluster and has a name of the form
 ``@sc-<cluster_tag>`` where ``<cluster_tag>`` is the name you provided to the
 **start** command.
 
-By default, StarCluster adds a permission to this security group that allows
-access to port 22 (ssh) from all IP addresses. This is needed so that
-StarCluster can connect to the instances and configure them properly. If you
-want to specify additional security group permissions to be set after starting
-your cluster you can do so in the config by creating one or more
+You can specify any number of security groups to which the cluster nodes will
+be added. To do this, specify a **STATIC_SECURITY_GROUPS** setting in a
+**[cluster]** section and set the value to be a comma-delimited list of
+security group names. The specified security groups must exist and will not
+be automatically created.
+
+.. code-block:: ini
+
+    [cluster smallcluster]
+    #...
+    STATIC_SECURITY_GROUPS = default, services
+    #...
+
+Amazon Security Group Permissions
+---------------------------------
+By default, StarCluster adds a permission to the ``@sc-<cluster_tag>`` security
+group that allows access to port 22 (ssh) from all IP addresses. This is needed
+so that StarCluster can connect to the instances and configure them properly.
+If you want to specify additional security group permissions to be set after
+starting your cluster you can do so in the config by creating one or more
 **[permission]** sections. These sections can then be specified in one or more
 cluster templates. Here's an example that opens port 80 (web server) to the
 world for the ``smallcluster`` template:
