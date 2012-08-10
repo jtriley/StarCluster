@@ -340,7 +340,8 @@ class Cluster(object):
                  volumes=[],
                  plugins=[],
                  permissions=[],
-                 refresh_interval=30,
+                 static_security_groups=[],
+                 refresh_interval=30,ssh
                  disable_queue=False,
                  num_threads=20,
                  disable_threads=False,
@@ -375,6 +376,7 @@ class Cluster(object):
         self.disable_queue = disable_queue
         self.num_threads = num_threads
         self.disable_threads = disable_threads
+        self.static_security_groups=static_security_groups
         self.force_spot_master = force_spot_master
 
         self._cluster_group = None
@@ -738,7 +740,7 @@ class Cluster(object):
         count = len(aliases) if not spot_bid else 1
         kwargs = dict(price=spot_bid, instance_type=instance_type,
                       min_count=count, max_count=count, count=count,
-                      key_name=self.keyname, security_groups=[cluster_sg],
+                      key_name=self.keyname, security_groups=security_groups,
                       availability_zone_group=cluster_sg,
                       launch_group=cluster_sg,
                       placement=zone or getattr(self.zone, 'name', None),
