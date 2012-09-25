@@ -1509,7 +1509,7 @@ class Cluster(object):
         except Exception, e:
             msg = "Error occurred while running plugin '%s':" % plugin_name
             if isinstance(e, exception.ThreadPoolException):
-                log.error('\n'.join(msg, e.format_excs()))
+                log.error('\n'.join([msg, e.format_excs()]))
             else:
                 log.error(msg, exc_info=True)
 
