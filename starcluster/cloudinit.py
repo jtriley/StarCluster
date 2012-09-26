@@ -38,11 +38,6 @@ def _get_type_from_fp(fp):
     raise exception.BaseException("invalid user data type: %s" % line)
 
 
-def mp_userdata_from_strings(strings, compress=False):
-    files = [StringIO.StringIO(s) for s in strings]
-    return mp_userdata_from_files(files, compress=compress)
-
-
 def mp_userdata_from_files(files, compress=False):
     outer = multipart.MIMEMultipart()
     mtypes = []
