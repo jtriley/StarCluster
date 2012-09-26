@@ -628,6 +628,7 @@ class Cluster(object):
                     self._master = node
             if not self._master:
                 raise exception.MasterDoesNotExist()
+        self._master.key_location = self.key_location
         return self._master
 
     @property
