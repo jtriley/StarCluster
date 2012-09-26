@@ -12,6 +12,7 @@ from email.mime import base
 from email.mime import text
 from email.mime import multipart
 
+from starcluster import utils
 from starcluster import exception
 
 starts_with_mappings = {
@@ -134,3 +135,61 @@ def get_tar_from_userdata(string):
     gzf = StringIO.StringIO(b64str.decode('base64'))
     tarstr = StringIO.StringIO(gzip.GzipFile(fileobj=gzf, mode='r').read())
     return tarfile.TarFile(fileobj=tarstr, mode='r')
+
+ENABLE_ROOT_LOGIN_SCRIPT = """\
+#!/usr/bin/env python
+import re;
+r = re.compile(',?command=".*",?')
+akf = '/root/.ssh/authorized_keys'
+fixed = r.subn('', open(akf).read())[0]
+open(akf, 'w').write(fixed)
+"""
+
+
+def bundle_userdata_files(fileobjs, tar_fname=None, compress=True,
+                          use_cloudinit=True):
+    script_type = starts_with_mappings['#!']
+    ignored_type = starts_with_mappings['#ignored']
+    for i, fobj in enumerate(fileobjs):
+        ftype = _get_type_from_fp(fobj)
+        if ftype == ignored_type:
+            fileobjs[i] = utils.string_to_file("#!/bin/false\n" + fobj.read(),
+                                               fobj.name)
+            continue
+        elif ftype != script_type:
+            use_cloudinit = True
+    if use_cloudinit:
+        fileobjs += [utils.string_to_file('#cloud-config\ndisable_root: 0',
+                                          'starcluster_cloud_config.txt')]
+        return mp_userdata_from_files(fileobjs, compress=compress)
+    else:
+        fileobjs += [utils.string_to_file(ENABLE_ROOT_LOGIN_SCRIPT,
+                                          'starcluster_enable_root_login.sh')]
+        return userdata_script_from_files(fileobjs, tar_fname=tar_fname)
+
+
+def unbundle_userdata(string, decompress=True):
+    udata = {}
+    if string.startswith('#!'):
+        tf = get_tar_from_userdata(string)
+        files = tf.getmembers()
+        for f in files:
+            udata[f.name] = tf.extractfile(f).read()
+    else:
+        mpmime = get_mp_from_userdata(string, decompress=decompress)
+        files = mpmime.get_payload()
+        for f in files:
+            udata[f.get_filename()] = f.get_payload()
+    return udata
+
+
+if __name__ == '__main__':
+    files = utils.strings_to_files(['#!/bin/bash\nhostname',
+                                    '#!/bin/bash\ndate'],
+                                   fname_prefix='sc_userdata_file')
+    files += utils.string_to_file('#ignored\nblahblahblah', 'sc_metadata')
+    script = bundle_userdata_files(files, use_cloudinit=False)
+    f = open('/tmp/tester.sh', 'w')
+    f.write(script)
+    f.close()
+    os.chmod('/tmp/tester.sh', 0750)
