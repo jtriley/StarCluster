@@ -9,6 +9,7 @@ import types
 import string
 import random
 import inspect
+import StringIO
 import calendar
 import urlparse
 import decorator
@@ -545,3 +546,18 @@ class struct_passwd(tuple):
             return self[self.attrs.index(attr)]
         except ValueError:
             raise AttributeError
+
+
+def string_to_file(string, filename):
+    s = StringIO.StringIO(string)
+    s.name = filename
+    return s
+
+
+def strings_to_files(strings, fname_prefix=''):
+    fileobjs = [StringIO.StringIO(s) for s in strings]
+    if fname_prefix:
+        fname_prefix += '_'
+    for i, f in enumerate(fileobjs):
+        f.name = '%s%d' % (fname_prefix, i)
+    return fileobjs
