@@ -4,11 +4,14 @@ Utils module for StarCluster
 
 import os
 import re
+import zlib
 import time
+import json
 import types
 import string
 import random
 import inspect
+import cPickle
 import StringIO
 import calendar
 import urlparse
@@ -546,6 +549,20 @@ class struct_passwd(tuple):
             return self[self.attrs.index(attr)]
         except ValueError:
             raise AttributeError
+
+
+def dump_compress_encode(obj, use_json=False):
+    serializer = cPickle
+    if use_json:
+        serializer = json
+    return zlib.compress(serializer.dumps(obj)).encode('base64')
+
+
+def decode_uncompress_load(string, use_json=False):
+    serializer = cPickle
+    if use_json:
+        serializer = json
+    return serializer.loads(zlib.decompress(string.decode('base64')))
 
 
 def string_to_file(string, filename):
