@@ -18,19 +18,7 @@ starts_with_mappings = {
     '#upstart-job': 'text/upstart-job',
     '#part-handler': 'text/part-handler',
     '#cloud-boothook': 'text/cloud-boothook',
-    '#sc-store': 'text/sc-store'
-}
-
-sc_part_handler = """\
-#part-handler
-def list_types():
-    return(["text/sc-store"])
-def handle_part(data, ctype, filename, payload):
-    pass
-"""
-
-part_handler_mappings = {
-    'text/sc-store': sc_part_handler
+    '#ignored': 'text/ignore'
 }
 
 
@@ -74,15 +62,6 @@ def mp_userdata_from_files(files, compress=False):
         msg.add_header('Content-Disposition', 'attachment',
                        filename=os.path.basename(fname))
         outer.attach(msg)
-    for mtype in mtypes:
-        if mtype in part_handler_mappings:
-            fp = StringIO.StringIO(part_handler_mappings.get(mtype))
-            maintype, subtype = mtype.split('/', 1)
-            msg = text.MIMEText(fp.read(), _subtype="part-handler")
-            fp.close()
-            msg.add_header('Content-Disposition', 'attachment',
-                           filename="%s-%s-handler.txt" % (maintype, subtype))
-            outer.attach(msg)
     userdata = outer.as_string()
     if compress:
         s = StringIO.StringIO()
