@@ -51,7 +51,8 @@ def mp_userdata_from_files(files, compress=False):
             msg = text.MIMEText(fp.read(), _subtype=subtype)
             fp.close()
         else:
-            fp = open(fp.name, 'rb')
+            if hasattr(fp, 'name'):
+                fp = open(fp.name, 'rb')
             msg = base.MIMEBase(maintype, subtype)
             msg.set_payload(fp.read())
             fp.close()
