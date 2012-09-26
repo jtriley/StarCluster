@@ -1,6 +1,10 @@
 import os
+import re
+import time
 import gzip
 import email
+import base64
+import tarfile
 import StringIO
 
 from email import encoders
@@ -81,3 +85,57 @@ def get_mp_from_userdata(userdata, decompress=False):
         userdata = gfile.read()
         gfile.close()
     return email.message_from_string(userdata)
+
+
+SCRIPT_TEMPLATE = """\
+#!/usr/bin/env python
+import os, sys, stat, gzip, base64, tarfile, StringIO
+os.chdir(os.path.dirname(sys.argv[0]))
+decoded = StringIO.StringIO(base64.b64decode('''%s'''))
+gf = gzip.GzipFile(mode='r', fileobj=decoded)
+tf = tarfile.TarFile(mode='r', fileobj=gf)
+for ti in tf:
+    tf.extract(ti)
+    is_exec = (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH) & ti.mode != 0
+    if ti.isfile() and is_exec:
+        os.system(os.path.abspath(ti.name))
+"""
+
+
+def userdata_script_from_files(fileobjs, tar_fname=None):
+    tar_fname = tar_fname or 'sc_userdata.tar'
+    tfd = StringIO.StringIO()
+    tf = tarfile.TarFile(tar_fname, mode='w', fileobj=tfd)
+    for f in fileobjs:
+        if hasattr(f, 'fileno'):
+            ti = tf.gettarinfo(fileobj=f)
+        else:
+            ti = tarfile.TarInfo()
+        ti.name = os.path.basename(f.name)
+        ti.mtime = time.time()
+        if f.read(2) == '#!':
+            ti.mode = 0755
+        f.seek(0)
+        if hasattr(f, 'buf'):
+            ti.size = len(f.buf)
+        tf.addfile(ti, f)
+    tf.close()
+    tfd.seek(0)
+    gfd = StringIO.StringIO()
+    gzip_fname = os.path.extsep.join([tar_fname, '.gz'])
+    gf = gzip.GzipFile(gzip_fname, mode='w', fileobj=gfd)
+    gf.write(tfd.read())
+    gf.close()
+    gfd.seek(0)
+    gfs = StringIO.StringIO(gfd.read())
+    b64str = base64.b64encode(gfs.read())
+    script = SCRIPT_TEMPLATE % b64str
+    return script
+
+
+def get_tar_from_userdata(string):
+    r = re.compile("b64decode\('''(.*)'''\)")
+    b64str = r.search(string).groups()[0]
+    gzf = StringIO.StringIO(b64str.decode('base64'))
+    tarstr = StringIO.StringIO(gzip.GzipFile(fileobj=gzf, mode='r').read())
+    return tarfile.TarFile(fileobj=tarstr, mode='r')
