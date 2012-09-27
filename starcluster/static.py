@@ -199,4 +199,5 @@ CLUSTER_SETTINGS = {
     'permissions': (list, False, [], None, None),
     'disable_queue': (bool, False, False, None, None),
     'force_spot_master': (bool, False, False, None, None),
+    'disable_cloudinit': (bool, False, False, None, None),
 }
