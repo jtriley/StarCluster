@@ -10,6 +10,7 @@ from starcluster import static
 from starcluster import sshutils
 from starcluster import awsutils
 from starcluster import managers
+from starcluster import cloudinit
 from starcluster import exception
 from starcluster.logger import log
 
@@ -72,6 +73,7 @@ class Node(object):
         self._ssh = None
         self._num_procs = None
         self._memory = None
+        self._user_data = None
 
     def __repr__(self):
         return '<Node: %s (%s)>' % (self.alias, self.id)
@@ -92,6 +94,13 @@ class Node(object):
                 time.sleep(5)
 
     @property
+    def user_data(self):
+        if not self._user_data:
+            raw = self._get_user_data()
+            self._user_data = cloudinit.unbundle_userdata(raw)
+        return self._user_data
+
+    @property
     def alias(self):
         """
         Fetches the node's alias stored in a tag from either the instance
@@ -101,24 +110,28 @@ class Node(object):
         if not self._alias:
             alias = self.tags.get('alias')
             if not alias:
-                user_data = self._get_user_data(tries=5)
-                aliases = user_data.split('|')
+                aliasestxt = self.user_data.get('starcluster_aliases.txt')
+                aliases = aliasestxt.splitlines()[2:]
                 index = self.ami_launch_index
                 try:
                     alias = aliases[index]
                 except IndexError:
-                    log.debug(
-                        "invalid user_data: %s (index: %d)" % (aliases, index))
                     alias = None
+                    log.debug("invalid aliases file in user_data:\n%s" %
+                              aliasestxt)
                 if not alias:
                     raise exception.BaseException(
                         "instance %s has no alias" % self.id)
                 self.add_tag('alias', alias)
-            name = self.tags.get('Name')
-            if not name:
+            if not self.tags.get('Name'):
                 self.add_tag('Name', alias)
             self._alias = alias
         return self._alias
+
+    def get_plugins(self):
+        plugstxt = self.user_data.get('starcluster_plugins.txt')
+        payload = plugstxt.split('\n', 2)[2]
+        return utils.decode_uncompress_load(payload)
 
     def _remove_all_tags(self):
         tags = self.tags.keys()[:]

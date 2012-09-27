@@ -11,6 +11,7 @@ from starcluster import spinner
 from starcluster import iptools
 from starcluster import sshutils
 from starcluster import managers
+from starcluster import cloudinit
 from starcluster import exception
 from starcluster import threadpool
 from starcluster import validators
@@ -344,6 +345,7 @@ class Cluster(object):
                  disable_threads=False,
                  cluster_group=None,
                  force_spot_master=False,
+                 disable_cloudinit=False,
                  **kwargs):
 
         now = time.strftime("%Y%m%d%H%M")
@@ -374,6 +376,7 @@ class Cluster(object):
         self.num_threads = num_threads
         self.disable_threads = disable_threads
         self.force_spot_master = force_spot_master
+        self.disable_cloudinit = disable_cloudinit
 
         self._cluster_group = None
         self._placement_group = None
@@ -558,10 +561,12 @@ class Cluster(object):
         self.update(cluster_settings)
         if load_plugins:
             try:
-                self.plugins = self.load_plugins(self._plugins)
-            except exception.PluginError, e:
-                log.warn(e)
-                log.warn("An error occurred while loading plugins")
+                self.plugins = self.master_node.get_plugins()
+            except exception.MasterDoesNotExist:
+                log.warn("Unable to load plugins - no master node found")
+            except exception.PluginError:
+                log.warn("An error occurred while loading plugins: ",
+                         exc_info=True)
                 log.warn("Not running any plugins")
             except Exception, e:
                 raise exception.ClusterReceiptError(
@@ -737,6 +742,17 @@ class Cluster(object):
                                  placement_group=placement_group,
                                  spot_bid=spot_bid, force_flat=force_flat)[0]
 
+    def _get_cluster_userdata(self, aliases):
+        alias_file = utils.string_to_file('\n'.join(['#ignored'] + aliases),
+                                          'starcluster_aliases.txt')
+        plugins = utils.dump_compress_encode(self.plugins)
+        plugins_file = utils.string_to_file('\n'.join(['#ignored', plugins]),
+                                            'starcluster_plugins.txt')
+        udfiles = [alias_file, plugins_file]
+        use_cloudinit = not self.disable_cloudinit
+        return cloudinit.bundle_userdata_files(udfiles,
+                                               use_cloudinit=use_cloudinit)
+
     def create_nodes(self, aliases, image_id=None, instance_type=None,
                      zone=None, placement_group=None, spot_bid=None,
                      force_flat=False):
@@ -755,18 +771,19 @@ class Cluster(object):
             placement_group = self.placement_group.name
         image_id = image_id or self.node_image_id
         count = len(aliases) if not spot_bid else 1
+        user_data = self._get_cluster_userdata(aliases)
         kwargs = dict(price=spot_bid, instance_type=instance_type,
                       min_count=count, max_count=count, count=count,
                       key_name=self.keyname, security_groups=[cluster_sg],
                       availability_zone_group=cluster_sg,
                       launch_group=cluster_sg,
                       placement=zone or getattr(self.zone, 'name', None),
-                      user_data='|'.join(aliases),
+                      user_data=user_data,
                       placement_group=placement_group)
         resvs = []
         if spot_bid:
             for alias in aliases:
-                kwargs['user_data'] = alias
+                kwargs['user_data'] = self._get_cluster_userdata([alias])
                 resvs.extend(self.ec2.request_instances(image_id, **kwargs))
         else:
             resvs.append(self.ec2.request_instances(image_id, **kwargs))
