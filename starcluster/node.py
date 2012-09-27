@@ -10,7 +10,7 @@ from starcluster import static
 from starcluster import sshutils
 from starcluster import awsutils
 from starcluster import managers
-from starcluster import cloudinit
+from starcluster import userdata
 from starcluster import exception
 from starcluster.logger import log
 
@@ -97,7 +97,7 @@ class Node(object):
     def user_data(self):
         if not self._user_data:
             raw = self._get_user_data()
-            self._user_data = cloudinit.unbundle_userdata(raw)
+            self._user_data = userdata.unbundle_userdata(raw)
         return self._user_data
 
     @property

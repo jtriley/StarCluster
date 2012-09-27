@@ -11,7 +11,7 @@ from starcluster import spinner
 from starcluster import iptools
 from starcluster import sshutils
 from starcluster import managers
-from starcluster import cloudinit
+from starcluster import userdata
 from starcluster import exception
 from starcluster import threadpool
 from starcluster import validators
@@ -750,8 +750,8 @@ class Cluster(object):
                                             'starcluster_plugins.txt')
         udfiles = [alias_file, plugins_file]
         use_cloudinit = not self.disable_cloudinit
-        return cloudinit.bundle_userdata_files(udfiles,
-                                               use_cloudinit=use_cloudinit)
+        return userdata.bundle_userdata_files(udfiles,
+                                              use_cloudinit=use_cloudinit)
 
     def create_nodes(self, aliases, image_id=None, instance_type=None,
                      zone=None, placement_group=None, spot_bid=None,
