@@ -606,7 +606,9 @@ class Cluster(object):
                      master_image_id=self.master_image_id,
                      master_instance_type=self.master_instance_type,
                      node_image_id=self.node_image_id,
-                     node_instance_type=self.node_instance_type),
+                     node_instance_type=self.node_instance_type,
+                     disable_queue=self.disable_queue,
+                     disable_cloudinit=self.disable_cloudinit),
                 use_json=True)
             if not static.CORE_TAG in sg.tags:
                 sg.add_tag('@sc-core', core_settings)
