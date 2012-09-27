@@ -438,7 +438,7 @@ class SSHClient(object):
                 break
         self.scp.put(localpaths, remote_path=remotepath, recursive=recursive)
 
-    def execute_async(self, command, source_profile=False):
+    def execute_async(self, command, source_profile=True):
         """
         Executes a remote command so that it continues running even after this
         SSH connection closes. The remote process will be put into the
@@ -451,7 +451,7 @@ class SSHClient(object):
     def get_last_status(self):
         return self.__last_status
 
-    def get_status(self, command, source_profile=False):
+    def get_status(self, command, source_profile=True):
         """
         Execute a remote command and return the exit status
         """
@@ -493,7 +493,7 @@ class SSHClient(object):
 
     def execute(self, command, silent=True, only_printable=False,
                 ignore_exit_status=False, log_output=True, detach=False,
-                source_profile=False, raise_on_failure=False):
+                source_profile=True, raise_on_failure=False):
         """
         Execute a remote command and return stdout/stderr
 

@@ -172,8 +172,7 @@ class IPCluster11(ClusterSetup):
         log.info("Starting IPython cluster with %i engines" % n)
         # cleanup existing connection files, to prevent their use
         master.ssh.execute("rm -f %s/security/*.json" % profile_dir)
-        master.ssh.execute("ipcluster start --n=%i --delay=5 --daemonize" % n,
-                           source_profile=True)
+        master.ssh.execute("ipcluster start --n=%i --delay=5 --daemonize" % n)
         # wait for JSON file to exist
         json = '%s/security/ipcontroller-client.json' % profile_dir
         log.info("Waiting for JSON connector file...",
@@ -263,8 +262,7 @@ class IPCluster11(ClusterSetup):
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         n = node.num_processors
         log.info("Adding %i engines on %s to ipcluster" % (n, node.alias))
-        node.ssh.execute("ipcluster engines --n=%i --daemonize" % n,
-                         source_profile=True)
+        node.ssh.execute("ipcluster engines --n=%i --daemonize" % n)
 
 
 class IPCluster(ClusterSetup):
@@ -316,7 +314,7 @@ class IPClusterStop(ClusterSetup):
     def run(self, nodes, master, user, user_shell, volumes):
         log.info("Shutting down IPython cluster")
         master.ssh.switch_user(user)
-        master.ssh.execute("ipcluster stop", source_profile=True)
+        master.ssh.execute("ipcluster stop")
         time.sleep(2)
         master.ssh.execute("pkill -f ipcontrollerapp.py",
                            ignore_exit_status=True)

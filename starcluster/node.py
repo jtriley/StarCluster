@@ -974,7 +974,7 @@ class Node(object):
             if command:
                 orig_user = self.ssh.get_current_user()
                 self.ssh.switch_user(user)
-                self.ssh.execute(command, silent=False, source_profile=True)
+                self.ssh.execute(command, silent=False)
                 self.ssh.switch_user(orig_user)
                 return self.ssh.get_last_status()
             self.ssh.interactive_shell(user=user)

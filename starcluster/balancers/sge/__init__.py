@@ -488,16 +488,12 @@ class SGELoadBalancer(LoadBalancer):
         qatime = self.get_qatime(now)
         qacct_cmd = 'qacct -j -b ' + qatime
         qstat_cmd = 'qstat -u \* -xml'
-        qhostxml = '\n'.join(master.ssh.execute('qhost -xml',
-                                                log_output=True,
-                                                source_profile=True,
+        qhostxml = '\n'.join(master.ssh.execute('qhost -xml', log_output=True,
                                                 raise_on_failure=True))
         qstatxml = '\n'.join(master.ssh.execute(qstat_cmd, log_output=True,
-                                                source_profile=True,
                                                 raise_on_failure=True))
         qacct = '\n'.join(master.ssh.execute(qacct_cmd, log_output=True,
-                                             ignore_exit_status=True,
-                                             source_profile=True))
+                                             ignore_exit_status=True))
         stats = SGEStats()
         stats.parse_qhost(qhostxml)
         stats.parse_qstat(qstatxml, queues=["all.q", ""])
