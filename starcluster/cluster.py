@@ -744,10 +744,10 @@ class Cluster(object):
 
     def _get_cluster_userdata(self, aliases):
         alias_file = utils.string_to_file('\n'.join(['#ignored'] + aliases),
-                                          'starcluster_aliases.txt')
+                                          static.UD_ALIASES_FNAME)
         plugins = utils.dump_compress_encode(self.plugins)
         plugins_file = utils.string_to_file('\n'.join(['#ignored', plugins]),
-                                            'starcluster_plugins.txt')
+                                            static.UD_PLUGINS_FNAME)
         udfiles = [alias_file, plugins_file]
         use_cloudinit = not self.disable_cloudinit
         return userdata.bundle_userdata_files(udfiles,

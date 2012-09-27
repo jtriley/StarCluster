@@ -110,7 +110,7 @@ class Node(object):
         if not self._alias:
             alias = self.tags.get('alias')
             if not alias:
-                aliasestxt = self.user_data.get('starcluster_aliases.txt')
+                aliasestxt = self.user_data.get(static.UD_ALIASES_FNAME)
                 aliases = aliasestxt.splitlines()[2:]
                 index = self.ami_launch_index
                 try:
@@ -129,7 +129,7 @@ class Node(object):
         return self._alias
 
     def get_plugins(self):
-        plugstxt = self.user_data.get('starcluster_plugins.txt')
+        plugstxt = self.user_data.get(static.UD_PLUGINS_FNAME)
         payload = plugstxt.split('\n', 2)[2]
         return utils.decode_uncompress_load(payload)
 

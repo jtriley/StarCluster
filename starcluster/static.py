@@ -72,6 +72,10 @@ VERSION_TAG = '-'.join([SECURITY_GROUP_PREFIX, 'version'])
 CORE_TAG = '-'.join([SECURITY_GROUP_PREFIX, 'core'])
 USER_TAG = '-'.join([SECURITY_GROUP_PREFIX, 'user'])
 
+# Internal StarCluster userdata filenames
+UD_PLUGINS_FNAME = "_sc_plugins.txt"
+UD_ALIASES_FNAME = "_sc_aliases.txt"
+
 INSTANCE_STATES = ['pending', 'running', 'shutting-down',
                    'terminated', 'stopping', 'stopped']
 VOLUME_STATUS = ['creating', 'available', 'in-use',
