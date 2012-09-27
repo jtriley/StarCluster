@@ -1,11 +1,9 @@
 import os
 import re
-import time
 import zlib
+import time
 import string
 import pprint
-import base64
-import cPickle
 
 from starcluster import utils
 from starcluster import static
@@ -13,6 +11,7 @@ from starcluster import spinner
 from starcluster import iptools
 from starcluster import sshutils
 from starcluster import managers
+from starcluster import userdata
 from starcluster import exception
 from starcluster import threadpool
 from starcluster import validators
@@ -346,6 +345,7 @@ class Cluster(object):
                  disable_threads=False,
                  cluster_group=None,
                  force_spot_master=False,
+                 disable_cloudinit=False,
                  **kwargs):
 
         now = time.strftime("%Y%m%d%H%M")
@@ -376,6 +376,7 @@ class Cluster(object):
         self.num_threads = num_threads
         self.disable_threads = disable_threads
         self.force_spot_master = force_spot_master
+        self.disable_cloudinit = disable_cloudinit
 
         self._cluster_group = None
         self._placement_group = None
@@ -529,37 +530,43 @@ class Cluster(object):
     def load_receipt(self, load_plugins=True):
         """
         Load the original settings used to launch this cluster into this
-        Cluster object. The settings are loaded from the cluster group's
-        description field.
+        Cluster object. Settings are loaded from cluster group tags and plugins
+        and volumes from the master node's user data.
         """
         try:
-            desc = self.cluster_group.description
-            version, b64data = desc.split('-', 1)
+            tags = self.cluster_group.tags
+            version = tags.get(static.VERSION_TAG, '')
             if utils.program_version_greater(version, static.VERSION):
                 d = dict(cluster=self.cluster_tag, old_version=static.VERSION,
                          new_version=version)
                 msg = user_msgs.version_mismatch % d
                 sep = '*' * 60
                 log.warn('\n'.join([sep, msg, sep]), extra={'__textwrap__': 1})
-            compressed_data = base64.b64decode(b64data)
-            pkl_data = zlib.decompress(compressed_data)
-            cluster_settings = cPickle.loads(str(pkl_data)).__dict__
-        except (cPickle.PickleError, zlib.error, ValueError, TypeError,
-                EOFError, IndexError), e:
+            cluster_settings = {}
+            if static.CORE_TAG in tags:
+                core = tags.get(static.CORE_TAG, '')
+                cluster_settings.update(
+                    utils.decode_uncompress_load(core, use_json=True))
+            if static.USER_TAG in tags:
+                user = tags.get(static.USER_TAG, '')
+                cluster_settings.update(
+                    utils.decode_uncompress_load(user, use_json=True))
+        except (zlib.error, ValueError, TypeError, EOFError, IndexError), e:
             log.debug('load receipt exception: ', exc_info=True)
             raise exception.IncompatibleCluster(self.cluster_group)
         except Exception, e:
+            log.debug('Failed to load cluster receipt:', exc_info=True)
             raise exception.ClusterReceiptError(
                 'failed to load cluster receipt: %s' % e)
-        for key in cluster_settings:
-            if hasattr(self, key):
-                setattr(self, key, cluster_settings.get(key))
+        self.update(cluster_settings)
         if load_plugins:
             try:
-                self.plugins = self.load_plugins(self._plugins)
-            except exception.PluginError, e:
-                log.warn(e)
-                log.warn("An error occurred while loading plugins")
+                self.plugins = self.master_node.get_plugins()
+            except exception.MasterDoesNotExist:
+                log.warn("Unable to load plugins - no master node found")
+            except exception.PluginError:
+                log.warn("An error occurred while loading plugins: ",
+                         exc_info=True)
                 log.warn("Not running any plugins")
             except Exception, e:
                 raise exception.ClusterReceiptError(
@@ -587,13 +594,31 @@ class Cluster(object):
     @property
     def cluster_group(self):
         if self._cluster_group is None:
-            ssh_port = static.DEFAULT_SSH_PORT
-            desc = base64.b64encode(zlib.compress(cPickle.dumps(self)))
-            desc = '-'.join([static.VERSION, desc])
+            desc = 'StarCluster-%s' % static.VERSION.replace('.', '_')
             sg = self.ec2.get_or_create_group(self._security_group,
-                                              desc,
+                                              description=desc,
                                               auth_ssh=True,
                                               auth_group_traffic=True)
+            if not static.VERSION_TAG in sg.tags:
+                sg.add_tag(static.VERSION_TAG, str(static.VERSION))
+            core_settings = utils.dump_compress_encode(
+                dict(cluster_size=self.cluster_size,
+                     master_image_id=self.master_image_id,
+                     master_instance_type=self.master_instance_type,
+                     node_image_id=self.node_image_id,
+                     node_instance_type=self.node_instance_type,
+                     disable_queue=self.disable_queue,
+                     disable_cloudinit=self.disable_cloudinit),
+                use_json=True)
+            if not static.CORE_TAG in sg.tags:
+                sg.add_tag('@sc-core', core_settings)
+            user_settings = utils.dump_compress_encode(
+                dict(cluster_user=self.cluster_user,
+                     cluster_shell=self.cluster_shell, keyname=self.keyname,
+                     spot_bid=self.spot_bid), use_json=True)
+            if not static.USER_TAG in sg.tags:
+                sg.add_tag('@sc-user', user_settings)
+            ssh_port = static.DEFAULT_SSH_PORT
             for p in self.permissions:
                 perm = self.permissions.get(p)
                 ip_protocol = perm.get('ip_protocol', 'tcp')
@@ -628,6 +653,7 @@ class Cluster(object):
                     self._master = node
             if not self._master:
                 raise exception.MasterDoesNotExist()
+        self._master.key_location = self.key_location
         return self._master
 
     @property
@@ -718,6 +744,17 @@ class Cluster(object):
                                  placement_group=placement_group,
                                  spot_bid=spot_bid, force_flat=force_flat)[0]
 
+    def _get_cluster_userdata(self, aliases):
+        alias_file = utils.string_to_file('\n'.join(['#ignored'] + aliases),
+                                          static.UD_ALIASES_FNAME)
+        plugins = utils.dump_compress_encode(self.plugins)
+        plugins_file = utils.string_to_file('\n'.join(['#ignored', plugins]),
+                                            static.UD_PLUGINS_FNAME)
+        udfiles = [alias_file, plugins_file]
+        use_cloudinit = not self.disable_cloudinit
+        return userdata.bundle_userdata_files(udfiles,
+                                              use_cloudinit=use_cloudinit)
+
     def create_nodes(self, aliases, image_id=None, instance_type=None,
                      zone=None, placement_group=None, spot_bid=None,
                      force_flat=False):
@@ -736,18 +773,19 @@ class Cluster(object):
             placement_group = self.placement_group.name
         image_id = image_id or self.node_image_id
         count = len(aliases) if not spot_bid else 1
+        user_data = self._get_cluster_userdata(aliases)
         kwargs = dict(price=spot_bid, instance_type=instance_type,
                       min_count=count, max_count=count, count=count,
                       key_name=self.keyname, security_groups=[cluster_sg],
                       availability_zone_group=cluster_sg,
                       launch_group=cluster_sg,
                       placement=zone or getattr(self.zone, 'name', None),
-                      user_data='|'.join(aliases),
+                      user_data=user_data,
                       placement_group=placement_group)
         resvs = []
         if spot_bid:
             for alias in aliases:
-                kwargs['user_data'] = alias
+                kwargs['user_data'] = self._get_cluster_userdata([alias])
                 resvs.extend(self.ec2.request_instances(image_id, **kwargs))
         else:
             resvs.append(self.ec2.request_instances(image_id, **kwargs))
@@ -1509,7 +1547,7 @@ class Cluster(object):
         except Exception, e:
             msg = "Error occurred while running plugin '%s':" % plugin_name
             if isinstance(e, exception.ThreadPoolException):
-                log.error('\n'.join(msg, e.format_excs()))
+                log.error('\n'.join([msg, e.format_excs()]))
             else:
                 log.error(msg, exc_info=True)
 
