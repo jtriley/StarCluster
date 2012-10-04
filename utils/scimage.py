@@ -512,7 +512,7 @@ mysql-server mysql-server/root_password_again seen true
     pkgs += "ec2-ami-tools mysql-server mysql-client apache2 "
     pkgs += "libapache2-mod-wsgi sysv-rc-conf pssh emacs cython irssi htop"
     pkgs += "python-distutils-extra vim-scripts python-ctypes python-pudb "
-    pkgs += "mosh "
+    pkgs += "mosh python-scipy python-numpy"
     apt_install(pkgs)
 
 
@@ -551,18 +551,21 @@ def main():
     configure_apt_sources()
     upgrade_packages()
     install_build_utils()
+    install_default_packages()
     install_gridscheduler()
     install_condor()
     #install_torque()
     install_pydrmaa()
-    install_atlas()
-    install_numpy()
-    install_scipy()
+    # Replace ATLAS with OpenBLAS
+    # install_atlas()
+    install_openblas()
+    # Custom NumPy/SciPy install is no longer needed in 12.04
+    # install_numpy()
+    # install_scipy()
     install_ipython()
     install_openmpi()
     install_hadoop()
     install_nfs()
-    install_default_packages()
     configure_init()
     cleanup()
 
