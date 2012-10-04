@@ -510,8 +510,9 @@ mysql-server mysql-server/root_password_again seen true
     pkgs += "python-virtualenv python-imaging python-boto python-matplotlib "
     pkgs += "unzip rar unace build-essential gfortran ec2-api-tools "
     pkgs += "ec2-ami-tools mysql-server mysql-client apache2 "
-    pkgs += "libapache2-mod-wsgi sysv-rc-conf pssh emacs cython irssi "
-    pkgs += "python-distutils-extra htop vim-scripts python-ctypes python-pudb"
+    pkgs += "libapache2-mod-wsgi sysv-rc-conf pssh emacs cython irssi htop"
+    pkgs += "python-distutils-extra vim-scripts python-ctypes python-pudb "
+    pkgs += "mosh "
     apt_install(pkgs)
 
 
