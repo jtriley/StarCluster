@@ -484,6 +484,9 @@ def setup_environ():
     num_cpus = multiprocessing.cpu_count()
     os.environ['MAKEFLAGS'] = '-j%d' % (num_cpus + 1)
     os.environ['DEBIAN_FRONTEND'] = "noninteractive"
+    if os.path.isfile('/sbin/initctl'):
+        run_command('mv /sbin/initctl /sbin/initctl.bak')
+        run_command('ln -s /bin/true /sbin/initctl')
 
 
 def install_nfs():
@@ -540,6 +543,9 @@ def cleanup():
     for f in glob.glob('/etc/profile.d'):
         if 'byobu' in f:
             run_command('rm %s' % f)
+    if os.path.islink('/sbin/initctl') and os.path.isfile('/sbin/initctl.bak'):
+        run_command('rm /sbin/initctl')
+        run_command('mv -f /sbin/initctl.bak /sbin/initctl')
 
 
 def main():
