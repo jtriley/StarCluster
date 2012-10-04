@@ -3,26 +3,26 @@
 This script is meant to be run inside of a ubuntu cloud image available at
 uec-images.ubuntu.com::
 
-    $ EC2_UBUNTU_IMG_URL=http://uec-images.ubuntu.com/oneiric/current
-    $ wget $EC2_UBUNTU_IMG_URL/oneiric-server-cloudimg-amd64.tar.gz
+    $ EC2_UBUNTU_IMG_URL=http://uec-images.ubuntu.com/precise/current
+    $ wget $EC2_UBUNTU_IMG_URL/precise-server-cloudimg-amd64.tar.gz
 
 or::
 
-    $ wget $EC2_UBUNTU_IMG_URL/oneiric-server-cloudimg-i386.tar.gz
+    $ wget $EC2_UBUNTU_IMG_URL/precise-server-cloudimg-i386.tar.gz
 
 After downloading a Ubuntu cloud image the next step is to extract the image::
 
-    $ tar xvzf oneiric-server-cloudimg-amd64.tar.gz
+    $ tar xvzf precise-server-cloudimg-amd64.tar.gz
 
 Then resize it to 10GB::
 
-    $ e2fsck -f oneiric-server-cloudimg-amd64.img
-    $ resize2fs oneiric-server-cloudimg-amd64.img 10G
+    $ e2fsck -f precise-server-cloudimg-amd64.img
+    $ resize2fs precise-server-cloudimg-amd64.img 10G
 
 Next you need to mount the image::
 
     $ mkdir /tmp/img-mount
-    $ mount oneiric-server-cloudimg-amd64.img /tmp/img-mount
+    $ mount precise-server-cloudimg-amd64.img /tmp/img-mount
     $ mount -t proc none /tmp/img-mount/proc
     $ mount -o bind /dev /tmp/img-mount/dev
 
