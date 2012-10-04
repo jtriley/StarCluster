@@ -52,8 +52,8 @@ import multiprocessing
 
 SRC_DIR = "/usr/local/src"
 APT_SOURCES_FILE = "/etc/apt/sources.list"
-BUILD_UTILS_PKGS = "build-essential devscripts debconf debconf-utils "
-BUILD_UTILS_PKGS += "python-setuptools python-pip python-nose"
+BUILD_UTILS_PKGS = "build-essential devscripts debconf debconf-utils dpkg-dev "
+BUILD_UTILS_PKGS += "cdbs patch python-setuptools python-pip python-nose"
 CLOUD_CFG_FILE = '/etc/cloud/cloud.cfg'
 GRID_SCHEDULER_GIT = 'git://github.com/jtriley/gridscheduler.git'
 CLOUDERA_ARCHIVE_KEY = 'http://archive.cloudera.com/debian/archive.key'
@@ -161,6 +161,27 @@ apt_sources:
  - source: deb-src %(CLOUDERA_APT)s
  - source: deb %(CONDOR_APT)s
 """ % dict(CLOUDERA_APT=CLOUDERA_APT, CONDOR_APT=CONDOR_APT)
+OPENBLAS_0_1ALPHA_2_PATCH = """\
+diff --git a/Makefile.system b/Makefile.system
+index f0487ac..84f41a7 100644
+--- a/Makefile.system
++++ b/Makefile.system
+@@ -27,7 +27,13 @@ HOSTCC    = $(CC)
+ endif
+
+ ifdef TARGET
+-GETARCH_FLAGS += -DFORCE_$(TARGET)
++GETARCH_FLAGS := -DFORCE_$(TARGET)
++endif
++
++#TARGET_CORE will override TARGET which is used in DYNAMIC_ARCH=1.
++#
++ifdef TARGET_CORE
++GETARCH_FLAGS := -DFORCE_$(TARGET_CORE)
+ endif
+
+ ifdef INTERFACE64
+"""
 
 
 def run_command(cmd, ignore_failure=False, failure_callback=None,
@@ -310,6 +331,27 @@ def install_atlas():
     chdir('atlas-*')
     run_command('fakeroot debian/rules custom')
     run_command('dpkg -i ../*atlas*.deb')
+
+
+def install_openblas():
+    """docstring for install_openblas"""
+    chdir(SRC_DIR)
+    apt_command('build-dep libopenblas-dev')
+    if glob.glob("*openblas*.deb"):
+        run_command('dpkg -i *openblas*.deb')
+        return
+    apt_command('source libopenblas-dev')
+    chdir('openblas-*')
+    patch = open('fix_makefile_system.patch', 'w')
+    patch.write(OPENBLAS_0_1ALPHA_2_PATCH)
+    patch.close()
+    run_command('patch -p1 < %s' % patch.name)
+    rule_file = open('Makefile.rule', 'a')
+    lines = ['DYNAMIC_ARCH=1', 'NUM_THREADS=64', 'NO_LAPACK=1']
+    rule_file.write('\n'.join(lines))
+    rule_file.close()
+    run_command('fakeroot debian/rules custom')
+    run_command('dpkg -i ../*openblas*.deb')
 
 
 def install_numpy():
