@@ -88,7 +88,7 @@ __/\_____| |_ __ _ _ __ ___| |_   _ ___| |_ ___ _ __
 /_  _\__ \ || (_| | | | (__| | |_| \__ \ ||  __/ |
   \/ |___/\__\__,_|_|  \___|_|\__,_|___/\__\___|_|
 
-StarCluster Ubuntu 11.10 AMI
+StarCluster Ubuntu 12.04 AMI
 Software Tools for Academics and Researchers (STAR)
 Homepage: http://star.mit.edu/cluster
 Documentation: http://star.mit.edu/cluster/docs/latest
@@ -97,18 +97,19 @@ Mailing list: starcluster@mit.edu
 
 This AMI Contains:
 
-  * Custom-Compiled Atlas, Numpy, Scipy, etc
-  * Open Grid Scheduler (OGS) queuing system
+  * Open Grid Scheduler (OGS - formerly SGE) queuing system
   * Condor workload management system
   * OpenMPI compiled with Open Grid Scheduler support
-  * IPython 0.12 with parallel support
+  * OpenBLAS- Highly optimized Basic Linear Algebra Routines
+  * NumPy/SciPy linked against OpenBlas
+  * IPython 0.13 with parallel support
   * and more! (use 'dpkg -l' to show all installed packages)
 
 Open Grid Scheduler/Condor cheat sheet:
 
   * qstat/condor_q - show status of batch jobs
   * qhost/condor_status- show status of hosts, queues, and jobs
-  * qsub/condor_submit - submit batch jobs (e.g. qsub -cwd ./jobscript.sh)
+  * qsub/condor_submit - submit batch jobs (e.g. qsub -cwd ./job.sh)
   * qdel/condor_rm - delete batch jobs (e.g. qdel 7)
   * qconf - configure Open Grid Scheduler system
 
