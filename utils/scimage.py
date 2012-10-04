@@ -282,7 +282,6 @@ def install_gridscheduler():
         run_command('tar xvzf gridscheduler-scbuild.tar.gz')
         run_command('mv gridscheduler /opt/sge6-fresh')
         return
-    apt_install('git')
     run_command('git clone %s' % GRID_SCHEDULER_GIT)
     sts, out = run_command('readlink -f `which java`', get_output=True)
     java_home = out.strip().split('/jre')[0]
