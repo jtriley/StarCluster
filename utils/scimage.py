@@ -24,11 +24,15 @@ Next you need to mount the image::
     $ mkdir /tmp/img-mount
     $ mount precise-server-cloudimg-amd64.img /tmp/img-mount
     $ mount -t proc none /tmp/img-mount/proc
+    $ mount -t sysfs none /tmp/img-mount/sys
     $ mount -o bind /dev /tmp/img-mount/dev
+    $ mount -t devpts none /tmp/img-mount/dev/pts
+    $ mount -o rbind /var/run/dbus /tmp/img-mount/var/run/dbus
 
 Copy /etc/resolv.conf and /etc/mtab to the image::
 
-    $ cp /etc/resolv.conf /tmp/img-mount/etc/resolv.conf
+    $ mkdir -p /tmp/img-mount/var/run/resolvconf
+    $ cp /etc/resolv.conf /tmp/img-mount/var/run/resolvconf/resolv.conf
     $ grep -v rootfs /etc/mtab > /tmp/img-mount/etc/mtab
 
 Next copy this script inside the image::
