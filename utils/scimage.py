@@ -57,7 +57,7 @@ BUILD_UTILS_PKGS += "cdbs patch python-setuptools python-pip python-nose"
 CLOUD_CFG_FILE = '/etc/cloud/cloud.cfg'
 GRID_SCHEDULER_GIT = 'git://github.com/jtriley/gridscheduler.git'
 CLOUDERA_ARCHIVE_KEY = 'http://archive.cloudera.com/debian/archive.key'
-CLOUDERA_APT = 'http://archive.cloudera.com/debian maverick-cdh3 contrib'
+CLOUDERA_APT = 'http://archive.cloudera.com/debian maverick-cdh3u5 contrib'
 CONDOR_APT = 'http://www.cs.wisc.edu/condor/debian/development lenny contrib'
 NUMPY_SCIPY_SITE_CFG = """\
 [DEFAULT]
