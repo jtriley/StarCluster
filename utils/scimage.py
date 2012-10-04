@@ -437,8 +437,7 @@ def install_hadoop():
 def install_ipython():
     chdir(SRC_DIR)
     apt_install('libzmq-dev')
-    run_command('pip install pyzmq==2.1.9')
-    run_command('pip install ipython tornado pygments')
+    run_command('pip install ipython tornado pygments pyzmq')
     mjax_install = 'from IPython.external.mathjax import install_mathjax'
     mjax_install += '; install_mathjax()'
     run_command("python -c '%s'" % mjax_install)
