@@ -306,6 +306,10 @@ def install_gridscheduler():
 def install_condor():
     chdir(SRC_DIR)
     run_command("rm /var/lock")
+    # libltdl3 is not in precise - must be downloaded and put in /usr/local/src
+    libltdl_deb_glob = 'libltdl3_1.5.26-4+lenny1*.deb'
+    for deb in glob.glob(libltdl_deb_glob):
+        run_command('dpkg -i %s' % deb)
     apt_install('condor')
     run_command('ln -s /etc/condor/condor_config /etc/condor_config.local')
     run_command('mkdir /var/lib/condor/log')
