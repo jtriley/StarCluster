@@ -2,7 +2,6 @@
 import os
 import sys
 import time
-import string
 import optparse
 
 from starcluster import config
@@ -45,7 +44,7 @@ def deploy_img(img_path, vol_size, arch, region, src_ami, dev=None,
         keys = ec2.get_keypairs()
         key = None
         for k in keys:
-            if cfg.keys.has_key(k.name):
+            if k.name in cfg.keys:
                 key = cfg.keys.get(k.name)
                 key['keyname'] = k.name
                 break
@@ -92,17 +91,18 @@ def deploy_img(img_path, vol_size, arch, region, src_ami, dev=None,
     if xarch == 'i386':
         xarch = 'x86'
     snapdesc = 'StarCluster %s %s EBS AMI Snapshot' % (platform, xarch)
-    snap = ec2.create_snapshot(vol, description=snapdesc, wait_for_snapshot=True)
+    snap = ec2.create_snapshot(vol, description=snapdesc,
+                               wait_for_snapshot=True)
     vol.delete()
     bmap = ec2.create_root_block_device_map(snap.id, add_ephemeral_drives=True)
-    imgname = string.lower(platform.replace(' ', '-'))
+    imgname = platform.replace(' ', '-').lower()
     imgname = 'starcluster-base-%s-%s' % (imgname, xarch)
-    imgdesc = 'StarCluster Base %s %s (%s)' % (platform, xarch,
-                                               string.capitalize(region))
+    imgdesc = 'StarCluster Base %s %s (%s)' % (platform, xarch, region.upper())
     oldimg = ec2.get_images(filters=dict(name=imgname))
     if oldimg:
         oldimg = oldimg[0]
-        oldsnap = ec2.get_snapshot(oldimg.block_device_mapping['/dev/sda1'].snapshot_id)
+        oldsnap_id = oldimg.block_device_mapping['/dev/sda1'].snapshot_id
+        oldsnap = ec2.get_snapshot(oldsnap_id)
         if remove_old:
             log.info("Deregistering old AMI: %s" % oldimg.id)
             oldimg.deregister()
@@ -122,6 +122,7 @@ def deploy_img(img_path, vol_size, arch, region, src_ami, dev=None,
                              root_device_name='/dev/sda1',
                              block_device_map=bmap)
     return img
+
 
 def main():
     parser = optparse.OptionParser('deploy disk image to region')
