@@ -530,7 +530,7 @@ mysql-server mysql-server/root_password_again seen true
     pkgs += "ec2-ami-tools mysql-server mysql-client apache2 "
     pkgs += "libapache2-mod-wsgi sysv-rc-conf pssh emacs cython irssi htop "
     pkgs += "python-distutils-extra vim-scripts python-ctypes python-pudb "
-    pkgs += "mosh python-scipy python-numpy default-jdk"
+    pkgs += "mosh python-scipy python-numpy default-jdk mpich2"
     apt_install(pkgs)
 
 
