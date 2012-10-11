@@ -355,7 +355,15 @@ def install_openblas():
     patch.close()
     run_command('patch -p1 < %s' % patch.name)
     rule_file = open('Makefile.rule', 'a')
-    lines = ['DYNAMIC_ARCH=1', 'NUM_THREADS=64', 'NO_LAPACK=1']
+    # NO_AFFINITY=1 is required to utilize all cores on all non
+    # cluster-compute/GPU instance types due to the shared virtualization layer
+    # not supporting processor affinity properly. However, Cluster Compute/GPU
+    # instance types use a near-bare-metal hypervisor which *does* support
+    # processor affinity. From minimal testing it appears that there is a ~20%
+    # increase in performance when using affinity on cc1/cg1 types implying
+    # NO_AFFINITY=1 should *not* be set for cluster compute/GPU AMIs.
+    lines = ['DYNAMIC_ARCH=1', 'NUM_THREADS=64', 'NO_LAPACK=1',
+             'NO_AFFINITY=1']
     rule_file.write('\n'.join(lines))
     rule_file.close()
     run_command('fakeroot debian/rules custom')
