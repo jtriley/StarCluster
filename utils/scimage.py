@@ -426,24 +426,31 @@ def install_openmpi():
     apt_install('blcr-util')
     if glob.glob('*openmpi*.deb'):
         run_command('dpkg -i *openmpi*.deb')
-        return
-    apt_command('source libopenmpi-dev')
-    chdir('openmpi*')
-    for line in fileinput.input('debian/rules', inplace=1):
-        print line,
-        if '--enable-heterogeneous' in line:
-            print '                        --with-sge \\'
+    else:
+        apt_command('source libopenmpi-dev')
+        chdir('openmpi*')
+        for line in fileinput.input('debian/rules', inplace=1):
+            print line,
+            if '--enable-heterogeneous' in line:
+                print '                        --with-sge \\'
 
-    def _deb_failure_callback(retval):
-        if not glob.glob('../*openmpi*.deb'):
-            return False
-        return True
-    run_command('dpkg-buildpackage -rfakeroot -b',
-                failure_callback=_deb_failure_callback)
-    run_command('dpkg -i ../*openmpi*.deb')
+        def _deb_failure_callback(retval):
+            if not glob.glob('../*openmpi*.deb'):
+                return False
+            return True
+        run_command('dpkg-buildpackage -rfakeroot -b',
+                    failure_callback=_deb_failure_callback)
+        run_command('dpkg -i ../*openmpi*.deb')
     sts, out = run_command('ompi_info | grep -i grid', get_output=True)
     if 'gridengine' not in out:
         raise Exception("failed to build openmpi with Grid Engine support")
+    run_command('echo libopenmpi1.3 hold | dpkg --set-selections')
+    run_command('echo libopenmpi-dev hold | dpkg --set-selections')
+    run_command('echo libopenmpi-dbg hold | dpkg --set-selections')
+    run_command('echo openmpi-bin hold | dpkg --set-selections')
+    run_command('echo openmpi-checkpoint hold | dpkg --set-selections')
+    run_command('echo openmpi-common hold | dpkg --set-selections')
+    run_command('echo openmpi-doc hold | dpkg --set-selections')
 
 
 def install_hadoop():
