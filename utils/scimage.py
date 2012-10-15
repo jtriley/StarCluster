@@ -348,27 +348,30 @@ def install_openblas():
     apt_command('build-dep libopenblas-dev')
     if glob.glob("*openblas*.deb"):
         run_command('dpkg -i *openblas*.deb')
-        return
-    apt_command('source libopenblas-dev')
-    chdir('openblas-*')
-    patch = open('fix_makefile_system.patch', 'w')
-    patch.write(OPENBLAS_0_1ALPHA_2_PATCH)
-    patch.close()
-    run_command('patch -p1 < %s' % patch.name)
-    rule_file = open('Makefile.rule', 'a')
-    # NO_AFFINITY=1 is required to utilize all cores on all non
-    # cluster-compute/GPU instance types due to the shared virtualization layer
-    # not supporting processor affinity properly. However, Cluster Compute/GPU
-    # instance types use a near-bare-metal hypervisor which *does* support
-    # processor affinity. From minimal testing it appears that there is a ~20%
-    # increase in performance when using affinity on cc1/cg1 types implying
-    # NO_AFFINITY=1 should *not* be set for cluster compute/GPU AMIs.
-    lines = ['DYNAMIC_ARCH=1', 'NUM_THREADS=64', 'NO_LAPACK=1',
-             'NO_AFFINITY=1']
-    rule_file.write('\n'.join(lines))
-    rule_file.close()
-    run_command('fakeroot debian/rules custom')
-    run_command('dpkg -i ../*openblas*.deb')
+    else:
+        apt_command('source libopenblas-dev')
+        chdir('openblas-*')
+        patch = open('fix_makefile_system.patch', 'w')
+        patch.write(OPENBLAS_0_1ALPHA_2_PATCH)
+        patch.close()
+        run_command('patch -p1 < %s' % patch.name)
+        rule_file = open('Makefile.rule', 'a')
+        # NO_AFFINITY=1 is required to utilize all cores on all non
+        # cluster-compute/GPU instance types due to the shared virtualization
+        # layer not supporting processor affinity properly. However, Cluster
+        # Compute/GPU instance types use a near-bare-metal hypervisor which
+        # *does* support processor affinity. From minimal testing it appears
+        # that there is a ~20% increase in performance when using affinity on
+        # cc1/cg1 types implying NO_AFFINITY=1 should *not* be set for cluster
+        # compute/GPU AMIs.
+        lines = ['DYNAMIC_ARCH=1', 'NUM_THREADS=64', 'NO_LAPACK=1',
+                 'NO_AFFINITY=1']
+        rule_file.write('\n'.join(lines))
+        rule_file.close()
+        run_command('fakeroot debian/rules custom')
+        run_command('dpkg -i ../*openblas*.deb')
+    run_command('echo libopenblas-base hold | dpkg --set-selections')
+    run_command('echo libopenblas-dev hold | dpkg --set-selections')
 
 
 def install_numpy():
