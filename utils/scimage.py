@@ -310,7 +310,8 @@ def install_condor():
     libltdl_deb_glob = 'libltdl3_1.5.26-4+lenny1*.deb'
     for deb in glob.glob(libltdl_deb_glob):
         run_command('dpkg -i %s' % deb)
-    apt_install('condor')
+    apt_install('condor=7.7.2-1')
+    run_command('echo condor hold | dpkg --set-selections')
     run_command('ln -s /etc/condor/condor_config /etc/condor_config.local')
     run_command('mkdir /var/lib/condor/log')
     run_command('mkdir /var/lib/condor/run')
