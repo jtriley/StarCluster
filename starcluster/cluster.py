@@ -4,6 +4,7 @@ import zlib
 import time
 import string
 import pprint
+import socket # for DNS resolution
 
 from starcluster import utils
 from starcluster import static
@@ -625,6 +626,19 @@ class Cluster(object):
                 from_port = perm.get('from_port')
                 to_port = perm.get('to_port')
                 cidr_ip = perm.get('cidr_ip', static.WORLD_CIDRIP)
+                # optionally convert a DNS name to an IP address
+                cidr_dns = perm.get('cidr_dns', None)
+                if (None != cidr_dns and (static.WORLD_CIDRIP == perm.get('cidr_ip',None))) :
+                    try :
+                        cidr_ip = socket.gethostbyname(cidr_dns)+"/32"
+                        log.info("The cidr_dns value %s resolves to " % cidr_dns)
+                        log.info("cidr_ip %s. If this is not a static IP address,"% cidr_ip)
+                        log.info("it could eventually change.  If so you will have to manually")
+                        log.info("adjust the IP address in the port %s CIDR setting." % from_port)
+                    except :
+                        cidr_ip = static.WORLD_CIDRIP
+                        log.emerg("cannot resolve DNS name %s, using %s instead" %
+                             (cidr_dns, cidr_ip))
                 if not self.ec2.has_permission(sg, ip_protocol, from_port,
                                                to_port, cidr_ip):
                     log.info("Opening %s port range %s-%s for CIDR %s" %
@@ -1881,6 +1895,12 @@ class ClusterValidator(validators.Validator):
             cidr_ip = permission.get('cidr_ip')
             if not iptools.validate_cidr(cidr_ip):
                 raise exception.InvalidCIDRSpecified(cidr_ip)
+            cidr_dns = permission.get('cidr_dns', None)
+            if (None != cidr_dns) :
+                try:
+                    cidr_ip = socket.gethostbyname(cidr_dns)
+                except:
+                    raise exception.InvalidCIDRDNSSpecified(cidr_dns)
 
     def validate_ebs_settings(self):
         """

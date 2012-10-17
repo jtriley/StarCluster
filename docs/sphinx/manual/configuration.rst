@@ -476,6 +476,19 @@ that the rule applies to by specifying the proper cidr_ip setting. In the above
 example, the ``ftp`` permission specifies that only ``66.249.90.104`` ip
 address can access port 21 on the cluster nodes.
 
+Alternatively you can restrict a port range to a single IP using cidr_dns.  For
+example if you wanted to serve http only to requests coming from domain "mydomain.org":
+
+    [permission www]
+    # open port 80 to mydomain.org only
+    from_port = 80
+    to_port = 80
+    cidr_dns = mydomain.org
+
+Note that this gets resolved to an IP CIDR (such as 1.2.3.4/32) at start time, if
+the IP address for the DNS record happens to change the security policy will need 
+to be changed manually, or the cluster restarted.
+
 Defining Plugins
 ----------------
 StarCluster also has support for user contributed plugins (see :doc:`plugins`).
