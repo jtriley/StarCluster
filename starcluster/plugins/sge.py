@@ -29,7 +29,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._setup_sge_profile(node)
         self._inst_sge(node, exec_host=True)
 
-    def _create_sge_pe(self, name="orte", nodes=None, queue="all.q"):
+    def _create_sge_pe(self, name="orte", nodes=None, allocation_rule="$round_robin", queue="all.q"):
         """
         Create or update an SGE parallel environment
 
@@ -49,7 +49,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         nodes = nodes or self._nodes
         num_processors = sum(self.pool.map(lambda n: n.num_processors, nodes))
         penv = mssh.remote_file("/tmp/pe.txt", "w")
-        penv.write(sge.sge_pe_template % (name, num_processors))
+        penv.write(sge.sge_pe_template % (name, num_processors, allocation_rule))
         penv.close()
         if not pe_exists:
             mssh.execute("qconf -Ap %s" % penv.name)
@@ -107,7 +107,8 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             self._add_sge_submit_host(node)
             self.pool.simple_job(self._add_to_sge, (node,), jobid=node.alias)
         self.pool.wait(numtasks=len(self.nodes))
-        self._create_sge_pe()
+        self._create_sge_pe(name="orte", nodes=None, allocation_rule="$round_robin", queue="all.q")
+        self._create_sge_pe(name="by_node", nodes=None, allocation_rule="$pe_slots", queue="all.q")
 
     def _remove_from_sge(self, node):
         master = self._master
@@ -118,7 +119,8 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         master.ssh.execute('qconf -de %s' % node.alias)
         node.ssh.execute('pkill -9 sge_execd')
         nodes = filter(lambda n: n.alias != node.alias, self._nodes)
-        self._create_sge_pe(nodes=nodes)
+        self._create_sge_pe(name="orte", nodes=nodes, allocation_rule="$round_robin", queue="all.q")
+        self._create_sge_pe(name="by_node", nodes=nodes, allocation_rule="$pe_slots", queue="all.q")
 
     def run(self, nodes, master, user, user_shell, volumes):
         if not master.ssh.isdir("/opt/sge6-fresh"):
@@ -147,7 +149,9 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._add_sge_admin_host(node)
         self._add_sge_submit_host(node)
         self._add_to_sge(node)
-        self._create_sge_pe()
+        self._create_sge_pe(name="orte", nodes=None, allocation_rule="$round_robin", queue="all.q")
+        self._create_sge_pe(name="by_node", nodes=None, allocation_rule="$pe_slots", queue="all.q")
+        
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
