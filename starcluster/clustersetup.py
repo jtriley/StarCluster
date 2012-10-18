@@ -261,7 +261,7 @@ class DefaultClusterSetup(ClusterSetup):
                 continue
             if not volume_partition:
                 partitions = filter(lambda x: x.startswith(device), devs)
-                if len(partitions) <= 1: # device may not exist until mount time
+                if len(partitions) == 1:
                     volume_partition = device
                 elif len(partitions) == 2:
                     volume_partition = device + '1'

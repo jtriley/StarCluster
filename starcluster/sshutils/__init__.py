@@ -334,8 +334,10 @@ class SSHClient(object):
     def ls(self, path):
         """
         Return a list containing the names of the entries in the remote path.
+        Note we expect this to be in the style of the node we ssh'd into, which
+        we will assume is posix (so we don't get '/dev\\sda' from ls(self,'/dev')
         """
-        return [os.path.join(path, f) for f in self.sftp.listdir(path)]
+        return [posixpath.join(path, f) for f in self.sftp.listdir(path)]
 
     def glob(self, pattern):
         return self._glob.glob(pattern)
