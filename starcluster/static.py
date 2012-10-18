@@ -174,7 +174,6 @@ PERMISSION_SETTINGS = {
     'from_port': (int, True, None, None, None),
     'to_port': (int, True, None, None, None),
     'cidr_ip': (str, False, '0.0.0.0/0', None, None),
-    'cidr_dns': (str, False, None, None, None), # only works is cidr_ip is not set
     # or you're allowing full access to another security group
     # skip this for now...these two options are mutually exclusive to
     # the four settings above and source_group is  less commonly

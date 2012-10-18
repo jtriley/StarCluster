@@ -342,7 +342,7 @@ class InvalidCIDRSpecified(ClusterValidationError):
 class InvalidCIDRDNSSpecified(ClusterValidationError):
     """Raised when user specifies an invalid CIDR dns name for permission"""
     def __init__(self, cidr):
-        self.msg = "cidr_dns is invalid: %s" % cidr
+        self.msg = "cidr_ip appears to be a DNS reference but cannot be resolved: %s" % cidr
 
 
 class InvalidZone(ClusterValidationError):

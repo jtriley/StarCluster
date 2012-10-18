@@ -625,30 +625,32 @@ class Cluster(object):
                 ip_protocol = perm.get('ip_protocol', 'tcp')
                 from_port = perm.get('from_port')
                 to_port = perm.get('to_port')
-                cidr_ip = perm.get('cidr_ip', static.WORLD_CIDRIP)
-                # optionally convert a DNS name to an IP address
-                cidr_dns = perm.get('cidr_dns', None)
-                if (None != cidr_dns and (static.WORLD_CIDRIP == perm.get('cidr_ip',None))) :
-                    try :
-                        cidr_ip = socket.gethostbyname(cidr_dns)+"/32"
-                        log.info("The cidr_dns value %s resolves to " % cidr_dns)
-                        log.info("cidr_ip %s. If this is not a static IP address,"% cidr_ip)
-                        log.info("it could eventually change.  If so you will have to manually")
-                        log.info("adjust the IP address in the port %s CIDR setting." % from_port)
-                    except :
-                        cidr_ip = static.WORLD_CIDRIP
-                        log.emerg("cannot resolve DNS name %s, using %s instead" %
-                             (cidr_dns, cidr_ip))
-                if not self.ec2.has_permission(sg, ip_protocol, from_port,
-                                               to_port, cidr_ip):
-                    log.info("Opening %s port range %s-%s for CIDR %s" %
-                             (ip_protocol, from_port, to_port, cidr_ip))
-                    sg.authorize(ip_protocol, from_port, to_port, cidr_ip)
-                includes_ssh = from_port <= ssh_port <= to_port
-                open_to_world = cidr_ip == static.WORLD_CIDRIP
-                if ip_protocol == 'tcp' and includes_ssh and not open_to_world:
-                    sg.revoke(ip_protocol, ssh_port, ssh_port,
-                              static.WORLD_CIDRIP)
+                # allow lists of cidrs
+                for cidr_ip in perm.get('cidr_ip', static.WORLD_CIDRIP).split() :
+                    # is that actually a DNS name? (and not a security group name?)
+                    if (("." in cidr_ip) and not ("/"in cidr_ip)) :
+                        try :
+                            cidr_dns = socket.gethostbyname(cidr_ip)+"/32"
+                            log.info("The cidr_ip value %s resolves to " % cidr_ip)
+                            log.info("%s. If this is not a static IP address,"% cidr_dns)
+                            log.info("it could eventually change.  If so you will have to manually")
+                            log.info("adjust the IP address in the port %s CIDR setting." % from_port)
+                            cidr_ip = cidr_dns
+                        except :
+                            cidr_dns = cidr_ip
+                            cidr_ip = static.WORLD_CIDRIP
+                            log.emerg("cannot resolve DNS name %s, using %s instead" %
+                                 (cidr_dns, cidr_ip))
+                    if not self.ec2.has_permission(sg, ip_protocol, from_port,
+                                                   to_port, cidr_ip):
+                        log.info("Opening %s port range %s-%s for CIDR %s" %
+                                 (ip_protocol, from_port, to_port, cidr_ip))
+                        sg.authorize(ip_protocol, from_port, to_port, cidr_ip)
+                    includes_ssh = from_port <= ssh_port <= to_port
+                    open_to_world = cidr_ip == static.WORLD_CIDRIP
+                    if ip_protocol == 'tcp' and includes_ssh and not open_to_world:
+                        sg.revoke(ip_protocol, ssh_port, ssh_port,
+                                  static.WORLD_CIDRIP)
             self._cluster_group = sg
         return self._cluster_group
 
@@ -1892,15 +1894,15 @@ class ClusterValidator(validators.Validator):
                 raise exception.InvalidPortRange(
                     from_port, to_port,
                     reason="'from_port' must be <= 'to_port'")
-            cidr_ip = permission.get('cidr_ip')
-            if not iptools.validate_cidr(cidr_ip):
-                raise exception.InvalidCIDRSpecified(cidr_ip)
-            cidr_dns = permission.get('cidr_dns', None)
-            if (None != cidr_dns) :
-                try:
-                    cidr_ip = socket.gethostbyname(cidr_dns)
-                except:
-                    raise exception.InvalidCIDRDNSSpecified(cidr_dns)
+            for cidr_ip in permission.get('cidr_ip').split() :
+                if (("." in cidr_ip) and not ("/" in cidr_ip)) :
+                    try:
+                        cidr_dns = socket.gethostbyname(cidr_ip)
+                    except:
+                        raise exception.InvalidCIDRDNSSpecified(cidr_ip)
+                else :
+                    if not iptools.validate_cidr(cidr_ip):
+                        raise exception.InvalidCIDRSpecified(cidr_ip)
 
     def validate_ebs_settings(self):
         """
