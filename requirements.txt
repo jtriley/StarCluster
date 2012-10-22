@@ -1,5 +1,5 @@
 boto==2.5.2
-ssh==1.7.14
+paramiko==1.8.0
 workerpool==0.9.2
 Jinja2==2.6
 decorator==3.3.3

@@ -14,7 +14,7 @@ try:
     console_scripts = ['starcluster = starcluster.cli:main']
     extra = dict(test_suite="starcluster.tests",
                  tests_require="nose",
-                 install_requires=["ssh==1.7.14", "boto==2.6.0",
+                 install_requires=["paramiko==1.8.0", "boto==2.6.0",
                                    "workerpool==0.9.2", "Jinja2==2.6",
                                    "decorator==3.3.3", "pyasn1==0.1.3"],
                  include_package_data=True,

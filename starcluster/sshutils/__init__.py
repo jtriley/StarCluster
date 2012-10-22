@@ -1,11 +1,3 @@
-"""
-ssh.py
-Friendly Python SSH2 interface.
-From http://commandline.org.uk/code/
-License: LGPL
-modified by justin riley (justin.t.riley@gmail.com)
-"""
-
 import os
 import re
 import sys
@@ -17,9 +9,9 @@ import fnmatch
 import hashlib
 import posixpath
 
-import ssh
-from ssh import util
-from ssh import RSAKey
+import paramiko
+from paramiko import util
+from paramiko import RSAKey
 from pyasn1.codec.der import encoder
 from pyasn1.type import univ
 
@@ -97,16 +89,16 @@ class SSHClient(object):
                                                                    username))
         try:
             sock = self._get_socket(host, port)
-            transport = ssh.Transport(sock)
+            transport = paramiko.Transport(sock)
             transport.banner_timeout = timeout
         except socket.error:
             raise exception.SSHConnectionError(host, port)
         # Authenticate the transport.
         try:
             transport.connect(username=username, pkey=pkey, password=password)
-        except ssh.AuthenticationException:
+        except paramiko.AuthenticationException:
             raise exception.SSHAuthException(username, host)
-        except ssh.SSHException, e:
+        except paramiko.SSHException, e:
             msg = e.args[0]
             raise exception.SSHError(msg)
         except socket.error:
@@ -119,7 +111,7 @@ class SSHClient(object):
         self._transport = transport
         try:
             assert self.sftp is not None
-        except ssh.SFTPError, e:
+        except paramiko.SFTPError, e:
             if 'Garbage packet received' in e:
                 log.debug("Garbage packet received", exc_info=True)
                 raise exception.SSHAccessDeniedViaAuthKeys(username)
@@ -162,21 +154,21 @@ class SSHClient(object):
     def _load_rsa_key(self, private_key, private_key_pass=None):
         private_key_file = os.path.expanduser(private_key)
         try:
-            rsa_key = ssh.RSAKey.from_private_key_file(private_key_file,
-                                                       private_key_pass)
+            rsa_key = paramiko.RSAKey.from_private_key_file(private_key_file,
+                                                            private_key_pass)
             log.debug("Using private key %s (rsa)" % private_key)
             return rsa_key
-        except ssh.SSHException:
+        except paramiko.SSHException:
             log.error('invalid rsa key or passphrase specified')
 
     def _load_dsa_key(self, private_key, private_key_pass=None):
         private_key_file = os.path.expanduser(private_key)
         try:
-            dsa_key = ssh.DSSKey.from_private_key_file(private_key_file,
-                                                       private_key_pass)
+            dsa_key = paramiko.DSSKey.from_private_key_file(private_key_file,
+                                                            private_key_pass)
             log.info("Using private key %s (dsa)" % private_key)
             return dsa_key
-        except ssh.SSHException:
+        except paramiko.SSHException:
             log.error('invalid dsa key or passphrase specified')
 
     @property
@@ -184,7 +176,7 @@ class SSHClient(object):
         """Establish the SFTP connection."""
         if not self._sftp or self._sftp.sock.closed:
             log.debug("creating sftp connection")
-            self._sftp = ssh.SFTPClient.from_transport(self.transport)
+            self._sftp = paramiko.SFTPClient.from_transport(self.transport)
         return self._sftp
 
     @property
@@ -197,17 +189,18 @@ class SSHClient(object):
         return self._scp
 
     def generate_rsa_key(self):
-        return ssh.RSAKey.generate(2048)
+        return paramiko.RSAKey.generate(2048)
 
     def get_public_key(self, key):
         return ' '.join([key.get_name(), key.get_base64()])
 
     def load_remote_rsa_key(self, remote_filename):
         """
-        Returns ssh.RSAKey object for an RSA key located on the remote machine
+        Returns paramiko.RSAKey object for an RSA key located on the remote
+        machine
         """
         rfile = self.remote_file(remote_filename, 'r')
-        key = ssh.RSAKey(file_obj=rfile)
+        key = paramiko.RSAKey(file_obj=rfile)
         rfile.close()
         return key
 
@@ -706,7 +699,7 @@ class SSHGlob(object):
         The pattern may contain simple shell-style wildcards a la fnmatch.
         """
         if not glob.has_magic(pathname):
-            if self.ssh.lpath_exists(pathname):
+            if self.paramiko.lpath_exists(pathname):
                 yield pathname
             return
         dirname, basename = posixpath.split(pathname)
@@ -730,10 +723,10 @@ class SSHGlob(object):
         if basename == '':
             # `os.path.split()` returns an empty basename for paths ending with
             # a directory separator.  'q*x/' should match only directories.
-            if self.ssh.isdir(dirname):
+            if self.paramiko.isdir(dirname):
                 return [basename]
         else:
-            if self.ssh.lexists(posixpath.join(dirname, basename)):
+            if self.paramiko.lexists(posixpath.join(dirname, basename)):
                 return [basename]
         return []
 
@@ -745,7 +738,7 @@ class SSHGlob(object):
             #dirname = unicode(dirname, encoding)
             dirname = unicode(dirname, 'UTF-8')
         try:
-            names = [os.path.basename(n) for n in self.ssh.ls(dirname)]
+            names = [os.path.basename(n) for n in self.paramiko.ls(dirname)]
         except os.error:
             return []
         if pattern[0] != '.':
@@ -787,7 +780,7 @@ def get_private_rsa_fingerprint(key_location):
     """
     try:
         k = RSAKey.from_private_key_file(key_location)
-    except ssh.SSHException:
+    except paramiko.SSHException:
         raise exception.SSHError("Invalid RSA private key file: %s" %
                                  key_location)
     params = dict(invq=util.mod_inverse(k.q, k.p), dp=k.d % (k.p - 1),
@@ -802,7 +795,7 @@ def get_private_rsa_fingerprint(key_location):
 def get_public_rsa_fingerprint(pubkey_location):
     try:
         k = RSAKey.from_private_key_file(pubkey_location)
-    except ssh.SSHException:
+    except paramiko.SSHException:
         raise exception.SSHError("Invalid RSA private key file: %s" %
                                  pubkey_location)
     md5digest = hashlib.md5(str(k)).hexdigest()
