@@ -29,6 +29,8 @@ class CmdSpotHistory(CmdBase):
         now = utils.datetime_tuple_to_iso(now_tup)
         delta = now_tup - timedelta(days=30)
         thirty_days_ago = utils.datetime_tuple_to_iso(delta)
+        parser.add_option("-z", "--zone", dest="zone", default=None,
+                          help="limit results to specific availability zone")
         parser.add_option("-d", "--days", dest="days_ago",
                           action="store", type="float",
                           help="provide history in the last DAYS_AGO days "
