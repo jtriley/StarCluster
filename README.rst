@@ -157,9 +157,9 @@ Have a look at the rest of StarCluster's available commands::
 Dependencies:
 =============
 * Amazon AWS Account
-* Python 2.5+
-* Boto 2.3.0
-* Python SSH 1.7.13
+* Python 2.6+
+* Boto 2.6.0
+* Paramiko 1.8.0
 * WorkerPool 0.9.2
 * Jinja2 2.6
 * decorator 3.3.1
