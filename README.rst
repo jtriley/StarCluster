@@ -7,6 +7,8 @@ StarCluster v0.9999
 :Team: Software Tools for Academics and Researchers (http://web.mit.edu/star)
 :Homepage: http://web.mit.edu/starcluster
 :License: LGPL
+.. image:: https://secure.travis-ci.org/jtriley/StarCluster.png?branch=develop
+  :target: https://secure.travis-ci.org/jtriley/StarCluster
 
 Description:
 ============
