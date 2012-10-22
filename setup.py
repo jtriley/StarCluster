@@ -2,8 +2,8 @@
 import os
 import sys
 
-if sys.version_info < (2, 5):
-    error = "ERROR: StarCluster requires Python 2.5+ ... exiting."
+if sys.version_info < (2, 6):
+    error = "ERROR: StarCluster requires Python 2.6+ ... exiting."
     print >> sys.stderr, error
     sys.exit(1)
 
