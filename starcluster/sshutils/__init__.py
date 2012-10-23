@@ -328,7 +328,7 @@ class SSHClient(object):
         """
         Return a list containing the names of the entries in the remote path.
         """
-        return [os.path.join(path, f) for f in self.sftp.listdir(path)]
+        return [posixpath.join(path, f) for f in self.sftp.listdir(path)]
 
     def glob(self, pattern):
         return self._glob.glob(pattern)
@@ -738,7 +738,7 @@ class SSHGlob(object):
             #dirname = unicode(dirname, encoding)
             dirname = unicode(dirname, 'UTF-8')
         try:
-            names = [os.path.basename(n) for n in self.paramiko.ls(dirname)]
+            names = [posixpath.basename(n) for n in self.paramiko.ls(dirname)]
         except os.error:
             return []
         if pattern[0] != '.':
