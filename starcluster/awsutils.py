@@ -1116,8 +1116,8 @@ class EasyEC2(EasyAWS):
                 print
         print 'Total: %s' % len(vols)
 
-    def get_spot_history(self, instance_type, start=None, end=None, plot=False,
-                         plot_server_interface="localhost",
+    def get_spot_history(self, instance_type, start=None, end=None, zone=None,
+                         plot=False, plot_server_interface="localhost",
                          plot_launch_browser=True, plot_web_browser=None,
                          plot_shutdown_server=True):
         if start and not utils.is_iso_time(start):
@@ -1126,6 +1126,7 @@ class EasyEC2(EasyAWS):
             raise exception.InvalidIsoDate(end)
         pdesc = "Linux/UNIX"
         hist = self.conn.get_spot_price_history(start_time=start, end_time=end,
+                                                availability_zone=zone,
                                                 instance_type=instance_type,
                                                 product_description=pdesc)
         if not hist:

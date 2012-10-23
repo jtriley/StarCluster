@@ -15,6 +15,7 @@ from email.mime import multipart
 from starcluster import utils
 from starcluster import exception
 
+
 starts_with_mappings = {
     '#include': 'text/x-include-url',
     '#!': 'text/x-shellscript',
@@ -39,8 +40,8 @@ def _get_type_from_fp(fp):
     raise exception.BaseException("invalid user data type: %s" % line)
 
 
-def mp_userdata_from_files(files, compress=False):
-    outer = multipart.MIMEMultipart()
+def mp_userdata_from_files(files, compress=False, multipart_mime=None):
+    outer = multipart_mime or multipart.MIMEMultipart()
     mtypes = []
     for i, fp in enumerate(files):
         mtype = _get_type_from_fp(fp)
@@ -85,9 +86,9 @@ def get_mp_from_userdata(userdata, decompress=False):
 
 SCRIPT_TEMPLATE = """\
 #!/usr/bin/env python
-import os, sys, stat, gzip, base64, tarfile, StringIO
+import os, sys, stat, gzip, tarfile, StringIO
 os.chdir(os.path.dirname(sys.argv[0]))
-decoded = StringIO.StringIO(base64.b64decode('''%s'''))
+decoded = StringIO.StringIO('''%s'''.decode('base64'))
 gf = gzip.GzipFile(mode='r', fileobj=decoded)
 tf = tarfile.TarFile(mode='r', fileobj=gf)
 for ti in tf:
@@ -98,10 +99,14 @@ for ti in tf:
 """
 
 
-def userdata_script_from_files(fileobjs, tar_fname=None):
+def userdata_script_from_files(fileobjs, tar_fname=None, tar_file=None):
     tar_fname = tar_fname or 'sc_userdata.tar'
-    tfd = StringIO.StringIO()
-    tf = tarfile.TarFile(tar_fname, mode='w', fileobj=tfd)
+    if tar_file:
+        tf = tar_file
+        tfd = tf.fileobj
+    else:
+        tfd = StringIO.StringIO()
+        tf = tar_file or tarfile.TarFile(tar_fname, mode='w', fileobj=tfd)
     for f in fileobjs:
         if hasattr(f, 'fileno'):
             ti = tf.gettarinfo(fileobj=f)
@@ -129,12 +134,13 @@ def userdata_script_from_files(fileobjs, tar_fname=None):
     return script
 
 
-def get_tar_from_userdata(string):
-    r = re.compile("b64decode\('''(.*)'''\)")
+def get_tar_from_userdata(string, mode='r'):
+    r = re.compile("\('''(.*)'''\.decode")
     b64str = r.search(string).groups()[0]
     gzf = StringIO.StringIO(b64str.decode('base64'))
     tarstr = StringIO.StringIO(gzip.GzipFile(fileobj=gzf, mode='r').read())
-    return tarfile.TarFile(fileobj=tarstr, mode='r')
+    return tarfile.TarFile(fileobj=tarstr, mode=mode)
+
 
 ENABLE_ROOT_LOGIN_SCRIPT = """\
 #!/usr/bin/env python
@@ -181,6 +187,42 @@ def unbundle_userdata(string, decompress=True):
         for f in files:
             udata[f.get_filename()] = f.get_payload()
     return udata
+
+
+def append_to_userdata(userdata_string, fileobjs, decompress=True):
+    if userdata_string.startswith('#!'):
+        tf = get_tar_from_userdata(userdata_string, mode='a')
+        return userdata_script_from_files(fileobjs, tar_file=tf)
+    else:
+        mpmime = get_mp_from_userdata(userdata_string, decompress=decompress)
+        return mp_userdata_from_files(fileobjs, multipart_mime=mpmime,
+                                      compress=decompress)
+
+
+def remove_from_userdata(userdata_string, filenames, decompress=True):
+    if userdata_string.startswith('#!'):
+        orig_tf = get_tar_from_userdata(userdata_string)
+        tarstr = StringIO.StringIO()
+        new_tf = tarfile.TarFile(fileobj=tarstr, mode='w')
+        for f in orig_tf.getmembers():
+            if f.name in filenames:
+                continue
+            contents = StringIO.StringIO(orig_tf.extractfile(f).read())
+            new_tf.addfile(f, contents)
+        new_tf.close()
+        tarstr.seek(0)
+        new_tf = tarfile.TarFile(fileobj=tarstr, mode='r')
+        return userdata_script_from_files([], tar_file=new_tf)
+    else:
+        mpmime = get_mp_from_userdata(userdata_string, decompress=decompress)
+        msgs = []
+        for msg in mpmime.get_payload():
+            if msg.get_filename() in filenames:
+                continue
+            msgs.append(msg)
+        mpmime.set_payload(msgs)
+        return mp_userdata_from_files([], multipart_mime=mpmime,
+                                      compress=decompress)
 
 
 if __name__ == '__main__':

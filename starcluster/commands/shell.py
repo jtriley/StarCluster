@@ -126,7 +126,7 @@ class CmdShell(CmdBase):
             local_ns['ipview'] = rc[:]
         modules = [(starcluster.__name__ + '.' + module, module)
                    for module in starcluster.__all__]
-        modules += [('boto', 'boto'), ('ssh', 'ssh'),
+        modules += [('boto', 'boto'), ('paramiko', 'paramiko'),
                     ('workerpool', 'workerpool'), ('jinja2', 'jinja2')]
         for fullname, modname in modules:
             log.info('Importing module %s' % modname)

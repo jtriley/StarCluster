@@ -7,6 +7,8 @@ StarCluster v0.9999
 :Team: Software Tools for Academics and Researchers (http://web.mit.edu/star)
 :Homepage: http://web.mit.edu/starcluster
 :License: LGPL
+.. image:: https://secure.travis-ci.org/jtriley/StarCluster.png?branch=develop
+  :target: https://secure.travis-ci.org/jtriley/StarCluster
 
 Description:
 ============
@@ -155,9 +157,9 @@ Have a look at the rest of StarCluster's available commands::
 Dependencies:
 =============
 * Amazon AWS Account
-* Python 2.5+
-* Boto 2.3.0
-* Python SSH 1.7.13
+* Python 2.6+
+* Boto 2.6.0
+* Paramiko 1.8.0
 * WorkerPool 0.9.2
 * Jinja2 2.6
 * decorator 3.3.1

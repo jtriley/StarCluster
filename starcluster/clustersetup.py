@@ -149,6 +149,7 @@ class DefaultClusterSetup(ClusterSetup):
         the new user to be the existing uid/gid of the dir in EBS rather than
         chowning potentially terabytes of data.
         """
+        user = user or self._user
         uid, gid = self._get_new_user_id(user)
         log.info("Creating cluster user: %s (uid: %d, gid: %d)" %
                  (user, uid, gid))
