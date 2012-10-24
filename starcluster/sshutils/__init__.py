@@ -532,7 +532,8 @@ class SSHClient(object):
                 msg += " (no output log requested)"
             if not ignore_exit_status:
                 if raise_on_failure:
-                    raise exception.SSHError(msg)
+                    raise exception.RemoteCommandFailed(
+                        msg, command, exit_status, out_str)
                 else:
                     log.error(msg)
             else:

@@ -55,6 +55,14 @@ class SSHNoCredentialsError(SSHError):
         self.msg = "No password or key specified"
 
 
+class RemoteCommandFailed(SSHError):
+    def __init__(self, msg, command, exit_status, output):
+        self.msg = msg
+        self.command = command
+        self.exit_status = exit_status
+        self.output = output
+
+
 class SSHAccessDeniedViaAuthKeys(BaseException):
     """
     Raised when SSH access for a given user has been restricted via
