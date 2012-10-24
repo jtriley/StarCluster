@@ -493,11 +493,11 @@ class SSHClient(object):
         NOTE: this function blocks until the process finishes
 
         kwargs:
-        silent - do not log output to console
+        silent - don't print the command's output to the console
         only_printable - filter the command's output to allow only printable
-                        characters
+                         characters
         ignore_exit_status - don't warn about non-zero exit status
-        log_output - log output to debug file
+        log_output - log all remote output to the debug file
         detach - detach the remote process so that it continues to run even
                  after the SSH connection closes (does NOT return output or
                  check for non-zero exit status if detach=True)
@@ -516,22 +516,32 @@ class SSHClient(object):
             return
         if source_profile:
             command = "source /etc/profile && %s" % command
+        log.debug("executing remote command: %s" % command)
         channel.exec_command(command)
         output = self._get_output(channel, silent=silent,
                                   only_printable=only_printable)
         exit_status = channel.recv_exit_status()
         self.__last_status = exit_status
+        out_str = '\n'.join(output)
         if exit_status != 0:
-            msg = "command '%s' failed with status %d" % (command, exit_status)
-            if not ignore_exit_status:
-                log.error(msg)
+            msg = "remote command '%s' failed with status %d"
+            msg %= (command, exit_status)
+            if log_output:
+                msg += ":\n%s" % out_str
             else:
-                log.debug(msg)
-        if log_output:
-            for line in output:
-                log.debug(line.strip())
-        if exit_status != 0 and raise_on_failure:
-            raise exception.SSHError(msg)
+                msg += " (no output log requested)"
+            if not ignore_exit_status:
+                if raise_on_failure:
+                    raise exception.SSHError(msg)
+                else:
+                    log.error(msg)
+            else:
+                log.debug("(ignored) " + msg)
+        else:
+            if log_output:
+                log.debug("output of '%s':\n%s" % (command, out_str))
+            else:
+                log.debug("output of '%s' has been hidden" % command)
         return output
 
     def has_required(self, progs):
