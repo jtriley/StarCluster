@@ -267,6 +267,48 @@ NODE_INSTANCE_TYPE = m1.small
 # SETUP_CLASS = starcluster.plugins.sge.SGEPlugin
 # MASTER_IS_EXEC_HOST = False
 #
+# SLURM Plugin <http://computing.llnl.gov/linux/slurm/>
+# Use this plugin to configure a SLURM cluster instead of an SGE cluster.
+# This plugin has only been test with Ubuntu 10.04.
+# You can disable SGE (not required) by setting DISABLE_QUEUE=TRUE in your
+# cluster template.
+# [plugin slurm]
+# SETUP_CLASS = starcluster.plugins.slurm.SlurmPlugin
+# If True, then the master node will also be a compute node.
+# Default is True
+# COMPUTE_ON_MASTER = True
+# Database password used for the SLURM accounting database
+# Default is abc123
+# DB_PASSWORD = abc123
+# If True, user accounts created with the createusers plugin
+# will be added to the SLURM accounting system.
+# The createusers plugin MUST run before the SLURM plugin
+# in order for it to work.
+# Plugins are executed in the order they are specified.
+# ADD_USERS = True
+# Default is True
+# Set the maximum number of nodes the cluster can have.
+# This is *not* the actual number of nodes, it is only the
+# maximum SLURM will be configured for.  Nodes that are configured
+# but not allocated will be hidden.
+# Default is 20
+# MAX_NODES = 20
+# Override the default slurm.conf template with a user provided one.
+# The following fields will be populated:
+#    master: The hostname of the master node.
+#    master-private-ip: The internal IP of the master node.
+#    cluster-name: The tag (name) given to the cluster by the user.
+#    nodelist:  Comma separated list of compute nodes (master included).
+#    partitionlist:  Comma separated list of compute nodes (master included if
+#        COMPUTE_ON_MASTER is True
+#    fake-nodes:  List of nodes configured but not allocated.
+#       If you have a master and one compute node allocated,
+#        and 20 nodes configured, this list would be node002 through node020
+#    To substitute a term, use %%(term)s in the template file.
+#    PartitionName=compute Nodes=%%(partitionlist)s Default=YES MaxTime=INFINITE State=UP
+# The default configuration should be enough to get started.
+# SLURM_CONF_TEMPLATE = /path/to/slurm.conf
+#
 # The IPCluster plugin configures a parallel IPython cluster with optional
 # web notebook support. This allows you to run Python code in parallel with low
 # latency message passing via ZeroMQ.
@@ -311,7 +353,7 @@ NODE_INSTANCE_TYPE = m1.small
     'x86_64_ami': static.BASE_AMI_64,
     'hvm_ami': static.BASE_AMI_HVM,
     'instance_types': ', '.join(static.INSTANCE_TYPES.keys()),
-    'shells': ', '.join(static.AVAILABLE_SHELLS.keys()),
+    'shells': ', '.join(static.AVAILABLE_SHELLS.keys())
 }
 
 DASHES = '-' * 10

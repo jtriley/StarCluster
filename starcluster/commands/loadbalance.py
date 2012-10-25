@@ -1,6 +1,6 @@
 from starcluster import exception
 from starcluster.balancers import sge
-
+from starcluster.balancers import slurm
 from completers import ClusterCompleter
 
 
@@ -8,7 +8,7 @@ class CmdLoadBalance(ClusterCompleter):
     """
     loadbalance <cluster_tag>
 
-    Start the SGE Load Balancer.
+    Start the StarCluster Load Balancer (default SGE).
 
     Example:
 
@@ -25,14 +25,24 @@ class CmdLoadBalance(ClusterCompleter):
 
         $ starcluster loadbalance -d mycluster
 
+    To start the SLURM load balancer instead:
+
+        $ starcluster loadbalance -b slurm mycluster
+
     See "starcluster loadbalance --help" for more details on the '-p' and '-d'
-    options as well as other options for tuning the SGE load balancer
+    options as well as other options for tuning the load balancer
     algorithm.
     """
 
     names = ['loadbalance', 'bal']
+    balancers = ['sge', 'slurm']
 
     def addopts(self, parser):
+        parser.add_option("-b", "--balancer", dest="balancer",
+                          action="store", default="sge",
+                          help="Load Balancer Type "
+                          "(default: sge) "
+                          "Available: sge, slurm")
         parser.add_option("-d", "--dump-stats", dest="dump_stats",
                           action="store_true", default=False,
                           help="Output stats to a csv file at each iteration")
@@ -86,5 +96,15 @@ class CmdLoadBalance(ClusterCompleter):
             self.parser.error("please specify a <cluster_tag>")
         cluster_tag = args[0]
         cluster = self.cm.get_cluster(cluster_tag)
-        lb = sge.SGELoadBalancer(**self.specified_options_dict)
+        balancer = self.specified_options_dict['balancer']
+        args = {}
+        for k,v in self.specified_options_dict.items():
+            if k != 'balancer':
+                args[k] = v
+        if balancer == 'sge':
+            lb = sge.SGELoadBalancer(**args)
+        elif balancer == 'slurm':
+            lb = slurm.SlurmLoadBalancer(**args)
+        else:
+            raise exception.InvalidBalancer(str(balancer))
         lb.run(cluster)

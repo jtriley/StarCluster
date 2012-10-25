@@ -33,10 +33,10 @@ and StarCluster. StarCluster features:
 * **Cluster Compute Instances** - support for "cluster compute" instance types
 * **Expand/Shrink Clusters** - scale a cluster by adding or removing nodes
 * **Elastic Load Balancing** - automatically shrink or expand a cluster based
-  on Open Grid Scheduler queue statistics
+  on Open Grid Scheduler or SLURM scheduler queue statistics
 * **Plugin Support** - allows users to run additional setup routines on the
   cluster after StarCluster's defaults. Comes with plugins for IPython
-  parallel+notebook, Condor, Hadoop, MPICH2, MySQL cluster, installing Ubuntu
+  parallel+notebook, Condor, Hadoop, MPICH2, MySQL cluster, SLURM, installing Ubuntu
   packages, and more.
 
 Interested? See the `getting started`_ section for more details.
