@@ -563,12 +563,14 @@ class Cluster(object):
             try:
                 self.plugins = self.master_node.get_plugins()
             except exception.MasterDoesNotExist:
-                log.warn("Unable to load plugins - no master node found")
+                log.error("Unable to load plugins: no master node found")
+                raise
             except exception.PluginError:
-                log.warn("An error occurred while loading plugins: ",
-                         exc_info=True)
-                log.warn("Not running any plugins")
+                log.error("An error occurred while loading plugins: ",
+                          exc_info=True)
+                raise
             except Exception, e:
+                log.debug('load receipt exception (plugins): ', exc_info=True)
                 raise exception.ClusterReceiptError(
                     'failed to load cluster receipt: %s' % e)
         return True
