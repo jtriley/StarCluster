@@ -43,7 +43,7 @@ class StarClusterCLI(object):
         return self._gparser
 
     def print_header(self):
-        print __description__.replace('\n', '', 1)
+        print >> sys.stderr, __description__.replace('\n', '', 1)
 
     def parse_subcommands(self, gparser=None):
         """
