@@ -47,10 +47,10 @@ class CmdResizeVolume(CmdCreateVolume):
             help="The AMI to use when launching volume host instance")
         parser.add_option(
             "-I", "--instance-type", dest="instance_type",
-            action="store", type="choice", default="m1.small",
+            action="store", type="choice", default="t1.micro",
             choices=static.INSTANCE_TYPES.keys(),
             help="The instance type to use when launching volume "
-            "host instance")
+            "host instance (default: t1.micro)")
         parser.add_option(
             "-r", "--resizefs-cmd", dest="resizefs_cmd",
             action="store", type="string", default="resize2fs",

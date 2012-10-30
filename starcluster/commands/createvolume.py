@@ -55,10 +55,10 @@ class CmdCreateVolume(CmdBase):
             help="The AMI to use when launching volume host instance")
         parser.add_option(
             "-I", "--instance-type", dest="instance_type",
-            action="store", type="choice", default="m1.small",
+            action="store", type="choice", default="t1.micro",
             choices=static.INSTANCE_TYPES.keys(),
             help="The instance type to use when launching volume "
-            "host instance")
+            "host instance (default: t1.micro)")
         parser.add_option(
             "-t", "--tag", dest="tags", action="callback", type="string",
             default={}, callback=self._build_dict,
