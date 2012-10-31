@@ -3,6 +3,7 @@ import posixpath
 from starcluster import threadpool
 from starcluster import clustersetup
 from starcluster.logger import log
+import os
 
 core_site_templ = """\
 <?xml version="1.0"?>
@@ -79,7 +80,7 @@ class Hadoop(clustersetup.ClusterSetup):
     Configures Hadoop using Cloudera packages on StarCluster
     """
 
-    def __init__(self, hadoop_tmpdir='/mnt/hadoop'):
+    def __init__(self, hadoop_tmpdir='/mnt/hadoop', local_output_dir=None):
         self.hadoop_tmpdir = hadoop_tmpdir
         self.hadoop_home = '/usr/lib/hadoop'
         self.hadoop_conf = '/etc/hadoop-0.20/conf.starcluster'
@@ -90,6 +91,11 @@ class Hadoop(clustersetup.ClusterSetup):
                              '/usr/lib/jvm/java-6-openjdk/jre']
         self.ubuntu_alt_cmd = 'update-alternatives'
         self._pool = None
+        self.local_output_dir = local_output_dir
+
+        if self.local_output_dir:
+            if not os.path.exists(self.local_output_dir):
+                os.mkdir(self.local_output_dir)
 
     @property
     def pool(self):
@@ -130,22 +136,43 @@ class Hadoop(clustersetup.ClusterSetup):
         env_file.close()
 
     def _configure_mapreduce_site(self, node, cfg):
-        mapred_site_xml = posixpath.join(self.hadoop_conf, 'mapred-site.xml')
+
+        filename = 'mapred-site.xml'
+        mapred_site_xml = posixpath.join(self.hadoop_conf, filename)
         mapred_site = node.ssh.remote_file(mapred_site_xml)
         mapred_site.write(mapred_site_templ % cfg)
         mapred_site.close()
 
+        if self.local_output_dir:
+            output_file = os.path.join(self.local_output_dir, filename)
+            with open(output_file, 'w') as file_:
+                file_.write(hdfs_site_templ % cfg)
+
     def _configure_core(self, node, cfg):
-        core_site_xml = posixpath.join(self.hadoop_conf, 'core-site.xml')
+
+        filename = 'core-site.xml'
+        core_site_xml = posixpath.join(self.hadoop_conf, filename)
         core_site = node.ssh.remote_file(core_site_xml)
         core_site.write(core_site_templ % cfg)
         core_site.close()
 
+        if self.local_output_dir:
+            output_file = os.path.join(self.local_output_dir, filename)
+            with open(output_file, 'w') as file_:
+                file_.write(core_site_templ % cfg)
+
     def _configure_hdfs_site(self, node, cfg):
-        hdfs_site_xml = posixpath.join(self.hadoop_conf, 'hdfs-site.xml')
+
+        filename = 'hdfs-site.xml'
+        hdfs_site_xml = posixpath.join(self.hadoop_conf, filename)
         hdfs_site = node.ssh.remote_file(hdfs_site_xml)
         hdfs_site.write(hdfs_site_templ % cfg)
         hdfs_site.close()
+
+        if self.local_output_dir:
+            output_file = os.path.join(self.local_output_dir, filename)
+            with open(output_file, 'w') as file_:
+                file_.write(hdfs_site_templ % cfg)
 
     def _configure_masters(self, node, master):
         masters_file = posixpath.join(self.hadoop_conf, 'masters')
@@ -279,5 +306,8 @@ class Hadoop(clustersetup.ClusterSetup):
             self._open_ports(master)
             log.info("Job tracker status: http://%s:50030" % master.dns_name)
             log.info("Namenode status: http://%s:50070" % master.dns_name)
+            if self.local_output_dir:
+                log.info("To run your local hadoop client run :")
+                log.info("export HADOOP_CONF_DIR=%s" % self.local_output_dir)
         finally:
             self.pool.shutdown()
