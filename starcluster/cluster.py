@@ -4,6 +4,7 @@ import zlib
 import time
 import string
 import pprint
+import warnings
 
 from starcluster import utils
 from starcluster import static
@@ -12,6 +13,7 @@ from starcluster import iptools
 from starcluster import sshutils
 from starcluster import managers
 from starcluster import userdata
+from starcluster import deathrow
 from starcluster import exception
 from starcluster import threadpool
 from starcluster import validators
@@ -426,6 +428,14 @@ class Cluster(object):
             zone = self.ec2.get_zone(common_zone)
         return zone
 
+    def load_plugins(self, plugins):
+        if plugins and isinstance(plugins[0], dict):
+            warnings.warn("In a future release the plugins kwarg for Cluster "
+                          "will require a list of plugin objects and not a "
+                          "list of dicts", DeprecationWarning)
+            plugins = deathrow._load_plugins(plugins)
+        return plugins
+
     def load_volumes(self, vols):
         """
         Iterate through vols and set device/partition settings automatically if
@@ -468,52 +478,6 @@ class Cluster(object):
                     raise exception.InvalidPartition(part)
                 v['partition'] = partition
         return volumes
-
-    def load_plugins(self, plugins):
-        plugs = []
-        for plugin in plugins:
-            setup_class = plugin.get('setup_class')
-            plugin_name = plugin.get('__name__').split()[-1]
-            mod_name = '.'.join(setup_class.split('.')[:-1])
-            class_name = setup_class.split('.')[-1]
-            try:
-                mod = __import__(mod_name, globals(), locals(), [class_name])
-            except SyntaxError, e:
-                raise exception.PluginSyntaxError(
-                    "Plugin %s (%s) contains a syntax error at line %s" %
-                    (plugin_name, e.filename, e.lineno))
-            except ImportError, e:
-                raise exception.PluginLoadError(
-                    "Failed to import plugin %s: %s" %
-                    (plugin_name, e[0]))
-            klass = getattr(mod, class_name, None)
-            if not klass:
-                raise exception.PluginError(
-                    'Plugin class %s does not exist' % setup_class)
-            if not issubclass(klass, clustersetup.ClusterSetup):
-                raise exception.PluginError(
-                    "Plugin %s must be a subclass of "
-                    "starcluster.clustersetup.ClusterSetup" % setup_class)
-            args, kwargs = utils.get_arg_spec(klass.__init__)
-            config_args = []
-            missing_args = []
-            for arg in args:
-                if arg in plugin:
-                    config_args.append(plugin.get(arg))
-                else:
-                    missing_args.append(arg)
-            log.debug("config_args = %s" % config_args)
-            if missing_args:
-                raise exception.PluginError(
-                    "Not enough settings provided for plugin %s (missing: %s)"
-                    % (plugin_name, ', '.join(missing_args)))
-            config_kwargs = {}
-            for arg in kwargs:
-                if arg in plugin:
-                    config_kwargs[arg] = plugin.get(arg)
-            log.debug("config_kwargs = %s" % config_kwargs)
-            plugs.append((plugin_name, klass(*config_args, **config_kwargs)))
-        return plugs
 
     def update(self, kwargs):
         for key in kwargs.keys():
@@ -1515,8 +1479,7 @@ class Cluster(object):
             plugs = plugs[:]
             plugs.reverse()
         for plug in plugs:
-            name, plugin = plug
-            self.run_plugin(plugin, name, method_name=method_name, node=node)
+            self.run_plugin(plug, method_name=method_name, node=node)
 
     def run_plugin(self, plugin, name='', method_name='run', node=None):
         """
@@ -1528,7 +1491,8 @@ class Cluster(object):
         node - optional node to pass as first argument to plugin method (used
         for on_add_node/on_remove_node)
         """
-        plugin_name = name or str(plugin)
+        plugin_name = name or getattr(plugin, '__name__',
+                                      utils.get_fq_class_name(plugin))
         try:
             func = getattr(plugin, method_name, None)
             if not func:

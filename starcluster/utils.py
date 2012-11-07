@@ -578,3 +578,7 @@ def strings_to_files(strings, fname_prefix=''):
     for i, f in enumerate(fileobjs):
         f.name = '%s%d' % (fname_prefix, i)
     return fileobjs
+
+
+def get_fq_class_name(obj):
+    return '.'.join([obj.__module__, obj.__class__.__name__])

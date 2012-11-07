@@ -155,24 +155,28 @@ class TestStarClusterConfig(tests.StarClusterTest):
         assert len(plugs) == 3
         plugs = self.config.clusters.c1.plugins
         # test that order is preserved
-        p1 = plugs[0]
-        p2 = plugs[1]
-        p3 = plugs[2]
-        assert p1['__name__'] == 'p1'
-        assert p1['setup_class'] == 'starcluster.tests.mytestplugin.SetupClass'
-        assert p1['my_arg'] == '23'
-        assert p1['my_other_arg'] == 'skidoo'
-        assert p2['__name__'] == 'p2'
+        p1, p2, p3 = plugs
+        p1_name = p1.__name__
+        p1_class = utils.get_fq_class_name(p1)
+        p2_name = p2.__name__
+        p2_class = utils.get_fq_class_name(p2)
+        p3_name = p3.__name__
+        p3_class = utils.get_fq_class_name(p3)
+        assert p1_name == 'p1'
+        assert p1_class == 'starcluster.tests.mytestplugin.SetupClass'
+        assert p1.my_arg == '23'
+        assert p1.my_other_arg == 'skidoo'
+        assert p2_name == 'p2'
         setup_class2 = 'starcluster.tests.mytestplugin.SetupClass2'
-        assert p2['setup_class'] == setup_class2
-        assert p2['my_arg'] == 'hello'
-        assert p2['my_other_arg'] == 'world'
-        assert p3['__name__'] == 'p3'
+        assert p2_class == setup_class2
+        assert p2.my_arg == 'hello'
+        assert p2.my_other_arg == 'world'
+        assert p3_name == 'p3'
         setup_class3 = 'starcluster.tests.mytestplugin.SetupClass3'
-        assert p3['setup_class'] == setup_class3
-        assert p3['my_arg'] == 'bon'
-        assert p3['my_other_arg'] == 'jour'
-        assert p3['my_other_other_arg'] == 'monsignour'
+        assert p3_class == setup_class3
+        assert p3.my_arg == 'bon'
+        assert p3.my_other_arg == 'jour'
+        assert p3.my_other_other_arg == 'monsignour'
 
     def test_plugin_not_defined(self):
         try:
