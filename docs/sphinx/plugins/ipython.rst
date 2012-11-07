@@ -125,7 +125,7 @@ case the above config should be updated to::
 Using the IPython HTML Notebook
 *******************************
 
-.. _IPython web notebook: http://web.mit.edu
+.. _IPython web notebook: http://ipython.org/ipython-doc/stable/interactive/htmlnotebook.html
 
 The IPython cluster plugin comes with support for the new `IPython web
 notebook`_. As mentioned in the intro section, you will need to specify a few
