@@ -32,8 +32,6 @@ class CmdStart(ClusterCompleter):
     """
     names = ['start']
 
-    tag = None
-
     def addopts(self, parser):
         templates = []
         if self.cfg:
@@ -133,17 +131,19 @@ class CmdStart(ClusterCompleter):
                           metavar="FILE",
                           help="path to an ssh private key that matches the "
                           "cluster keypair")
-
-    def cancel_command(self, signum, frame):
-        raise exception.CancelledStartRequest(self.tag)
+        parser.add_option("-U", "--userdata-script", dest="userdata_scripts",
+                          action="append", default=[], metavar="FILE",
+                          help="Path to userdata script that will run on "
+                          "each node on start-up. Can be used multiple times.")
 
     def execute(self, args):
         if len(args) != 1:
             self.parser.error("please specify a <cluster_tag>")
-        tag = self.tag = args[0]
+        tag = args[0]
         create = not self.opts.no_create
         create_only = self.opts.create_only
-        scluster = self.cm.get_cluster_or_none(tag, require_keys=False)
+        scluster = self.cm.get_cluster_or_none(tag, require_keys=False,
+                                               load_plugins=create)
         validate = self.opts.validate
         validate_running = self.opts.no_create
         validate_only = self.opts.validate_only
@@ -188,15 +188,17 @@ class CmdStart(ClusterCompleter):
                                        'tag': tag}
             if not validate_only and not create_only:
                 self.warn_experimental(msg, num_secs=5)
-        self.catch_ctrl_c()
-        scluster.start(create=create, create_only=create_only,
-                       validate=validate, validate_only=validate_only,
-                       validate_running=validate_running)
-        if validate_only:
-            return
-        if not create_only and not self.opts.login_master:
-            log.info(user_msgs.cluster_started_msg %
-                     dict(tag=scluster.cluster_tag),
-                     extra=dict(__textwrap__=True, __raw__=True))
-        if self.opts.login_master:
-            scluster.ssh_to_master()
+        try:
+            scluster.start(create=create, create_only=create_only,
+                           validate=validate, validate_only=validate_only,
+                           validate_running=validate_running)
+            if validate_only:
+                return
+            if not create_only and not self.opts.login_master:
+                log.info(user_msgs.cluster_started_msg %
+                         dict(tag=scluster.cluster_tag),
+                         extra=dict(__textwrap__=True, __raw__=True))
+            if self.opts.login_master:
+                scluster.ssh_to_master()
+        except KeyboardInterrupt:
+            raise exception.CancelledStartRequest(tag)

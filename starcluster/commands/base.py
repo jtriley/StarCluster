@@ -1,7 +1,6 @@
 import os
 import sys
 import time
-import signal
 from starcluster import node
 from starcluster import cluster
 from starcluster import optcomplete
@@ -130,13 +129,6 @@ class CmdBase(optcomplete.CmdComplete):
         print
         log.info("Exiting...")
         sys.exit(1)
-
-    def catch_ctrl_c(self, handler=None):
-        """
-        Catch ctrl-c interrupt
-        """
-        handler = handler or self.cancel_command
-        signal.signal(signal.SIGINT, handler)
 
     def warn_experimental(self, msg, num_secs=10):
         """

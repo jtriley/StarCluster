@@ -82,11 +82,13 @@ class CmdResizeVolume(CmdCreateVolume):
         vc = volume.VolumeCreator(self.ec2, **kwargs)
         if host_instance:
             vc._validate_host_instance(host_instance, zone)
-        self.catch_ctrl_c()
-        new_volid = vc.resize(vol, size, dest_zone=self.opts.dest_zone)
-        if new_volid:
-            self.log.info(
-                "Volume %s was successfully resized to %sGB" % (volid, size))
-            self.log.info("New volume id is: %s" % new_volid)
-        else:
-            self.log.error("failed to resize volume %s" % volid)
+        try:
+            new_volid = vc.resize(vol, size, dest_zone=self.opts.dest_zone)
+            if new_volid:
+                self.log.info("Volume %s was successfully resized to %sGB" %
+                              (volid, size))
+                self.log.info("New volume id is: %s" % new_volid)
+            else:
+                self.log.error("failed to resize volume %s" % volid)
+        except KeyboardInterrupt:
+            self.cancel_command()
