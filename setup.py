@@ -83,7 +83,7 @@ setup(
     license='LGPL3',
     author='Justin Riley',
     author_email='justin.t.riley@gmail.com',
-    url="http://web.mit.edu/starcluster",
+    url="http://star.mit.edu/cluster",
     description="StarCluster is a utility for creating and managing computing "
     "clusters hosted on Amazon's Elastic Compute Cloud (EC2).",
     long_description=README,

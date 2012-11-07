@@ -20,7 +20,7 @@ a *cluster tag* as an argument and will automatically add a new node to the
 cluster::
 
     $ starcluster addnode mycluster
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
@@ -109,7 +109,7 @@ command takes at least two arguments: the *cluster tag* representing the
 cluster you want to remove nodes from and a node *alias*::
 
     $ starcluster removenode mycluster node001
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 

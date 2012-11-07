@@ -22,7 +22,7 @@ from starcluster.logger import log, console
 from starcluster import __version__
 
 __description__ = """
-StarCluster - (http://web.mit.edu/starcluster) (v. %s)
+StarCluster - (http://star.mit.edu/cluster) (v. %s)
 Software Tools for Academics and Researchers (STAR)
 Please submit bug reports to starcluster@mit.edu
 """ % __version__

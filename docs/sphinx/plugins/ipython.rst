@@ -152,7 +152,7 @@ Once you have these settings in the plugin's config simply start a cluster and
 let the plugin configure your IPython cluster::
 
     $ starcluster start iptest
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 

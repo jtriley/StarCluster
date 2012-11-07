@@ -238,7 +238,7 @@ NODE_INSTANCE_TYPE = m1.small
 ######################
 # The following plugins ship with StarCluster and should work out-of-the-box.
 # Uncomment as needed. Don't forget to update your PLUGINS list!
-# See http://web.mit.edu/star/cluster/docs/latest/plugins for plugin details.
+# See http://star.mit.edu/cluster/docs/latest/plugins for plugin details.
 #
 # Use this plugin to install one or more packages on all nodes
 # [plugin pkginstaller]
