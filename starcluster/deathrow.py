@@ -43,7 +43,7 @@ def _load_plugins(plugins, debug=True):
             raise exception.PluginError(
                 "Plugin %s must be a subclass of "
                 "starcluster.clustersetup.ClusterSetup" % setup_class)
-        args, kwargs = utils.get_arg_spec(klass.__init__)
+        args, kwargs = utils.get_arg_spec(klass.__init__, debug=debug)
         config_args = []
         missing_args = []
         for arg in args:
