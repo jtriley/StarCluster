@@ -1510,6 +1510,8 @@ class Cluster(object):
                                                                   plugin_name))
         except exception.MasterDoesNotExist:
             raise
+        except KeyboardInterrupt:
+            raise
         except Exception, e:
             msg = "Error occurred while running plugin '%s':" % plugin_name
             if isinstance(e, exception.ThreadPoolException):
