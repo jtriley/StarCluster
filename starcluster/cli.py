@@ -66,6 +66,7 @@ class StarClusterCLI(object):
         # set debug level if specified
         if gopts.DEBUG:
             console.setLevel(logger.DEBUG)
+            config.DEBUG_CONFIG = True
         # load StarClusterConfig into global options
         try:
             cfg = config.StarClusterConfig(gopts.CONFIG)
