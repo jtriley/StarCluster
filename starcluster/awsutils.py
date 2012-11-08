@@ -1010,12 +1010,15 @@ class EasyEC2(EasyAWS):
         while snap.status != 'completed':
             try:
                 progress = int(snap.update().replace('%', ''))
-                pbar.update(progress)
+                if not pbar.finished:
+                    pbar.update(progress)
             except ValueError:
                 time.sleep(5)
                 continue
-            time.sleep(refresh_interval)
-        pbar.finish()
+            if snap.status != 'completed':
+                time.sleep(refresh_interval)
+        if not pbar.finished:
+            pbar.finish()
 
     def create_snapshot(self, vol, description=None, wait_for_snapshot=False,
                         refresh_interval=30):
