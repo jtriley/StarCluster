@@ -16,6 +16,7 @@ import boto.s3.connection
 from starcluster import image
 from starcluster import utils
 from starcluster import static
+from starcluster import spinner
 from starcluster import webtools
 from starcluster import exception
 from starcluster import progressbar
@@ -999,6 +1000,28 @@ class EasyEC2(EasyAWS):
             return self.get_volume(volume_id)
         except exception.VolumeDoesNotExist:
             pass
+
+    def wait_for_volume(self, volume, status=None, state=None,
+                        refresh_interval=5, log_func=log.info):
+        if status:
+            log_func("Waiting for %s to become '%s'..." % (volume.id, status),
+                     extra=dict(__nonewline__=True))
+            s = spinner.Spinner()
+            s.start()
+            while volume.update() != status:
+                time.sleep(refresh_interval)
+            s.stop()
+        if state:
+            log_func("Waiting for %s to transition to: %s... " %
+                     (volume.id, state), extra=dict(__nonewline__=True))
+            if not status:
+                volume.update()
+            s = spinner.Spinner()
+            s.start()
+            while volume.attachment_state() != state:
+                time.sleep(refresh_interval)
+                volume.update()
+            s.stop()
 
     def wait_for_snapshot(self, snapshot, refresh_interval=30):
         snap = snapshot
