@@ -89,10 +89,6 @@ class VolumeCreator(cluster.Cluster):
         return self._instance
 
     def _create_volume(self, size, zone, snapshot_id=None):
-        msg = "Creating %sGB volume in zone %s" % (size, zone)
-        if snapshot_id:
-            msg += " from snapshot %s" % snapshot_id
-        log.info(msg)
         vol = self.ec2.create_volume(size, zone, snapshot_id)
         log.info("New volume id: %s" % vol.id)
         s = self.get_spinner("Waiting for new volume to become 'available'...")
