@@ -4,6 +4,7 @@ import zlib
 import time
 import string
 import pprint
+import traceback
 import warnings
 
 from starcluster import utils
@@ -388,6 +389,7 @@ class Cluster(object):
         self._plugins = plugins
         self._pool = None
         self._progress_bar = None
+        self._config_fields = None
 
     def __repr__(self):
         return '<Cluster: %s (%s-node)>' % (self.cluster_tag,
@@ -491,6 +493,14 @@ class Cluster(object):
         cfg = self.__getstate__()
         return pprint.pformat(cfg)
 
+    def print_config(self):
+        config = {}
+        for key in self._config_fields:
+            config[key] = getattr(self, key)
+        pprint.pprint(config)
+
+
+
     def load_receipt(self, load_plugins=True):
         """
         Load the original settings used to launch this cluster into this
@@ -515,6 +525,7 @@ class Cluster(object):
                 user = tags.get(static.USER_TAG, '')
                 cluster_settings.update(
                     utils.decode_uncompress_load(user, use_json=True))
+                
         except (zlib.error, ValueError, TypeError, EOFError, IndexError), e:
             log.debug('load receipt exception: ', exc_info=True)
             raise exception.IncompatibleCluster(self.cluster_group)
@@ -522,6 +533,7 @@ class Cluster(object):
             log.debug('Failed to load cluster receipt:', exc_info=True)
             raise exception.ClusterReceiptError(
                 'failed to load cluster receipt: %s' % e)
+        self._config_fields = cluster_settings.keys()
         self.update(cluster_settings)
         if load_plugins:
             try:
@@ -557,6 +569,27 @@ class Cluster(object):
     def _security_group(self):
         return static.SECURITY_GROUP_TEMPLATE % self.cluster_tag
 
+    
+    def save_core_settings(self, sg):
+        core_settings = utils.dump_compress_encode(
+            dict(cluster_size=self.cluster_size,
+                 master_image_id=self.master_image_id,
+                 master_instance_type=self.master_instance_type,
+                 node_image_id=self.node_image_id,
+                 node_instance_type=self.node_instance_type,
+                 disable_queue=self.disable_queue,
+                 disable_cloudinit=self.disable_cloudinit),
+            use_json=True)
+        sg.add_tag(static.CORE_TAG, core_settings)
+
+    def save_user_settings(self, sg):
+        user_settings = utils.dump_compress_encode(
+            dict(cluster_user=self.cluster_user,
+                 cluster_shell=self.cluster_shell, keyname=self.keyname,
+                 spot_bid=self.spot_bid), use_json=True)
+        sg.add_tag(static.USER_TAG, user_settings)
+        
+
     @property
     def cluster_group(self):
         if self._cluster_group is None:
@@ -567,23 +600,10 @@ class Cluster(object):
                                               auth_group_traffic=True)
             if not static.VERSION_TAG in sg.tags:
                 sg.add_tag(static.VERSION_TAG, str(static.VERSION))
-            core_settings = utils.dump_compress_encode(
-                dict(cluster_size=self.cluster_size,
-                     master_image_id=self.master_image_id,
-                     master_instance_type=self.master_instance_type,
-                     node_image_id=self.node_image_id,
-                     node_instance_type=self.node_instance_type,
-                     disable_queue=self.disable_queue,
-                     disable_cloudinit=self.disable_cloudinit),
-                use_json=True)
             if not static.CORE_TAG in sg.tags:
-                sg.add_tag('@sc-core', core_settings)
-            user_settings = utils.dump_compress_encode(
-                dict(cluster_user=self.cluster_user,
-                     cluster_shell=self.cluster_shell, keyname=self.keyname,
-                     spot_bid=self.spot_bid), use_json=True)
+                self.save_core_settings(sg)
             if not static.USER_TAG in sg.tags:
-                sg.add_tag('@sc-user', user_settings)
+                self.save_user_settings(sg)
             ssh_port = static.DEFAULT_SSH_PORT
             for p in self.permissions:
                 perm = self.permissions.get(p)
@@ -832,6 +852,7 @@ class Cluster(object):
                 sge_plugin.on_add_node(node, self.nodes, self.master_node,
                                        self.cluster_user, self.cluster_shell,
                                        self.volumes)
+                
             self.run_plugins(method_name="on_add_node", node=node)
 
     def remove_node(self, node, terminate=True):
@@ -1463,6 +1484,7 @@ class Cluster(object):
                                        num_threads=self.num_threads)
             sge_plugin.run(self.nodes, self.master_node, self.cluster_user,
                            self.cluster_shell, self.volumes)
+            
         self.run_plugins()
 
     def run_plugins(self, plugins=None, method_name="run", node=None,
