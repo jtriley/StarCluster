@@ -90,14 +90,10 @@ class VolumeCreator(cluster.Cluster):
 
     def _create_volume(self, size, zone, snapshot_id=None):
         vol = self.ec2.create_volume(size, zone, snapshot_id)
-        log.info("New volume id: %s" % vol.id)
-        s = self.get_spinner("Waiting for new volume to become 'available'...")
-        while vol.status != 'available':
-            time.sleep(5)
-            vol.update()
-        s.stop()
         self._volume = vol
-        return self._volume
+        log.info("New volume id: %s" % vol.id)
+        self.ec2.wait_for_volume(vol, status='available')
+        return vol
 
     def _determine_device(self):
         block_dev_map = self._instance.block_device_mapping
@@ -120,15 +116,10 @@ class VolumeCreator(cluster.Cluster):
         raise exception.BaseException("Can't find volume device")
 
     def _attach_volume(self, vol, instance_id, device):
-        s = self.get_spinner("Attaching volume %s to instance %s..." %
-                             (vol.id, instance_id))
+        log.info("Attaching volume %s to instance %s..." %
+                 (vol.id, instance_id))
         vol.attach(instance_id, device)
-        while True:
-            vol.update()
-            if vol.attachment_state() == 'attached':
-                break
-            time.sleep(5)
-        s.stop()
+        self.ec2.wait_for_volume(vol, state='attached')
         return self._volume
 
     def _validate_host_instance(self, instance, zone):
@@ -247,6 +238,18 @@ class VolumeCreator(cluster.Cluster):
             log.info("Not terminating host instance %s" %
                      host.id)
 
+    def _delete_new_volume(self):
+        """
+        Should only be used during clean-up in the case of an error
+        """
+        newvol = self._volume
+        if newvol:
+            log.error("Detaching and deleting *new* volume: %s" % newvol.id)
+            newvol.detach(force=True)
+            self.ec2.wait_for_volume(newvol, status='available')
+            newvol.delete()
+            del self._volume
+
     @print_timing("Creating volume")
     def create(self, volume_size, volume_zone, name=None, tags=None):
         try:
@@ -275,15 +278,9 @@ class VolumeCreator(cluster.Cluster):
                      (volume_size, vol.id))
             return vol
         except Exception:
-            log.error("failed to create new volume")
-            if self._volume:
-                log.error(
-                    "Error occurred. Detaching, and deleting volume: %s" %
-                    self._volume.id)
-                self._volume.detach(force=True)
-                time.sleep(5)
-                self._volume.delete()
             self._warn_about_volume_hosts()
+            log.error("Failed to create new volume")
+            self._delete_new_volume()
             raise
 
     def _validate_resize(self, vol, size):
