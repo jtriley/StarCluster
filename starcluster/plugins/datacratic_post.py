@@ -18,8 +18,8 @@ class DatacraticPostPlugin(clustersetup.DefaultClusterSetup):
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         self._master = master
-        #log.info("Overriding SGE node config to set slots=1")
-        #self._set_node_slots(node.alias, 1)
+        log.info("Overriding SGE node config to set slots=1")
+        self._set_node_slots(node.alias, 1)
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         pass
