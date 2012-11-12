@@ -331,5 +331,7 @@ class VolumeCreator(cluster.Cluster):
             self._warn_about_volume_hosts()
             return new_vol.id
         except Exception:
+            log.error("Failed to resize volume %s" % vol.id)
+            self._delete_new_volume()
             self._warn_about_volume_hosts()
             raise
