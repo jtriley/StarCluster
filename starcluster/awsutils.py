@@ -278,6 +278,23 @@ class EasyEC2(EasyAWS):
                 (name, success))
             raise exception.AWSError(
                 "failed to create placement group '%s'" % name)
+
+        found = False
+        counter = 1
+        while not found:
+            #wait for it to propagate within EC2
+            pgs = self.conn.get_all_placement_groups()
+            for pg in pgs:
+                if pg.name == name:
+                    found = True
+                    break
+            #not found
+            if counter % 10 == 0:
+                log.info("Still waiting for placement group " + name)
+            log.debug(name + ": Placement group not propagated, sleeping")
+            time.sleep(1)
+            counter += 1
+
         return self.get_placement_group(name)
 
     def get_placement_groups(self, filters=None):
