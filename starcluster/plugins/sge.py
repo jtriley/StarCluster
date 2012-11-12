@@ -170,7 +170,9 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         qstatsXml[1:]#remove first line
         qstatsET = ET.fromstringlist(qstatsXml)
         toDelete = []
-        cleanedQueue = map(lambda x: "all.q@" + x, cleaned)
+        cleanedQueue = []#not a lambda function to allow pickling
+        for c in cleaned:
+            cleanedQueue.append("all.q@" + c)
         for jobList in qstatsET.find("queue_info").findall("job_list"):
             if jobList.find("queue_name").text in cleanedQueue:
                 jobNumber = jobList.find("JB_job_number").text
