@@ -537,7 +537,9 @@ class SGELoadBalancer(LoadBalancer):
         qstat_cmd = 'qstat -u \* -xml'
         qhostxml = '\n'.join(master.ssh.execute('qhost -xml'))
         qstatxml = '\n'.join(master.ssh.execute(qstat_cmd))
-        qacct = '\n'.join(master.ssh.execute(qacct_cmd))
+        qacct = '\n'.join(master.ssh.execute(qacct_cmd, raise_on_failure=False, silent=True))
+        if qacct == "no jobs running since startup":
+            qacct = ''
 
         sccePath = "/usr/bin/starClusterCopyEditor"
         qconfPath = "/root/scqueueconfig.qconf"
