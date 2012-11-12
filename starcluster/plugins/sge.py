@@ -48,6 +48,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         log.info("%s SGE parallel environment '%s'" % (verb, name))
         # iterate through each machine and count the number of processors
         nodes = nodes or self._nodes
+        #TODO: Fails if some machines go away while updating 
         num_processors = sum(self.pool.map(lambda n: n.num_processors, nodes))
         penv = mssh.remote_file("/tmp/pe.txt", "w")
         penv.write(sge.sge_pe_template % (name, num_processors))
@@ -110,14 +111,15 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self.pool.wait(numtasks=len(self.nodes))
         self._create_sge_pe()
 
-    def _remove_from_sge(self, node):
+    def _remove_from_sge(self, node, only_clean_master=False):
         master = self._master
         master.ssh.execute('qconf -dattr hostgroup hostlist %s @allhosts' %
                            node.alias)
         master.ssh.execute('qconf -purge queue slots all.q@%s' % node.alias)
         master.ssh.execute('qconf -dconf %s' % node.alias)
         master.ssh.execute('qconf -de %s' % node.alias)
-        node.ssh.execute('pkill -9 sge_execd')
+        if not only_clean_master:
+            node.ssh.execute('pkill -9 sge_execd')
         nodes = filter(lambda n: n.alias != node.alias, self._nodes)
         self._create_sge_pe(nodes=nodes)
 
