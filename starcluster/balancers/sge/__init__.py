@@ -3,6 +3,7 @@ import time
 import datetime
 import xml.dom.minidom
 import re
+import traceback
 
 from starcluster import utils
 from starcluster import static
