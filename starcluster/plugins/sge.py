@@ -153,7 +153,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         qhosts = self._master.ssh.execute("qhost", source_profile=True)
         if len(qhosts) <= 3:
             log.info("Nothing to clean")
-            return
+        
         qhosts = qhosts[3:]
         aliveNodes = [node.alias for node in nodes]
 
@@ -187,6 +187,10 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         for c in cleaned:
             log.info("Cleaning node " + c)
             self._remove_from_sge(DeadNode(c), only_clean_master=True)
+
+        #fix to allow pickling
+        self._master = None
+        self._nodes = None
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
