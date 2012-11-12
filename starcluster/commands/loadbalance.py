@@ -78,6 +78,9 @@ class CmdLoadBalance(ClusterCompleter):
         parser.add_option("-K", "--kill-cluster", dest="kill_cluster",
                           action="store_true", default=False,
                           help="Terminate the cluster when the queue is empty")
+        parser.add_option("--ignore-master", dest="ignore_master", 
+                          action="store_true", default=False,
+                          help="Ignores the master as an execution host")
 
     def execute(self, args):
         if not self.cfg.globals.enable_experimental:
