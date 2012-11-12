@@ -3,6 +3,11 @@ from starcluster.templates import sge
 from starcluster.logger import log
 import xml.etree.ElementTree as ET
 
+class DeadNode():
+    alias = None
+
+    def __init__(self, alias):
+        self.alias = alias
 
 class SGEPlugin(clustersetup.DefaultClusterSetup):
 
@@ -148,15 +153,10 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         qhosts = self._master.ssh.execute("qhost", source_profile=True)
         if len(qhosts) <= 3:
             log.info("Nothing to clean")
-            return
+        
         qhosts = qhosts[3:]
         aliveNodes = [node.alias for node in nodes]
 
-        class FakeNode():
-            alias = None
-
-            def __init__(self, alias):
-                self.alias = alias
 
         cleaned = []
         #find dead hosts
@@ -170,7 +170,9 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         qstatsXml[1:]#remove first line
         qstatsET = ET.fromstringlist(qstatsXml)
         toDelete = []
-        cleanedQueue = map(lambda x: "all.q@" + x, cleaned)
+        cleanedQueue = []#not a lambda function to allow pickling
+        for c in cleaned:
+            cleanedQueue.append("all.q@" + c)
         for jobList in qstatsET.find("queue_info").findall("job_list"):
             if jobList.find("queue_name").text in cleanedQueue:
                 jobNumber = jobList.find("JB_job_number").text
@@ -184,7 +186,11 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         #delete the host config
         for c in cleaned:
             log.info("Cleaning node " + c)
-            self._remove_from_sge(FakeNode(c), only_clean_master=True)
+            self._remove_from_sge(DeadNode(c), only_clean_master=True)
+
+        #fix to allow pickling
+        self._master = None
+        self._nodes = None
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
