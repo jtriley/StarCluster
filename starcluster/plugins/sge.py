@@ -1,6 +1,7 @@
 from starcluster import clustersetup
 from starcluster.templates import sge
 from starcluster.logger import log
+import xml.etree.ElementTree as ET
 
 
 class SGEPlugin(clustersetup.DefaultClusterSetup):
