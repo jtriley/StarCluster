@@ -8,7 +8,7 @@ class CmdPrintConfig(NodeCompleter):
 
     Print the config as stored within the security_group description
     """
-    names = ['pc', 'printconfig']
+    names = ['printconfig', 'pc']
 
     def addopts(self, parser):
         pass

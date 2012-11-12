@@ -8,7 +8,7 @@ class CmdReloadConfig(NodeCompleter):
 
     Reloads and stores a new configuration within a running cluster.
     """
-    names = ['rc', 'reloadconfig']
+    names = ['reloadconfig', 'rc']
 
     def addopts(self, parser):
         if self.cfg:
