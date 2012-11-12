@@ -1557,6 +1557,16 @@ class Cluster(object):
         return node.shell(user=user, forward_x11=forward_x11,
                           forward_agent=forward_agent, command=command)
 
+    def clean(self):
+        if not self.disable_queue:
+            #clean sge
+            sge_plugin = sge.SGEPlugin()
+            sge_plugin.clean_cluster(self.nodes, self.master_node,
+                                      self.cluster_user,
+                                      self.cluster_shell, self.volumes)
+        
+        self.run_plugins(method_name="clean_cluster", reverse=True)
+
 
 class ClusterValidator(validators.Validator):
     """
@@ -2000,3 +2010,4 @@ class ClusterValidator(validators.Validator):
             # fingerprint, however, Amazon doesn't for some reason...
             log.warn("Unable to validate imported keypair fingerprint...")
         return True
+
