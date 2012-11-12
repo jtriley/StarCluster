@@ -2,13 +2,14 @@ from completers import NodeCompleter
 from starcluster.plugins import sge
 
 
-class CmdPrintConfig(NodeCompleter):
+class CmdCleanCluster(NodeCompleter):
     """
-    printconfig <cluster-tag>
+    datacratic_update
 
-    Print the config as stored within the security_group description
+    Calls the grid plugins to allow them to clean their master host.
+    Usefull with a spot instances cluster.
     """
-    names = ['printconfig', 'pc']
+    names = ['cleancluster']
 
     def addopts(self, parser):
         pass
@@ -17,5 +18,6 @@ class CmdPrintConfig(NodeCompleter):
         if len(args) != 1:
             self.parser.error("please specify a cluster <cluster_tag>")
         tag = self.tag = args[0]
-        cluster = self.cm.get_cluster(tag).print_config()
+        cluster = self.cm.get_cluster(tag)
+        cluster.clean()
 

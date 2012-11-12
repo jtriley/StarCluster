@@ -417,7 +417,7 @@ class Node(object):
         home_folder = user.pw_dir
         ssh_folder = posixpath.join(home_folder, '.ssh')
         if not self.ssh.isdir(ssh_folder):
-            self.ssh.mkdir(ssh_folder)
+            self.ssh.makedirs(ssh_folder)
         self.ssh.chown(user.pw_uid, user.pw_gid, ssh_folder)
         private_key = posixpath.join(ssh_folder, 'id_rsa')
         public_key = private_key + '.pub'
@@ -719,11 +719,13 @@ class Node(object):
 
     def remove_from_etc_hosts(self, nodes):
         """
-        Remove all network names for node in nodes arg from this node's
+        Remove all network names and ips for node in nodes arg from this node's
         /etc/hosts file
         """
         aliases = map(lambda x: x.alias, nodes)
+        ips = map(lambda x: x.private_ip_address.replace(".", "\."), nodes)
         self.ssh.remove_lines_from_file('/etc/hosts', '|'.join(aliases))
+        self.ssh.remove_lines_from_file('/etc/hosts', '|'.join(ips))
 
     def set_hostname(self, hostname=None):
         """
