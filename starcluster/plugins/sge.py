@@ -135,6 +135,54 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         finally:
             self.pool.shutdown()
 
+    """
+    Run qhost to find nodes that are present in OGS but not in the cluster in
+    order to remove them.
+    """
+    def clean_cluster(self, nodes, master, user, user_shell, volumes):
+        self._master = master
+        self._nodes = nodes
+        qhosts = self._master.ssh.execute("qhost", source_profile=True)
+        if len(qhosts) <= 3:
+            log.info("Nothing to clean")
+            return
+        qhosts = qhosts[3:]
+        aliveNodes = [node.alias for node in nodes]
+
+        class FakeNode():
+            alias = None
+
+            def __init__(self, alias):
+                self.alias = alias
+
+        cleaned = []
+        #find dead hosts
+        for qhost in qhosts:
+            nodeAlias = qhost[0:qhost.find(" ")]
+            if nodeAlias not in aliveNodes:
+                cleaned.append(nodeAlias)
+
+        #find jobs running in dead hosts
+        qstatsXml = self._master.ssh.execute("qstat -xml", source_profile=True)
+        qstatsXml[1:]#remove first line
+        qstatsET = ET.fromstringlist(qstatsXml)
+        toDelete = []
+        cleanedQueue = map(lambda x: "all.q@" + x, cleaned)
+        for jobList in qstatsET.find("queue_info").findall("job_list"):
+            if jobList.find("queue_name").text in cleanedQueue:
+                jobNumber = jobList.find("JB_job_number").text
+                toDelete.append(jobNumber)
+        #delete the jobs
+        if toDelete:
+            log.info("Stopping jobs: " + str(toDelete))
+            self._master.ssh.execute("qdel -f " + " ".join(toDelete),
+                source_profile=True)
+
+        #delete the host config
+        for c in cleaned:
+            log.info("Cleaning node " + c)
+            self._remove_from_sge(FakeNode(c), only_clean_master=True)
+
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
         self._master = master
