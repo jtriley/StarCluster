@@ -3,6 +3,11 @@ from starcluster.templates import sge
 from starcluster.logger import log
 import xml.etree.ElementTree as ET
 
+class DeadNode():
+    alias = None
+
+    def __init__(self, alias):
+        self.alias = alias
 
 class SGEPlugin(clustersetup.DefaultClusterSetup):
 
@@ -152,11 +157,6 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         qhosts = qhosts[3:]
         aliveNodes = [node.alias for node in nodes]
 
-        class FakeNode():
-            alias = None
-
-            def __init__(self, alias):
-                self.alias = alias
 
         cleaned = []
         #find dead hosts
@@ -184,7 +184,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         #delete the host config
         for c in cleaned:
             log.info("Cleaning node " + c)
-            self._remove_from_sge(FakeNode(c), only_clean_master=True)
+            self._remove_from_sge(DeadNode(c), only_clean_master=True)
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
