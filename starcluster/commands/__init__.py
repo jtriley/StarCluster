@@ -38,6 +38,7 @@ from get import CmdGet
 from help import CmdHelp
 from printconfig import CmdPrintConfig
 from reloadconfig import CmdReloadConfig
+from cleancluster import CmdCleanCluster
 
 all_cmds = [
     CmdStart(),
@@ -79,5 +80,6 @@ all_cmds = [
     CmdShell(),
     CmdHelp(),
     CmdPrintConfig(),
-    CmdReloadConfig()
+    CmdReloadConfig(),
+    CmdCleanCluster()
 ]
