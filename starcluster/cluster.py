@@ -1557,6 +1557,7 @@ class Cluster(object):
         return node.shell(user=user, forward_x11=forward_x11,
                           forward_agent=forward_agent, command=command)
 
+    def clean(self):
         if not self.disable_queue:
             #clean sge
             sge_plugin = sge.SGEPlugin()
@@ -1566,6 +1567,7 @@ class Cluster(object):
         
         self.run_plugins(method_name="clean_cluster", reverse=True)
 
+    def recover(self, remove_on_error=False):
         to_recover = []
         if not self.disable_queue:
             sge_plugin = sge.SGEPlugin()

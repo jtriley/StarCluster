@@ -37,6 +37,8 @@ from put import CmdPut
 from get import CmdGet
 from help import CmdHelp
 from reloadconfig import CmdReloadConfig
+from printconfig import CmdPrintConfig
+from recover import CmdRecover
 from cleancluster import CmdCleanCluster
 
 all_cmds = [
@@ -80,6 +82,6 @@ all_cmds = [
     CmdHelp(),
     CmdPrintConfig(),
     CmdReloadConfig(),
-    CmdCleanCluster()
+    CmdCleanCluster(),
     CmdRecover(),
 ]
