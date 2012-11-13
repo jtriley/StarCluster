@@ -210,18 +210,21 @@ class VolumeCreator(cluster.Cluster):
 
     def _warn_about_volume_hosts(self):
         sg = self.ec2.get_group_or_none(static.VOLUME_GROUP)
-        if not sg:
-            return
-        vol_hosts = filter(lambda x: x.state in ['running', 'pending'],
-                           sg.instances())
+        vol_hosts = []
+        if sg:
+            vol_hosts = filter(lambda x: x.state in ['running', 'pending'],
+                               sg.instances())
+        if self._instance:
+            vol_hosts.append(self._instance)
         vol_hosts = map(lambda x: x.id, vol_hosts)
         if vol_hosts:
             log.warn("There are still volume hosts running: %s" %
                      ', '.join(vol_hosts))
-            log.warn("Run 'starcluster terminate %s' to terminate *all* "
-                     "volume host instances once they're no longer needed" %
-                     static.VOLUME_GROUP_NAME, extra=dict(__textwrap__=True))
-        else:
+            if not self._instance:
+                log.warn("Run 'starcluster terminate %s' to terminate *all* "
+                         "volume host instances" % static.VOLUME_GROUP_NAME,
+                         extra=dict(__textwrap__=True))
+        elif sg:
             log.info("No active volume hosts found. Run 'starcluster "
                      "terminate %(g)s' to remove the '%(g)s' group" %
                      {'g': static.VOLUME_GROUP_NAME},
