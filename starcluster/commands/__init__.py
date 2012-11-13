@@ -78,11 +78,8 @@ all_cmds = [
     CmdRunPlugin(),
     CmdShell(),
     CmdHelp(),
-<<<<<<< HEAD
     CmdPrintConfig(),
     CmdReloadConfig(),
     CmdCleanCluster()
-=======
     CmdRecover(),
->>>>>>> BLUK-66_recover_command
 ]
