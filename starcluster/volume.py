@@ -95,6 +95,12 @@ class VolumeCreator(cluster.Cluster):
         self.ec2.wait_for_volume(vol, status='available')
         return vol
 
+    def _create_snapshot(self, volume):
+        snap = self.ec2.create_snapshot(volume, wait_for_snapshot=True)
+        log.info("New snapshot id: %s" % snap.id)
+        self._snapshot = snap
+        return snap
+
     def _determine_device(self):
         block_dev_map = self._instance.block_device_mapping
         for char in string.lowercase[::-1]:
@@ -310,7 +316,7 @@ class VolumeCreator(cluster.Cluster):
             host = self._request_instance(zone)
             self._validate_required_progs([self._resizefs_cmd.split()[0]])
             self._determine_device()
-            snap = self.ec2.create_snapshot(vol, wait_for_snapshot=True)
+            snap = self._create_snapshot(vol)
             new_vol = self._create_volume(size, zone, snap.id)
             self._attach_volume(new_vol, host.id, self._aws_block_device)
             device = self._get_volume_device()
@@ -326,8 +332,6 @@ class VolumeCreator(cluster.Cluster):
                     "EBS volume %s has more than 1 partition. "
                     "You must resize this volume manually" % vol.id)
             host.ssh.execute(' '.join([self._resizefs_cmd, device]))
-            log.info("Removing generated snapshot %s" % snap.id)
-            snap.delete()
             self.shutdown()
             return new_vol.id
         except Exception:
@@ -335,4 +339,9 @@ class VolumeCreator(cluster.Cluster):
             self._delete_new_volume()
             raise
         finally:
+            snap = self._snapshot
+            if snap:
+                log_func = log.info if self._volume else log.error
+                log_func("Deleting snapshot %s" % snap.id)
+                snap.delete()
             self._warn_about_volume_hosts()
