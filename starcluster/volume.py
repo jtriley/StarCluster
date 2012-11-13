@@ -273,15 +273,15 @@ class VolumeCreator(cluster.Cluster):
             self._get_volume_device(self._aws_block_device)
             self._format_volume()
             self.shutdown()
-            self._warn_about_volume_hosts()
             log.info("Your new %sGB volume %s has been created successfully" %
                      (volume_size, vol.id))
             return vol
         except Exception:
-            self._warn_about_volume_hosts()
             log.error("Failed to create new volume")
             self._delete_new_volume()
             raise
+        finally:
+            self._warn_about_volume_hosts()
 
     def _validate_resize(self, vol, size):
         self._validate_size(size)
@@ -328,10 +328,10 @@ class VolumeCreator(cluster.Cluster):
             log.info("Removing generated snapshot %s" % snap.id)
             snap.delete()
             self.shutdown()
-            self._warn_about_volume_hosts()
             return new_vol.id
         except Exception:
             log.error("Failed to resize volume %s" % vol.id)
             self._delete_new_volume()
-            self._warn_about_volume_hosts()
             raise
+        finally:
+            self._warn_about_volume_hosts()
