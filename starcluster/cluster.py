@@ -1536,7 +1536,6 @@ class Cluster(object):
                           forward_agent=forward_agent, command=command)
 
     def recover(self, remove_on_error=False):
-        print "GILLES!"
         to_recover = []
         if not self.disable_queue:
             sge_plugin = sge.SGEPlugin()
