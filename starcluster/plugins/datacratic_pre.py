@@ -14,7 +14,6 @@ class DatacraticPrePlugin(clustersetup.DefaultClusterSetup):
         pass
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
-        self._master = master
         #create a 20GB swap in a background process
         log.info("Shutdown order in 3h55 minutes")
         node.ssh.execute_async("shutdown -h +235 StarCluster datacratic plugin "\

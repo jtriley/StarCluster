@@ -11,15 +11,12 @@ class DatacraticPostPlugin(clustersetup.DefaultClusterSetup):
         pass
     
     def run(self, nodes, master, user, user_shell, volumes):
-        self._master = master
         log.info("Datacratic plugin: setting master to 0 slot")
-        self._set_node_slots("master", 0)
-        pass
+        self._set_node_slots(master, "master", 0)
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
-        self._master = master
         log.info("Overriding SGE node config to set slots=1")
-        self._set_node_slots(node.alias, 1)
+        self._set_node_slots(master, node.alias, 1)
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         pass
@@ -28,8 +25,7 @@ class DatacraticPostPlugin(clustersetup.DefaultClusterSetup):
         pass
 
 
-    def _set_node_slots(self, node_alias, num_slots):
-        master = self._master
+    def _set_node_slots(self, master, node_alias, num_slots):
         dcePath = "/usr/bin/datacraticCopyEditor"
         qconfPath = "/root/queueconfig.qconf"
         if not master.ssh.path_exists(dcePath):
