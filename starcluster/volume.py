@@ -289,6 +289,7 @@ class VolumeCreator(cluster.Cluster):
             log.warn("You are attempting to shrink an EBS volume. "
                      "Data loss may occur")
 
+    @print_timing("Resizing volume")
     def resize(self, vol, size, dest_zone=None):
         """
         Resize EBS volume
