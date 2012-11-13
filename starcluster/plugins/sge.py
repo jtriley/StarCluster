@@ -214,6 +214,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._volumes = None
         if self._pool:
             self._pool.shutdown()
+            self._pool = None
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
@@ -233,3 +234,4 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._volumes = None
         if self._pool:
             self._pool.shutdown()
+            self._pool = None
