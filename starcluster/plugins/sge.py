@@ -206,6 +206,15 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._add_to_sge(node)
         self._create_sge_pe()
 
+        #fix to allow pickling
+        self._nodes = None
+        self._master = None
+        self._user = None
+        self._user_shell = None
+        self._volumes = None
+        if self._pool
+            self._pool.shutdown()
+
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
         self._master = master
@@ -215,3 +224,12 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         log.info("Removing %s from SGE" % node.alias)
         self._remove_from_sge(node)
         self._remove_nfs_exports(node)
+
+        #fix to allow pickling
+        self._nodes = None
+        self._master = None
+        self._user = None
+        self._user_shell = None
+        self._volumes = None
+        if self._pool
+            self._pool.shutdown()

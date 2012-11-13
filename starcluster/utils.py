@@ -556,6 +556,10 @@ def dump_compress_encode(obj, use_json=False):
     serializer = cPickle
     if use_json:
         serializer = json
+    if type(obj) == list:
+        for o in obj:
+            print o
+            serializer.dumps(o)
     return zlib.compress(serializer.dumps(obj)).encode('base64')
 
 
