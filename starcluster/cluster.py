@@ -1552,7 +1552,7 @@ class Cluster(object):
             log.error("Cannot support more than one list of nodes to recover")
         elif len(to_recover) == 1:
             errors = []
-            for alias in aliases:
+            for alias in to_recover[0]:
                 #call it one at a time so that x doesn't prevent y to be added
                 try:
                     log.info("Adding back node " + alias)
@@ -1561,12 +1561,14 @@ class Cluster(object):
                     log.error("Failed to add back node " + alias)
                     errors.append(alias)
 
-            for alias in errors:
-                try:
-                    log.info("Terminating misbehaving node " + alias)
-                    self.remove_nodes([alias])
-                except:
-                    log.error("Failed to remove misbehaving node " + alias)
+            if remove_on_error:
+                for alias in errors:
+                    try:
+                        log.info("Terminating misbehaving node " + alias)
+                        self.remove_nodes([alias])
+                    except:
+                        log.error("Failed to remove misbehaving node " + alias)
+
 
 class ClusterValidator(validators.Validator):
     """
