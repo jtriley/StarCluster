@@ -449,6 +449,7 @@ class SSHClient(object):
         Execute a remote command and return the exit status
         """
         channel = self.transport.open_session()
+        channel.settimeout(self._timeout)
         if source_profile:
             command = "source /etc/profile && %s" % command
         channel.exec_command(command)
@@ -506,6 +507,7 @@ class SSHClient(object):
         returns List of output lines
         """
         channel = self.transport.open_session()
+        channel.settimeout(self._timeout)
         if detach:
             command = "nohup %s &" % command
             if source_profile:
@@ -589,6 +591,7 @@ class SSHClient(object):
 
     def _invoke_shell(self, term='screen', cols=80, lines=24):
         chan = self.transport.open_session()
+        chan.settimeout(self._timeout)
         chan.get_pty(term, cols, lines)
         chan.invoke_shell()
         return chan
