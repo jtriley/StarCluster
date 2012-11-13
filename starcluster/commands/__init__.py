@@ -36,6 +36,7 @@ from removekey import CmdRemoveKey
 from put import CmdPut
 from get import CmdGet
 from help import CmdHelp
+from recover import CmdRecover
 
 all_cmds = [
     CmdStart(),
@@ -76,4 +77,5 @@ all_cmds = [
     CmdRunPlugin(),
     CmdShell(),
     CmdHelp(),
+    CmdRecover(),
 ]

@@ -1535,6 +1535,39 @@ class Cluster(object):
         return node.shell(user=user, forward_x11=forward_x11,
                           forward_agent=forward_agent, command=command)
 
+    def recover(self, remove_on_error=False):
+        print "GILLES!"
+        to_recover = []
+        if not self.disable_queue:
+            sge_plugin = sge.SGEPlugin()
+            to_recover.append(sge_plugin.get_nodes_to_recover(self.nodes))
+                                                
+        for plugin in self.plugins:
+            try:
+                result = plugin.get_nodes_to_recover(self.nodes)
+                to_recover.append(result)
+            except:
+                #the plugin does not implement get_nodes_to_recover
+                pass
+        if len(to_recover) > 1:
+            log.error("Cannot support more than one list of nodes to recover")
+        elif len(to_recover) == 1:
+            errors = []
+            for alias in aliases:
+                #call it one at a time so that x doesn't prevent y to be added
+                try:
+                    log.info("Adding back node " + alias)
+                    self.add_nodes(aliases=[alias], no_create=True)
+                except:
+                    log.error("Failed to add back node " + alias)
+                    errors.append(alias)
+
+            for alias in errors:
+                try:
+                    log.info("Terminating misbehaving node " + alias)
+                    self.remove_nodes([alias])
+                except:
+                    log.error("Failed to remove misbehaving node " + alias)
 
 class ClusterValidator(validators.Validator):
     """
@@ -1978,3 +2011,4 @@ class ClusterValidator(validators.Validator):
             # fingerprint, however, Amazon doesn't for some reason...
             log.warn("Unable to validate imported keypair fingerprint...")
         return True
+

@@ -120,6 +120,26 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         nodes = filter(lambda n: n.alias != node.alias, self._nodes)
         self._create_sge_pe(nodes=nodes)
 
+    def get_nodes_to_recover(self, nodes): 
+        """
+        Active nodes that are not in OGS.
+        """
+        if len(nodes) == 1:
+            return []
+
+        master = nodes[0]
+        del nodes[0]#remove master
+        aliases = [n.alias for n in nodes]
+        qhosts = master.ssh.execute("qhost", source_profile=True)
+        qhosts[3:]
+        missing = []
+        for line in qhosts:
+            alias = line[0:line.find(" ")]
+            if alias not in aliases:
+                missing.append(alias)
+
+        return missing
+
     def run(self, nodes, master, user, user_shell, volumes):
         if not master.ssh.isdir("/opt/sge6-fresh"):
             log.error("SGE is not installed on this AMI, skipping...")
