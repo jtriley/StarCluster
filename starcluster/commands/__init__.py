@@ -36,7 +36,6 @@ from removekey import CmdRemoveKey
 from put import CmdPut
 from get import CmdGet
 from help import CmdHelp
-from printconfig import CmdPrintConfig
 from reloadconfig import CmdReloadConfig
 from cleancluster import CmdCleanCluster
 
@@ -79,7 +78,11 @@ all_cmds = [
     CmdRunPlugin(),
     CmdShell(),
     CmdHelp(),
+<<<<<<< HEAD
     CmdPrintConfig(),
     CmdReloadConfig(),
     CmdCleanCluster()
+=======
+    CmdRecover(),
+>>>>>>> BLUK-66_recover_command
 ]
