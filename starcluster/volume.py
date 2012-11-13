@@ -317,7 +317,11 @@ class VolumeCreator(cluster.Cluster):
                 self._validate_zone(dest_zone)
                 zone = dest_zone
             host = self._request_instance(zone)
-            self._validate_required_progs([self._resizefs_cmd.split()[0]])
+            resizefs_exe = self._resizefs_cmd.split()[0]
+            required = [resizefs_exe]
+            if resizefs_exe == 'resize2fs':
+                required.append('e2fsck')
+            self._validate_required_progs(required)
             self._determine_device()
             snap = self._create_snapshot(vol)
             new_vol = self._create_volume(size, zone, snap.id)
@@ -334,6 +338,10 @@ class VolumeCreator(cluster.Cluster):
                 raise exception.InvalidOperation(
                     "EBS volume %s has more than 1 partition. "
                     "You must resize this volume manually" % vol.id)
+            if resizefs_exe == "resize2fs":
+                log.info("Running e2fsck on new volume")
+                host.ssh.execute("e2fsck -y -f %s" % device)
+            log.info("Running %s on new volume" % self._resizefs_cmd)
             host.ssh.execute(' '.join([self._resizefs_cmd, device]))
             self.shutdown()
             return new_vol.id
