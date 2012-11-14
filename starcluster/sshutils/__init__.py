@@ -486,7 +486,7 @@ class SSHClient(object):
 
     def execute(self, command, silent=True, only_printable=False,
                 ignore_exit_status=False, log_output=True, detach=False,
-                source_profile=True, raise_on_failure=True):
+                source_profile=True, raise_on_failure=False):
         """
         Execute a remote command and return stdout/stderr
 
