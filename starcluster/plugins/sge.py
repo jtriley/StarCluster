@@ -134,7 +134,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         aliases = []
         for line in qhosts:
             aliases.append(line[0:line.find(" ")])
-        for node in nodes
+        for node in nodes:
             if node.alias not in aliases:
                 missing.append(node.alias)
 
