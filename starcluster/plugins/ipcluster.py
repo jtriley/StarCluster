@@ -73,7 +73,7 @@ STARTED_MSG_11 = """\
 IPCluster has been started on %(cluster)s for user '%(user)s'.
 
 See the IPCluster plugin doc for usage details:
-http://web.mit.edu/starcluster/docs/latest/plugins/ipython.html
+http://star.mit.edu/cluster/docs/latest/plugins/ipython.html
 """
 
 

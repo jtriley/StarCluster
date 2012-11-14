@@ -14,7 +14,7 @@ try:
     console_scripts = ['starcluster = starcluster.cli:main']
     extra = dict(test_suite="starcluster.tests",
                  tests_require="nose",
-                 install_requires=["paramiko==1.8.0", "boto==2.6.0",
+                 install_requires=["paramiko==1.9.0", "boto==2.6.0",
                                    "workerpool==0.9.2", "Jinja2==2.6",
                                    "decorator==3.3.3", "pyasn1==0.1.3"],
                  include_package_data=True,
@@ -83,7 +83,7 @@ setup(
     license='LGPL3',
     author='Justin Riley',
     author_email='justin.t.riley@gmail.com',
-    url="http://web.mit.edu/starcluster",
+    url="http://star.mit.edu/cluster",
     description="StarCluster is a utility for creating and managing computing "
     "clusters hosted on Amazon's Elastic Compute Cloud (EC2).",
     long_description=README,

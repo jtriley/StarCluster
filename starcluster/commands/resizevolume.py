@@ -47,10 +47,10 @@ class CmdResizeVolume(CmdCreateVolume):
             help="The AMI to use when launching volume host instance")
         parser.add_option(
             "-I", "--instance-type", dest="instance_type",
-            action="store", type="choice", default="m1.small",
+            action="store", type="choice", default="t1.micro",
             choices=static.INSTANCE_TYPES.keys(),
             help="The instance type to use when launching volume "
-            "host instance")
+            "host instance (default: t1.micro)")
         parser.add_option(
             "-r", "--resizefs-cmd", dest="resizefs_cmd",
             action="store", type="string", default="resize2fs",
@@ -82,11 +82,13 @@ class CmdResizeVolume(CmdCreateVolume):
         vc = volume.VolumeCreator(self.ec2, **kwargs)
         if host_instance:
             vc._validate_host_instance(host_instance, zone)
-        self.catch_ctrl_c()
-        new_volid = vc.resize(vol, size, dest_zone=self.opts.dest_zone)
-        if new_volid:
-            self.log.info(
-                "Volume %s was successfully resized to %sGB" % (volid, size))
-            self.log.info("New volume id is: %s" % new_volid)
-        else:
-            self.log.error("failed to resize volume %s" % volid)
+        try:
+            new_volid = vc.resize(vol, size, dest_zone=self.opts.dest_zone)
+            if new_volid:
+                self.log.info("Volume %s was successfully resized to %sGB" %
+                              (volid, size))
+                self.log.info("New volume id is: %s" % new_volid)
+            else:
+                self.log.error("failed to resize volume %s" % volid)
+        except KeyboardInterrupt:
+            self.cancel_command()

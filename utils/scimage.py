@@ -90,8 +90,8 @@ __/\_____| |_ __ _ _ __ ___| |_   _ ___| |_ ___ _ __
 
 StarCluster Ubuntu 11.10 AMI
 Software Tools for Academics and Researchers (STAR)
-Homepage: http://web.mit.edu/starcluster
-Documentation: http://web.mit.edu/starcluster/docs/latest
+Homepage: http://star.mit.edu/cluster
+Documentation: http://star.mit.edu/cluster/docs/latest
 Code: https://github.com/jtriley/StarCluster
 Mailing list: starcluster@mit.edu
 

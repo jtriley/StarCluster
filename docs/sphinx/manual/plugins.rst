@@ -121,7 +121,7 @@ Using the Development Shell
 To launch StarCluster's development shell, use the *shell* command::
 
     $ starcluster shell
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 

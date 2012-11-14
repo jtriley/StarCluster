@@ -16,7 +16,7 @@ Logging into the master node
 To login to the master node as root::
 
     $ starcluster sshmaster mycluster
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
@@ -41,7 +41,7 @@ To login to the master node as root::
     http://alestic.com http://ec2ubuntu-group.notlong.com
 
     StarCluster EC2 AMI created by Justin Riley (MIT)
-    url: http://web.mit.edu/stardev/cluster
+    url: http://star.mit.edu/cluster
     email: star 'at' mit 'dot' edu
     root@master:~#
 
@@ -55,7 +55,7 @@ using the **sshnode** command. First, run "starcluster listclusters" to list
 the nodes::
 
     $ starcluster listclusters
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
@@ -77,7 +77,7 @@ the nodes::
 Then use "starcluster sshnode mycluster" to login to a node::
 
     $ starcluster sshnode mycluster node001
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
@@ -102,7 +102,7 @@ Then use "starcluster sshnode mycluster" to login to a node::
     http://alestic.com http://ec2ubuntu-group.notlong.com
 
     StarCluster EC2 AMI created by Justin Riley (MIT)
-    url: http://web.mit.edu/stardev/cluster
+    url: http://star.mit.edu/cluster
     email: star 'at' mit 'dot' edu
 
     0 packages can be updated.

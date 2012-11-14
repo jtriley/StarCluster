@@ -14,7 +14,7 @@ StarCluster will create a *crash file* containing debugging logs useful for
 diagnosing the issue. Below is an example of a crash due to a bug in the code::
 
     % starcluster start -s 2 -v mycluster
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
@@ -62,4 +62,4 @@ For all other issues, questions, feature requests, etc. you can either:
 .. _freenode: http://freenode.net
 .. _submit a bug report: https://github.com/jtriley/StarCluster/issues/new
 .. _github issue tracker: https://github.com/jtriley/StarCluster/issues
-.. _user mailing list: http://web.mit.edu/stardev/cluster/mailinglist.html
+.. _user mailing list: http://star.mit.edu/cluster/mailinglist.html

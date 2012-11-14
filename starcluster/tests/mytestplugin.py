@@ -3,7 +3,12 @@ from starcluster.clustersetup import ClusterSetup
 
 
 class SetupClass(ClusterSetup):
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
     def __init__(self, my_arg, my_other_arg):
+        self.my_arg = my_arg
+        self.my_other_arg = my_other_arg
         log.debug(
             "setupclass: my_arg = %s, my_other_arg = %s" % (my_arg,
                                                             my_other_arg))
@@ -16,7 +21,12 @@ class SetupClass(ClusterSetup):
 
 
 class SetupClass2(ClusterSetup):
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
     def __init__(self, my_arg, my_other_arg):
+        self.my_arg = my_arg
+        self.my_other_arg = my_other_arg
         log.debug("setupclass2: my_arg = %s, my_other_arg = %s" %
                   (my_arg, my_other_arg))
 
@@ -28,7 +38,13 @@ class SetupClass2(ClusterSetup):
 
 
 class SetupClass3(ClusterSetup):
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
     def __init__(self, my_arg, my_other_arg, my_other_other_arg):
+        self.my_arg = my_arg
+        self.my_other_arg = my_other_arg
+        self.my_other_other_arg = my_other_other_arg
         msg = "setupclass3: my_arg = %s, my_other_arg = %s"
         msg += " my_other_other_arg = %s"
         log.debug(msg % (my_arg, my_other_arg, my_other_other_arg))

@@ -125,7 +125,7 @@ case the above config should be updated to::
 Using the IPython HTML Notebook
 *******************************
 
-.. _IPython web notebook: http://web.mit.edu
+.. _IPython web notebook: http://ipython.org/ipython-doc/stable/interactive/htmlnotebook.html
 
 The IPython cluster plugin comes with support for the new `IPython web
 notebook`_. As mentioned in the intro section, you will need to specify a few
@@ -152,7 +152,7 @@ Once you have these settings in the plugin's config simply start a cluster and
 let the plugin configure your IPython cluster::
 
     $ starcluster start iptest
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 

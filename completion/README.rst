@@ -83,4 +83,4 @@ available options and suggestions for their arguments.
 
 See the official tab completion docs for more examples:
 
-http://web.mit.edu/star/cluster/docs/latest/manual/shell_completion.html
+http://star.mit.edu/cluster/docs/latest/manual/shell_completion.html

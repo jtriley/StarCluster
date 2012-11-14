@@ -447,7 +447,7 @@ def test_version_to_float():
     print("All tests passed")
 
 
-def get_arg_spec(func):
+def get_arg_spec(func, debug=True):
     """
     Convenience wrapper around inspect.getargspec
 
@@ -465,12 +465,13 @@ def get_arg_spec(func):
     nrequired = nargs - ndefaults
     args = allargs[:nrequired]
     kwargs = allargs[nrequired:]
-    log.debug('nargs = %s' % nargs)
-    log.debug('ndefaults = %s' % ndefaults)
-    log.debug('nrequired = %s' % nrequired)
-    log.debug('args = %s' % args)
-    log.debug('kwargs = %s' % kwargs)
-    log.debug('defaults = %s' % str(defaults))
+    if debug:
+        log.debug('nargs = %s' % nargs)
+        log.debug('ndefaults = %s' % ndefaults)
+        log.debug('nrequired = %s' % nrequired)
+        log.debug('args = %s' % args)
+        log.debug('kwargs = %s' % kwargs)
+        log.debug('defaults = %s' % str(defaults))
     return args, kwargs
 
 
@@ -578,3 +579,7 @@ def strings_to_files(strings, fname_prefix=''):
     for i, f in enumerate(fileobjs):
         f.name = '%s%d' % (fname_prefix, i)
     return fileobjs
+
+
+def get_fq_class_name(obj):
+    return '.'.join([obj.__module__, obj.__class__.__name__])

@@ -7,7 +7,9 @@ from starcluster import utils
 from starcluster import static
 from starcluster import cluster
 from starcluster import awsutils
+from starcluster import deathrow
 from starcluster import exception
+from starcluster import clustersetup
 from starcluster.cluster import Cluster
 from starcluster.utils import AttributeDict
 
@@ -371,18 +373,16 @@ class StarClusterConfig(object):
     def _load_plugins(self, store):
         cluster_section = store
         plugins = cluster_section.get('plugins')
-        if not plugins or isinstance(plugins[0], AttributeDict):
+        if not plugins or isinstance(plugins[0], clustersetup.ClusterSetup):
             return
         plugs = []
-        cluster_section['plugins'] = plugs
         for plugin in plugins:
-            if plugin in self.plugins:
-                p = self.plugins.get(plugin)
-                p['__name__'] = p['__name__'].split()[-1]
-                plugs.append(p)
-            else:
+            if not plugin in self.plugins:
                 raise exception.ConfigError(
                     "plugin '%s' not defined in config" % plugin)
+            plugs.append(self.plugins.get(plugin))
+        cluster_section['plugins'] = deathrow._load_plugins(plugs,
+                                                            debug=DEBUG_CONFIG)
 
     def _load_permissions(self, store):
         cluster_section = store
