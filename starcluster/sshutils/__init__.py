@@ -177,6 +177,7 @@ class SSHClient(object):
         if not self._sftp or self._sftp.sock.closed:
             log.debug("creating sftp connection")
             self._sftp = paramiko.SFTPClient.from_transport(self.transport)
+            self._sftp.get_channel().settimeout(self._timeout)
         return self._sftp
 
     @property
