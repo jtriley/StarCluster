@@ -1556,7 +1556,7 @@ class Cluster(object):
                 #call it one at a time so that x doesn't prevent y to be added
                 try:
                     log.info("Adding back node " + alias)
-                    self.add_nodes(aliases=[alias], no_create=True)
+                    self.add_nodes(num_nodes=1, aliases=[alias], no_create=True)
                 except:
                     log.error("Failed to add back node " + alias)
                     errors.append(alias)
