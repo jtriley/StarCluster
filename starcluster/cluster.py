@@ -1565,11 +1565,11 @@ class Cluster(object):
                 for alias in errors:
                     for node in self.nodes:
                         if alias == node.alias:
-                        try:
-                            log.info("Terminating misbehaving node " + alias)
-                            self.remove_nodes([node])
-                        except:
-                            log.error("Failed to remove misbehaving node " + alias)
+                            try:
+                                log.info("Terminating misbehaving node " + alias)
+                                self.remove_nodes([node])
+                            except:
+                                log.error("Failed to remove misbehaving node " + alias)
 
 
 class ClusterValidator(validators.Validator):
