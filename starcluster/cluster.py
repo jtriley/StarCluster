@@ -1595,11 +1595,13 @@ class Cluster(object):
 
             if remove_on_error:
                 for alias in errors:
-                    try:
-                        log.info("Terminating misbehaving node " + alias)
-                        self.remove_nodes([alias])
-                    except:
-                        log.error("Failed to remove misbehaving node " + alias)
+                    for node in self.nodes:
+                        if alias == node.alias:
+                        try:
+                            log.info("Terminating misbehaving node " + alias)
+                            self.remove_nodes([node])
+                        except:
+                            log.error("Failed to remove misbehaving node " + alias)
 
 
 
