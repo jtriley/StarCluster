@@ -136,14 +136,15 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             return []
 
         master = nodes[0]
-        aliases = [n.alias for n in nodes]
         qhosts = master.ssh.execute("qhost", source_profile=True)
         qhosts = qhosts[3:]
         missing = []
+        aliases = []
         for line in qhosts:
-            alias = line[0:line.find(" ")]
-            if alias not in aliases:
-                missing.append(alias)
+            aliases.append(line[0:line.find(" ")])
+        for node in nodes
+            if node.alias not in aliases:
+                missing.append(node.alias)
 
         return missing
 
