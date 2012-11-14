@@ -131,7 +131,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         del nodes[0]#remove master
         aliases = [n.alias for n in nodes]
         qhosts = master.ssh.execute("qhost", source_profile=True)
-        qhosts[3:]
+        qhosts = qhosts[3:]
         missing = []
         for line in qhosts:
             alias = line[0:line.find(" ")]
