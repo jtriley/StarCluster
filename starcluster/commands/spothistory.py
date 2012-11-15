@@ -47,6 +47,10 @@ class CmdSpotHistory(CmdBase):
         parser.add_option("-p", "--plot", dest="plot",
                           action="store_true", default=False,
                           help="plot spot history using matplotlib")
+        parser.add_option("-c", "--cluster-name", dest="cluster_name", 
+                          default=None,
+                          help="limit results to the clusters master node "
+                          "availability zone")
 
     def execute(self, args):
         instance_types = ', '.join(static.INSTANCE_TYPES.keys())
@@ -66,5 +70,20 @@ class CmdSpotHistory(CmdBase):
             start = utils.datetime_tuple_to_iso(
                 now - timedelta(days=self.opts.days_ago))
         browser_cmd = self.cfg.globals.get("web_browser")
-        self.ec2.get_spot_history(instance_type, start, end, self.opts.plot,
-                                  plot_web_browser=browser_cmd)
+
+        zone = None
+        if self.opts.cluster_name:
+            cl = self.cm.get_cluster(self.opts.cluster_name, 
+                                     require_keys=False)
+            zone = cl.nodes[0].placement
+            self.log.info("Cluster zone: " + zone)
+        if self.opts.zone:
+            if zone:
+                self.log.info("You specified a zone and a cluster to get the zone "
+                              "from. Using the cluster zone.")
+            else:
+                zone = self.opts.zone
+                self.log.info("Specified zone: " + zone)
+
+        self.ec2.get_spot_history(instance_type, start, end, zone, 
+                                  self.opts.plot, plot_web_browser=browser_cmd)
