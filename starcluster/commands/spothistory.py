@@ -67,7 +67,7 @@ class CmdSpotHistory(CmdBase):
             instance_type = cl.node_instance_type
             zone = cl.nodes[0].placement
             self.log.info("Cluster zone: " + zone)
-            self.log.info("Clustter node instance type: " + instance_type)
+            self.log.info("Cluster node instance type: " + instance_type)
         if self.opts.zone:
             if zone:
                 self.log.info("You specified a zone and a cluster to get the zone "
