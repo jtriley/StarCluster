@@ -3,6 +3,7 @@ import os
 from starcluster import exception
 from completers import ClusterCompleter
 
+
 def list_csv(csv_string):
     """
     For parsing comma separated values in --multi e.g. --multi master,node001
@@ -35,8 +36,9 @@ class CmdPut(ClusterCompleter):
         # Copy a file or dir to a node (node001 in this example)
         $ starcluster put mycluster --node node001 /local/path /remote/path
 
-        # Copy a file or dir to multiple nodes (master and node001 in this example)
-        $ starcluster put mycluster --multi master,node001 /local/path /remote/path
+        # Copy a file or dir to multiple nodes (master and node001 in this
+        # example)
+        $ starcluster put mycluster -m master,node001 /local/path /remote/path
 
 
     This will copy a file or directory to the remote server
@@ -49,7 +51,8 @@ class CmdPut(ClusterCompleter):
         parser.add_option("-n", "--node", dest="node", default="master",
                           help="Transfer files to NODE (defaults to master)")
         parser.add_option("-m", "--multi", dest="multi", default=None,
-                          help="Transfer files to multiple NODEs (defaults to master)")
+                          help="Transfer files to multiple NODEs (defaults to"
+                          + "master)")
 
     def put(self, node, rpath, lpaths):
         if self.opts.user:
@@ -72,7 +75,8 @@ class CmdPut(ClusterCompleter):
                     "Local file or directory does not exist: %s" % lpath)
         cl = self.cm.get_cluster(ctag)
         if self.opts.multi:
-            nodes = [cl.get_node_by_alias(nodename) for nodename in list_csv(self.opts.multi)]
+            nodes = [cl.get_node_by_alias(nodename) for nodename in
+                     list_csv(self.opts.multi)]
         else:
             nodes = [cl.get_node_by_alias(self.opts.node)]
         for node in nodes:
