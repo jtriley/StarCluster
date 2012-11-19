@@ -2,7 +2,7 @@ from starcluster import exception
 from starcluster.balancers import sge
 
 from completers import ClusterCompleter
-
+import signal
 
 class CmdLoadBalance(ClusterCompleter):
     """
@@ -87,7 +87,14 @@ class CmdLoadBalance(ClusterCompleter):
             raise exception.ExperimentalFeature("The 'loadbalance' command")
         if len(args) != 1:
             self.parser.error("please specify a <cluster_tag>")
-        cluster_tag = args[0]
-        cluster = self.cm.get_cluster(cluster_tag)
-        lb = sge.SGELoadBalancer(**self.specified_options_dict)
-        lb.run(cluster)
+
+        try:
+            cluster_tag = args[0]
+            cluster = self.cm.get_cluster(cluster_tag)
+            lb = sge.SGELoadBalancer(**self.specified_options_dict)
+            lb.run(cluster)
+        except KeyboardInterrupt:
+            import traceback
+            #traceback.format_exc()
+            self.log.info(traceback.format_exc())
+
