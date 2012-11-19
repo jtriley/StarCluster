@@ -306,6 +306,18 @@ NODE_INSTANCE_TYPE = m1.small
 # Install and setup an Xvfb server on each cluster node
 # [plugin xvfb]
 # SETUP_CLASS = starcluster.plugins.xvfb.XvfbSetup
+#
+# [plugin datacratic_pre]
+# SETUP_CLASS = starcluster.plugins.datacratic_pre.DatacraticPrePlugin
+#
+# [plugin datacratic_post]
+# SETUP_CLASS = starcluster.plugins.datacratic_post.DatacraticPostPlugin
+#
+# [plugin datacratic_dev]
+# SETUP_CLASS = starcluster.plugins.datacratic_dev.DatacraticDevPlugin
+#
+# [plugin datacratic_prod]
+# SETUP_CLASS = starcluster.plugins.datacratic_prod.DatacraticProdPlugin
 """ % {
     'x86_ami': static.BASE_AMI_32,
     'x86_64_ami': static.BASE_AMI_64,

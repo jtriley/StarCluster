@@ -5,7 +5,7 @@ from starcluster import clustersetup
 from starcluster.templates import sge
 from starcluster.logger import log
 
-class DatacraticDevPlugin(clustersetup.DefaultClusterSetup):
+class DatacraticProdPlugin(clustersetup.DefaultClusterSetup):
 
     def run(self, nodes, master, user, user_shell, volumes):
         master.ec2.get_instance(master.id).add_tag("bluekai-prod", "")
