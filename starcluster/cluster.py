@@ -735,7 +735,8 @@ class Cluster(object):
             spot_bid = None
         cluster_sg = self.cluster_group.name
         instance_type = instance_type or self.node_instance_type
-        if not placement_group and instance_type in static.CLUSTER_TYPES:
+        if placement_group is None and instance_type in static.CLUSTER_TYPES:
+            #if placement_group is False -> leave false
             placement_group = self.placement_group.name
         image_id = image_id or self.node_image_id
         count = len(aliases) if not spot_bid else 1
