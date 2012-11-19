@@ -81,6 +81,10 @@ class CmdAddNode(ClusterCompleter):
             "-x", "--no-create", dest="no_create", action="store_true",
             default=False, help="do not launch new EC2 instances when "
             "adding nodes (use existing instances instead)")
+        parser.add_option(
+            "--ignore-grp", dest="ignore_grp", action="store_true",
+            default=False, help="if set, instances of type " +
+            str(static.CLUSTER_TYPES) + " will not use the placement group")
 
     def _get_duplicate(self, lst):
         d = {}
@@ -113,8 +117,12 @@ class CmdAddNode(ClusterCompleter):
         if not self.opts.alias and self.opts.no_create:
             self.parser.error("you must specify one or more node aliases via "
                               "the -a option when using -x")
+
+        placement_group = False if self.opts.ignore_grp else None
+
         self.cm.add_nodes(tag, num_nodes, aliases=aliases,
                           image_id=self.opts.image_id,
                           instance_type=self.opts.instance_type,
                           zone=self.opts.zone, spot_bid=self.opts.spot_bid,
-                          no_create=self.opts.no_create)
+                          no_create=self.opts.no_create,
+                          placement_group=placement_group)

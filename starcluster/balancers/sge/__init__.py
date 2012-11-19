@@ -436,7 +436,7 @@ class SGELoadBalancer(LoadBalancer):
                  add_pi=1, kill_after=45, stab=180, lookback_win=3,
                  min_nodes=1, kill_cluster=False, plot_stats=False,
                  plot_output_dir=None, dump_stats=False, stats_file=None,
-                 ignore_master=False):
+                 ignore_master=False, ignore_grp=False):
         self._cluster = None
         self._keep_polling = True
         self._visualizer = None
@@ -458,6 +458,10 @@ class SGELoadBalancer(LoadBalancer):
         self.ignore_master = ignore_master
         if plot_stats:
             assert self.visualizer is not None
+        if ignore_grp:
+            self._placement_group = False
+        else:
+            self._placement_group = None
 
     @property
     def visualizer(self):
@@ -743,7 +747,8 @@ class SGELoadBalancer(LoadBalancer):
             log.warn("Adding %d nodes at %s" %
                      (need_to_add, str(datetime.datetime.utcnow())))
             try:
-                self._cluster.add_nodes(need_to_add)
+                self._cluster.add_nodes(need_to_add, 
+                                        placement_group=self._placement_group)
                 self.__last_cluster_mod_time = datetime.datetime.utcnow()
                 log.info("Done adding nodes at %s" %
                          str(datetime.datetime.utcnow()))
