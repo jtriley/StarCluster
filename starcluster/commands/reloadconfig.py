@@ -13,7 +13,7 @@ class CmdReloadConfig(NodeCompleter):
     def addopts(self, parser):
         if self.cfg:
             templates = self.cfg.get_cluster_names().keys()
-        opt = parser.add_option("-c", "--cluster-template", action="store",
+        parser.add_option("-c", "--cluster-template", action="store",
                                 dest="cluster_template", choices=templates,
                                 default=False, help="cluster template to use "
                                 "from the config file")
@@ -25,11 +25,11 @@ class CmdReloadConfig(NodeCompleter):
             self.parser.error("please specify a cluster template")
         tag = self.tag = args[0]
 
-
-        fieldsToUpdate = ["disable_queue", "disable_threads", 
-                          "force_spot_master", "master_image_id", 
-                          "master_instance_type", "node_image_id", 
-                          "node_instance_type", "spot_bid", "disable_cloudinit"]
+        fieldsToUpdate = ["disable_queue", "disable_threads",
+                          "force_spot_master", "master_image_id",
+                          "master_instance_type", "node_image_id",
+                          "node_instance_type", "spot_bid",
+                          "disable_cloudinit"]
 
         cluster = self.cm.get_cluster(tag)
         new_cfg = self.cfg.get_cluster_template(self.opts.cluster_template)
