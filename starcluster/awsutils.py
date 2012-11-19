@@ -1215,7 +1215,7 @@ class EasyEC2(EasyAWS):
             data.append([timestamp, price])
         maximum = max(prices)
         avg = sum(prices) / float(len(prices))
-        log.info("Current price: $%.2f" % prices[-1])
+        log.info("Current price: $%.2f" % prices[0])
         log.info("Max price: $%.2f" % maximum)
         log.info("Average price: $%.2f" % avg)
         if plot:
