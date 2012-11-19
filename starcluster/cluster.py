@@ -4,7 +4,6 @@ import zlib
 import time
 import string
 import pprint
-import traceback
 import warnings
 
 from starcluster import utils
@@ -499,8 +498,6 @@ class Cluster(object):
             config[key] = getattr(self, key)
         pprint.pprint(config)
 
-
-
     def load_receipt(self, load_plugins=True):
         """
         Load the original settings used to launch this cluster into this
@@ -525,7 +522,7 @@ class Cluster(object):
                 user = tags.get(static.USER_TAG, '')
                 cluster_settings.update(
                     utils.decode_uncompress_load(user, use_json=True))
-                
+
         except (zlib.error, ValueError, TypeError, EOFError, IndexError), e:
             log.debug('load receipt exception: ', exc_info=True)
             raise exception.IncompatibleCluster(self.cluster_group)
@@ -569,7 +566,6 @@ class Cluster(object):
     def _security_group(self):
         return static.SECURITY_GROUP_TEMPLATE % self.cluster_tag
 
-    
     def save_core_settings(self, sg):
         core_settings = utils.dump_compress_encode(
             dict(cluster_size=self.cluster_size,
@@ -588,7 +584,6 @@ class Cluster(object):
                  cluster_shell=self.cluster_shell, keyname=self.keyname,
                  spot_bid=self.spot_bid), use_json=True)
         sg.add_tag(static.USER_TAG, user_settings)
-        
 
     @property
     def cluster_group(self):
@@ -852,7 +847,7 @@ class Cluster(object):
                 sge_plugin.on_add_node(node, self.nodes, self.master_node,
                                        self.cluster_user, self.cluster_shell,
                                        self.volumes)
-                
+
             self.run_plugins(method_name="on_add_node", node=node)
 
     def remove_node(self, node, terminate=True):
@@ -1484,7 +1479,7 @@ class Cluster(object):
                                        num_threads=self.num_threads)
             sge_plugin.run(self.nodes, self.master_node, self.cluster_user,
                            self.cluster_shell, self.volumes)
-            
+
         self.run_plugins()
 
     def run_plugins(self, plugins=None, method_name="run", node=None,
