@@ -559,7 +559,16 @@ def dump_compress_encode(obj, use_json=False):
     if type(obj) == list:
         for o in obj:
             print o
-            serializer.dumps(o)
+            try:
+                #TODO: BAD HACK
+                if o.__class__.__name__ == "SGEPlugin":
+                    if o._pool:
+                        o._pool.shutdown()
+                        o._pool = None
+                serializer.dumps(o)
+            except:
+                import pdb
+                pdb.set_trace()
     return zlib.compress(serializer.dumps(obj)).encode('base64')
 
 
