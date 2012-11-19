@@ -8,7 +8,7 @@ from starcluster.logger import log
 class DatacraticProdPlugin(clustersetup.DefaultClusterSetup):
 
     def run(self, nodes, master, user, user_shell, volumes):
-        master.ec2.get_instance(master.id).add_tag("bluekai-prod", "")
+        master.ec2.get_instance(master.id).add_tag("billcode", "bluekai-prod")
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
-        node.ec2.get_instance(node.id).add_tag("bluekai-prod", "")
+        node.ec2.get_instance(node.id).add_tag("billcode", "bluekai-prod")
