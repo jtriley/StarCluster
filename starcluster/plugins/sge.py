@@ -190,6 +190,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         qstatsXml[1:]#remove first line
         qstatsET = ET.fromstringlist(qstatsXml)
         toDelete = []
+        toRepair = []
         cleanedQueue = []#not a lambda function to allow pickling
         for c in cleaned:
             cleanedQueue.append("all.q@" + c)
@@ -197,11 +198,32 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             if jobList.find("queue_name").text in cleanedQueue:
                 jobNumber = jobList.find("JB_job_number").text
                 toDelete.append(jobNumber)
+        for jobList in qstatsET.find("job_info").findall("job_list"):
+            if jobList.find("state").text == "Eqw":
+                jobNumber = jobList.find("JB_job_number").text
+                toRepair.append(jobNumber)
         #delete the jobs
         if toDelete:
             log.info("Stopping jobs: " + str(toDelete))
-            self._master.ssh.execute("qdel -f " + " ".join(toDelete),
-                source_profile=True)
+            self._master.ssh.execute("qdel -f " + " ".join(toDelete))
+        if toRepair:
+            log.error("Reseting jobs: " + str(toRepair))
+            self._master.ssh.execute("qmod -cj " + " ".join(toRepair))
+            
+        #DEBUGIN stuck qrsh issue (BLUK-63)
+        ps_wc = self._master.ssh.execute("ps -ef | grep qrsh | wc -l")
+        qstat_wc = self._master.ssh.execute("qstat | wc -l")
+        if qstat_wc == 0 and ps_wc > 1:
+            log.error("LOST QRSH??")
+            from datetime import datetime
+            now = str(datetime.utcnow()).replace(" ", "_")
+            log.error("Dumping qstats")
+            self._master.ssh.execute("qstat -ext > qstats_" + now)
+            log.error("Dumping qacct")
+            self._master.ssh.execute("qacct -j > qacct_" + now)
+            log.error("pkill -9 qrsh")
+            self._master.ssh.execute("pkill -9 qrsh", ignore_exit_status=True)
+        #----------------------------------
 
         #delete the host config
         for c in cleaned:

@@ -26,7 +26,9 @@ class DatacraticPrePlugin(clustersetup.DefaultClusterSetup):
             + 'bash createSwap.sh')#TODO: add "rm createSwap.sh"
 
         log.info("Mounting /opt/sge6 from master")
-        node.ssh.execute("sshfs -o allow_other master:/opt/sge6 /opt/sge6")
+        node.ssh.execute("sshfs -o allow_other -C -o workaround=all "
+                         "-o reconnect -o sshfs_sync "
+                         "master:/opt/sge6 /opt/sge6")
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         pass
