@@ -208,7 +208,8 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             self._master.ssh.execute("qdel -f " + " ".join(toDelete))
         if toRepair:
             log.error("Reseting jobs: " + str(toRepair))
-            self._master.ssh.execute("qmod -cj " + " ".join(toRepair))
+            self._master.ssh.execute("qmod -cj " + " ".join(toRepair),
+                                     ignore_exit_status=True)
             
         #DEBUGIN stuck qrsh issue (BLUK-63)
         ps_wc = self._master.ssh.execute("ps -ef | grep qrsh | wc -l")
