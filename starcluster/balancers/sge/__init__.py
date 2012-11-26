@@ -569,7 +569,7 @@ class SGELoadBalancer(LoadBalancer):
         if self.plot_stats:
             log.info("Plotting stats to directory: %s" % self.plot_output_dir)
         while(self._keep_polling):
-            cluster.recover(remove_on_error=True)
+            cluster.recover(remove_on_error=self.kill_after)
             if not cluster.is_cluster_up():
                 log.info("Waiting for all nodes to come up...")
                 time.sleep(self.polling_interval)
