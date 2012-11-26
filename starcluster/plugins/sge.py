@@ -128,7 +128,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         nodes = filter(lambda n: n.alias != node.alias, self._nodes)
         self._create_sge_pe(nodes=nodes)
 
-    def get_nodes_to_recover(self, nodes): 
+    def get_nodes_to_recover(self, nodes):
         """
         Active nodes that are not in OGS.
         """
@@ -144,7 +144,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             aliases.append(line[0:line.find(" ")])
         for node in nodes:
             if node.alias not in aliases:
-                missing.append(node.alias)
+                missing.append(node)
 
         return missing
 

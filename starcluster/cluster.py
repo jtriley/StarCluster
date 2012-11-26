@@ -1568,7 +1568,6 @@ class Cluster(object):
         if not self.disable_queue:
             sge_plugin = sge.SGEPlugin()
             to_recover.append(sge_plugin.get_nodes_to_recover(self.nodes))
-                                                
         for plugin in self.plugins:
             try:
                 result = plugin.get_nodes_to_recover(self.nodes)
@@ -1580,24 +1579,34 @@ class Cluster(object):
             log.error("Cannot support more than one list of nodes to recover")
         elif len(to_recover) == 1:
             errors = []
-            for alias in to_recover[0]:
+            for node in to_recover[0]:
                 #call it one at a time so that x doesn't prevent y to be added
                 try:
-                    log.info("Adding back node " + alias)
-                    self.add_nodes(num_nodes=1, aliases=[alias], no_create=True)
+                    log.info("Adding back node " + node.alias)
+                    self.add_nodes(num_nodes=1, aliases=[node.alias],
+                                   no_create=True)
                 except:
-                    log.error("Failed to add back node " + alias)
-                    errors.append(alias)
+                    log.error("Failed to add back node " + node.alias)
+                    errors.append(node)
+                    log.info("Rebooting node " + node.alias)
+                    node.reboot()
 
-            if remove_on_error:
-                for alias in errors:
-                    for node in self.nodes:
-                        if alias == node.alias:
-                            try:
-                                log.info("Terminating misbehaving node " + alias)
+            if remove_on_error or type(remove_on_error) == int:
+                for node in errors:
+                    try:
+                        if remove_on_error is True:
+                            log.info("Terminating misbehaving node "
+                                     + node.alias)
+                            self.remove_nodes([node])
+                        else:
+                            dt = utils.iso_to_datetime_tuple(node.launch_time)
+                            now = self.get_remote_time()
+                            timedelta = now - dt
+                            if (timedelta.seconds / 60) % 60 > remove_on_error:
                                 self.remove_nodes([node])
-                            except:
-                                log.error("Failed to remove misbehaving node " + alias)
+                    except:
+                        log.error("Failed to remove misbehaving node " +
+                                  node.alias)
 
 
 
@@ -2043,4 +2052,3 @@ class ClusterValidator(validators.Validator):
             # fingerprint, however, Amazon doesn't for some reason...
             log.warn("Unable to validate imported keypair fingerprint...")
         return True
-
