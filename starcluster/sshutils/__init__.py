@@ -89,7 +89,6 @@ class SSHClient(object):
                                                                    username))
         try:
             sock = self._get_socket(host, port)
-            sock.settimeout(timeout)
             transport = paramiko.Transport(sock)
             transport.banner_timeout = timeout
         except socket.error:
