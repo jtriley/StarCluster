@@ -1605,10 +1605,12 @@ class Cluster(object):
                             if (timedelta.seconds / 60) % 60 > remove_on_error:
                                 self.remove_nodes([node])
                     except:
+                        import traceback
+                        log.error(traceback.format_exc())
+                        log.error("type:" + str(type(remove_on_error)))
+                        log.error("val:" + str(remove_on_error))
                         log.error("Failed to remove misbehaving node " +
                                   node.alias)
-
-
 
 class ClusterValidator(validators.Validator):
     """

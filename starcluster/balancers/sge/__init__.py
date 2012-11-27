@@ -685,8 +685,9 @@ class SGELoadBalancer(LoadBalancer):
                     return self._cluster.terminate_cluster()
             log.info("Sleeping...(looping again in %d secs)\n" %
                      self.polling_interval)
-            log.info("Waking up, it's " + str(datetime.datetime.utcnow()))
+            log.info("Sleeping, it's " + str(datetime.datetime.utcnow()))
             time.sleep(self.polling_interval)
+            log.info("Waking up, it's " + str(datetime.datetime.utcnow()))
 
     def has_cluster_stabilized(self):
         now = datetime.datetime.utcnow()
