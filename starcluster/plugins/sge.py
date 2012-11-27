@@ -124,7 +124,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         master.ssh.execute('qconf -dconf %s' % node.alias)
         master.ssh.execute('qconf -de %s' % node.alias)
         if not only_clean_master:
-            node.ssh.execute('pkill -9 sge_execd')
+            node.ssh.execute('pkill -9 sge_execd', ignore_exit_status=True)
         nodes = filter(lambda n: n.alias != node.alias, self._nodes)
         self._create_sge_pe(nodes=nodes)
 
@@ -214,8 +214,8 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
                                      ignore_exit_status=True)
             
         #DEBUGIN stuck qrsh issue (BLUK-63)
-        ps_wc = self._master.ssh.execute("ps -ef | grep qrsh | wc -l")
-        qstat_wc = self._master.ssh.execute("qstat | wc -l")
+        ps_wc = int(self._master.ssh.execute("ps -ef | grep qrsh | wc -l")[0])
+        qstat_wc = int(self._master.ssh.execute("qstat | wc -l")[0])
         if qstat_wc == 0 and ps_wc > 1:
             log.error("LOST QRSH??")
             from datetime import datetime
