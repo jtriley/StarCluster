@@ -355,7 +355,9 @@ class DefaultClusterSetup(ClusterSetup):
             self._setup_nfs()
             self._setup_passwordless_ssh()
         finally:
-            self.pool.shutdown()
+            if self._pool:
+                self.pool.shutdown()
+                self._pool = None
 
     def _remove_from_etc_hosts(self, node):
         nodes = filter(lambda x: x.id != node.id, self.running_nodes)
@@ -404,5 +406,6 @@ class DefaultClusterSetup(ClusterSetup):
             self._setup_scratch(nodes=[node])
             self._setup_passwordless_ssh(nodes=[node])
         finally:
-            self._pool.shutdown()
-            self._pool = None
+            if self._pool:
+                self._pool.shutdown()
+                self._pool = None

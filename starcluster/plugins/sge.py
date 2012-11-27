@@ -161,7 +161,9 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             self._volumes = volumes
             self._setup_sge()
         finally:
-            self.pool.shutdown()
+            if self._pool:
+                self._pool.shutdown()
+                self._pool = None
 
     """
     Run qhost to find nodes that are present in OGS but not in the cluster in
