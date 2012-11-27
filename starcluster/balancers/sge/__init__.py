@@ -232,7 +232,12 @@ class SGEStats(object):
         """
         slots = 0
         for h in self.hosts:
-            slots = slots + int(h['slots'])
+            try:
+                slots = slots + int(h['slots'])
+            except KeyError as e:
+               log.error(traceback.format_exc())
+               print str(h)
+               raise e
         return slots
 
     def slots_per_host(self):
