@@ -131,7 +131,23 @@ class Node(object):
     def get_plugins(self):
         plugstxt = self.user_data.get(static.UD_PLUGINS_FNAME)
         payload = plugstxt.split('\n', 2)[2]
-        return utils.decode_uncompress_load(payload)
+        plugins_metadata = utils.decode_uncompress_load(payload)
+        plugs = []
+        for klass, args, kwargs in plugins_metadata:
+            mod_path, klass_name = klass.rsplit('.', 1)
+            try:
+                mod = __import__(mod_path, fromlist=[klass_name])
+            except SyntaxError, e:
+                raise exception.PluginSyntaxError(
+                    "Plugin %s (%s) contains a syntax error at line %s" %
+                    (klass_name, e.filename, e.lineno))
+            except ImportError, e:
+                raise exception.PluginLoadError(
+                    "Failed to import plugin %s: %s" %
+                    (klass_name, e[0]))
+            plug = getattr(mod, klass_name)(*args, **kwargs)
+            plugs.append(plug)
+        return plugs
 
     def _remove_all_tags(self):
         tags = self.tags.keys()[:]
