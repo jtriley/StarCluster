@@ -563,6 +563,9 @@ def dump_compress_encode(obj, use_json=False):
                 #TODO: BAD HACK
                 if o.__class__.__name__ == "SGEPlugin":
                     if o._pool:
+                        log.error("BLUK-67 HACK STILL NEEDED")
+                        log.error("GITHUB ISSUE 165 NOT FIXED")
+                        log.error("SHOULD NOT SEE THIS")
                         o._pool.shutdown()
                         o._pool = None
                 serializer.dumps(o)

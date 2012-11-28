@@ -1586,6 +1586,8 @@ class Cluster(object):
                     self.add_nodes(num_nodes=1, aliases=[node.alias],
                                    no_create=True)
                 except:
+                    import traceback
+                    log.error(traceback.format_exc())
                     log.error("Failed to add back node " + node.alias)
                     errors.append(node)
                     log.info("Rebooting node " + node.alias)
@@ -1600,7 +1602,7 @@ class Cluster(object):
                             self.remove_nodes([node])
                         else:
                             dt = utils.iso_to_datetime_tuple(node.launch_time)
-                            now = self.get_remote_time()
+                            now = datetime.datetime.utcnow()
                             timedelta = now - dt
                             if (timedelta.seconds / 60) % 60 > remove_on_error:
                                 self.remove_nodes([node])
