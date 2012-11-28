@@ -3,6 +3,7 @@ clustersetup.py
 """
 import posixpath
 
+from starcluster import utils
 from starcluster import threadpool
 from starcluster.utils import print_timing
 from starcluster.logger import log
@@ -51,6 +52,18 @@ class ClusterSetup(object):
         been performed
         """
         raise NotImplementedError('run method not implemented')
+
+    def __new__(typ, *args, **kwargs):
+        """
+        DO NOT OVERRIDE!
+
+        This is an internal method used for plugin accounting.
+        Do not override! If you *must* don't forget to call super!
+        """
+        plugin = super(ClusterSetup, typ).__new__(typ)
+        plugin_class_name = utils.get_fq_class_name(plugin)
+        plugin.__plugin_metadata__ = (plugin_class_name, args, kwargs)
+        return plugin
 
 
 class DefaultClusterSetup(ClusterSetup):
