@@ -1616,6 +1616,8 @@ class Cluster(object):
                         log.error("val:" + str(remove_on_error))
                         log.error("Failed to remove misbehaving node " +
                                   node.alias)
+                        log.error("Forcing termination via EC2")
+                        node.terminate()
 
 class ClusterValidator(validators.Validator):
     """
