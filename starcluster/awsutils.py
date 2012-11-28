@@ -447,7 +447,7 @@ class EasyEC2(EasyAWS):
     def get_instance_user_data(self, instance_id):
         try:
             attrs = self.conn.get_instance_attribute(instance_id, 'userData')
-            user_data = attrs.get('userData', '')
+            user_data = attrs.get('userData', '') or ''
             return base64.b64decode(user_data)
         except boto.exception.EC2ResponseError, e:
             if e.error_code == "InvalidInstanceID.NotFound":
