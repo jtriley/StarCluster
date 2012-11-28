@@ -909,8 +909,12 @@ class Node(object):
             return False
 
     def wait(self, interval=30):
+        import datetime
+        timeout = datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
         while not self.is_up():
             time.sleep(interval)
+            if datetime.datetime.utcnow() > timeout:
+                raise Exception("Wait expired after 10 minutes")
 
     def is_up(self):
         if self.update() != 'running':
