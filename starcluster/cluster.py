@@ -385,7 +385,6 @@ class Cluster(object):
         self._zone = None
         self._master = None
         self._nodes = []
-        self._plugins = plugins
         self._pool = None
         self._progress_bar = None
         self._config_fields = None
@@ -428,6 +427,10 @@ class Cluster(object):
         if not zone and common_zone:
             zone = self.ec2.get_zone(common_zone)
         return zone
+
+    @property
+    def _plugins(self):
+        return [p.__plugin_metadata__ for p in self.plugins]
 
     def load_plugins(self, plugins):
         if plugins and isinstance(plugins[0], dict):
@@ -728,7 +731,7 @@ class Cluster(object):
     def _get_cluster_userdata(self, aliases):
         alias_file = utils.string_to_file('\n'.join(['#ignored'] + aliases),
                                           static.UD_ALIASES_FNAME)
-        plugins = utils.dump_compress_encode(self.plugins)
+        plugins = utils.dump_compress_encode(self._plugins)
         plugins_file = utils.string_to_file('\n'.join(['#ignored', plugins]),
                                             static.UD_PLUGINS_FNAME)
         udfiles = [alias_file, plugins_file]
