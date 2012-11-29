@@ -564,29 +564,31 @@ class Cluster(object):
     def cluster_group(self):
         if self._cluster_group is None:
             desc = 'StarCluster-%s' % static.VERSION.replace('.', '_')
-            sg = self.ec2.get_or_create_group(self._security_group,
-                                              description=desc,
-                                              auth_ssh=True,
-                                              auth_group_traffic=True)
-            if not static.VERSION_TAG in sg.tags:
-                sg.add_tag(static.VERSION_TAG, str(static.VERSION))
-            core_settings = utils.dump_compress_encode(
-                dict(cluster_size=self.cluster_size,
-                     master_image_id=self.master_image_id,
-                     master_instance_type=self.master_instance_type,
-                     node_image_id=self.node_image_id,
-                     node_instance_type=self.node_instance_type,
-                     disable_queue=self.disable_queue,
-                     disable_cloudinit=self.disable_cloudinit),
-                use_json=True)
-            if not static.CORE_TAG in sg.tags:
-                sg.add_tag('@sc-core', core_settings)
-            user_settings = utils.dump_compress_encode(
-                dict(cluster_user=self.cluster_user,
-                     cluster_shell=self.cluster_shell, keyname=self.keyname,
-                     spot_bid=self.spot_bid), use_json=True)
-            if not static.USER_TAG in sg.tags:
-                sg.add_tag('@sc-user', user_settings)
+            sg = self.ec2.get_group_or_none(self._security_group)
+            if not sg:
+                sg = self.ec2.create_group(self._security_group,
+                                           description=desc, auth_ssh=True,
+                                           auth_group_traffic=True)
+                if not static.VERSION_TAG in sg.tags:
+                    sg.add_tag(static.VERSION_TAG, str(static.VERSION))
+                core_settings = utils.dump_compress_encode(
+                    dict(cluster_size=self.cluster_size,
+                         master_image_id=self.master_image_id,
+                         master_instance_type=self.master_instance_type,
+                         node_image_id=self.node_image_id,
+                         node_instance_type=self.node_instance_type,
+                         disable_queue=self.disable_queue,
+                         disable_cloudinit=self.disable_cloudinit),
+                    use_json=True)
+                if not static.CORE_TAG in sg.tags:
+                    sg.add_tag('@sc-core', core_settings)
+                user_settings = utils.dump_compress_encode(
+                    dict(cluster_user=self.cluster_user,
+                         cluster_shell=self.cluster_shell,
+                         keyname=self.keyname,
+                         spot_bid=self.spot_bid), use_json=True)
+                if not static.USER_TAG in sg.tags:
+                    sg.add_tag('@sc-user', user_settings)
             ssh_port = static.DEFAULT_SSH_PORT
             for p in self.permissions:
                 perm = self.permissions.get(p)
