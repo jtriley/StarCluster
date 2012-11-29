@@ -194,7 +194,7 @@ class StarClusterConfig(object):
         """
         cfg = self._get_cfg_fp()
         try:
-            cp = ConfigParser.ConfigParser()
+            cp = InlineCommentsIgnoredConfigParser()
             cp.readfp(cfg)
             self._config = cp
             try:
@@ -216,7 +216,7 @@ class StarClusterConfig(object):
                         raise exception.ConfigError("include %s not found" %
                                                     include)
                 mashup.seek(0)
-                cp = ConfigParser.ConfigParser()
+                cp = InlineCommentsIgnoredConfigParser()
                 cp.readfp(mashup)
                 self._config = cp
             except exception.ConfigSectionMissing:
@@ -679,6 +679,58 @@ class StarClusterConfig(object):
     def get_cluster_manager(self):
         ec2 = self.get_easy_ec2()
         return cluster.ClusterManager(self, ec2)
+
+
+class InlineCommentsIgnoredConfigParser(ConfigParser.ConfigParser):
+    """
+    Class for custom config file parsing that ignores inline comments.
+
+    By default, ConfigParser.ConfigParser only ignores inline comments denoted
+    by a semicolon. This class extends this support to allow inline comments
+    denoted by '#' as well. Just as with semicolons, a spacing character must
+    precede the pound sign for it to be considered an inline comment.
+
+    For example, the following line would have the inline comment ignored:
+
+        FOO = bar # some comment...
+
+    And would be parsed as:
+
+        FOO = bar
+
+    The following would NOT have the comment removed:
+
+        FOO = bar# some comment...
+    """
+
+    def readfp(self, fp, filename=None):
+        """
+        Overrides ConfigParser.ConfigParser.readfp() to ignore inline comments.
+        """
+        if filename is None:
+            try:
+                filename = fp.name
+            except AttributeError:
+                filename = '<???>'
+
+        # We don't use the file iterator here because ConfigParser.readfp()
+        # guarantees to only call readline() on fp, so we want to adhere to
+        # this as well.
+        commentless_fp = StringIO.StringIO()
+        line = fp.readline()
+        while line:
+            pound_pos = line.find('#')
+
+            # A pound sign only starts an inline comment if it is preceded by
+            # whitespace.
+            if pound_pos > 0 and line[pound_pos - 1].isspace():
+                line = line[:pound_pos].rstrip() + '\n'
+            commentless_fp.write(line)
+            line = fp.readline()
+        commentless_fp.seek(0)
+
+        # Cannot use super() because ConfigParser is not a new-style class.
+        ConfigParser.ConfigParser.readfp(self, commentless_fp, filename)
 
 
 if __name__ == "__main__":
