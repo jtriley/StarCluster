@@ -1194,10 +1194,12 @@ class Cluster(object):
         nodes = nodes or self.nodes
         if len(nodes) == 0:
             s = self.get_spinner("Waiting for instances to activate...")
-            while len(nodes) == 0:
-                time.sleep(self.refresh_interval)
-                nodes = self.nodes
-            s.stop()
+            try:
+                while len(nodes) == 0:
+                    time.sleep(self.refresh_interval)
+                    nodes = self.nodes
+            finally:
+                s.stop()
 
     def wait_for_running_instances(self, nodes=None):
         """
@@ -1369,9 +1371,11 @@ class Cluster(object):
         sg = self.ec2.get_group_or_none(self._security_group)
         pg = self.ec2.get_placement_group_or_none(self._security_group)
         s = self.get_spinner("Waiting for cluster to terminate...")
-        while not self.is_cluster_terminated():
-            time.sleep(5)
-        s.stop()
+        try:
+            while not self.is_cluster_terminated():
+                time.sleep(5)
+        finally:
+            s.stop()
         if pg:
             log.info("Removing %s placement group" % pg.name)
             pg.delete()
