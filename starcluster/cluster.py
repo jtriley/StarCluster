@@ -1284,15 +1284,11 @@ class Cluster(object):
                 log.error('Volume %s not available...'
                           'please check and try again' % vol.id)
                 continue
-            log.info("Attaching volume %s to master node on %s ..." % (vol.id,
-                                                                       device))
+            log.info("Attaching volume %s to master node on %s ..." %
+                     (vol.id, device))
             resp = vol.attach(self.master_node.id, device)
             log.debug("resp = %s" % resp)
-            while True:
-                vol.update()
-                if vol.attachment_state() == 'attached':
-                    break
-                time.sleep(5)
+            self.ec2.wait_for_volume(vol, state='attached')
 
     def detach_volumes(self):
         """
