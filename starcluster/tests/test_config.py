@@ -301,3 +301,22 @@ class TestStarClusterConfig(tests.StarClusterTest):
             except exception.ConfigError:
                 raise Exception(('config rejects valid multiple instance ' +
                                  'type syntax: %s') % case)
+
+    def test_inline_comments(self):
+        """
+        Test that config ignores inline comments.
+        """
+        invalid_case = {'c1_node_type': 'c1.xlarge:3, m1.small# some comment'}
+        try:
+            self.get_custom_config(**invalid_case)
+        except exception.ConfigError:
+            pass
+        else:
+            raise Exception(('config incorrectly ignores line with non-inline '
+                             'comment pound sign: %s') % invalid_case)
+        valid_case = {'c1_node_type': 'c1.xlarge:3, m1.small # some #comment '}
+        try:
+            self.get_custom_config(**valid_case)
+        except exception.ConfigError:
+            raise Exception(('config does not ignore inline '
+                             'comment: %s') % valid_case)
