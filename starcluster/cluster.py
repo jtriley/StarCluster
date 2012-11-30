@@ -863,6 +863,7 @@ class Cluster(object):
     def remove_nodes(self, nodes, terminate=True):
         """
         Remove a list of nodes from this cluster
+        No step should prevent us to go further.
         """
         default_plugin = clustersetup.DefaultClusterSetup(
             disable_threads=self.disable_threads, num_threads=self.num_threads)
@@ -872,15 +873,28 @@ class Cluster(object):
         for node in nodes:
             if node.is_master():
                 raise exception.InvalidOperation("cannot remove master node")
-            self.run_plugins(method_name="on_remove_node",
-                             node=node, reverse=True)
+            try:
+                self.run_plugins(method_name="on_remove_node",
+                                 node=node, reverse=True)
+            except:
+                pass
+
             if not self.disable_queue:
-                sge_plugin.on_remove_node(node, self.nodes, self.master_node,
-                                          self.cluster_user,
-                                          self.cluster_shell, self.volumes)
-            default_plugin.on_remove_node(node, self.nodes, self.master_node,
-                                          self.cluster_user,
-                                          self.cluster_shell, self.volumes)
+                try:
+                    sge_plugin.on_remove_node(node, self.nodes,
+                                              self.master_node,
+                                              self.cluster_user,
+                                              self.cluster_shell, self.volumes)
+                except:
+                    pass
+            try:
+                default_plugin.on_remove_node(node, self.nodes,
+                                              self.master_node,
+                                              self.cluster_user,
+                                              self.cluster_shell, self.volumes)
+            except:
+                pass
+
             if not terminate:
                 continue
             if node.spot_id:
