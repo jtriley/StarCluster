@@ -418,6 +418,9 @@ class DefaultClusterSetup(ClusterSetup):
             self._create_user(node)
             self._setup_scratch(nodes=[node])
             self._setup_passwordless_ssh(nodes=[node])
+        except:
+           import traceback
+           log.error(traceback.format_exc())
         finally:
             if self._pool:
                 self._pool.shutdown()
