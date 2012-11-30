@@ -13,9 +13,10 @@ class DatacraticPrePlugin(clustersetup.DefaultClusterSetup):
         pass
     
     def run(self, nodes, master, user, user_shell, volumes):
-        pass
+        #master.ec2.get_instance(node.id).add_tag("billcode", "bluekai-rnd")
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
+        #master.ec2.get_instance(node.id).add_tag("billcode", "bluekai-rnd")
         #create a 20GB swap in a background process
         launch_time = utils.iso_to_datetime_tuple(node.launch_time)
         shutdown_in = int((launch_time + datetime.timedelta(minutes=235) -
@@ -36,6 +37,10 @@ class DatacraticPrePlugin(clustersetup.DefaultClusterSetup):
         node.ssh.execute("sshfs -o allow_other -C -o workaround=all "
                          "-o reconnect -o sshfs_sync "
                          "master:/opt/sge6 /opt/sge6")
+        log.info("Mounting bluekai-lookalikes from master")
+        node.ssh.execute("sshfs -o allow_other -C -o workaround=all "
+                         "-o reconnect -o sshfs_sync "
+                         "master:bluekai-lookalikes bluekai-lookalikes")
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         pass
