@@ -9,7 +9,6 @@ from starcluster import cluster
 from starcluster import awsutils
 from starcluster import deathrow
 from starcluster import exception
-from starcluster import clustersetup
 from starcluster.cluster import Cluster
 from starcluster.utils import AttributeDict
 
@@ -373,7 +372,7 @@ class StarClusterConfig(object):
     def _load_plugins(self, store):
         cluster_section = store
         plugins = cluster_section.get('plugins')
-        if not plugins or isinstance(plugins[0], clustersetup.ClusterSetup):
+        if not plugins or isinstance(plugins[0], AttributeDict):
             return
         plugs = []
         for plugin in plugins:
@@ -381,8 +380,7 @@ class StarClusterConfig(object):
                 raise exception.ConfigError(
                     "plugin '%s' not defined in config" % plugin)
             plugs.append(self.plugins.get(plugin))
-        cluster_section['plugins'] = deathrow._load_plugins(plugs,
-                                                            debug=DEBUG_CONFIG)
+        cluster_section['plugins'] = plugs
 
     def _load_permissions(self, store):
         cluster_section = store
@@ -603,14 +601,16 @@ class StarClusterConfig(object):
 
         template_name is the name of a cluster section defined in the config
 
-        tag_name, if specified, will be passed to Cluster instance
-        as cluster_tag
+        tag_name if not specified will be set to template_name
         """
         try:
             kwargs = {}
-            if tag_name:
-                kwargs.update(dict(cluster_tag=tag_name))
+            tag_name = tag_name or template_name
+            kwargs.update(dict(cluster_tag=tag_name))
             kwargs.update(self.clusters[template_name])
+            plugs = kwargs.get('plugins')
+            kwargs['plugins'] = deathrow._load_plugins(plugs,
+                                                       debug=DEBUG_CONFIG)
             if not ec2_conn:
                 ec2_conn = self.get_easy_ec2()
             clust = Cluster(ec2_conn, **kwargs)
