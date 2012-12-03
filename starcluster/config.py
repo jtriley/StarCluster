@@ -364,7 +364,8 @@ class StarClusterConfig(object):
             if not volume in self.vols:
                 raise exception.ConfigError(
                     "volume '%s' not defined in config" % volume)
-            vol = self.vols.get(volume)
+            vol = self.vols.get(volume).copy()
+            del vol['__name__']
             vols[volume] = vol
 
     def _load_plugins(self, store):
