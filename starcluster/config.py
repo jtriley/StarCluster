@@ -635,7 +635,7 @@ class StarClusterConfig(object):
     def get_clusters(self):
         clusters = []
         for cl in self.clusters:
-            cl.append(self.get_cluster_template(cluster))
+            clusters.append(self.get_cluster_template(cl, tag_name=cl))
         return clusters
 
     def get_plugin(self, plugin):
