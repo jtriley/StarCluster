@@ -153,7 +153,6 @@ class TestStarClusterConfig(tests.StarClusterTest):
         c1 = self.config.get_cluster_template('c1')
         plugs = c1.plugins
         assert len(plugs) == 3
-        plugs = self.config.clusters.c1.plugins
         # test that order is preserved
         p1, p2, p3 = plugs
         p1_name = p1.__name__
