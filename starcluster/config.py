@@ -321,10 +321,7 @@ class StarClusterConfig(object):
         if DEBUG_CONFIG:
             log.debug('%s extends %s' % (section_name, extends))
         extensions = [section]
-        while True:
-            extends = section.get('extends', None)
-            if not extends:
-                break
+        while extends is not None:
             try:
                 section = store[extends]
                 if section in extensions:
@@ -338,6 +335,7 @@ class StarClusterConfig(object):
                 raise exception.ConfigError(
                     "%s can't extend non-existent section %s" %
                     (section_name, extends))
+            extends = section.get('extends')
         transform = AttributeDict()
         for extension in extensions:
             transform.update(extension)
@@ -589,9 +587,6 @@ class StarClusterConfig(object):
         # first override with environment settings if they exist
         self.aws.update(self.get_aws_from_environ())
         return self.aws
-
-    def get_cluster_names(self):
-        return self.clusters
 
     def get_cluster_template(self, template_name, tag_name=None,
                              ec2_conn=None):
