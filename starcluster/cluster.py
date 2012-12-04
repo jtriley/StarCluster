@@ -34,7 +34,7 @@ class ClusterManager(managers.Manager):
         return "<ClusterManager: %s>" % self.ec2.region.name
 
     def get_cluster(self, cluster_name, group=None, load_receipt=True,
-                    load_plugins=True, require_keys=True):
+                    load_plugins=True, load_volumes=True, require_keys=True):
         """
         Returns a Cluster object representing an active cluster
         """
@@ -46,7 +46,12 @@ class ClusterManager(managers.Manager):
             cl = Cluster(ec2_conn=self.ec2, cluster_tag=cltag,
                          cluster_group=group)
             if load_receipt:
-                cl.load_receipt(load_plugins=load_plugins)
+                try:
+                    cl.load_receipt(load_plugins=load_plugins,
+                                    load_volumes=load_volumes)
+                except exception.MasterDoesNotExist:
+                    if load_plugins or load_volumes:
+                        raise
             try:
                 key_location = self.cfg.get_key(cl.keyname).get('key_location')
                 cl.key_location = key_location
@@ -239,7 +244,7 @@ class ClusterManager(managers.Manager):
             tag = self.get_tag_from_sg(scg.name)
             try:
                 cl = self.get_cluster(tag, group=scg, load_plugins=False,
-                                      require_keys=False)
+                                      load_volumes=False, require_keys=False)
             except exception.IncompatibleCluster, e:
                 sep = '*' * 60
                 log.error('\n'.join([sep, e.msg, sep]),
@@ -494,11 +499,11 @@ class Cluster(object):
         cfg = self.__getstate__()
         return pprint.pformat(cfg)
 
-    def load_receipt(self, load_plugins=True):
+    def load_receipt(self, load_plugins=True, load_volumes=True):
         """
         Load the original settings used to launch this cluster into this
-        Cluster object. Settings are loaded from cluster group tags and plugins
-        and volumes from the master node's user data.
+        Cluster object. Settings are loaded from cluster group tags and the
+        master node's user data.
         """
         try:
             tags = self.cluster_group.tags
@@ -526,18 +531,33 @@ class Cluster(object):
             raise exception.ClusterReceiptError(
                 'failed to load cluster receipt: %s' % e)
         self.update(cluster_settings)
+        if not (load_plugins or load_volumes):
+            return True
+        try:
+            master = self.master_node
+        except exception.MasterDoesNotExist:
+            if self.spot_requests:
+                self.wait_for_active_spots()
+                self.wait_for_active_instances()
+                master = self.master_node
+            else:
+                raise
         if load_plugins:
             try:
-                self.plugins = self.master_node.get_plugins()
-            except exception.MasterDoesNotExist:
-                log.error("Unable to load plugins: no master node found")
-                raise
+                self.plugins = self.load_plugins(master.get_plugins())
             except exception.PluginError:
                 log.error("An error occurred while loading plugins: ",
                           exc_info=True)
                 raise
             except Exception, e:
                 log.debug('load receipt exception (plugins): ', exc_info=True)
+                raise exception.ClusterReceiptError(
+                    'failed to load cluster receipt: %s' % e)
+        if load_volumes:
+            try:
+                self.volumes = master.get_volumes()
+            except Exception, e:
+                log.debug('load receipt exception (volumes): ', exc_info=True)
                 raise exception.ClusterReceiptError(
                     'failed to load cluster receipt: %s' % e)
         return True
@@ -721,10 +741,14 @@ class Cluster(object):
         plugins = utils.dump_compress_encode(self._plugins)
         plugins_file = utils.string_to_file('\n'.join(['#ignored', plugins]),
                                             static.UD_PLUGINS_FNAME)
-        udfiles = [alias_file, plugins_file]
+        volumes = utils.dump_compress_encode(self.volumes)
+        volumes_file = utils.string_to_file('\n'.join(['#ignored', volumes]),
+                                            static.UD_VOLUMES_FNAME)
+        udfiles = [alias_file, plugins_file, volumes_file]
         use_cloudinit = not self.disable_cloudinit
-        return userdata.bundle_userdata_files(udfiles,
-                                              use_cloudinit=use_cloudinit)
+        udata = userdata.bundle_userdata_files(udfiles,
+                                               use_cloudinit=use_cloudinit)
+        return udata
 
     def create_nodes(self, aliases, image_id=None, instance_type=None,
                      zone=None, placement_group=None, spot_bid=None,

@@ -149,6 +149,11 @@ class Node(object):
             plugs.append(plug)
         return plugs
 
+    def get_volumes(self):
+        volstxt = self.user_data.get(static.UD_VOLUMES_FNAME)
+        payload = volstxt.split('\n', 2)[2]
+        return utils.decode_uncompress_load(payload)
+
     def _remove_all_tags(self):
         tags = self.tags.keys()[:]
         for t in tags:
