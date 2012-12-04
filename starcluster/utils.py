@@ -556,22 +556,6 @@ def dump_compress_encode(obj, use_json=False):
     serializer = cPickle
     if use_json:
         serializer = json
-    if type(obj) == list:
-        for o in obj:
-            print o
-            try:
-                #TODO: BAD HACK
-                if o.__class__.__name__ == "SGEPlugin":
-                    if o._pool:
-                        log.error("BLUK-67 HACK STILL NEEDED")
-                        log.error("GITHUB ISSUE 165 NOT FIXED")
-                        log.error("SHOULD NOT SEE THIS")
-                        o._pool.shutdown()
-                        o._pool = None
-                serializer.dumps(o)
-            except:
-                import pdb
-                pdb.set_trace()
     return zlib.compress(serializer.dumps(obj)).encode('base64')
 
 
