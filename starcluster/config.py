@@ -9,7 +9,6 @@ from starcluster import cluster
 from starcluster import awsutils
 from starcluster import deathrow
 from starcluster import exception
-from starcluster import clustersetup
 from starcluster.cluster import Cluster
 from starcluster.utils import AttributeDict
 
@@ -322,10 +321,7 @@ class StarClusterConfig(object):
         if DEBUG_CONFIG:
             log.debug('%s extends %s' % (section_name, extends))
         extensions = [section]
-        while True:
-            extends = section.get('extends', None)
-            if not extends:
-                break
+        while extends is not None:
             try:
                 section = store[extends]
                 if section in extensions:
@@ -339,6 +335,7 @@ class StarClusterConfig(object):
                 raise exception.ConfigError(
                     "%s can't extend non-existent section %s" %
                     (section_name, extends))
+            extends = section.get('extends')
         transform = AttributeDict()
         for extension in extensions:
             transform.update(extension)
@@ -367,13 +364,14 @@ class StarClusterConfig(object):
             if not volume in self.vols:
                 raise exception.ConfigError(
                     "volume '%s' not defined in config" % volume)
-            vol = self.vols.get(volume)
+            vol = self.vols.get(volume).copy()
+            del vol['__name__']
             vols[volume] = vol
 
     def _load_plugins(self, store):
         cluster_section = store
         plugins = cluster_section.get('plugins')
-        if not plugins or isinstance(plugins[0], clustersetup.ClusterSetup):
+        if not plugins or isinstance(plugins[0], AttributeDict):
             return
         plugs = []
         for plugin in plugins:
@@ -381,8 +379,7 @@ class StarClusterConfig(object):
                 raise exception.ConfigError(
                     "plugin '%s' not defined in config" % plugin)
             plugs.append(self.plugins.get(plugin))
-        cluster_section['plugins'] = deathrow._load_plugins(plugs,
-                                                            debug=DEBUG_CONFIG)
+        cluster_section['plugins'] = plugs
 
     def _load_permissions(self, store):
         cluster_section = store
@@ -592,9 +589,6 @@ class StarClusterConfig(object):
         self.aws.update(self.get_aws_from_environ())
         return self.aws
 
-    def get_cluster_names(self):
-        return self.clusters
-
     def get_cluster_template(self, template_name, tag_name=None,
                              ec2_conn=None):
         """
@@ -603,14 +597,16 @@ class StarClusterConfig(object):
 
         template_name is the name of a cluster section defined in the config
 
-        tag_name, if specified, will be passed to Cluster instance
-        as cluster_tag
+        tag_name if not specified will be set to template_name
         """
         try:
             kwargs = {}
-            if tag_name:
-                kwargs.update(dict(cluster_tag=tag_name))
+            tag_name = tag_name or template_name
+            kwargs.update(dict(cluster_tag=tag_name))
             kwargs.update(self.clusters[template_name])
+            plugs = kwargs.get('plugins')
+            kwargs['plugins'] = deathrow._load_plugins(plugs,
+                                                       debug=DEBUG_CONFIG)
             if not ec2_conn:
                 ec2_conn = self.get_easy_ec2()
             clust = Cluster(ec2_conn, **kwargs)
@@ -635,7 +631,7 @@ class StarClusterConfig(object):
     def get_clusters(self):
         clusters = []
         for cl in self.clusters:
-            cl.append(self.get_cluster_template(cluster))
+            clusters.append(self.get_cluster_template(cl, tag_name=cl))
         return clusters
 
     def get_plugin(self, plugin):

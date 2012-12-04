@@ -26,7 +26,8 @@ class TestClusterValidation(StarClusterTest):
         ]
         for case in cases:
             try:
-                self.get_custom_config(**case)
+                cfg = self.get_custom_config(**case)
+                cfg.get_cluster_template('c1')
             except exception.PluginError:
                 pass
             else:
