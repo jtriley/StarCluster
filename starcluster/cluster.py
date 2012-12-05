@@ -385,7 +385,6 @@ class Cluster(object):
         self._zone = None
         self._master = None
         self._nodes = []
-        self._plugins = plugins
         self._pool = None
         self._progress_bar = None
 
@@ -427,6 +426,10 @@ class Cluster(object):
         if not zone and common_zone:
             zone = self.ec2.get_zone(common_zone)
         return zone
+
+    @property
+    def _plugins(self):
+        return [p.__plugin_metadata__ for p in self.plugins]
 
     def load_plugins(self, plugins):
         if plugins and isinstance(plugins[0], dict):
@@ -561,29 +564,31 @@ class Cluster(object):
     def cluster_group(self):
         if self._cluster_group is None:
             desc = 'StarCluster-%s' % static.VERSION.replace('.', '_')
-            sg = self.ec2.get_or_create_group(self._security_group,
-                                              description=desc,
-                                              auth_ssh=True,
-                                              auth_group_traffic=True)
-            if not static.VERSION_TAG in sg.tags:
-                sg.add_tag(static.VERSION_TAG, str(static.VERSION))
-            core_settings = utils.dump_compress_encode(
-                dict(cluster_size=self.cluster_size,
-                     master_image_id=self.master_image_id,
-                     master_instance_type=self.master_instance_type,
-                     node_image_id=self.node_image_id,
-                     node_instance_type=self.node_instance_type,
-                     disable_queue=self.disable_queue,
-                     disable_cloudinit=self.disable_cloudinit),
-                use_json=True)
-            if not static.CORE_TAG in sg.tags:
-                sg.add_tag('@sc-core', core_settings)
-            user_settings = utils.dump_compress_encode(
-                dict(cluster_user=self.cluster_user,
-                     cluster_shell=self.cluster_shell, keyname=self.keyname,
-                     spot_bid=self.spot_bid), use_json=True)
-            if not static.USER_TAG in sg.tags:
-                sg.add_tag('@sc-user', user_settings)
+            sg = self.ec2.get_group_or_none(self._security_group)
+            if not sg:
+                sg = self.ec2.create_group(self._security_group,
+                                           description=desc, auth_ssh=True,
+                                           auth_group_traffic=True)
+                if not static.VERSION_TAG in sg.tags:
+                    sg.add_tag(static.VERSION_TAG, str(static.VERSION))
+                core_settings = utils.dump_compress_encode(
+                    dict(cluster_size=self.cluster_size,
+                         master_image_id=self.master_image_id,
+                         master_instance_type=self.master_instance_type,
+                         node_image_id=self.node_image_id,
+                         node_instance_type=self.node_instance_type,
+                         disable_queue=self.disable_queue,
+                         disable_cloudinit=self.disable_cloudinit),
+                    use_json=True)
+                if not static.CORE_TAG in sg.tags:
+                    sg.add_tag('@sc-core', core_settings)
+                user_settings = utils.dump_compress_encode(
+                    dict(cluster_user=self.cluster_user,
+                         cluster_shell=self.cluster_shell,
+                         keyname=self.keyname,
+                         spot_bid=self.spot_bid), use_json=True)
+                if not static.USER_TAG in sg.tags:
+                    sg.add_tag('@sc-user', user_settings)
             ssh_port = static.DEFAULT_SSH_PORT
             for p in self.permissions:
                 perm = self.permissions.get(p)
@@ -713,7 +718,7 @@ class Cluster(object):
     def _get_cluster_userdata(self, aliases):
         alias_file = utils.string_to_file('\n'.join(['#ignored'] + aliases),
                                           static.UD_ALIASES_FNAME)
-        plugins = utils.dump_compress_encode(self.plugins)
+        plugins = utils.dump_compress_encode(self._plugins)
         plugins_file = utils.string_to_file('\n'.join(['#ignored', plugins]),
                                             static.UD_PLUGINS_FNAME)
         udfiles = [alias_file, plugins_file]
@@ -1189,10 +1194,12 @@ class Cluster(object):
         nodes = nodes or self.nodes
         if len(nodes) == 0:
             s = self.get_spinner("Waiting for instances to activate...")
-            while len(nodes) == 0:
-                time.sleep(self.refresh_interval)
-                nodes = self.nodes
-            s.stop()
+            try:
+                while len(nodes) == 0:
+                    time.sleep(self.refresh_interval)
+                    nodes = self.nodes
+            finally:
+                s.stop()
 
     def wait_for_running_instances(self, nodes=None):
         """
@@ -1279,15 +1286,11 @@ class Cluster(object):
                 log.error('Volume %s not available...'
                           'please check and try again' % vol.id)
                 continue
-            log.info("Attaching volume %s to master node on %s ..." % (vol.id,
-                                                                       device))
+            log.info("Attaching volume %s to master node on %s ..." %
+                     (vol.id, device))
             resp = vol.attach(self.master_node.id, device)
             log.debug("resp = %s" % resp)
-            while True:
-                vol.update()
-                if vol.attachment_state() == 'attached':
-                    break
-                time.sleep(5)
+            self.ec2.wait_for_volume(vol, state='attached')
 
     def detach_volumes(self):
         """
@@ -1368,9 +1371,11 @@ class Cluster(object):
         sg = self.ec2.get_group_or_none(self._security_group)
         pg = self.ec2.get_placement_group_or_none(self._security_group)
         s = self.get_spinner("Waiting for cluster to terminate...")
-        while not self.is_cluster_terminated():
-            time.sleep(5)
-        s.stop()
+        try:
+            while not self.is_cluster_terminated():
+                time.sleep(5)
+        finally:
+            s.stop()
         if pg:
             log.info("Removing %s placement group" % pg.name)
             pg.delete()

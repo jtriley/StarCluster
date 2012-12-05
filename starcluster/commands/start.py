@@ -35,7 +35,7 @@ class CmdStart(ClusterCompleter):
     def addopts(self, parser):
         templates = []
         if self.cfg:
-            templates = self.cfg.get_cluster_names().keys()
+            templates = self.cfg.clusters.keys()
         parser.add_option("-x", "--no-create", dest="no_create",
                           action="store_true", default=False,
                           help="do not launch new EC2 instances when "
