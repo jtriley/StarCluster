@@ -526,43 +526,35 @@ class Cluster(object):
                 user = tags.get(static.USER_TAG, '')
                 cluster_settings.update(
                     utils.decode_uncompress_load(user, use_json=True))
+            self.update(cluster_settings)
+            if not (load_plugins or load_volumes):
+                return True
+            try:
+                master = self.master_node
+            except exception.MasterDoesNotExist:
+                if self.spot_requests:
+                    self.wait_for_active_spots()
+                    self.wait_for_active_instances()
+                    master = self.master_node
+                else:
+                    raise
+            if load_plugins:
+                self.plugins = self.load_plugins(master.get_plugins())
+            if load_volumes:
+                self.volumes = master.get_volumes()
         except (zlib.error, ValueError, TypeError, EOFError, IndexError), e:
             log.debug('load receipt exception: ', exc_info=True)
             raise exception.IncompatibleCluster(self.cluster_group)
+        except exception.MasterDoesNotExist:
+            raise
+        except exception.PluginError:
+            log.error("An error occurred while loading plugins: ",
+                      exc_info=True)
+            raise
         except Exception, e:
             log.debug('Failed to load cluster receipt:', exc_info=True)
             raise exception.ClusterReceiptError(
                 'failed to load cluster receipt: %s' % e)
-        self.update(cluster_settings)
-        if not (load_plugins or load_volumes):
-            return True
-        try:
-            master = self.master_node
-        except exception.MasterDoesNotExist:
-            if self.spot_requests:
-                self.wait_for_active_spots()
-                self.wait_for_active_instances()
-                master = self.master_node
-            else:
-                raise
-        if load_plugins:
-            try:
-                self.plugins = self.load_plugins(master.get_plugins())
-            except exception.PluginError:
-                log.error("An error occurred while loading plugins: ",
-                          exc_info=True)
-                raise
-            except Exception, e:
-                log.debug('load receipt exception (plugins): ', exc_info=True)
-                raise exception.ClusterReceiptError(
-                    'failed to load cluster receipt: %s' % e)
-        if load_volumes:
-            try:
-                self.volumes = master.get_volumes()
-            except Exception, e:
-                log.debug('load receipt exception (volumes): ', exc_info=True)
-                raise exception.ClusterReceiptError(
-                    'failed to load cluster receipt: %s' % e)
         return True
 
     def __getstate__(self):
