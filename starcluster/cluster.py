@@ -5,6 +5,7 @@ import time
 import string
 import pprint
 import warnings
+import datetime
 
 from starcluster import utils
 from starcluster import static
