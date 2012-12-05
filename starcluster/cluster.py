@@ -224,10 +224,14 @@ class ClusterManager(managers.Manager):
             print get_tag_from_sg(sg)
             mycluster
         """
-        regex = re.compile(static.SECURITY_GROUP_PREFIX + '-(.*)')
+        regex = re.compile('^' + static.SECURITY_GROUP_PREFIX + '-(.*)')
         match = regex.match(sg)
+        tag = None
         if match:
-            return match.groups()[0]
+            tag = match.groups()[0]
+        if not tag:
+            raise ValueError("Invalid cluster group name: %s" % sg)
+        return tag
 
     def list_clusters(self, cluster_groups=None, show_ssh_status=False):
         """
