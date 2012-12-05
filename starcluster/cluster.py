@@ -182,19 +182,22 @@ class ClusterManager(managers.Manager):
         cl = self.get_cluster(cluster_name)
         cl.restart_cluster()
 
-    def stop_cluster(self, cluster_name, terminate_unstoppable=False):
+    def stop_cluster(self, cluster_name, terminate_unstoppable=False,
+                     force=False):
         """
         Stop an EBS-backed cluster
         """
-        cl = self.get_cluster(cluster_name, require_keys=False)
-        cl.stop_cluster(terminate_unstoppable)
+        cl = self.get_cluster(cluster_name, load_receipt=not force,
+                              require_keys=not force)
+        cl.stop_cluster(terminate_unstoppable, force=force)
 
-    def terminate_cluster(self, cluster_name):
+    def terminate_cluster(self, cluster_name, force=False):
         """
         Terminates cluster_name
         """
-        cl = self.get_cluster(cluster_name, require_keys=False)
-        cl.terminate_cluster()
+        cl = self.get_cluster(cluster_name, load_receipt=not force,
+                              require_keys=not force)
+        cl.terminate_cluster(force=force)
 
     def get_cluster_security_group(self, group_name):
         """
@@ -1340,7 +1343,7 @@ class Cluster(object):
         time.sleep(sleep)
         self.setup_cluster()
 
-    def stop_cluster(self, terminate_unstoppable=False):
+    def stop_cluster(self, terminate_unstoppable=False, force=False):
         """
         Shutdown this cluster by detaching all volumes and 'stopping' all nodes
 
@@ -1352,8 +1355,6 @@ class Cluster(object):
         If the cluster contains a mix of 'stoppable' and 'unstoppable' nodes
         you can stop all stoppable nodes and terminate any unstoppable nodes by
         setting terminate_unstoppable=True.
-
-        This will stop all nodes that can be stopped and terminate the rest.
         """
         nodes = self.nodes
         if not nodes:
@@ -1369,12 +1370,15 @@ class Cluster(object):
         try:
             self.run_plugins(method_name="on_shutdown", reverse=True)
         except exception.MasterDoesNotExist, e:
-            log.warn("Cannot run plugins: %s" % e)
+            if force:
+                log.warn("Cannot run plugins: %s" % e)
+            else:
+                raise
         self.detach_volumes()
         for node in nodes:
             node.shutdown()
 
-    def terminate_cluster(self):
+    def terminate_cluster(self, force=False):
         """
         Destroy this cluster by first detaching all volumes, shutting down all
         instances, canceling all spot requests (if any), removing its placement
@@ -1383,7 +1387,10 @@ class Cluster(object):
         try:
             self.run_plugins(method_name="on_shutdown", reverse=True)
         except exception.MasterDoesNotExist, e:
-            log.warn("Cannot run plugins: %s" % e)
+            if force:
+                log.warn("Cannot run plugins: %s" % e)
+            else:
+                raise
         self.detach_volumes()
         nodes = self.nodes
         for node in nodes:

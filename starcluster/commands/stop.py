@@ -48,6 +48,9 @@ class CmdStop(ClusterCompleter):
                           dest="terminate_unstoppable", action="store_true",
                           default=False,  help="Terminate nodes that are not "
                           "stoppable (i.e. spot or S3-backed nodes)")
+        parser.add_option("-f", "--force", dest="force", action="store_true",
+                          default=False,  help="Stop cluster regardless of "
+                          " errors if possible")
 
     def execute(self, args):
         if not args:
@@ -60,7 +63,19 @@ class CmdStop(ClusterCompleter):
                 msg = " ".join([msg, '(options:', opts, ')'])
             self.parser.error(msg)
         for cluster_name in args:
-            cl = self.cm.get_cluster(cluster_name, require_keys=False)
+            try:
+                cl = self.cm.get_cluster(cluster_name)
+            except Exception, e:
+                log.debug("Failed to load cluster settings!", exc_info=True)
+                log.error("Failed to load cluster settings!")
+                if self.opts.force:
+                    log.warn("Ignoring cluster settings due to --force option")
+                    cl = self.cm.get_cluster(cluster_name, load_receipt=False,
+                                             require_keys=False)
+                else:
+                    if not isinstance(e, exception.IncompatibleCluster):
+                        log.error("Use -f to forcefully stop the cluster")
+                    raise
             is_stoppable = cl.is_stoppable()
             if not is_stoppable:
                 has_stoppable_nodes = cl.has_stoppable_nodes()
@@ -85,7 +100,8 @@ class CmdStop(ClusterCompleter):
                 if resp not in ['y', 'Y', 'yes']:
                     log.info("Aborting...")
                     continue
-            cl.stop_cluster(self.opts.terminate_unstoppable)
+            cl.stop_cluster(self.opts.terminate_unstoppable,
+                            force=self.opts.force)
             log.warn("All non-spot, EBS-backed nodes are now in a "
                      "'stopped' state")
             log.warn("You can restart this cluster by passing -x "
