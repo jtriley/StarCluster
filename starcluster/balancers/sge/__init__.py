@@ -10,6 +10,7 @@ from starcluster import static
 from starcluster import exception
 from starcluster.balancers import LoadBalancer
 from starcluster.logger import log
+from starcluster.exception import ThreadPoolException
 
 
 SGE_STATS_DIR = os.path.join(static.STARCLUSTER_CFG_DIR, 'sge')
@@ -759,8 +760,15 @@ class SGELoadBalancer(LoadBalancer):
                 self.__last_cluster_mod_time = datetime.datetime.utcnow()
                 log.info("Done adding nodes at %s" %
                          str(datetime.datetime.utcnow()))
+            except ThreadPoolException as tpe:
+                traceback.print_exc()
+                log.error("Failed to add new host", exc_info=True)
+                log.debug(traceback.format_exc())
+                log.error("Individual errors follow")
+                for exc in tpe.exceptions:
+                    print exc[1]
             except Exception:
-                print traceback.format_exc()
+                traceback.print_exc()
                 log.error("Failed to add new host", exc_info=True)
                 log.debug(traceback.format_exc())
 
@@ -793,8 +801,16 @@ class SGELoadBalancer(LoadBalancer):
             try:
                 self._cluster.remove_node(node)
                 self.__last_cluster_mod_time = datetime.datetime.utcnow()
+            except ThreadPoolException as tpe:
+                traceback.print_exc()
+                log.error("Failed to remove node %s" % node.alias,
+                          exc_info=True)
+                log.debug(traceback.format_exc())
+                log.error("Individual errors follow")
+                for exc in tpe.exceptions:
+                    print exc[1]
             except Exception:
-                print traceback.format_exc()
+                traceback.print_exc()
                 log.error("Failed to remove node %s" % node.alias,
                           exc_info=True)
                 log.debug(traceback.format_exc())
