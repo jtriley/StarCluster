@@ -36,6 +36,7 @@ class DatacraticPostPlugin(clustersetup.DefaultClusterSetup):
             dce = master.ssh.remote_file(self._dcePath, "w")
             dce.write("#!/bin/bash\ncp $1 $DCE_DEST\n")
             dce.close()
+            master.ssh.execute("chmod +x " + self._dcePath)
     
     def _set_node_slots(self, master, node_alias, num_slots):
         qconfPath = "/root/queueconfig.qconf"
