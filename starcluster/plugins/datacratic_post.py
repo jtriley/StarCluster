@@ -13,14 +13,16 @@ class DatacraticPostPlugin(clustersetup.DefaultClusterSetup):
         pass
     
     def run(self, nodes, master, user, user_shell, volumes):
+        self._create_dce(master, True)
         log.info("Setting master to 0 slot")
         self._set_node_slots(master, "master", 0)
-        self._create_dce(master, True)
         log.info("Creating complex values configuration")
         self._create_complex_values(master)
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         self._create_dce(master)
+        log.info("Setting " + node.alias + " to 1 slot")
+        self._set_node_slots(master, node.alias, 1)
         log.info("Configuring complex values for " + node.alias)
         self._update_complex_values(master, node)
 
