@@ -1,6 +1,5 @@
 import os
 import re
-import zlib
 import time
 import string
 import pprint
@@ -46,12 +45,8 @@ class ClusterManager(managers.Manager):
             cl = Cluster(ec2_conn=self.ec2, cluster_tag=cltag,
                          cluster_group=group)
             if load_receipt:
-                try:
-                    cl.load_receipt(load_plugins=load_plugins,
-                                    load_volumes=load_volumes)
-                except exception.MasterDoesNotExist:
-                    if load_plugins or load_volumes:
-                        raise
+                cl.load_receipt(load_plugins=load_plugins,
+                                load_volumes=load_volumes)
             try:
                 key_location = self.cfg.get_key(cl.keyname).get('key_location')
                 cl.key_location = key_location
@@ -546,19 +541,15 @@ class Cluster(object):
                 self.plugins = self.load_plugins(master.get_plugins())
             if load_volumes:
                 self.volumes = master.get_volumes()
-        except (zlib.error, ValueError, TypeError, EOFError, IndexError), e:
-            log.debug('load receipt exception: ', exc_info=True)
-            raise exception.IncompatibleCluster(self.cluster_group)
-        except exception.MasterDoesNotExist:
-            raise
         except exception.PluginError:
             log.error("An error occurred while loading plugins: ",
                       exc_info=True)
             raise
-        except Exception, e:
-            log.debug('Failed to load cluster receipt:', exc_info=True)
-            raise exception.ClusterReceiptError(
-                'failed to load cluster receipt: %s' % e)
+        except exception.MasterDoesNotExist:
+            raise
+        except Exception:
+            log.debug('load receipt exception: ', exc_info=True)
+            raise exception.IncompatibleCluster(self.cluster_group)
         return True
 
     def __getstate__(self):
