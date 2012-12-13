@@ -113,7 +113,8 @@ class ClusterManager(managers.Manager):
 
         user keyword specifies an alternate user to login as
         """
-        cluster = self.get_cluster(cluster_name)
+        cluster = self.get_cluster(cluster_name, load_receipt=False,
+                                   require_keys=True)
         return cluster.ssh_to_master(user=user, command=command,
                                      forward_x11=forward_x11,
                                      forward_agent=forward_agent)
