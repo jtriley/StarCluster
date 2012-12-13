@@ -142,12 +142,14 @@ class CmdStart(ClusterCompleter):
         tag = args[0]
         create = not self.opts.no_create
         create_only = self.opts.create_only
-        scluster = self.cm.get_cluster_or_none(tag, require_keys=False,
-                                               load_plugins=create)
         validate = self.opts.validate
         validate_running = self.opts.no_create
         validate_only = self.opts.validate_only
+        scluster = self.cm.get_cluster_group_or_none(tag)
         if scluster and create:
+            scluster = self.cm.get_cluster(tag, group=scluster,
+                                           load_receipt=False,
+                                           require_keys=False)
             stopped_ebs = scluster.is_cluster_stopped()
             is_ebs = False
             if not stopped_ebs:
@@ -156,7 +158,8 @@ class CmdStart(ClusterCompleter):
                                           stopped_ebs=stopped_ebs)
         if not scluster and not create:
             raise exception.ClusterDoesNotExist(tag)
-        elif scluster:
+        if scluster:
+            scluster = self.cm.get_cluster(tag, group=scluster)
             validate_running = True
         else:
             template = self.opts.cluster_template
