@@ -202,7 +202,8 @@ class ClusterManager(managers.Manager):
 
     def get_cluster_security_group(self, group_name):
         """
-        Return all security groups on EC2 that start with '@sc-'
+        Return cluster security group by appending '@sc-' to group_name and
+        querying EC2.
         """
         gname = self._get_cluster_name(group_name)
         return self.ec2.get_security_group(gname)
