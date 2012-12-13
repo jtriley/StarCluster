@@ -208,6 +208,12 @@ class ClusterManager(managers.Manager):
         gname = self._get_cluster_name(group_name)
         return self.ec2.get_security_group(gname)
 
+    def get_cluster_group_or_none(self, group_name):
+        try:
+            return self.get_cluster_security_group(group_name)
+        except exception.SecurityGroupDoesNotExist:
+            pass
+
     def get_cluster_security_groups(self):
         """
         Return all security groups on EC2 that start with '@sc-'
