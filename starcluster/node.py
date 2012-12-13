@@ -962,6 +962,7 @@ class Node(object):
             label = 'instance'
             if alias == "master":
                 label = "master"
+                alias = "node"
             elif alias:
                 label = "node"
             instance_id = alias or self.id
