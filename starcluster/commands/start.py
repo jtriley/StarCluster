@@ -141,10 +141,6 @@ class CmdStart(ClusterCompleter):
             self.parser.error("please specify a <cluster_tag>")
         tag = args[0]
         create = not self.opts.no_create
-        create_only = self.opts.create_only
-        validate = self.opts.validate
-        validate_running = self.opts.no_create
-        validate_only = self.opts.validate_only
         scluster = self.cm.get_cluster_group_or_none(tag)
         if scluster and create:
             scluster = self.cm.get_cluster(tag, group=scluster,
@@ -156,8 +152,12 @@ class CmdStart(ClusterCompleter):
                 is_ebs = scluster.is_ebs_cluster()
             raise exception.ClusterExists(tag, is_ebs=is_ebs,
                                           stopped_ebs=stopped_ebs)
-        if not scluster and not create:
+        if not create and not scluster:
             raise exception.ClusterDoesNotExist(tag)
+        create_only = self.opts.create_only
+        validate = self.opts.validate
+        validate_running = self.opts.no_create
+        validate_only = self.opts.validate_only
         if scluster:
             scluster = self.cm.get_cluster(tag, group=scluster)
             validate_running = True
