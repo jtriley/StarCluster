@@ -515,7 +515,7 @@ The cluster '%(tag)s' does not have any nodes and is safe to terminate.
     terminate_msg = """\
 Please terminate the cluster using:
 
-    $ starcluster terminate %(tag)s
+    $ starcluster terminate -f %(tag)s
 """
 
     def __init__(self, group):

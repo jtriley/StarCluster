@@ -207,4 +207,7 @@ def get_log_for_pid(pid):
 
 
 def get_session_log():
+    """
+    Fetches the logs for the current active session from the debug log file.
+    """
     return get_log_for_pid(static.PID)

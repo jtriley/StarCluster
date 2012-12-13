@@ -74,6 +74,7 @@ USER_TAG = '-'.join([SECURITY_GROUP_PREFIX, 'user'])
 
 # Internal StarCluster userdata filenames
 UD_PLUGINS_FNAME = "_sc_plugins.txt"
+UD_VOLUMES_FNAME = "_sc_volumes.txt"
 UD_ALIASES_FNAME = "_sc_aliases.txt"
 
 INSTANCE_STATES = ['pending', 'running', 'shutting-down',

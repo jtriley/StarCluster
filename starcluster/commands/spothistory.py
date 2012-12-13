@@ -66,5 +66,6 @@ class CmdSpotHistory(CmdBase):
             start = utils.datetime_tuple_to_iso(
                 now - timedelta(days=self.opts.days_ago))
         browser_cmd = self.cfg.globals.get("web_browser")
-        self.ec2.get_spot_history(instance_type, start, end, self.opts.plot,
+        self.ec2.get_spot_history(instance_type, start, end,
+                                  zone=self.opts.zone, plot=self.opts.plot,
                                   plot_web_browser=browser_cmd)

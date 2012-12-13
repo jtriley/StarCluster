@@ -16,6 +16,7 @@ import boto.s3.connection
 from starcluster import image
 from starcluster import utils
 from starcluster import static
+from starcluster import spinner
 from starcluster import webtools
 from starcluster import exception
 from starcluster import progressbar
@@ -446,7 +447,7 @@ class EasyEC2(EasyAWS):
     def get_instance_user_data(self, instance_id):
         try:
             attrs = self.conn.get_instance_attribute(instance_id, 'userData')
-            user_data = attrs.get('userData', '')
+            user_data = attrs.get('userData', '') or ''
             return base64.b64decode(user_data)
         except boto.exception.EC2ResponseError, e:
             if e.error_code == "InvalidInstanceID.NotFound":
@@ -670,6 +671,10 @@ class EasyEC2(EasyAWS):
         self.list_images(imgs, sort_key=sc_public_sort, reverse=True)
 
     def create_volume(self, size, zone, snapshot_id=None):
+        msg = "Creating %sGB volume in zone %s" % (size, zone)
+        if snapshot_id:
+            msg += " from snapshot %s" % snapshot_id
+        log.info(msg)
         return self.conn.create_volume(size, zone, snapshot_id)
 
     def remove_volume(self, volume_id):
@@ -1000,6 +1005,28 @@ class EasyEC2(EasyAWS):
         except exception.VolumeDoesNotExist:
             pass
 
+    def wait_for_volume(self, volume, status=None, state=None,
+                        refresh_interval=5, log_func=log.info):
+        if status:
+            log_func("Waiting for %s to become '%s'..." % (volume.id, status),
+                     extra=dict(__nonewline__=True))
+            s = spinner.Spinner()
+            s.start()
+            while volume.update() != status:
+                time.sleep(refresh_interval)
+            s.stop()
+        if state:
+            log_func("Waiting for %s to transition to: %s... " %
+                     (volume.id, state), extra=dict(__nonewline__=True))
+            if not status:
+                volume.update()
+            s = spinner.Spinner()
+            s.start()
+            while volume.attachment_state() != state:
+                time.sleep(refresh_interval)
+                volume.update()
+            s.stop()
+
     def wait_for_snapshot(self, snapshot, refresh_interval=30):
         snap = snapshot
         log.info("Waiting for snapshot to complete: %s" % snap.id)
@@ -1010,12 +1037,15 @@ class EasyEC2(EasyAWS):
         while snap.status != 'completed':
             try:
                 progress = int(snap.update().replace('%', ''))
-                pbar.update(progress)
+                if not pbar.finished:
+                    pbar.update(progress)
             except ValueError:
                 time.sleep(5)
                 continue
-            time.sleep(refresh_interval)
-        pbar.finish()
+            if snap.status != 'completed':
+                time.sleep(refresh_interval)
+        if not pbar.finished:
+            pbar.finish()
 
     def create_snapshot(self, vol, description=None, wait_for_snapshot=False,
                         refresh_interval=30):

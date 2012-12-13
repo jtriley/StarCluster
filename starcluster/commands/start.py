@@ -35,7 +35,7 @@ class CmdStart(ClusterCompleter):
     def addopts(self, parser):
         templates = []
         if self.cfg:
-            templates = self.cfg.get_cluster_names().keys()
+            templates = self.cfg.clusters.keys()
         parser.add_option("-x", "--no-create", dest="no_create",
                           action="store_true", default=False,
                           help="do not launch new EC2 instances when "
@@ -141,22 +141,25 @@ class CmdStart(ClusterCompleter):
             self.parser.error("please specify a <cluster_tag>")
         tag = args[0]
         create = not self.opts.no_create
-        create_only = self.opts.create_only
-        scluster = self.cm.get_cluster_or_none(tag, require_keys=False,
-                                               load_plugins=create)
-        validate = self.opts.validate
-        validate_running = self.opts.no_create
-        validate_only = self.opts.validate_only
+        scluster = self.cm.get_cluster_group_or_none(tag)
         if scluster and create:
+            scluster = self.cm.get_cluster(tag, group=scluster,
+                                           load_receipt=False,
+                                           require_keys=False)
             stopped_ebs = scluster.is_cluster_stopped()
             is_ebs = False
             if not stopped_ebs:
                 is_ebs = scluster.is_ebs_cluster()
             raise exception.ClusterExists(tag, is_ebs=is_ebs,
                                           stopped_ebs=stopped_ebs)
-        if not scluster and not create:
+        if not create and not scluster:
             raise exception.ClusterDoesNotExist(tag)
-        elif scluster:
+        create_only = self.opts.create_only
+        validate = self.opts.validate
+        validate_running = self.opts.no_create
+        validate_only = self.opts.validate_only
+        if scluster:
+            scluster = self.cm.get_cluster(tag, group=scluster)
             validate_running = True
         else:
             template = self.opts.cluster_template
@@ -192,13 +195,16 @@ class CmdStart(ClusterCompleter):
             scluster.start(create=create, create_only=create_only,
                            validate=validate, validate_only=validate_only,
                            validate_running=validate_running)
-            if validate_only:
-                return
-            if not create_only and not self.opts.login_master:
-                log.info(user_msgs.cluster_started_msg %
-                         dict(tag=scluster.cluster_tag),
-                         extra=dict(__textwrap__=True, __raw__=True))
-            if self.opts.login_master:
-                scluster.ssh_to_master()
         except KeyboardInterrupt:
-            raise exception.CancelledStartRequest(tag)
+            if validate_only:
+                raise
+            else:
+                raise exception.CancelledStartRequest(tag)
+        if validate_only:
+            return
+        if not create_only and not self.opts.login_master:
+            log.info(user_msgs.cluster_started_msg %
+                     dict(tag=scluster.cluster_tag),
+                     extra=dict(__textwrap__=True, __raw__=True))
+        if self.opts.login_master:
+            scluster.ssh_to_master()
