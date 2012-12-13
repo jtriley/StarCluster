@@ -48,14 +48,15 @@ class ClusterManager(managers.Manager):
                 cl.load_receipt(load_plugins=load_plugins,
                                 load_volumes=load_volumes)
             try:
+                cl.keyname = cl.keyname or cl.master_node.key_name
                 key_location = self.cfg.get_key(cl.keyname).get('key_location')
                 cl.key_location = key_location
-            except exception.KeyNotFound:
+                if require_keys:
+                    cl.validator.validate_keypair()
+            except (exception.KeyNotFound, exception.MasterDoesNotExist):
                 if require_keys:
                     raise
                 cl.key_location = ''
-            if require_keys:
-                cl.validator.validate_keypair()
             return cl
         except exception.SecurityGroupDoesNotExist:
             raise exception.ClusterDoesNotExist(cluster_name)
