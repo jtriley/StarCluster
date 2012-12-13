@@ -183,13 +183,10 @@ class Node(object):
 
     @property
     def parent_cluster(self):
-        cluster_tag = "--UNKNOWN--"
         try:
-            cg = self.cluster_groups[0].name
-            cluster_tag = cg.replace(static.SECURITY_GROUP_PREFIX + '-', '')
+            return self.cluster_groups[0]
         except IndexError:
             pass
-        return cluster_tag
 
     @property
     def num_processors(self):
