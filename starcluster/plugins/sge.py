@@ -2,6 +2,7 @@ from starcluster import clustersetup
 from starcluster.templates import sge
 from starcluster.logger import log
 import xml.etree.ElementTree as ET
+import time
 
 class DeadNode():
     alias = None
@@ -208,6 +209,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         if toDelete:
             log.info("Stopping jobs: " + str(toDelete))
             self._master.ssh.execute("qdel -f " + " ".join(toDelete))
+            time.sleep(3)#otherwise might provoke LOST QRSH if on last job
         if toRepair:
             log.error("Reseting jobs: " + str(toRepair))
             self._master.ssh.execute("qmod -cj " + " ".join(toRepair),
