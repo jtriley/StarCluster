@@ -181,7 +181,7 @@ class IPCluster11(ClusterSetup):
         s.start()
         try:
             while not master.ssh.isfile(json):
-                time.sleep(1)
+                time.sleep(5)
         finally:
             s.stop()
         # retrieve JSON connection info
