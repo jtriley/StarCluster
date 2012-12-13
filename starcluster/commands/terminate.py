@@ -65,14 +65,16 @@ class CmdTerminate(ClusterCompleter):
         except exception.ClusterDoesNotExist:
             raise
         except Exception, e:
-            log.debug("Failed to load cluster settings!",  exc_info=True)
-            log.error("Failed to load cluster settings!")
+            errmsg = "Failed to load cluster settings!"
+            log.debug(errmsg,  exc_info=True)
             if force:
+                log.warn(errmsg)
                 log.warn("Ignoring cluster settings due to --force option")
                 cl = self.cm.get_cluster(cluster_name, load_receipt=False,
                                          require_keys=False)
                 self._terminate_manually(cl)
             else:
+                log.error(errmsg)
                 if not isinstance(e, exception.IncompatibleCluster):
                     log.error("Use -f to forcefully terminate the cluster")
                 raise
