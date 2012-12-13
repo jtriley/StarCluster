@@ -128,10 +128,14 @@ class ClusterManager(managers.Manager):
 
         user keyword specifies an alternate user to login as
         """
-        cluster = self.get_cluster(cluster_name)
-        return cluster.ssh_to_node(node_id, user=user, command=command,
-                                   forward_x11=forward_x11,
-                                   forward_agent=forward_agent)
+        cluster = self.get_cluster(cluster_name, load_receipt=False,
+                                   require_keys=False)
+        node = cluster.get_node_by_alias(node_id)
+        key_location = self.cfg.get_key(node.key_name).get('key_location')
+        cluster.key_location = key_location
+        cluster.validator.validate_keypair()
+        return node.shell(user=user, forward_x11=forward_x11,
+                          forward_agent=forward_agent, command=command)
 
     def _get_cluster_name(self, cluster_name):
         """
