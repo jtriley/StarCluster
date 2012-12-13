@@ -338,6 +338,8 @@ class ClusterManager(managers.Manager):
 
 
 class Cluster(object):
+    nodes_id_ignore = []#bugged nodes to ignore
+
     def __init__(self,
                  ec2_conn=None,
                  spot_bid=None,
@@ -680,6 +682,23 @@ class Cluster(object):
         nodes = self.ec2.get_all_instances(filters=filters)
         # remove any cached nodes not in the current node list from EC2
         current_ids = [n.id for n in nodes]
+
+        #If a node was terminated due to error, even if it still shows up,
+        #ignore it
+        nodes_id_ignore_remove = []
+        for id in Cluster.nodes_id_ignore:
+            if id in current_ids:
+                log.info("Ignoring node id [" + id + "]")
+                del current_ids[current_ids.find(id)]
+            else:
+                log.info("Node id [" + id + "] is gone.")
+                nodes_id_ignore_remove.append(id)
+        for id in nodes_id_ignore_remove:
+            del Cluster.nodes_id_ignore[Cluster.nodes_id_ignore.find(id)]
+        del nodes_id_ignore_remove
+
+
+
         remove_nodes = [n for n in self._nodes if n.id not in current_ids]
         for node in remove_nodes:
             self._nodes.remove(node)
@@ -1620,58 +1639,90 @@ class Cluster(object):
         
         self.run_plugins(method_name="clean_cluster", reverse=True)
 
-    def recover(self, remove_on_error=False):
-        to_recover = []
-        if not self.disable_queue:
-            sge_plugin = sge.SGEPlugin()
-            to_recover.append(sge_plugin.get_nodes_to_recover(self.nodes))
-        for plugin in self.plugins:
-            try:
-                result = plugin.get_nodes_to_recover(self.nodes)
-                to_recover.append(result)
-            except:
-                #the plugin does not implement get_nodes_to_recover
-                pass
-        if len(to_recover) > 1:
-            log.error("Cannot support more than one list of nodes to recover")
-        elif len(to_recover) == 1:
-            errors = []
-            for node in to_recover[0]:
-                #call it one at a time so that x doesn't prevent y to be added
+    def recover(self, remove_on_error=False, retries=0):
+        """
+        Will try to recover dangling nodes.
+        remove_on_error The hour block minute after wich termination is
+            authorised. False means it will never be terminated. True is
+            equivalent to setting 0, meaning that it will only try to add
+            it back once before terminating.
+        """
+        while 1:
+            failures = 0
+            to_recover = []
+            if not self.disable_queue:
+                sge_plugin = sge.SGEPlugin()
+                to_recover.append(sge_plugin.get_nodes_to_recover(self.nodes))
+            for plugin in self.plugins:
                 try:
-                    log.info("Adding back node " + node.alias)
-                    self.add_nodes(num_nodes=1, aliases=[node.alias],
-                                   no_create=True)
+                    result = plugin.get_nodes_to_recover(self.nodes)
+                    to_recover.append(result)
                 except:
-                    import traceback
-                    log.error(traceback.format_exc())
-                    log.error("Failed to add back node " + node.alias)
-                    errors.append(node)
-                    log.info("Rebooting node " + node.alias)
-                    node.reboot()
-
-            if remove_on_error or type(remove_on_error) == int:
-                for node in errors:
+                    #the plugin does not implement get_nodes_to_recover
+                    pass
+            if len(to_recover) > 1:
+                log.error("Cannot support more than one list of nodes "\
+                          "to recover")
+            elif len(to_recover) == 1:
+                errors = []
+                for node in to_recover[0]:
+                    #call it one at a time so that x doesn't prevent
+                    #y to be added
                     try:
-                        if remove_on_error is True:
-                            log.info("Terminating misbehaving node "
-                                     + node.alias)
-                            self.remove_nodes([node])
-                        else:
-                            dt = utils.iso_to_datetime_tuple(node.launch_time)
-                            now = datetime.datetime.utcnow()
-                            timedelta = now - dt
-                            if (timedelta.seconds / 60) % 60 > remove_on_error:
-                                self.remove_nodes([node])
+                        log.info("Adding back node " + node.alias)
+                        self.add_nodes(num_nodes=1, aliases=[node.alias],
+                                       no_create=True)
                     except:
+                        failures += 1
+                        success = False
                         import traceback
                         log.error(traceback.format_exc())
-                        log.error("type:" + str(type(remove_on_error)))
-                        log.error("val:" + str(remove_on_error))
-                        log.error("Failed to remove misbehaving node " +
-                                  node.alias)
-                        log.error("Forcing termination via EC2")
-                        node.terminate()
+                        log.error("Failed to add back node " + node.alias)
+                        errors.append(node)
+                        log.info("Rebooting node " + node.alias)
+                        node.reboot()
+
+                if remove_on_error or type(remove_on_error) == int:
+                    for node in errors:
+                        try:
+                            if remove_on_error is True:
+                                log.info("Terminating misbehaving node "
+                                         + node.alias)
+                                self.remove_nodes([node])
+                                failures -= 1
+                            else:
+                                dt = utils\
+                                    .iso_to_datetime_tuple(node.launch_time)
+                                now = datetime.datetime.utcnow()
+                                t_delta = now - dt
+                                if (t_delta.seconds / 60) % 60 \
+                                        > remove_on_error:
+                                    self.remove_nodes([node])
+                                    failures -= 1
+                        except:
+                            import traceback
+                            log.error(traceback.format_exc())
+                            log.error("type:" + str(type(remove_on_error)))
+                            log.error("val:" + str(remove_on_error))
+                            log.error("Failed to remove misbehaving node " +
+                                      node.alias)
+                            log.error("Forcing termination via EC2")
+                            node.terminate()
+                            failures -= 1
+
+                    Cluster.nodes_id_ignore.append(node.id)
+                    if failures:
+                        log.error("Failures occured, sleeping for a minute "\
+                                  "then trying again")
+                        log.info("Sleeping, it's " 
+                                 + str(datetime.datetime.utcnow()))
+                        time.sleep(60)
+                        log.info("Waiking up, it's " 
+                                 + str(datetime.datetime.utcnow()))
+                        continue
+                    break
+                    
+
 
 class ClusterValidator(validators.Validator):
     """
