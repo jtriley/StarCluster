@@ -62,6 +62,8 @@ class CmdTerminate(ClusterCompleter):
         try:
             cl = self.cm.get_cluster(cluster_name)
             self._terminate_cluster(cl)
+        except exception.ClusterDoesNotExist:
+            raise
         except Exception, e:
             log.debug("Failed to load cluster settings!",  exc_info=True)
             log.error("Failed to load cluster settings!")

@@ -65,6 +65,8 @@ class CmdStop(ClusterCompleter):
         for cluster_name in args:
             try:
                 cl = self.cm.get_cluster(cluster_name)
+            except exception.ClusterDoesNotExist:
+                raise
             except Exception, e:
                 log.debug("Failed to load cluster settings!", exc_info=True)
                 log.error("Failed to load cluster settings!")
