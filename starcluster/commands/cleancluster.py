@@ -1,5 +1,4 @@
 from completers import NodeCompleter
-from starcluster.plugins import sge
 
 
 class CmdCleanCluster(NodeCompleter):
@@ -20,4 +19,3 @@ class CmdCleanCluster(NodeCompleter):
         tag = self.tag = args[0]
         cluster = self.cm.get_cluster(tag)
         cluster.clean()
-

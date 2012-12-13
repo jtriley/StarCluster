@@ -1,7 +1,5 @@
-import traceback
 import re
 from starcluster import clustersetup
-from starcluster.templates import sge
 from starcluster.logger import log
 
 
@@ -11,7 +9,7 @@ class DatacraticPostPlugin(clustersetup.DefaultClusterSetup):
 
     def __init__(self, **kwargs):
         pass
-    
+
     def run(self, nodes, master, user, user_shell, volumes):
         self._create_dce(master, True)
         log.info("Setting master to 0 slot")
@@ -39,14 +37,14 @@ class DatacraticPostPlugin(clustersetup.DefaultClusterSetup):
             dce.write("#!/bin/bash\ncp $1 $DCE_DEST\n")
             dce.close()
             master.ssh.execute("chmod +x " + self._dcePath)
-    
+
     def _set_node_slots(self, master, node_alias, num_slots):
         qconfPath = "/root/queueconfig.qconf"
         #with our copy editor, the current config is printed to a file
-        master.ssh.execute("export EDITOR=" + self._dcePath + "; "\
-            + "chmod +x $EDITOR; "\
-            + "export DCE_DEST=" + qconfPath + "; "\
-            + "qconf -mq all.q")
+        master.ssh.execute("export EDITOR=" + self._dcePath + "; "
+                           + "chmod +x $EDITOR; "
+                           + "export DCE_DEST=" + qconfPath + "; "
+                           + "qconf -mq all.q")
         qconf = master.ssh.remote_file(qconfPath, "r")
         qconfStr = qconf.read()
         qconf.close()
@@ -54,8 +52,8 @@ class DatacraticPostPlugin(clustersetup.DefaultClusterSetup):
         replace = "[" + node_alias + "=" + str(num_slots) + "]"
         qconfStr, numReplace = re.subn(search, replace, qconfStr)
         if numReplace == 0:
-            log.error("datacratic plugin: failed to set " + str(num_slots) +\
-                " slot(s) on node " + node_alias)
+            log.error("datacratic plugin: failed to set " + str(num_slots) +
+                      " slot(s) on node " + node_alias)
         else:
             qconf = master.ssh.remote_file(qconfPath, "w")
             qconf.write(qconfStr)
@@ -67,9 +65,9 @@ class DatacraticPostPlugin(clustersetup.DefaultClusterSetup):
         Defines complex values in OGS
         """
         dest = "/root/qconf_mc.qconf"
-        master.ssh.execute("export EDITOR=" + self._dcePath + "; "\
-            + "export DCE_DEST=" + dest + "; "\
-            + "qconf -mc")
+        master.ssh.execute("export EDITOR=" + self._dcePath + "; "
+                           + "export DCE_DEST=" + dest + "; "
+                           + "qconf -mc")
         qconf = master.ssh.remote_file(dest, "r")
         qconfStr = qconf.read()
         qconf.close()
@@ -86,9 +84,10 @@ class DatacraticPostPlugin(clustersetup.DefaultClusterSetup):
         Sets complex values values for a node
         """
         dest = "/root/qconf_me_" + node.alias + ".qconf"
-        master.ssh.execute("export EDITOR=" + self._dcePath +"; "\
-            + "export DCE_DEST=" + dest + "; "\
-            + "qconf -me " + node.alias, ignore_exit_status=True)
+        master.ssh.execute("export EDITOR=" + self._dcePath + "; "
+                           + "export DCE_DEST=" + dest + "; "
+                           + "qconf -me " + node.alias,
+                           ignore_exit_status=True)
         qconf = master.ssh.remote_file(dest, "r")
         qconfStr = qconf.read()
         qconf.close()
@@ -96,8 +95,10 @@ class DatacraticPostPlugin(clustersetup.DefaultClusterSetup):
         for index, line in enumerate(qconfLines):
             if line.find("complex_values") == 0:
                 qconfLines[index] = "complex_values da_mem_gb="\
-                    + str(float(node.memory)/1000) + ",da_slots="\
-                    + str(node.num_processors) + ",da_exclusive=1"
+                                    + str(float(node.memory) / 1000)\
+                                    + ",da_slots="\
+                                    + str(node.num_processors)\
+                                    + ",da_exclusive=1"
                 break
         qconf = master.ssh.remote_file(dest, "w")
         qconf.write("\n".join(qconfLines))

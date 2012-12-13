@@ -338,7 +338,7 @@ class ClusterManager(managers.Manager):
 
 
 class Cluster(object):
-    nodes_id_ignore = []#bugged nodes to ignore
+    nodes_id_ignore = []  # bugged nodes to ignore
 
     def __init__(self,
                  ec2_conn=None,
@@ -696,8 +696,6 @@ class Cluster(object):
         for id in nodes_id_ignore_remove:
             del Cluster.nodes_id_ignore[Cluster.nodes_id_ignore.find(id)]
         del nodes_id_ignore_remove
-
-
 
         remove_nodes = [n for n in self._nodes if n.id not in current_ids]
         for node in remove_nodes:
@@ -1634,9 +1632,9 @@ class Cluster(object):
             #clean sge
             sge_plugin = sge.SGEPlugin()
             sge_plugin.clean_cluster(self.nodes, self.master_node,
-                                      self.cluster_user,
-                                      self.cluster_shell, self.volumes)
-        
+                                     self.cluster_user,
+                                     self.cluster_shell, self.volumes)
+
         self.run_plugins(method_name="clean_cluster", reverse=True)
 
     def recover(self, remove_on_error=False, retries=0):
@@ -1661,7 +1659,7 @@ class Cluster(object):
                     #the plugin does not implement get_nodes_to_recover
                     pass
             if len(to_recover) > 1:
-                log.error("Cannot support more than one list of nodes "\
+                log.error("Cannot support more than one list of nodes "
                           "to recover")
             elif len(to_recover) == 1:
                 errors = []
@@ -1674,7 +1672,6 @@ class Cluster(object):
                                        no_create=True)
                     except:
                         failures += 1
-                        success = False
                         import traceback
                         log.error(traceback.format_exc())
                         log.error("Failed to add back node " + node.alias)
@@ -1712,16 +1709,15 @@ class Cluster(object):
 
                     Cluster.nodes_id_ignore.append(node.id)
                     if failures:
-                        log.error("Failures occured, sleeping for a minute "\
+                        log.error("Failures occured, sleeping for a minute "
                                   "then trying again")
-                        log.info("Sleeping, it's " 
+                        log.info("Sleeping, it's "
                                  + str(datetime.datetime.utcnow()))
                         time.sleep(60)
-                        log.info("Waiking up, it's " 
+                        log.info("Waiking up, it's "
                                  + str(datetime.datetime.utcnow()))
                         continue
                     break
-                    
 
 
 class ClusterValidator(validators.Validator):

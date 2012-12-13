@@ -3,7 +3,7 @@ from starcluster.balancers import sge
 from starcluster import static
 
 from completers import ClusterCompleter
-import signal
+
 
 class CmdLoadBalance(ClusterCompleter):
     """
@@ -79,7 +79,7 @@ class CmdLoadBalance(ClusterCompleter):
         parser.add_option("-K", "--kill-cluster", dest="kill_cluster",
                           action="store_true", default=False,
                           help="Terminate the cluster when the queue is empty")
-        parser.add_option("--ignore-master", dest="ignore_master", 
+        parser.add_option("--ignore-master", dest="ignore_master",
                           action="store_true", default=False,
                           help="Ignores the master as an execution host")
         parser.add_option(
@@ -102,4 +102,3 @@ class CmdLoadBalance(ClusterCompleter):
             import traceback
             #traceback.format_exc()
             self.log.info(traceback.format_exc())
-

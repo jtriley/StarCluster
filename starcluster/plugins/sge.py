@@ -4,11 +4,13 @@ from starcluster.logger import log
 import xml.etree.ElementTree as ET
 import time
 
+
 class DeadNode():
     alias = None
 
     def __init__(self, alias):
         self.alias = alias
+
 
 class SGEPlugin(clustersetup.DefaultClusterSetup):
 
@@ -54,7 +56,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         log.info("%s SGE parallel environment '%s'" % (verb, name))
         # iterate through each machine and count the number of processors
         nodes = nodes or self._nodes
-        #TODO: Fails if some machines go away while updating 
+        #TODO: Fails if some machines go away while updating
         num_processors = sum(self.pool.map(lambda n: n.num_processors, nodes))
         penv = mssh.remote_file("/tmp/pe.txt", "w")
         penv.write(sge.sge_pe_template % (name, num_processors))
@@ -176,10 +178,9 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         qhosts = self._master.ssh.execute("qhost", source_profile=True)
         if len(qhosts) <= 3:
             log.info("Nothing to clean")
-        
+
         qhosts = qhosts[3:]
         aliveNodes = [node.alias for node in nodes]
-
 
         cleaned = []
         #find dead hosts
@@ -190,11 +191,11 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
 
         #find jobs running in dead hosts
         qstatsXml = self._master.ssh.execute("qstat -xml", source_profile=True)
-        qstatsXml[1:]#remove first line
+        qstatsXml[1:]  # remove first line
         qstatsET = ET.fromstringlist(qstatsXml)
         toDelete = []
         toRepair = []
-        cleanedQueue = []#not a lambda function to allow pickling
+        cleanedQueue = []  # not a lambda function to allow pickling
         for c in cleaned:
             cleanedQueue.append("all.q@" + c)
         for jobList in qstatsET.find("queue_info").findall("job_list"):
@@ -209,12 +210,12 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         if toDelete:
             log.info("Stopping jobs: " + str(toDelete))
             self._master.ssh.execute("qdel -f " + " ".join(toDelete))
-            time.sleep(3)#otherwise might provoke LOST QRSH if on last job
+            time.sleep(3)  # otherwise might provoke LOST QRSH if on last job
         if toRepair:
             log.error("Reseting jobs: " + str(toRepair))
             self._master.ssh.execute("qmod -cj " + " ".join(toRepair),
                                      ignore_exit_status=True)
-            
+
         #DEBUGIN stuck qrsh issue (BLUK-63)
         ps_wc = int(self._master.ssh.execute("ps -ef | grep qrsh | wc -l")[0])
         qstat_wc = int(self._master.ssh.execute("qstat | wc -l")[0])

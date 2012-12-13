@@ -40,7 +40,8 @@ class SGEStats(object):
         if self.jobs:
             return int(self.jobs[-1]['JB_job_number'])
 
-    def parse_qhost(self, qhost_out, ignore_master=False, additional_config={}):
+    def parse_qhost(self, qhost_out, ignore_master=False,
+                    additional_config={}):
         """
         this function parses qhost -xml output and makes a neat array
         takes in a string, so we can pipe in output from ssh.exec('qhost -xml')
@@ -98,21 +99,23 @@ class SGEStats(object):
                             if not self.jobstats[jobstats_index]:
 
                                 self.jobstats[jobstats_index] = {
-                                    "queued" : self.qstat_to_datetime(node2.data),
-                                    "start"  : None,
-                                    "end"    : None
+                                    "queued":
+                                    self.qstat_to_datetime(node2.data),
+                                    "start": None,
+                                    "end":   None
                                 }
                         elif tag == "JAT_start_time":
                             jobstats_index = int(hash["JB_job_number"]) % \
                                 self.jobstat_cachesize
                             if not self.jobstats[jobstats_index]:
                                 self.jobstats[jobstats_index] = {
-                                    "queued" : None,
-                                    "start"  : self.qstat_to_datetime(node2.data),
-                                    "end"    : None
+                                    "queued": None,
+                                    "start":
+                                    self.qstat_to_datetime(node2.data),
+                                    "end":    None
                                 }
                             elif self.jobstats[jobstats_index]["start"] \
-                                    == None:
+                                    is None:
                                 self.jobstats[jobstats_index]["start"] = \
                                     self.qstat_to_datetime(node2.data)
 
@@ -236,9 +239,9 @@ class SGEStats(object):
             try:
                 slots = slots + int(h['slots'])
             except KeyError as e:
-               log.error(traceback.format_exc())
-               print str(h)
-               raise e
+                log.error(traceback.format_exc())
+                print str(h)
+                raise e
         return slots
 
     def slots_per_host(self):
@@ -548,7 +551,8 @@ class SGELoadBalancer(LoadBalancer):
         qstat_cmd = 'qstat -u \* -xml'
         qhostxml = '\n'.join(master.ssh.execute('qhost -xml'))
         qstatxml = '\n'.join(master.ssh.execute(qstat_cmd))
-        qacct = '\n'.join(master.ssh.execute(qacct_cmd, raise_on_failure=False, silent=True))
+        qacct = '\n'.join(master.ssh.execute(qacct_cmd, raise_on_failure=False,
+                          silent=True))
         if qacct == "no jobs running since startup":
             qacct = ''
 
@@ -559,16 +563,16 @@ class SGELoadBalancer(LoadBalancer):
             scce.write("#!/bin/bash\ncp $1 " + qconfPath + "\n")
             scce.close()
         #with our copy editor, the current config is printed to a file
-        master.ssh.execute("export EDITOR=" + sccePath + "; "\
-            + "chmod +x $EDITOR; "\
-            + "echo $EDITOR; "\
-            + "qconf -mq all.q", source_profile=True)
+        master.ssh.execute("export EDITOR=" + sccePath + "; "
+                           + "chmod +x $EDITOR; "
+                           + "echo $EDITOR; "
+                           + "qconf -mq all.q", source_profile=True)
         qconf = master.ssh.remote_file(qconfPath, "r")
         qconfStr = qconf.read()
         nodes = re.findall("\[(node[\d]+)=([\d]+)\]", qconfStr)
         additional_config = {}
         for node in nodes:
-            additional_config[node[0]] = {"slots" : node[1]}
+            additional_config[node[0]] = {"slots": node[1]}
 
         stats = SGEStats()
         stats.remote_time = now
@@ -657,7 +661,7 @@ class SGELoadBalancer(LoadBalancer):
                 continue
             self.get_stats()
             log.info("Execution hosts: %d" % len(self.stat.hosts), extra=raw)
-            log.info("Execution slots: %d" % self.stat.count_total_slots(), 
+            log.info("Execution slots: %d" % self.stat.count_total_slots(),
                      extra=raw)
             log.info("Queued jobs: %d" % len(self.stat.get_queued_jobs()),
                      extra=raw)
