@@ -1,6 +1,5 @@
 import os
 import re
-import zlib
 import time
 import string
 import pprint
@@ -35,7 +34,7 @@ class ClusterManager(managers.Manager):
         return "<ClusterManager: %s>" % self.ec2.region.name
 
     def get_cluster(self, cluster_name, group=None, load_receipt=True,
-                    load_plugins=True, require_keys=True):
+                    load_plugins=True, load_volumes=True, require_keys=True):
         """
         Returns a Cluster object representing an active cluster
         """
@@ -47,16 +46,18 @@ class ClusterManager(managers.Manager):
             cl = Cluster(ec2_conn=self.ec2, cluster_tag=cltag,
                          cluster_group=group)
             if load_receipt:
-                cl.load_receipt(load_plugins=load_plugins)
+                cl.load_receipt(load_plugins=load_plugins,
+                                load_volumes=load_volumes)
             try:
+                cl.keyname = cl.keyname or cl.master_node.key_name
                 key_location = self.cfg.get_key(cl.keyname).get('key_location')
                 cl.key_location = key_location
-            except exception.KeyNotFound:
+                if require_keys:
+                    cl.validator.validate_keypair()
+            except (exception.KeyNotFound, exception.MasterDoesNotExist):
                 if require_keys:
                     raise
                 cl.key_location = ''
-            if require_keys:
-                cl.validator.validate_keypair()
             return cl
         except exception.SecurityGroupDoesNotExist:
             raise exception.ClusterDoesNotExist(cluster_name)
@@ -113,7 +114,8 @@ class ClusterManager(managers.Manager):
 
         user keyword specifies an alternate user to login as
         """
-        cluster = self.get_cluster(cluster_name)
+        cluster = self.get_cluster(cluster_name, load_receipt=False,
+                                   require_keys=True)
         return cluster.ssh_to_master(user=user, command=command,
                                      forward_x11=forward_x11,
                                      forward_agent=forward_agent)
@@ -127,10 +129,14 @@ class ClusterManager(managers.Manager):
 
         user keyword specifies an alternate user to login as
         """
-        cluster = self.get_cluster(cluster_name)
-        return cluster.ssh_to_node(node_id, user=user, command=command,
-                                   forward_x11=forward_x11,
-                                   forward_agent=forward_agent)
+        cluster = self.get_cluster(cluster_name, load_receipt=False,
+                                   require_keys=False)
+        node = cluster.get_node_by_alias(node_id)
+        key_location = self.cfg.get_key(node.key_name).get('key_location')
+        cluster.key_location = key_location
+        cluster.validator.validate_keypair()
+        return node.shell(user=user, forward_x11=forward_x11,
+                          forward_agent=forward_agent, command=command)
 
     def _get_cluster_name(self, cluster_name):
         """
@@ -178,23 +184,27 @@ class ClusterManager(managers.Manager):
         cl = self.get_cluster(cluster_name)
         cl.restart_cluster()
 
-    def stop_cluster(self, cluster_name, terminate_unstoppable=False):
+    def stop_cluster(self, cluster_name, terminate_unstoppable=False,
+                     force=False):
         """
         Stop an EBS-backed cluster
         """
-        cl = self.get_cluster(cluster_name, require_keys=False)
-        cl.stop_cluster(terminate_unstoppable)
+        cl = self.get_cluster(cluster_name, load_receipt=not force,
+                              require_keys=not force)
+        cl.stop_cluster(terminate_unstoppable, force=force)
 
-    def terminate_cluster(self, cluster_name):
+    def terminate_cluster(self, cluster_name, force=False):
         """
         Terminates cluster_name
         """
-        cl = self.get_cluster(cluster_name, require_keys=False)
-        cl.terminate_cluster()
+        cl = self.get_cluster(cluster_name, load_receipt=not force,
+                              require_keys=not force)
+        cl.terminate_cluster(force=force)
 
     def get_cluster_security_group(self, group_name):
         """
-        Return all security groups on EC2 that start with '@sc-'
+        Return cluster security group by appending '@sc-' to group_name and
+        querying EC2.
         """
         gname = self._get_cluster_name(group_name)
         return self.ec2.get_security_group(gname)
@@ -217,10 +227,14 @@ class ClusterManager(managers.Manager):
             print get_tag_from_sg(sg)
             mycluster
         """
-        regex = re.compile(static.SECURITY_GROUP_PREFIX + '-(.*)')
+        regex = re.compile('^' + static.SECURITY_GROUP_PREFIX + '-(.*)')
         match = regex.match(sg)
+        tag = None
         if match:
-            return match.groups()[0]
+            tag = match.groups()[0]
+        if not tag:
+            raise ValueError("Invalid cluster group name: %s" % sg)
+        return tag
 
     def list_clusters(self, cluster_groups=None, show_ssh_status=False):
         """
@@ -240,11 +254,12 @@ class ClusterManager(managers.Manager):
             tag = self.get_tag_from_sg(scg.name)
             try:
                 cl = self.get_cluster(tag, group=scg, load_plugins=False,
-                                      require_keys=False)
+                                      load_volumes=False, require_keys=False)
             except exception.IncompatibleCluster, e:
                 sep = '*' * 60
                 log.error('\n'.join([sep, e.msg, sep]),
                           extra=dict(__textwrap__=True))
+                print
                 continue
             header = '%s (security group: %s)' % (tag, scg.name)
             print '-' * len(header)
@@ -502,11 +517,11 @@ class Cluster(object):
             config[key] = getattr(self, key)
         pprint.pprint(config)
 
-    def load_receipt(self, load_plugins=True):
+    def load_receipt(self, load_plugins=True, load_volumes=True):
         """
         Load the original settings used to launch this cluster into this
-        Cluster object. Settings are loaded from cluster group tags and plugins
-        and volumes from the master node's user data.
+        Cluster object. Settings are loaded from cluster group tags and the
+        master node's user data.
         """
         try:
             tags = self.cluster_group.tags
@@ -526,30 +541,31 @@ class Cluster(object):
                 user = tags.get(static.USER_TAG, '')
                 cluster_settings.update(
                     utils.decode_uncompress_load(user, use_json=True))
-
-        except (zlib.error, ValueError, TypeError, EOFError, IndexError), e:
+            self.update(cluster_settings)
+            if not (load_plugins or load_volumes):
+                return True
+            try:
+                master = self.master_node
+            except exception.MasterDoesNotExist:
+                if self.spot_requests:
+                    self.wait_for_active_spots()
+                    self.wait_for_active_instances()
+                    master = self.master_node
+                else:
+                    raise
+            if load_plugins:
+                self.plugins = self.load_plugins(master.get_plugins())
+            if load_volumes:
+                self.volumes = master.get_volumes()
+        except exception.PluginError:
+            log.error("An error occurred while loading plugins: ",
+                      exc_info=True)
+            raise
+        except exception.MasterDoesNotExist:
+            raise
+        except Exception:
             log.debug('load receipt exception: ', exc_info=True)
             raise exception.IncompatibleCluster(self.cluster_group)
-        except Exception, e:
-            log.debug('Failed to load cluster receipt:', exc_info=True)
-            raise exception.ClusterReceiptError(
-                'failed to load cluster receipt: %s' % e)
-        self._config_fields = cluster_settings.keys()
-        self.update(cluster_settings)
-        if load_plugins:
-            try:
-                self.plugins = self.master_node.get_plugins()
-            except exception.MasterDoesNotExist:
-                log.error("Unable to load plugins: no master node found")
-                raise
-            except exception.PluginError:
-                log.error("An error occurred while loading plugins: ",
-                          exc_info=True)
-                raise
-            except Exception, e:
-                log.debug('load receipt exception (plugins): ', exc_info=True)
-                raise exception.ClusterReceiptError(
-                    'failed to load cluster receipt: %s' % e)
         return True
 
     def __getstate__(self):
@@ -750,10 +766,14 @@ class Cluster(object):
         plugins = utils.dump_compress_encode(self._plugins)
         plugins_file = utils.string_to_file('\n'.join(['#ignored', plugins]),
                                             static.UD_PLUGINS_FNAME)
-        udfiles = [alias_file, plugins_file]
+        volumes = utils.dump_compress_encode(self.volumes)
+        volumes_file = utils.string_to_file('\n'.join(['#ignored', volumes]),
+                                            static.UD_VOLUMES_FNAME)
+        udfiles = [alias_file, plugins_file, volumes_file]
         use_cloudinit = not self.disable_cloudinit
-        return userdata.bundle_userdata_files(udfiles,
-                                              use_cloudinit=use_cloudinit)
+        udata = userdata.bundle_userdata_files(udfiles,
+                                               use_cloudinit=use_cloudinit)
+        return udata
 
     def create_nodes(self, aliases, image_id=None, instance_type=None,
                      zone=None, placement_group=None, spot_bid=None,
@@ -1361,7 +1381,7 @@ class Cluster(object):
         time.sleep(sleep)
         self.setup_cluster()
 
-    def stop_cluster(self, terminate_unstoppable=False):
+    def stop_cluster(self, terminate_unstoppable=False, force=False):
         """
         Shutdown this cluster by detaching all volumes and 'stopping' all nodes
 
@@ -1373,8 +1393,6 @@ class Cluster(object):
         If the cluster contains a mix of 'stoppable' and 'unstoppable' nodes
         you can stop all stoppable nodes and terminate any unstoppable nodes by
         setting terminate_unstoppable=True.
-
-        This will stop all nodes that can be stopped and terminate the rest.
         """
         nodes = self.nodes
         if not nodes:
@@ -1390,12 +1408,15 @@ class Cluster(object):
         try:
             self.run_plugins(method_name="on_shutdown", reverse=True)
         except exception.MasterDoesNotExist, e:
-            log.warn("Cannot run plugins: %s" % e)
+            if force:
+                log.warn("Cannot run plugins: %s" % e)
+            else:
+                raise
         self.detach_volumes()
         for node in nodes:
             node.shutdown()
 
-    def terminate_cluster(self):
+    def terminate_cluster(self, force=False):
         """
         Destroy this cluster by first detaching all volumes, shutting down all
         instances, canceling all spot requests (if any), removing its placement
@@ -1404,7 +1425,10 @@ class Cluster(object):
         try:
             self.run_plugins(method_name="on_shutdown", reverse=True)
         except exception.MasterDoesNotExist, e:
-            log.warn("Cannot run plugins: %s" % e)
+            if force:
+                log.warn("Cannot run plugins: %s" % e)
+            else:
+                raise
         self.detach_volumes()
         nodes = self.nodes
         for node in nodes:

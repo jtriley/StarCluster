@@ -96,8 +96,16 @@ class Node(object):
     @property
     def user_data(self):
         if not self._user_data:
-            raw = self._get_user_data()
-            self._user_data = userdata.unbundle_userdata(raw)
+            try:
+                raw = self._get_user_data()
+                self._user_data = userdata.unbundle_userdata(raw)
+            except IOError, e:
+                parent_cluster = self.parent_cluster
+                if self.parent_cluster:
+                    raise exception.IncompatibleCluster(parent_cluster)
+                else:
+                    raise exception.BaseException(
+                        "Error occured unbundling userdata: %s" % e)
         return self._user_data
 
     @property
@@ -149,6 +157,11 @@ class Node(object):
             plugs.append(plug)
         return plugs
 
+    def get_volumes(self):
+        volstxt = self.user_data.get(static.UD_VOLUMES_FNAME)
+        payload = volstxt.split('\n', 2)[2]
+        return utils.decode_uncompress_load(payload)
+
     def _remove_all_tags(self):
         tags = self.tags.keys()[:]
         for t in tags:
@@ -178,13 +191,10 @@ class Node(object):
 
     @property
     def parent_cluster(self):
-        cluster_tag = "--UNKNOWN--"
         try:
-            cg = self.cluster_groups[0].name
-            cluster_tag = cg.replace(static.SECURITY_GROUP_PREFIX + '-', '')
+            return self.cluster_groups[0]
         except IndexError:
             pass
-        return cluster_tag
 
     @property
     def num_processors(self):
@@ -966,6 +976,7 @@ class Node(object):
             label = 'instance'
             if alias == "master":
                 label = "master"
+                alias = "node"
             elif alias:
                 label = "node"
             instance_id = alias or self.id
