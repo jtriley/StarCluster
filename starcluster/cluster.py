@@ -257,6 +257,7 @@ class ClusterManager(managers.Manager):
                 sep = '*' * 60
                 log.error('\n'.join([sep, e.msg, sep]),
                           extra=dict(__textwrap__=True))
+                print
                 continue
             header = '%s (security group: %s)' % (tag, scg.name)
             print '-' * len(header)
