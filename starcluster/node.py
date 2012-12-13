@@ -96,8 +96,16 @@ class Node(object):
     @property
     def user_data(self):
         if not self._user_data:
-            raw = self._get_user_data()
-            self._user_data = userdata.unbundle_userdata(raw)
+            try:
+                raw = self._get_user_data()
+                self._user_data = userdata.unbundle_userdata(raw)
+            except IOError, e:
+                parent_cluster = self.parent_cluster
+                if self.parent_cluster:
+                    raise exception.IncompatibleCluster(parent_cluster)
+                else:
+                    raise exception.BaseException(
+                        "Error occured unbundling userdata: %s" % e)
         return self._user_data
 
     @property
