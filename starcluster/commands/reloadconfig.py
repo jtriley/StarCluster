@@ -12,7 +12,7 @@ class CmdReloadConfig(NodeCompleter):
 
     def addopts(self, parser):
         if self.cfg:
-            templates = self.cfg.get_cluster_names().keys()
+            templates = self.cfg.clusters.keys()
         parser.add_option("-c", "--cluster-template", action="store",
                                 dest="cluster_template", choices=templates,
                                 default=False, help="cluster template to use "
