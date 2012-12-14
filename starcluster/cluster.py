@@ -546,6 +546,7 @@ class Cluster(object):
                 user = tags.get(static.USER_TAG, '')
                 cluster_settings.update(
                     utils.decode_uncompress_load(user, use_json=True))
+            self._config_fields = cluster_settings.keys()
             self.update(cluster_settings)
             if not (load_plugins or load_volumes):
                 return True
