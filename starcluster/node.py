@@ -16,6 +16,9 @@ from starcluster.logger import log
 
 
 class NodeManager(managers.Manager):
+    
+    nodes_id_ignore = set()
+
     """
     Manager class for Node objects
     """

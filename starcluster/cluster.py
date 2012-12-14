@@ -20,6 +20,7 @@ from starcluster import validators
 from starcluster import progressbar
 from starcluster import clustersetup
 from starcluster.node import Node
+from starcluster.node import NodeManager
 from starcluster.plugins import sge
 from starcluster.utils import print_timing
 from starcluster.templates import user_msgs
@@ -344,7 +345,6 @@ class ClusterManager(managers.Manager):
 
 
 class Cluster(object):
-    nodes_id_ignore = []  # bugged nodes to ignore
 
     def __init__(self,
                  ec2_conn=None,
@@ -692,17 +692,13 @@ class Cluster(object):
 
         #If a node was terminated due to error, even if it still shows up,
         #ignore it
-        nodes_id_ignore_remove = []
-        for id in Cluster.nodes_id_ignore:
+        for id in NodeManager.nodes_id_ignore:
             if id in current_ids:
                 log.info("Ignoring node id [" + id + "]")
-                del current_ids[current_ids.find(id)]
+                del current_ids[current_ids.index(id)]
             else:
                 log.info("Node id [" + id + "] is gone.")
-                nodes_id_ignore_remove.append(id)
-        for id in nodes_id_ignore_remove:
-            del Cluster.nodes_id_ignore[Cluster.nodes_id_ignore.find(id)]
-        del nodes_id_ignore_remove
+                NodeManager.nodes_id_ignore.remove(id)
 
         remove_nodes = [n for n in self._nodes if n.id not in current_ids]
         for node in remove_nodes:
@@ -1694,6 +1690,7 @@ class Cluster(object):
                                          + node.alias)
                                 self.remove_nodes([node])
                                 failures -= 1
+                                NodeManager.nodes_id_ignore.add(node.id)
                             else:
                                 dt = utils\
                                     .iso_to_datetime_tuple(node.launch_time)
@@ -1703,6 +1700,7 @@ class Cluster(object):
                                         > remove_on_error:
                                     self.remove_nodes([node])
                                     failures -= 1
+                                    NodeManager.nodes_id_ignore.add(node.id)
                         except:
                             import traceback
                             log.error(traceback.format_exc())
@@ -1713,18 +1711,19 @@ class Cluster(object):
                             log.error("Forcing termination via EC2")
                             node.terminate()
                             failures -= 1
+                            NodeManager.nodes_id_ignore.add(node.id)
 
-                    Cluster.nodes_id_ignore.append(node.id)
-                    if failures:
-                        log.error("Failures occured, sleeping for a minute "
-                                  "then trying again")
-                        log.info("Sleeping, it's "
-                                 + str(datetime.datetime.utcnow()))
-                        time.sleep(60)
-                        log.info("Waiking up, it's "
-                                 + str(datetime.datetime.utcnow()))
-                        continue
-                    break
+            if failures:
+                log.error("Failures occured, sleeping for a minute "
+                          "then trying again")
+                log.info("Sleeping, it's "
+                         + str(datetime.datetime.utcnow()))
+                time.sleep(60)
+                log.info("Waiking up, it's "
+                         + str(datetime.datetime.utcnow()))
+                continue
+            log.info("Out of recover procedure")
+            break
 
 
 class ClusterValidator(validators.Validator):
