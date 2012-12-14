@@ -362,6 +362,7 @@ class Cluster(object):
                  volumes=[],
                  plugins=[],
                  permissions=[],
+                 userdata_scripts=[],
                  refresh_interval=30,
                  disable_queue=False,
                  num_threads=20,
@@ -394,6 +395,7 @@ class Cluster(object):
         self.volumes = self.load_volumes(volumes)
         self.plugins = self.load_plugins(plugins)
         self.permissions = permissions
+        self.userdata_scripts = userdata_scripts or []
         self.refresh_interval = refresh_interval
         self.disable_queue = disable_queue
         self.num_threads = num_threads
@@ -749,6 +751,8 @@ class Cluster(object):
         volumes_file = utils.string_to_file('\n'.join(['#ignored', volumes]),
                                             static.UD_VOLUMES_FNAME)
         udfiles = [alias_file, plugins_file, volumes_file]
+        user_scripts = self.userdata_scripts or []
+        udfiles += [open(f) for f in user_scripts]
         use_cloudinit = not self.disable_cloudinit
         udata = userdata.bundle_userdata_files(udfiles,
                                                use_cloudinit=use_cloudinit)
@@ -1648,6 +1652,7 @@ class ClusterValidator(validators.Validator):
             self.validate_image_settings()
             self.validate_instance_types()
             self.validate_cluster_compute()
+            self.validate_userdata()
             log.info('Cluster template settings are valid')
             return True
         except exception.ClusterValidationError, e:
@@ -2015,3 +2020,22 @@ class ClusterValidator(validators.Validator):
             # fingerprint, however, Amazon doesn't for some reason...
             log.warn("Unable to validate imported keypair fingerprint...")
         return True
+
+    def validate_userdata(self):
+        for script in self.cluster.userdata_scripts:
+            if not os.path.exists(script):
+                raise exception.ClusterValidationError(
+                    "Userdata script does not exist: %s" % script)
+            if not os.path.isfile(script):
+                raise exception.ClusterValidationError(
+                    "Userdata script is not a file: %s" % script)
+        cluster_size = self.cluster.cluster_size
+        node_aliases = ["node%0.3d" % i for i in range(1, cluster_size)]
+        ud = self.cluster._get_cluster_userdata(["master"] + node_aliases)
+        ud_size_kb = utils.size_in_kb(ud)
+        if ud_size_kb > 16:
+            raise exception.ClusterValidationError(
+                "User data is too big! (%.2fKB)\n"
+                "User data scripts combined and compressed must be <= 16KB\n"
+                "NOTE: StarCluster uses anywhere from 0.5-2KB "
+                "to store internal metadata" % ud_size_kb)
