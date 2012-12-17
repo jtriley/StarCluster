@@ -104,6 +104,8 @@ INSTANCE_TYPES = {
 
 MICRO_INSTANCE_TYPES = ['t1.micro']
 
+SEC_GEN_TYPES = ['m3.xlarge', 'm3.2xlarge']
+
 CLUSTER_COMPUTE_TYPES = ['cc1.4xlarge', 'cc2.8xlarge']
 
 CLUSTER_GPU_TYPES = ['cg1.4xlarge']
@@ -111,6 +113,8 @@ CLUSTER_GPU_TYPES = ['cg1.4xlarge']
 CLUSTER_TYPES = CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES
 
 HI_IO_TYPES = ['hi1.4xlarge']
+
+HVM_TYPES = CLUSTER_TYPES + HI_IO_TYPES + SEC_GEN_TYPES
 
 CLUSTER_REGIONS = ['us-east-1']
 

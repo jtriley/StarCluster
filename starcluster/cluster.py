@@ -1761,16 +1761,14 @@ class ClusterValidator(validators.Validator):
                                                    image_id)
         image_platform = image.architecture
         image_is_hvm = (image.virtualization_type == "hvm")
-        instance_is_hvm = instance_type in static.CLUSTER_TYPES
-        instance_is_hi_io = instance_type in static.HI_IO_TYPES
-        if image_is_hvm and not instance_is_hvm and not instance_is_hi_io:
-            cctypes_list = ', '.join(static.CLUSTER_TYPES + static.HI_IO_TYPES)
+        if image_is_hvm and instance_type not in static.HVM_TYPES:
+            cctypes_list = ', '.join(static.HVM_TYPES)
             raise exception.ClusterValidationError(
                 "Image '%s' is a hardware virtual machine (HVM) image and "
                 "cannot be used with instance type '%s'.\n\nHVM images "
                 "require one of the following HVM instance types:\n%s" %
                 (image_id, instance_type, cctypes_list))
-        if instance_is_hvm and not image_is_hvm:
+        if instance_type in static.CLUSTER_TYPES and not image_is_hvm:
             raise exception.ClusterValidationError(
                 "The '%s' instance type can only be used with hardware "
                 "virtual machine (HVM) images. Image '%s' is not an HVM "
@@ -1786,7 +1784,8 @@ class ClusterValidator(validators.Validator):
                           'image_platform': image_platform}
             raise exception.ClusterValidationError(error_msg % error_dict)
         image_is_ebs = (image.root_device_type == 'ebs')
-        if instance_type in static.MICRO_INSTANCE_TYPES and not image_is_ebs:
+        ebs_only_types = static.MICRO_INSTANCE_TYPES + static.SEC_GEN_TYPES
+        if instance_type in ebs_only_types and not image_is_ebs:
             error_msg = ("Instance type %s can only be used with an "
                          "EBS-backed AMI and '%s' is not EBS-backed " %
                          (instance_type, image.id))
