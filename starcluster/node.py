@@ -4,6 +4,7 @@ import stat
 import base64
 import posixpath
 import subprocess
+import datetime
 
 from starcluster import utils
 from starcluster import static
@@ -916,8 +917,17 @@ class Node(object):
         except exception.SSHError:
             return False
 
-    def wait(self, interval=30):
+    def wait(self, interval=30, reboot_interval=10):
+        if reboot_interval:
+            reboot_time = datetime.datetime.utcnow() + \
+                datetime.timedelta(minutes=reboot_interval)
         while not self.is_up():
+            if reboot_interval and datetime.datetime.utcnow() > reboot_time:
+                log.info("Reboot interval reached -> rebooting node " +
+                         self.alias)
+                self.reboot()
+                reboot_time = datetime.datetime.utcnow() + \
+                    datetime.timedelta(minutes=reboot_interval)
             time.sleep(interval)
 
     def is_up(self):
