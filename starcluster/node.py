@@ -917,12 +917,32 @@ class Node(object):
         except exception.SSHError:
             return False
 
-    def wait(self, interval=30, reboot_interval=10):
+    def wait(self, interval=30, reboot_interval=10, stop_timeout=0):
+        """
+        Wait for the instance to be up and running.
+        interval        The polling interval in seconds.
+        reboot_interval The interval between reboots in minutes.
+        stop_timeout    The timeout in minutes where instances are stopped if
+                        still unaccessible. Spot instances are terminated
+                        instead.
+        """
+        now = datetime.datetime.utcnow()
+        if stop_timeout:
+            stop_time = now + datetime.timedelta(minutes=stop_timeout)
         if reboot_interval:
-            reboot_time = datetime.datetime.utcnow() + \
-                datetime.timedelta(minutes=reboot_interval)
+            reboot_time = now + datetime.timedelta(minutes=reboot_interval)
         while not self.is_up():
-            if reboot_interval and datetime.datetime.utcnow() > reboot_time:
+            now = datetime.datetime.utcnow()
+            if stop_timeout and now > stop_time:
+                log.info("Stop interval reached -> stopping node " +
+                         self.alias)
+                if self.is_spot():
+                    log.info(self.alias + " is a spot instance and will be "
+                             "terminated instead.")
+                    self.terminate()
+                else:
+                    self.stop()
+            elif reboot_interval and now > reboot_time:
                 log.info("Reboot interval reached -> rebooting node " +
                          self.alias)
                 self.reboot()
