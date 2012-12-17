@@ -238,7 +238,7 @@ class EBSImageCreator(ImageCreator):
         finally:
             s.stop()
         snapshot_id = img.block_device_mapping['/dev/sda1'].snapshot_id
-        snap = self.ec2.conn.get_all_snapshots(snapshot_ids=[snapshot_id])[0]
+        snap = self.ec2.get_snapshot(snapshot_id)
         self.ec2.wait_for_snapshot(snap)
         log.info("Waiting for %s to become available..." % imgid,
                  extra=dict(__nonewline__=True))
