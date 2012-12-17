@@ -1763,8 +1763,11 @@ class ClusterValidator(validators.Validator):
         image_is_hvm = (image.virtualization_type == "hvm")
         instance_is_hvm = instance_type in static.CLUSTER_TYPES
         instance_is_hi_io = instance_type in static.HI_IO_TYPES
-        if image_is_hvm and not instance_is_hvm and not instance_is_hi_io:
-            cctypes_list = ', '.join(static.CLUSTER_TYPES + static.HI_IO_TYPES)
+        instance_is_sec_gen = instance_type in static.SEC_GEN_TYPES
+        if (image_is_hvm and not instance_is_hvm and not 
+            instance_is_hi_io and not instance_is_sec_gen):
+            cctypes_list = ', '.join(static.SEC_GEN_TYPES + static.CLUSTER_TYPES +
+                                     static.HI_IO_TYPES)
             raise exception.ClusterValidationError(
                 "Image '%s' is a hardware virtual machine (HVM) image and "
                 "cannot be used with instance type '%s'.\n\nHVM images "
