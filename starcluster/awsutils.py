@@ -173,6 +173,16 @@ class EasyEC2(EasyAWS):
             sg.authorize('icmp', -1, -1, src_group=src_group)
             sg.authorize('tcp', 1, 65535, src_group=src_group)
             sg.authorize('udp', 1, 65535, src_group=src_group)
+
+        while 1:
+            try:
+                self.get_security_groups(
+                    filters={'group-name': name})[0]
+                break
+            except boto.exception.EC2ResponseError:
+                log.info("Waiting for security group")
+                time.sleep(10)
+
         return sg
 
     def get_all_security_groups(self, groupnames=[]):
