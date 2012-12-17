@@ -4,6 +4,7 @@ Utils module for StarCluster
 
 import os
 import re
+import sys
 import zlib
 import time
 import json
@@ -583,3 +584,7 @@ def strings_to_files(strings, fname_prefix=''):
 
 def get_fq_class_name(obj):
     return '.'.join([obj.__module__, obj.__class__.__name__])
+
+
+def size_in_kb(obj):
+    return sys.getsizeof(obj) / 1024.

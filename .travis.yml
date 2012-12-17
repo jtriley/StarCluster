@@ -13,3 +13,5 @@ notifications:
     channels: "irc.freenode.org#starcluster"
     on_success: change
     on_failure: change
+    use_notice: true
+    skip_join: true

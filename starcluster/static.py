@@ -104,6 +104,8 @@ INSTANCE_TYPES = {
 
 MICRO_INSTANCE_TYPES = ['t1.micro']
 
+SEC_GEN_TYPES = ['m3.xlarge', 'm3.2xlarge']
+
 CLUSTER_COMPUTE_TYPES = ['cc1.4xlarge', 'cc2.8xlarge']
 
 CLUSTER_GPU_TYPES = ['cg1.4xlarge']
@@ -111,6 +113,8 @@ CLUSTER_GPU_TYPES = ['cg1.4xlarge']
 CLUSTER_TYPES = CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES
 
 HI_IO_TYPES = ['hi1.4xlarge']
+
+HVM_TYPES = CLUSTER_TYPES + HI_IO_TYPES + SEC_GEN_TYPES
 
 CLUSTER_REGIONS = ['us-east-1']
 
@@ -200,6 +204,7 @@ CLUSTER_SETTINGS = {
     'volumes': (list, False, [], None, None),
     'plugins': (list, False, [], None, None),
     'permissions': (list, False, [], None, None),
+    'userdata_scripts': (list, False, [], None, None),
     'disable_queue': (bool, False, False, None, None),
     'force_spot_master': (bool, False, False, None, None),
     'disable_cloudinit': (bool, False, False, None, None),
