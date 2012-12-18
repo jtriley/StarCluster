@@ -1365,7 +1365,8 @@ class Cluster(object):
             self.wait_for_active_spots()
             self.wait_for_active_instances()
             self.wait_for_running_instances()
-            self.wait_for_ssh(reboot_interval, n_reboot_restart)
+            self.wait_for_ssh(reboot_interval=reboot_interval,
+                              n_reboot_restart=n_reboot_restart)
         except Exception:
             self.progress_bar.finish()
             raise
