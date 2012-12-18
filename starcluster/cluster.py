@@ -825,7 +825,8 @@ class Cluster(object):
 
     def add_nodes(self, num_nodes, aliases=None, image_id=None,
                   instance_type=None, zone=None, placement_group=None,
-                  spot_bid=None, no_create=False):
+                  spot_bid=None, no_create=False, reboot_interval=10,
+                  n_reboot_restart=False):
         """
         Add new nodes to this cluster
 
@@ -853,7 +854,35 @@ class Cluster(object):
                               instance_type=instance_type, zone=zone,
                               placement_group=placement_group,
                               spot_bid=spot_bid)
-        self.wait_for_cluster(msg="Waiting for node(s) to come up...")
+        self.wait_for_cluster(msg="Waiting for node(s) to come up...",
+                              reboot_interval=reboot_interval,
+                              n_reboot_restart=n_reboot_restart)
+        if all([not no_create, spot_bid, reboot_interval, n_reboot_restart]):
+            #this will recreate the spot instances that might have died in
+            #wait_for_cluster
+            try_again_aliases = []
+            while 1:
+                for alias in aliases:
+                    #verify all nodes were correctly added
+                    try:
+                        self.get_node_by_alias(alias)
+                    except exception.InstanceDoesNotExist:
+                        try_again_aliases.append(alias)
+                if try_again_aliases:
+                    log.info("Some spot instances have been terminated and "
+                             "will be recreated.")
+                    self.create_nodes(try_again_aliases, image_id=image_id,
+                                      instance_type=instance_type, zone=zone,
+                                      placement_group=placement_group,
+                                      spot_bid=spot_bid)
+                    self.wait_for_cluster(
+                        msg="Waiting for node(s) to come up...",
+                        reboot_interval=reboot_interval,
+                        n_reboot_restart=n_reboot_restart)
+                else:
+                    #all nodes successfully created
+                    break
+
         log.debug("Adding node(s): %s" % aliases)
         default_plugin = clustersetup.DefaultClusterSetup(
             disable_threads=self.disable_threads, num_threads=self.num_threads)
@@ -1251,16 +1280,21 @@ class Cluster(object):
                 nodes = self.get_nodes_or_raise()
         pbar.reset()
 
-    def wait_for_ssh(self, nodes=None):
+    def wait_for_ssh(self, nodes=None, reboot_interval=10,
+                     n_reboot_restart=False):
         """
         Wait until all cluster nodes are in a 'running' state
         """
         log.info("Waiting for SSH to come up on all nodes...")
         nodes = nodes or self.get_nodes_or_raise()
-        self.pool.map(lambda n: n.wait(interval=self.refresh_interval), nodes)
+        params = {"interval": self.refresh_interval,
+                  "reboot_interval": reboot_interval,
+                  "n_reboot_restart": n_reboot_restart}
+        self.pool.map(lambda n: n.wait(**params), nodes)
 
     @print_timing("Waiting for cluster to come up")
-    def wait_for_cluster(self, msg="Waiting for cluster to come up..."):
+    def wait_for_cluster(self, msg="Waiting for cluster to come up...",
+                         reboot_interval=10, n_reboot_restart=False):
         """
         Wait for cluster to come up and display progress bar. Waits for all
         spot requests to become 'active', all instances to be in a 'running'
@@ -1274,7 +1308,7 @@ class Cluster(object):
             self.wait_for_active_spots()
             self.wait_for_active_instances()
             self.wait_for_running_instances()
-            self.wait_for_ssh()
+            self.wait_for_ssh(reboot_interval, n_reboot_restart)
         except Exception:
             self.progress_bar.finish()
             raise

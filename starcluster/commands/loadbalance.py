@@ -78,6 +78,18 @@ class CmdLoadBalance(ClusterCompleter):
         parser.add_option("-K", "--kill-cluster", dest="kill_cluster",
                           action="store_true", default=False,
                           help="Terminate the cluster when the queue is empty")
+        parser.add_option(
+            "--reboot-interval", dest="reboot_interval", type="int",
+            default=10, help="Delay in minutes beyond which a node is "
+            "rebooted if it's still being unreachable via SSH. Defaults "
+            "to 10.")
+        parser.add_option(
+            "--num_reboot_restart", dest="n_reboot_restart", type="int",
+            default=False, help="Numbere of reboots after which a node "
+            "is restarted (stop/start). Helpfull in case the issue comes from "
+            "the hardware. If the node is a spot instance, it "
+            "will be terminated instead since it cannot be stopped. Defaults "
+            "to false.")
 
     def execute(self, args):
         if not self.cfg.globals.enable_experimental:
