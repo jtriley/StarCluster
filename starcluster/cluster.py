@@ -149,16 +149,20 @@ class ClusterManager(managers.Manager):
 
     def add_node(self, cluster_name, alias=None, no_create=False,
                  image_id=None, instance_type=None, zone=None,
-                 placement_group=None, spot_bid=None):
+                 placement_group=None, spot_bid=None, reboot_interval=10,
+                 n_reboot_restart=False):
         cl = self.get_cluster(cluster_name)
         return cl.add_node(alias=alias, image_id=image_id,
                            instance_type=instance_type, zone=zone,
                            placement_group=placement_group, spot_bid=spot_bid,
-                           no_create=no_create)
+                           no_create=no_create,
+                           reboot_interval=reboot_interval,
+                           n_reboot_restart=n_reboot_restart)
 
     def add_nodes(self, cluster_name, num_nodes, aliases=None, no_create=False,
                   image_id=None, instance_type=None, zone=None,
-                  placement_group=None, spot_bid=None):
+                  placement_group=None, spot_bid=None, reboot_interval=10,
+                  n_reboot_restart=False):
         """
         Add one or more nodes to cluster
         """
@@ -166,7 +170,9 @@ class ClusterManager(managers.Manager):
         return cl.add_nodes(num_nodes, aliases=aliases, image_id=image_id,
                             instance_type=instance_type, zone=zone,
                             placement_group=placement_group, spot_bid=spot_bid,
-                            no_create=no_create)
+                            no_create=no_create,
+                            reboot_interval=reboot_interval,
+                            n_reboot_restart=n_reboot_restart)
 
     def remove_node(self, cluster_name, alias, terminate=True):
         """
@@ -853,7 +859,8 @@ class Cluster(object):
 
     def add_node(self, alias=None, no_create=False, image_id=None,
                  instance_type=None, zone=None, placement_group=None,
-                 spot_bid=None):
+                 spot_bid=None, reboot_interval=10, n_reboot_restart=False):
+
         """
         Add a single node to this cluster
         """
@@ -863,7 +870,9 @@ class Cluster(object):
         return self.add_nodes(1, aliases=aliases, image_id=image_id,
                               instance_type=instance_type, zone=zone,
                               placement_group=placement_group,
-                              spot_bid=spot_bid, no_create=no_create)
+                              spot_bid=spot_bid, no_create=no_create,
+                              reboot_interval=reboot_interval,
+                              n_reboot_restart=n_reboot_restart)
 
     def add_nodes(self, num_nodes, aliases=None, image_id=None,
                   instance_type=None, zone=None, placement_group=None,
