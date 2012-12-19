@@ -125,15 +125,12 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             log.error("SGE is not installed on this AMI, skipping...")
             return
         log.info("Configuring SGE...")
-        try:
-            self._nodes = nodes
-            self._master = master
-            self._user = user
-            self._user_shell = user_shell
-            self._volumes = volumes
-            self._setup_sge()
-        finally:
-            self.pool.shutdown()
+        self._nodes = nodes
+        self._master = master
+        self._user = user
+        self._user_shell = user_shell
+        self._volumes = volumes
+        self._setup_sge()
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
