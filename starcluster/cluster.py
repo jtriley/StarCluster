@@ -756,6 +756,7 @@ class Cluster(object):
         use_cloudinit = not self.disable_cloudinit
         udata = userdata.bundle_userdata_files(udfiles,
                                                use_cloudinit=use_cloudinit)
+        log.debug('Userdata size in KB: %.2f' % utils.size_in_kb(udata))
         return udata
 
     def create_nodes(self, aliases, image_id=None, instance_type=None,
