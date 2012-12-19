@@ -2029,9 +2029,12 @@ class ClusterValidator(validators.Validator):
             if not os.path.isfile(script):
                 raise exception.ClusterValidationError(
                     "Userdata script is not a file: %s" % script)
-        cluster_size = self.cluster.cluster_size
-        node_aliases = ["node%0.3d" % i for i in range(1, cluster_size)]
-        ud = self.cluster._get_cluster_userdata(["master"] + node_aliases)
+        if self.cluster.spot_bid is None:
+            lmap = self.cluster._get_launch_map()
+            aliases = max(lmap.values(), key=lambda x: len(x))
+            ud = self.cluster._get_cluster_userdata(aliases)
+        else:
+            ud = self.cluster._get_cluster_userdata('node001')
         ud_size_kb = utils.size_in_kb(ud)
         if ud_size_kb > 16:
             raise exception.ClusterValidationError(
