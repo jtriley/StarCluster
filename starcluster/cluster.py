@@ -874,15 +874,6 @@ class Cluster(object):
         log.debug("Adding node(s): %s" % aliases)
         for alias in aliases:
             node = self.get_node_by_alias(alias)
-            self._default_plugin.on_add_node(node, self.nodes,
-                                             self.master_node,
-                                             self.cluster_user,
-                                             self.cluster_shell, self.volumes)
-            if not self.disable_queue:
-                self._sge_plugin.on_add_node(node, self.nodes,
-                                             self.master_node,
-                                             self.cluster_user,
-                                             self.cluster_shell, self.volumes)
             self.run_plugins(method_name="on_add_node", node=node)
 
     def remove_node(self, node, terminate=True):
@@ -900,17 +891,6 @@ class Cluster(object):
                 raise exception.InvalidOperation("cannot remove master node")
             self.run_plugins(method_name="on_remove_node",
                              node=node, reverse=True)
-            if not self.disable_queue:
-                self._sge_plugin.on_remove_node(node, self.nodes,
-                                                self.master_node,
-                                                self.cluster_user,
-                                                self.cluster_shell,
-                                                self.volumes)
-            self._default_plugin.on_remove_node(node, self.nodes,
-                                                self.master_node,
-                                                self.cluster_user,
-                                                self.cluster_shell,
-                                                self.volumes)
             if not terminate:
                 continue
             if node.spot_id:
@@ -1508,13 +1488,6 @@ class Cluster(object):
         log.info("Setting up the cluster...")
         if self.volumes:
             self.attach_volumes_to_master()
-        self._default_plugin.run(self.nodes, self.master_node,
-                                 self.cluster_user, self.cluster_shell,
-                                 self.volumes)
-        if not self.disable_queue:
-            self._sge_plugin.run(self.nodes, self.master_node,
-                                 self.cluster_user, self.cluster_shell,
-                                 self.volumes)
         self.run_plugins()
 
     def run_plugins(self, plugins=None, method_name="run", node=None,
@@ -1526,9 +1499,11 @@ class Cluster(object):
         plugins must be a tuple: the first element is the plugin's name, the
         second element is the plugin object (a subclass of ClusterSetup)
         """
-        plugs = plugins or self.plugins
+        plugs = [self._default_plugin]
+        if not self.disable_queue:
+            plugs.append(self._sge_plugin)
+        plugs += (plugins or self.plugins)[:]
         if reverse:
-            plugs = plugs[:]
             plugs.reverse()
         for plug in plugs:
             self.run_plugin(plug, method_name=method_name, node=node)
