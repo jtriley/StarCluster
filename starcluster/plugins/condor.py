@@ -38,15 +38,12 @@ class CondorPlugin(clustersetup.DefaultClusterSetup):
         self.pool.wait(numtasks=len(nodes))
 
     def run(self, nodes, master, user, user_shell, volumes):
-        try:
-            self._nodes = nodes
-            self._master = master
-            self._user = user
-            self._user_shell = user_shell
-            self._volumes = volumes
-            self._setup_condor()
-        finally:
-            self.pool.shutdown()
+        self._nodes = nodes
+        self._master = master
+        self._user = user
+        self._user_shell = user_shell
+        self._volumes = volumes
+        self._setup_condor()
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
