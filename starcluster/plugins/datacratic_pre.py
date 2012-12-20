@@ -31,10 +31,14 @@ class DatacraticPrePlugin(clustersetup.DefaultClusterSetup):
             'bash createSwap.sh')  # TODO: add "rm createSwap.sh"
 
         log.info("Mounting /opt/sge6 from master")
+        node.ssh.execute("rm -rf /opt/sge6; "
+                         "mkdir /opt/sge6")
         node.ssh.execute("sshfs -o allow_other -C -o workaround=all "
                          "-o reconnect -o sshfs_sync "
                          "master:/opt/sge6 /opt/sge6")
         log.info("Mounting bluekai-lookalikes from master")
+        node.ssh.execute("rm -rf /root/bluekai-lookalikes; "
+                         "mkdir /root/bluekai-lookalikes")
         node.ssh.execute("sshfs -o allow_other -C -o workaround=all "
                          "-o reconnect -o sshfs_sync "
                          "master:bluekai-lookalikes bluekai-lookalikes")
