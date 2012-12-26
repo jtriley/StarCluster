@@ -1485,7 +1485,7 @@ class Cluster(object):
         plugin setup routines. Does not wait for nodes to come up.
         """
         log.info("The master node is %s" % self.master_node.dns_name)
-        log.info("Setting up the cluster...")
+        log.info("Configuring cluster...")
         if self.volumes:
             self.attach_volumes_to_master()
         self.run_plugins()
