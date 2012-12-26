@@ -497,7 +497,7 @@ class Cluster(object):
             volid = vol.get('volume_id')
             if dev and not volid in devmap:
                 devmap[volid] = dev
-        volumes = {}
+        volumes = utils.AttributeDict()
         for volname in vols:
             vol = vols.get(volname)
             vol_id = vol.get('volume_id')
