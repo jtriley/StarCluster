@@ -464,6 +464,7 @@ class Cluster(object):
             plugins = deathrow._load_plugins(plugins)
         return plugins
 
+    @property
     def _default_plugin(self):
         if not self.__default_plugin:
             self.__default_plugin = clustersetup.DefaultClusterSetup(
@@ -471,6 +472,7 @@ class Cluster(object):
                 num_threads=self.num_threads)
         return self.__default_plugin
 
+    @property
     def _sge_plugin(self):
         if not self.__sge_plugin:
             self.__sge_plugin = sge.SGEPlugin(
