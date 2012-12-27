@@ -100,6 +100,7 @@ INSTANCE_TYPES = {
     'cc2.8xlarge': ['x86_64'],
     'cg1.4xlarge': ['x86_64'],
     'hi1.4xlarge': ['x86_64'],
+    'hs1.8xlarge': ['x86_64'],
 }
 
 MICRO_INSTANCE_TYPES = ['t1.micro']
@@ -114,7 +115,9 @@ CLUSTER_TYPES = CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES
 
 HI_IO_TYPES = ['hi1.4xlarge']
 
-HVM_TYPES = CLUSTER_TYPES + HI_IO_TYPES + SEC_GEN_TYPES
+HI_STORAGE_TYPES = ['hs1.8xlarge']
+
+HVM_TYPES = CLUSTER_TYPES + HI_IO_TYPES + HI_STORAGE_TYPES + SEC_GEN_TYPES
 
 CLUSTER_REGIONS = ['us-east-1']
 
