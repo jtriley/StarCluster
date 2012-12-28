@@ -2021,7 +2021,7 @@ class ClusterValidator(validators.Validator):
             aliases = max(lmap.values(), key=lambda x: len(x))
             ud = self.cluster._get_cluster_userdata(aliases)
         else:
-            ud = self.cluster._get_cluster_userdata('node001')
+            ud = self.cluster._get_cluster_userdata(['node001'])
         ud_size_kb = utils.size_in_kb(ud)
         if ud_size_kb > 16:
             raise exception.ClusterValidationError(
