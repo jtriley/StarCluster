@@ -161,10 +161,11 @@ class EasyEC2(EasyAWS):
         will allow all traffic between instances in the same security
         group
         """
-        if not name:
-            return None
         log.info("Creating security group %s..." % name)
         sg = self.conn.create_security_group(name, description)
+        while not self.get_group_or_none(name):
+            log.info("Waiting for security group %s..." % name)
+            time.sleep(3)
         if auth_ssh:
             ssh_port = static.DEFAULT_SSH_PORT
             sg.authorize('tcp', ssh_port, ssh_port, static.WORLD_CIDRIP)
