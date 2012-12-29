@@ -280,7 +280,12 @@ class EasyEC2(EasyAWS):
                 (name, success))
             raise exception.AWSError(
                 "failed to create placement group '%s'" % name)
-        return self.get_placement_group(name)
+        pg = self.get_placement_group_or_none(name)
+        while not pg:
+            log.info("Waiting for placement group %s..." % name)
+            time.sleep(3)
+            pg = self.get_placement_group_or_none(name)
+        return pg
 
     def get_placement_groups(self, filters=None):
         return self.conn.get_all_placement_groups(filters=filters)
