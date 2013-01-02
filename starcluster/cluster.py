@@ -338,8 +338,8 @@ class ClusterManager(managers.Manager):
         if not cl.is_cluster_up():
             raise exception.ClusterNotRunning(cluster_tag)
         plugs = [self.cfg.get_plugin(plugin_name)]
-        name, plugin = cl.load_plugins(plugs)[0]
-        cl.run_plugin(plugin, name)
+        plug = deathrow._load_plugins(plugs)[0]
+        cl.run_plugin(plug, name=plugin_name)
 
 
 class Cluster(object):
