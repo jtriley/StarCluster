@@ -346,8 +346,8 @@ class ClusterManager(managers.Manager):
         if not cl.is_cluster_up():
             raise exception.ClusterNotRunning(cluster_tag)
         plugs = [self.cfg.get_plugin(plugin_name)]
-        name, plugin = cl.load_plugins(plugs)[0]
-        cl.run_plugin(plugin, name)
+        plug = deathrow._load_plugins(plugs)[0]
+        cl.run_plugin(plug, name=plugin_name)
 
 
 class Cluster(object):
@@ -420,6 +420,8 @@ class Cluster(object):
         self._pool = None
         self._progress_bar = None
         self._config_fields = None
+        self.__default_plugin = None
+        self.__sge_plugin = None
 
     def __repr__(self):
         return '<Cluster: %s (%s-node)>' % (self.cluster_tag,
@@ -472,6 +474,22 @@ class Cluster(object):
             plugins = deathrow._load_plugins(plugins)
         return plugins
 
+    @property
+    def _default_plugin(self):
+        if not self.__default_plugin:
+            self.__default_plugin = clustersetup.DefaultClusterSetup(
+                disable_threads=self.disable_threads,
+                num_threads=self.num_threads)
+        return self.__default_plugin
+
+    @property
+    def _sge_plugin(self):
+        if not self.__sge_plugin:
+            self.__sge_plugin = sge.SGEPlugin(
+                disable_threads=self.disable_threads,
+                num_threads=self.num_threads)
+        return self.__sge_plugin
+
     def load_volumes(self, vols):
         """
         Iterate through vols and set device/partition settings automatically if
@@ -491,7 +509,7 @@ class Cluster(object):
             volid = vol.get('volume_id')
             if dev and not volid in devmap:
                 devmap[volid] = dev
-        volumes = {}
+        volumes = utils.AttributeDict()
         for volname in vols:
             vol = vols.get(volname)
             vol_id = vol.get('volume_id')
@@ -803,6 +821,7 @@ class Cluster(object):
         use_cloudinit = not self.disable_cloudinit
         udata = userdata.bundle_userdata_files(udfiles,
                                                use_cloudinit=use_cloudinit)
+        log.debug('Userdata size in KB: %.2f' % utils.size_in_kb(udata))
         return udata
 
     def create_nodes(self, aliases, image_id=None, instance_type=None,
@@ -935,21 +954,8 @@ class Cluster(object):
                     break
 
         log.debug("Adding node(s): %s" % aliases)
-        default_plugin = clustersetup.DefaultClusterSetup(
-            disable_threads=self.disable_threads, num_threads=self.num_threads)
-        if not self.disable_queue:
-            sge_plugin = sge.SGEPlugin(disable_threads=self.disable_threads,
-                                       num_threads=self.num_threads)
         for alias in aliases:
             node = self.get_node_by_alias(alias)
-            default_plugin.on_add_node(node, self.nodes, self.master_node,
-                                       self.cluster_user, self.cluster_shell,
-                                       self.volumes)
-            if not self.disable_queue:
-                sge_plugin.on_add_node(node, self.nodes, self.master_node,
-                                       self.cluster_user, self.cluster_shell,
-                                       self.volumes)
-
             self.run_plugins(method_name="on_add_node", node=node)
 
     def remove_node(self, node, terminate=True):
@@ -963,36 +969,11 @@ class Cluster(object):
         Remove a list of nodes from this cluster
         No step should prevent us to go further.
         """
-        default_plugin = clustersetup.DefaultClusterSetup(
-            disable_threads=self.disable_threads, num_threads=self.num_threads)
-        if not self.disable_queue:
-            sge_plugin = sge.SGEPlugin(disable_threads=self.disable_threads,
-                                       num_threads=self.num_threads)
         for node in nodes:
             if node.is_master():
                 raise exception.InvalidOperation("cannot remove master node")
-            try:
-                self.run_plugins(method_name="on_remove_node",
-                                 node=node, reverse=True)
-            except:
-                pass
-
-            if not self.disable_queue:
-                try:
-                    sge_plugin.on_remove_node(node, self.nodes,
-                                              self.master_node,
-                                              self.cluster_user,
-                                              self.cluster_shell, self.volumes)
-                except:
-                    pass
-            try:
-                default_plugin.on_remove_node(node, self.nodes,
-                                              self.master_node,
-                                              self.cluster_user,
-                                              self.cluster_shell, self.volumes)
-            except:
-                pass
-
+            self.run_plugins(method_name="on_remove_node",
+                             node=node, reverse=True)
             if not terminate:
                 continue
             if node.spot_id:
@@ -1593,19 +1574,9 @@ class Cluster(object):
         plugin setup routines. Does not wait for nodes to come up.
         """
         log.info("The master node is %s" % self.master_node.dns_name)
-        log.info("Setting up the cluster...")
+        log.info("Configuring cluster...")
         if self.volumes:
             self.attach_volumes_to_master()
-        default_plugin = clustersetup.DefaultClusterSetup(
-            disable_threads=self.disable_threads, num_threads=self.num_threads)
-        default_plugin.run(self.nodes, self.master_node, self.cluster_user,
-                           self.cluster_shell, self.volumes)
-        if not self.disable_queue:
-            sge_plugin = sge.SGEPlugin(disable_threads=self.disable_threads,
-                                       num_threads=self.num_threads)
-            sge_plugin.run(self.nodes, self.master_node, self.cluster_user,
-                           self.cluster_shell, self.volumes)
-
         self.run_plugins()
 
     def run_plugins(self, plugins=None, method_name="run", node=None,
@@ -1617,9 +1588,11 @@ class Cluster(object):
         plugins must be a tuple: the first element is the plugin's name, the
         second element is the plugin object (a subclass of ClusterSetup)
         """
-        plugs = plugins or self.plugins
+        plugs = [self._default_plugin]
+        if not self.disable_queue:
+            plugs.append(self._sge_plugin)
+        plugs += (plugins or self.plugins)[:]
         if reverse:
-            plugs = plugs[:]
             plugs.reverse()
         for plug in plugs:
             self.run_plugin(plug, method_name=method_name, node=node)
@@ -2225,9 +2198,12 @@ class ClusterValidator(validators.Validator):
             if not os.path.isfile(script):
                 raise exception.ClusterValidationError(
                     "Userdata script is not a file: %s" % script)
-        cluster_size = self.cluster.cluster_size
-        node_aliases = ["node%0.3d" % i for i in range(1, cluster_size)]
-        ud = self.cluster._get_cluster_userdata(["master"] + node_aliases)
+        if self.cluster.spot_bid is None:
+            lmap = self.cluster._get_launch_map()
+            aliases = max(lmap.values(), key=lambda x: len(x))
+            ud = self.cluster._get_cluster_userdata(aliases)
+        else:
+            ud = self.cluster._get_cluster_userdata(['node001'])
         ud_size_kb = utils.size_in_kb(ud)
         if ud_size_kb > 16:
             raise exception.ClusterValidationError(

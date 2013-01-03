@@ -156,17 +156,12 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             log.error("SGE is not installed on this AMI, skipping...")
             return
         log.info("Configuring SGE...")
-        try:
-            self._nodes = nodes
-            self._master = master
-            self._user = user
-            self._user_shell = user_shell
-            self._volumes = volumes
-            self._setup_sge()
-        finally:
-            if self._pool:
-                self._pool.shutdown()
-                self._pool = None
+        self._nodes = nodes
+        self._master = master
+        self._user = user
+        self._user_shell = user_shell
+        self._volumes = volumes
+        self._setup_sge()
 
     """
     Run qhost to find nodes that are present in OGS but not in the cluster in

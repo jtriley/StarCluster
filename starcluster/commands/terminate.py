@@ -56,7 +56,7 @@ class CmdTerminate(ClusterCompleter):
         for inst in insts:
             log.info("Terminating %s" % inst.id)
             inst.terminate()
-        cl.terminate_cluster()
+        cl.terminate_cluster(force=True)
 
     def terminate(self, cluster_name, force=False):
         try:
