@@ -8,3 +8,10 @@ install:
     - pip install -r requirements.txt --use-mirrors
 script:
     - nosetests
+notifications:
+  irc:
+    channels: "irc.freenode.org#starcluster"
+    on_success: change
+    on_failure: change
+    use_notice: true
+    skip_join: true

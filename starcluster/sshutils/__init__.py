@@ -3,6 +3,7 @@ import re
 import sys
 import stat
 import glob
+import atexit
 import string
 import socket
 import fnmatch
@@ -61,6 +62,7 @@ class SSHClient(object):
             raise exception.SSHNoCredentialsError()
         self._glob = SSHGlob(self)
         self.__last_status = None
+        atexit.register(self.close)
 
     def load_private_key(self, private_key, private_key_pass=None):
         # Use Private Key.

@@ -1,6 +1,5 @@
 import os
 import re
-import zlib
 import time
 import string
 import pprint
@@ -34,7 +33,7 @@ class ClusterManager(managers.Manager):
         return "<ClusterManager: %s>" % self.ec2.region.name
 
     def get_cluster(self, cluster_name, group=None, load_receipt=True,
-                    load_plugins=True, require_keys=True):
+                    load_plugins=True, load_volumes=True, require_keys=True):
         """
         Returns a Cluster object representing an active cluster
         """
@@ -46,16 +45,18 @@ class ClusterManager(managers.Manager):
             cl = Cluster(ec2_conn=self.ec2, cluster_tag=cltag,
                          cluster_group=group)
             if load_receipt:
-                cl.load_receipt(load_plugins=load_plugins)
+                cl.load_receipt(load_plugins=load_plugins,
+                                load_volumes=load_volumes)
             try:
+                cl.keyname = cl.keyname or cl.master_node.key_name
                 key_location = self.cfg.get_key(cl.keyname).get('key_location')
                 cl.key_location = key_location
-            except exception.KeyNotFound:
+                if require_keys:
+                    cl.validator.validate_keypair()
+            except (exception.KeyNotFound, exception.MasterDoesNotExist):
                 if require_keys:
                     raise
                 cl.key_location = ''
-            if require_keys:
-                cl.validator.validate_keypair()
             return cl
         except exception.SecurityGroupDoesNotExist:
             raise exception.ClusterDoesNotExist(cluster_name)
@@ -112,7 +113,8 @@ class ClusterManager(managers.Manager):
 
         user keyword specifies an alternate user to login as
         """
-        cluster = self.get_cluster(cluster_name)
+        cluster = self.get_cluster(cluster_name, load_receipt=False,
+                                   require_keys=True)
         return cluster.ssh_to_master(user=user, command=command,
                                      forward_x11=forward_x11,
                                      forward_agent=forward_agent)
@@ -126,10 +128,14 @@ class ClusterManager(managers.Manager):
 
         user keyword specifies an alternate user to login as
         """
-        cluster = self.get_cluster(cluster_name)
-        return cluster.ssh_to_node(node_id, user=user, command=command,
-                                   forward_x11=forward_x11,
-                                   forward_agent=forward_agent)
+        cluster = self.get_cluster(cluster_name, load_receipt=False,
+                                   require_keys=False)
+        node = cluster.get_node_by_alias(node_id)
+        key_location = self.cfg.get_key(node.key_name).get('key_location')
+        cluster.key_location = key_location
+        cluster.validator.validate_keypair()
+        return node.shell(user=user, forward_x11=forward_x11,
+                          forward_agent=forward_agent, command=command)
 
     def _get_cluster_name(self, cluster_name):
         """
@@ -177,26 +183,36 @@ class ClusterManager(managers.Manager):
         cl = self.get_cluster(cluster_name)
         cl.restart_cluster()
 
-    def stop_cluster(self, cluster_name, terminate_unstoppable=False):
+    def stop_cluster(self, cluster_name, terminate_unstoppable=False,
+                     force=False):
         """
         Stop an EBS-backed cluster
         """
-        cl = self.get_cluster(cluster_name, require_keys=False)
-        cl.stop_cluster(terminate_unstoppable)
+        cl = self.get_cluster(cluster_name, load_receipt=not force,
+                              require_keys=not force)
+        cl.stop_cluster(terminate_unstoppable, force=force)
 
-    def terminate_cluster(self, cluster_name):
+    def terminate_cluster(self, cluster_name, force=False):
         """
         Terminates cluster_name
         """
-        cl = self.get_cluster(cluster_name, require_keys=False)
-        cl.terminate_cluster()
+        cl = self.get_cluster(cluster_name, load_receipt=not force,
+                              require_keys=not force)
+        cl.terminate_cluster(force=force)
 
     def get_cluster_security_group(self, group_name):
         """
-        Return all security groups on EC2 that start with '@sc-'
+        Return cluster security group by appending '@sc-' to group_name and
+        querying EC2.
         """
         gname = self._get_cluster_name(group_name)
         return self.ec2.get_security_group(gname)
+
+    def get_cluster_group_or_none(self, group_name):
+        try:
+            return self.get_cluster_security_group(group_name)
+        except exception.SecurityGroupDoesNotExist:
+            pass
 
     def get_cluster_security_groups(self):
         """
@@ -216,10 +232,14 @@ class ClusterManager(managers.Manager):
             print get_tag_from_sg(sg)
             mycluster
         """
-        regex = re.compile(static.SECURITY_GROUP_PREFIX + '-(.*)')
+        regex = re.compile('^' + static.SECURITY_GROUP_PREFIX + '-(.*)')
         match = regex.match(sg)
+        tag = None
         if match:
-            return match.groups()[0]
+            tag = match.groups()[0]
+        if not tag:
+            raise ValueError("Invalid cluster group name: %s" % sg)
+        return tag
 
     def list_clusters(self, cluster_groups=None, show_ssh_status=False):
         """
@@ -239,11 +259,12 @@ class ClusterManager(managers.Manager):
             tag = self.get_tag_from_sg(scg.name)
             try:
                 cl = self.get_cluster(tag, group=scg, load_plugins=False,
-                                      require_keys=False)
+                                      load_volumes=False, require_keys=False)
             except exception.IncompatibleCluster, e:
                 sep = '*' * 60
                 log.error('\n'.join([sep, e.msg, sep]),
                           extra=dict(__textwrap__=True))
+                print
                 continue
             header = '%s (security group: %s)' % (tag, scg.name)
             print '-' * len(header)
@@ -317,8 +338,8 @@ class ClusterManager(managers.Manager):
         if not cl.is_cluster_up():
             raise exception.ClusterNotRunning(cluster_tag)
         plugs = [self.cfg.get_plugin(plugin_name)]
-        name, plugin = cl.load_plugins(plugs)[0]
-        cl.run_plugin(plugin, name)
+        plug = deathrow._load_plugins(plugs)[0]
+        cl.run_plugin(plug, name=plugin_name)
 
 
 class Cluster(object):
@@ -341,6 +362,7 @@ class Cluster(object):
                  volumes=[],
                  plugins=[],
                  permissions=[],
+                 userdata_scripts=[],
                  refresh_interval=30,
                  disable_queue=False,
                  num_threads=20,
@@ -373,6 +395,7 @@ class Cluster(object):
         self.volumes = self.load_volumes(volumes)
         self.plugins = self.load_plugins(plugins)
         self.permissions = permissions
+        self.userdata_scripts = userdata_scripts or []
         self.refresh_interval = refresh_interval
         self.disable_queue = disable_queue
         self.num_threads = num_threads
@@ -387,6 +410,8 @@ class Cluster(object):
         self._nodes = []
         self._pool = None
         self._progress_bar = None
+        self.__default_plugin = None
+        self.__sge_plugin = None
 
     def __repr__(self):
         return '<Cluster: %s (%s-node)>' % (self.cluster_tag,
@@ -439,6 +464,22 @@ class Cluster(object):
             plugins = deathrow._load_plugins(plugins)
         return plugins
 
+    @property
+    def _default_plugin(self):
+        if not self.__default_plugin:
+            self.__default_plugin = clustersetup.DefaultClusterSetup(
+                disable_threads=self.disable_threads,
+                num_threads=self.num_threads)
+        return self.__default_plugin
+
+    @property
+    def _sge_plugin(self):
+        if not self.__sge_plugin:
+            self.__sge_plugin = sge.SGEPlugin(
+                disable_threads=self.disable_threads,
+                num_threads=self.num_threads)
+        return self.__sge_plugin
+
     def load_volumes(self, vols):
         """
         Iterate through vols and set device/partition settings automatically if
@@ -458,7 +499,7 @@ class Cluster(object):
             volid = vol.get('volume_id')
             if dev and not volid in devmap:
                 devmap[volid] = dev
-        volumes = {}
+        volumes = utils.AttributeDict()
         for volname in vols:
             vol = vols.get(volname)
             vol_id = vol.get('volume_id')
@@ -494,11 +535,11 @@ class Cluster(object):
         cfg = self.__getstate__()
         return pprint.pformat(cfg)
 
-    def load_receipt(self, load_plugins=True):
+    def load_receipt(self, load_plugins=True, load_volumes=True):
         """
         Load the original settings used to launch this cluster into this
-        Cluster object. Settings are loaded from cluster group tags and plugins
-        and volumes from the master node's user data.
+        Cluster object. Settings are loaded from cluster group tags and the
+        master node's user data.
         """
         try:
             tags = self.cluster_group.tags
@@ -518,28 +559,31 @@ class Cluster(object):
                 user = tags.get(static.USER_TAG, '')
                 cluster_settings.update(
                     utils.decode_uncompress_load(user, use_json=True))
-        except (zlib.error, ValueError, TypeError, EOFError, IndexError), e:
+            self.update(cluster_settings)
+            if not (load_plugins or load_volumes):
+                return True
+            try:
+                master = self.master_node
+            except exception.MasterDoesNotExist:
+                if self.spot_requests:
+                    self.wait_for_active_spots()
+                    self.wait_for_active_instances()
+                    master = self.master_node
+                else:
+                    raise
+            if load_plugins:
+                self.plugins = self.load_plugins(master.get_plugins())
+            if load_volumes:
+                self.volumes = master.get_volumes()
+        except exception.PluginError:
+            log.error("An error occurred while loading plugins: ",
+                      exc_info=True)
+            raise
+        except exception.MasterDoesNotExist:
+            raise
+        except Exception:
             log.debug('load receipt exception: ', exc_info=True)
             raise exception.IncompatibleCluster(self.cluster_group)
-        except Exception, e:
-            log.debug('Failed to load cluster receipt:', exc_info=True)
-            raise exception.ClusterReceiptError(
-                'failed to load cluster receipt: %s' % e)
-        self.update(cluster_settings)
-        if load_plugins:
-            try:
-                self.plugins = self.master_node.get_plugins()
-            except exception.MasterDoesNotExist:
-                log.error("Unable to load plugins: no master node found")
-                raise
-            except exception.PluginError:
-                log.error("An error occurred while loading plugins: ",
-                          exc_info=True)
-                raise
-            except Exception, e:
-                log.debug('load receipt exception (plugins): ', exc_info=True)
-                raise exception.ClusterReceiptError(
-                    'failed to load cluster receipt: %s' % e)
         return True
 
     def __getstate__(self):
@@ -721,10 +765,17 @@ class Cluster(object):
         plugins = utils.dump_compress_encode(self._plugins)
         plugins_file = utils.string_to_file('\n'.join(['#ignored', plugins]),
                                             static.UD_PLUGINS_FNAME)
-        udfiles = [alias_file, plugins_file]
+        volumes = utils.dump_compress_encode(self.volumes)
+        volumes_file = utils.string_to_file('\n'.join(['#ignored', volumes]),
+                                            static.UD_VOLUMES_FNAME)
+        udfiles = [alias_file, plugins_file, volumes_file]
+        user_scripts = self.userdata_scripts or []
+        udfiles += [open(f) for f in user_scripts]
         use_cloudinit = not self.disable_cloudinit
-        return userdata.bundle_userdata_files(udfiles,
-                                              use_cloudinit=use_cloudinit)
+        udata = userdata.bundle_userdata_files(udfiles,
+                                               use_cloudinit=use_cloudinit)
+        log.debug('Userdata size in KB: %.2f' % utils.size_in_kb(udata))
+        return udata
 
     def create_nodes(self, aliases, image_id=None, instance_type=None,
                      zone=None, placement_group=None, spot_bid=None,
@@ -823,20 +874,8 @@ class Cluster(object):
                               spot_bid=spot_bid)
         self.wait_for_cluster(msg="Waiting for node(s) to come up...")
         log.debug("Adding node(s): %s" % aliases)
-        default_plugin = clustersetup.DefaultClusterSetup(
-            disable_threads=self.disable_threads, num_threads=self.num_threads)
-        if not self.disable_queue:
-            sge_plugin = sge.SGEPlugin(disable_threads=self.disable_threads,
-                                       num_threads=self.num_threads)
         for alias in aliases:
             node = self.get_node_by_alias(alias)
-            default_plugin.on_add_node(node, self.nodes, self.master_node,
-                                       self.cluster_user, self.cluster_shell,
-                                       self.volumes)
-            if not self.disable_queue:
-                sge_plugin.on_add_node(node, self.nodes, self.master_node,
-                                       self.cluster_user, self.cluster_shell,
-                                       self.volumes)
             self.run_plugins(method_name="on_add_node", node=node)
 
     def remove_node(self, node, terminate=True):
@@ -849,23 +888,11 @@ class Cluster(object):
         """
         Remove a list of nodes from this cluster
         """
-        default_plugin = clustersetup.DefaultClusterSetup(
-            disable_threads=self.disable_threads, num_threads=self.num_threads)
-        if not self.disable_queue:
-            sge_plugin = sge.SGEPlugin(disable_threads=self.disable_threads,
-                                       num_threads=self.num_threads)
         for node in nodes:
             if node.is_master():
                 raise exception.InvalidOperation("cannot remove master node")
             self.run_plugins(method_name="on_remove_node",
                              node=node, reverse=True)
-            if not self.disable_queue:
-                sge_plugin.on_remove_node(node, self.nodes, self.master_node,
-                                          self.cluster_user,
-                                          self.cluster_shell, self.volumes)
-            default_plugin.on_remove_node(node, self.nodes, self.master_node,
-                                          self.cluster_user,
-                                          self.cluster_shell, self.volumes)
             if not terminate:
                 continue
             if node.spot_id:
@@ -1316,7 +1343,7 @@ class Cluster(object):
         time.sleep(sleep)
         self.setup_cluster()
 
-    def stop_cluster(self, terminate_unstoppable=False):
+    def stop_cluster(self, terminate_unstoppable=False, force=False):
         """
         Shutdown this cluster by detaching all volumes and 'stopping' all nodes
 
@@ -1328,8 +1355,6 @@ class Cluster(object):
         If the cluster contains a mix of 'stoppable' and 'unstoppable' nodes
         you can stop all stoppable nodes and terminate any unstoppable nodes by
         setting terminate_unstoppable=True.
-
-        This will stop all nodes that can be stopped and terminate the rest.
         """
         nodes = self.nodes
         if not nodes:
@@ -1345,12 +1370,15 @@ class Cluster(object):
         try:
             self.run_plugins(method_name="on_shutdown", reverse=True)
         except exception.MasterDoesNotExist, e:
-            log.warn("Cannot run plugins: %s" % e)
+            if force:
+                log.warn("Cannot run plugins: %s" % e)
+            else:
+                raise
         self.detach_volumes()
         for node in nodes:
             node.shutdown()
 
-    def terminate_cluster(self):
+    def terminate_cluster(self, force=False):
         """
         Destroy this cluster by first detaching all volumes, shutting down all
         instances, canceling all spot requests (if any), removing its placement
@@ -1359,7 +1387,10 @@ class Cluster(object):
         try:
             self.run_plugins(method_name="on_shutdown", reverse=True)
         except exception.MasterDoesNotExist, e:
-            log.warn("Cannot run plugins: %s" % e)
+            if force:
+                log.warn("Cannot run plugins: %s" % e)
+            else:
+                raise
         self.detach_volumes()
         nodes = self.nodes
         for node in nodes:
@@ -1456,18 +1487,9 @@ class Cluster(object):
         plugin setup routines. Does not wait for nodes to come up.
         """
         log.info("The master node is %s" % self.master_node.dns_name)
-        log.info("Setting up the cluster...")
+        log.info("Configuring cluster...")
         if self.volumes:
             self.attach_volumes_to_master()
-        default_plugin = clustersetup.DefaultClusterSetup(
-            disable_threads=self.disable_threads, num_threads=self.num_threads)
-        default_plugin.run(self.nodes, self.master_node, self.cluster_user,
-                           self.cluster_shell, self.volumes)
-        if not self.disable_queue:
-            sge_plugin = sge.SGEPlugin(disable_threads=self.disable_threads,
-                                       num_threads=self.num_threads)
-            sge_plugin.run(self.nodes, self.master_node, self.cluster_user,
-                           self.cluster_shell, self.volumes)
         self.run_plugins()
 
     def run_plugins(self, plugins=None, method_name="run", node=None,
@@ -1479,9 +1501,11 @@ class Cluster(object):
         plugins must be a tuple: the first element is the plugin's name, the
         second element is the plugin object (a subclass of ClusterSetup)
         """
-        plugs = plugins or self.plugins
+        plugs = [self._default_plugin]
+        if not self.disable_queue:
+            plugs.append(self._sge_plugin)
+        plugs += (plugins or self.plugins)[:]
         if reverse:
-            plugs = plugs[:]
             plugs.reverse()
         for plug in plugs:
             self.run_plugin(plug, method_name=method_name, node=node)
@@ -1616,6 +1640,7 @@ class ClusterValidator(validators.Validator):
             self.validate_image_settings()
             self.validate_instance_types()
             self.validate_cluster_compute()
+            self.validate_userdata()
             log.info('Cluster template settings are valid')
             return True
         except exception.ClusterValidationError, e:
@@ -1724,16 +1749,14 @@ class ClusterValidator(validators.Validator):
                                                    image_id)
         image_platform = image.architecture
         image_is_hvm = (image.virtualization_type == "hvm")
-        instance_is_hvm = instance_type in static.CLUSTER_TYPES
-        instance_is_hi_io = instance_type in static.HI_IO_TYPES
-        if image_is_hvm and not instance_is_hvm and not instance_is_hi_io:
-            cctypes_list = ', '.join(static.CLUSTER_TYPES + static.HI_IO_TYPES)
+        if image_is_hvm and instance_type not in static.HVM_TYPES:
+            cctypes_list = ', '.join(static.HVM_TYPES)
             raise exception.ClusterValidationError(
                 "Image '%s' is a hardware virtual machine (HVM) image and "
                 "cannot be used with instance type '%s'.\n\nHVM images "
                 "require one of the following HVM instance types:\n%s" %
                 (image_id, instance_type, cctypes_list))
-        if instance_is_hvm and not image_is_hvm:
+        if instance_type in static.CLUSTER_TYPES and not image_is_hvm:
             raise exception.ClusterValidationError(
                 "The '%s' instance type can only be used with hardware "
                 "virtual machine (HVM) images. Image '%s' is not an HVM "
@@ -1749,7 +1772,8 @@ class ClusterValidator(validators.Validator):
                           'image_platform': image_platform}
             raise exception.ClusterValidationError(error_msg % error_dict)
         image_is_ebs = (image.root_device_type == 'ebs')
-        if instance_type in static.MICRO_INSTANCE_TYPES and not image_is_ebs:
+        ebs_only_types = static.MICRO_INSTANCE_TYPES + static.SEC_GEN_TYPES
+        if instance_type in ebs_only_types and not image_is_ebs:
             error_msg = ("Instance type %s can only be used with an "
                          "EBS-backed AMI and '%s' is not EBS-backed " %
                          (instance_type, image.id))
@@ -1983,3 +2007,25 @@ class ClusterValidator(validators.Validator):
             # fingerprint, however, Amazon doesn't for some reason...
             log.warn("Unable to validate imported keypair fingerprint...")
         return True
+
+    def validate_userdata(self):
+        for script in self.cluster.userdata_scripts:
+            if not os.path.exists(script):
+                raise exception.ClusterValidationError(
+                    "Userdata script does not exist: %s" % script)
+            if not os.path.isfile(script):
+                raise exception.ClusterValidationError(
+                    "Userdata script is not a file: %s" % script)
+        if self.cluster.spot_bid is None:
+            lmap = self.cluster._get_launch_map()
+            aliases = max(lmap.values(), key=lambda x: len(x))
+            ud = self.cluster._get_cluster_userdata(aliases)
+        else:
+            ud = self.cluster._get_cluster_userdata(['node001'])
+        ud_size_kb = utils.size_in_kb(ud)
+        if ud_size_kb > 16:
+            raise exception.ClusterValidationError(
+                "User data is too big! (%.2fKB)\n"
+                "User data scripts combined and compressed must be <= 16KB\n"
+                "NOTE: StarCluster uses anywhere from 0.5-2KB "
+                "to store internal metadata" % ud_size_kb)

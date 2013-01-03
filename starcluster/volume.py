@@ -221,12 +221,12 @@ class VolumeCreator(cluster.Cluster):
             log.warn("There are still volume hosts running: %s" %
                      ', '.join(vol_hosts))
             if not self._instance:
-                log.warn("Run 'starcluster terminate %s' to terminate *all* "
+                log.warn("Run 'starcluster terminate -f %s' to terminate all "
                          "volume host instances" % static.VOLUME_GROUP_NAME,
                          extra=dict(__textwrap__=True))
         elif sg:
             log.info("No active volume hosts found. Run 'starcluster "
-                     "terminate %(g)s' to remove the '%(g)s' group" %
+                     "terminate -f %(g)s' to remove the '%(g)s' group" %
                      {'g': static.VOLUME_GROUP_NAME},
                      extra=dict(__textwrap__=True))
 

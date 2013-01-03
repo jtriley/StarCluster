@@ -179,9 +179,11 @@ class IPCluster11(ClusterSetup):
                  extra=dict(__nonewline__=True))
         s = spinner.Spinner()
         s.start()
-        while not master.ssh.isfile(json):
-            time.sleep(1)
-        s.stop()
+        try:
+            while not master.ssh.isfile(json):
+                time.sleep(5)
+        finally:
+            s.stop()
         # retrieve JSON connection info
         if not os.path.isdir(IPCLUSTER_CACHE):
             log.info("Creating IPCluster cache directory: %s" %
