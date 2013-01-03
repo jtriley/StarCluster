@@ -416,3 +416,6 @@ class DefaultClusterSetup(ClusterSetup):
         except:
             import traceback
             log.error(traceback.format_exc())
+
+    def clean_cluster(self, nodes, master, user, user_shell, volumes):
+        pass
