@@ -239,6 +239,7 @@ class ConfigNotFound(ConfigError):
         cfg_file = open(self.cfg, 'w')
         cfg_file.write(config.config_template)
         cfg_file.close()
+        os.chmod(self.cfg, 0600)
         log.info("Config template written to %s" % self.cfg)
         log.info("Please customize the config template")
 
