@@ -474,7 +474,23 @@ permission section called ``www`` that opens port 80 to the "world" by setting
 the from_port and to_port both to be 80.  You can restrict the ip addresses
 that the rule applies to by specifying the proper cidr_ip setting. In the above
 example, the ``ftp`` permission specifies that only ``66.249.90.104`` ip
-address can access port 21 on the cluster nodes.
+address can access port 21 on the cluster nodes.  Note that you can specify
+more than one cidr_ip:
+	cidr_ip = 66.249.90.104/32 68.233.44.105/32
+
+Alternatively you can restrict a port range to a single IP using a host name.  For
+example if you wanted to serve http only to requests coming from "mydomain.org" and
+"yourdomain.com":
+
+    [permission www]
+    # open port 80 to mydomain.org only
+    from_port = 80
+    to_port = 80
+    cidr_ip = mydomain.org yourdomain.com
+
+Note that a hostname gets resolved to an IP CIDR (such as 1.2.3.4/32) at start time,
+if the IP address for the DNS record happens to change the security policy will need 
+to be changed manually, or the cluster restarted.
 
 Defining Plugins
 ----------------
