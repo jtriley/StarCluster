@@ -401,21 +401,17 @@ class DefaultClusterSetup(ClusterSetup):
         self._add_user_to_nodes(uid, gid, nodes=[node])
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
-        try:
-            self._nodes = nodes
-            self._master = master
-            self._user = user
-            self._user_shell = user_shell
-            self._volumes = volumes
-            self._setup_hostnames(nodes=[node])
-            self._setup_etc_hosts(nodes)
-            self._setup_nfs(nodes=[node], start_server=False)
-            self._create_user(node)
-            self._setup_scratch(nodes=[node])
-            self._setup_passwordless_ssh(nodes=[node])
-        except:
-            import traceback
-            log.error(traceback.format_exc())
+        self._nodes = nodes
+        self._master = master
+        self._user = user
+        self._user_shell = user_shell
+        self._volumes = volumes
+        self._setup_hostnames(nodes=[node])
+        self._setup_etc_hosts(nodes)
+        self._setup_nfs(nodes=[node], start_server=False)
+        self._create_user(node)
+        self._setup_scratch(nodes=[node])
+        self._setup_passwordless_ssh(nodes=[node])
 
     def clean_cluster(self, nodes, master, user, user_shell, volumes):
         pass
