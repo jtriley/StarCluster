@@ -8,15 +8,6 @@ from starcluster.tests import StarClusterTest
 
 class TestClusterValidation(StarClusterTest):
 
-    def test_aws_credentials_validation(self):
-        cluster = self.config.get_cluster_template('c1')
-        try:
-            cluster.validator.validate_credentials()
-        except exception.ClusterValidationError:
-            pass
-        else:
-            raise Exception("cluster allows invalid aws credentials")
-
     def test_plugin_loading(self):
         # default test template should have valid plugins by default
         # make them invalid
