@@ -972,8 +972,12 @@ class Cluster(object):
         for node in nodes:
             if node.is_master():
                 raise exception.InvalidOperation("cannot remove master node")
-            self.run_plugins(method_name="on_remove_node",
-                             node=node, reverse=True)
+            try:
+                self.run_plugins(method_name="on_remove_node",
+                                 node=node, reverse=True)
+            except:
+                #will still allow node termination
+                pass
             if not terminate:
                 continue
             if node.spot_id:
