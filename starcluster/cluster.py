@@ -980,9 +980,6 @@ class Cluster(object):
                 pass
             if not terminate:
                 continue
-            if node.spot_id:
-                log.info("Canceling spot request %s" % node.spot_id)
-                node.get_spot_request().cancel()
             node.terminate()
 
     def _get_launch_map(self, reverse=False):
@@ -1322,12 +1319,18 @@ class Cluster(object):
         pbar = self.progress_bar.reset()
         pbar.maxval = len(nodes)
         pbar.update(0)
+        timeout = datetime.datetime.utcnow() + \
+            datetime.timedelta(minutes=20)
         while not pbar.finished:
             running_nodes = filter(lambda x: x.state == "running", nodes)
             pbar.maxval = len(nodes)
             pbar.update(len(running_nodes))
             if not pbar.finished:
-                time.sleep(self.refresh_interval)
+                if datetime.datetime.utcnow() > timeout:
+                    map(lambda x: x.terminate(),
+                        filter(lambda x: x not in running_nodes, nodes))
+                else:
+                    time.sleep(self.refresh_interval)
                 nodes = self.get_nodes_or_raise()
         pbar.reset()
 
