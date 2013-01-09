@@ -517,7 +517,7 @@ def setup_environ():
     num_cpus = multiprocessing.cpu_count()
     os.environ['MAKEFLAGS'] = '-j%d' % (num_cpus + 1)
     os.environ['DEBIAN_FRONTEND'] = "noninteractive"
-    if os.path.isfile('/sbin/initctl'):
+    if os.path.isfile('/sbin/initctl') and not os.path.islink('/sbin/initctl'):
         run_command('mv /sbin/initctl /sbin/initctl.bak')
         run_command('ln -s /bin/true /sbin/initctl')
 
