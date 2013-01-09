@@ -438,6 +438,8 @@ def install_openmpi():
             if not glob.glob('../*openmpi*.deb'):
                 return False
             return True
+        run_command('dch --local=\'+custom\' '
+                    '"custom build on: `uname -s -r -v -m -p -i -o`"')
         run_command('dpkg-buildpackage -rfakeroot -b',
                     failure_callback=_deb_failure_callback)
         run_command('dpkg -i ../*openmpi*.deb')
