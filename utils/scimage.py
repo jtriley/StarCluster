@@ -422,12 +422,12 @@ def install_scipy():
 
 def install_openmpi():
     chdir(SRC_DIR)
-    apt_command('build-dep libopenmpi-dev')
+    apt_command('build-dep openmpi')
     apt_install('blcr-util')
     if glob.glob('*openmpi*.deb'):
         run_command('dpkg -i *openmpi*.deb')
     else:
-        apt_command('source libopenmpi-dev')
+        apt_command('source openmpi')
         chdir('openmpi*')
         for line in fileinput.input('debian/rules', inplace=1):
             print line,
@@ -443,7 +443,8 @@ def install_openmpi():
         run_command('dpkg -i ../*openmpi*.deb')
     sts, out = run_command('ompi_info | grep -i grid', get_output=True)
     if 'gridengine' not in out:
-        raise Exception("failed to build openmpi with Grid Engine support")
+        raise Exception("failed to build OpenMPI with "
+                        "Open Grid Scheduler support")
     run_command('echo libopenmpi1.3 hold | dpkg --set-selections')
     run_command('echo libopenmpi-dev hold | dpkg --set-selections')
     run_command('echo libopenmpi-dbg hold | dpkg --set-selections')
