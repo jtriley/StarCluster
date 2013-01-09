@@ -161,7 +161,8 @@ def main():
         parser.error('arch must be one of: %s' % ', '.join(arches))
         return False
     try:
-        deploy_img(*args, **opts.__dict__)
+        img = deploy_img(*args, **opts.__dict__)
+        log.info("Successfully deployed new AMI: %s" % img)
     except exception.BaseException, e:
         log.error(e)
 
