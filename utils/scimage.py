@@ -420,6 +420,13 @@ def install_scipy():
     run_command('dpkg -i ../*scipy*.deb')
 
 
+def install_pandas():
+    """docstring for install_pandas"""
+    chdir(SRC_DIR)
+    apt_command('build-dep pandas')
+    run_command('pip install pandas')
+
+
 def install_openmpi():
     chdir(SRC_DIR)
     apt_command('build-dep openmpi')
@@ -597,6 +604,7 @@ def main():
     # Custom NumPy/SciPy install is no longer needed in 12.04
     # install_numpy()
     # install_scipy()
+    install_pandas()
     install_ipython()
     install_openmpi()
     install_hadoop()
