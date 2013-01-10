@@ -25,7 +25,12 @@ class DatacraticPostPlugin(clustersetup.DefaultClusterSetup):
         self._update_complex_values(master, node)
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
-        pass
+        # this is done to fix an issue where, even if a node is dead, after
+        # related jobs are deleted OGS tries to assign it new jobs and when
+        # we try to remove the node from OGS configs, it returns an error
+        # message "Host object "nodeX" is still referenced in cluster queue
+        log.info("Setting " + node.alias + " to 0 slot")
+        self._set_node_slots(master, node.alias, 0)
 
     def clean_cluster(self, nodes, master, user, user_shell, volumes):
         pass
