@@ -718,13 +718,18 @@ class Cluster(object):
 
         #If a node was terminated due to error, even if it still shows up,
         #ignore it
+        to_remove = set()
         for id in NodeManager.nodes_id_ignore:
             if id in current_ids:
                 log.info("Ignoring node id [" + id + "]")
                 del current_ids[current_ids.index(id)]
             else:
                 log.info("Node id [" + id + "] is gone.")
-                NodeManager.nodes_id_ignore.remove(id)
+                to_remove.add(id)
+
+        for id in to_remove:
+            NodeManager.nodes_id_ignore.remove(id)
+        del to_remove
 
         remove_nodes = [n for n in self._nodes if n.id not in current_ids]
         for node in remove_nodes:
