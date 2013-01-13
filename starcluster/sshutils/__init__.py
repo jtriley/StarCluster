@@ -184,7 +184,7 @@ class SSHClient(object):
     @property
     def scp(self):
         """Initialize the SCP client."""
-        if not self._scp:
+        if not self._scp or not self._scp.transport.is_active():
             log.debug("creating scp connection")
             self._scp = scp.SCPClient(self.transport,
                                       progress=self._file_transfer_progress)
