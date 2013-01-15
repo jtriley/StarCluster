@@ -949,7 +949,7 @@ class Node(object):
         while not self.is_up():
             now = datetime.datetime.utcnow()
             if reboot_interval and now > reboot_time:
-                if restart_at == reboots:
+                if n_reboot_restart and restart_at == reboots:
                     log.info("Restart interval reached -> restarting node " +
                              self.alias)
                     if self.is_spot():
