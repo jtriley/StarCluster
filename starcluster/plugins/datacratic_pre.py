@@ -13,6 +13,7 @@ class DatacraticPrePlugin(clustersetup.DefaultClusterSetup):
         master.add_tag("billcode", "bluekai-rnd")
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
+
         master.ec2.get_instance(node.id).add_tag("billcode", "bluekai-rnd")
         #create a 20GB swap in a background process
         launch_time = utils.iso_to_datetime_tuple(node.launch_time)
@@ -24,24 +25,34 @@ class DatacraticPrePlugin(clustersetup.DefaultClusterSetup):
                                " StarCluster datacratic plugin "
                                "sets node auto shutdown in 3h55 minutes.")
         log.info("Creating 20GB swap space on node " + node.alias)
-        node.ssh.execute_async(
-            'echo "(/bin/dd if=/dev/zero of=/mnt/20GB.swap bs=1M count=20480; '
-            '/sbin/mkswap /mnt/20GB.swap; '
-            '/sbin/swapon /mnt/20GB.swap;) &" > createSwap.sh; '
-            'bash createSwap.sh')  # TODO: add "rm createSwap.sh"
+        msg = node.ssh.execute("file /mnt/20GB.swap", ignore_exit_status=True)
+        if msg[0].find("ERROR") != -1:
+            node.ssh.execute_async(
+                'echo "(/bin/dd if=/dev/zero of=/mnt/20GB.swap bs=1M '
+                'count=20480; '
+                '/sbin/mkswap /mnt/20GB.swap; '
+                '/sbin/swapon /mnt/20GB.swap;) &" > createSwap.sh; '
+                'bash createSwap.sh; rm createSwap.sh')
 
-        log.info("Mounting /opt/sge6 from master")
-        node.ssh.execute("rm -rf /opt/sge6; "
-                         "mkdir /opt/sge6")
-        node.ssh.execute("sshfs -o allow_other -C -o workaround=all "
-                         "-o reconnect -o sshfs_sync "
-                         "master:/opt/sge6 /opt/sge6")
-        log.info("Mounting bluekai-lookalikes from master")
-        node.ssh.execute("rm -rf /root/bluekai-lookalikes; "
-                         "mkdir /root/bluekai-lookalikes")
-        node.ssh.execute("sshfs -o allow_other -C -o workaround=all "
-                         "-o reconnect -o sshfs_sync "
-                         "master:bluekai-lookalikes bluekai-lookalikes")
+        if node.ssh.execute("mount | grep sge6 | wc -l")[0] == "0":
+            log.info("Mounting /opt/sge6 from master")
+            node.ssh.execute("rm -rf /opt/sge6; "
+                             "mkdir /opt/sge6")
+            node.ssh.execute("sshfs -o allow_other -C -o workaround=all "
+                             "-o reconnect -o sshfs_sync "
+                             "master:/opt/sge6 /opt/sge6")
+        else:
+            log.error("/opt/sge6 is already mounted")
+
+        if node.ssh.execute("mount | grep bluekai | wc -l")[0] == "0":
+            log.info("Mounting bluekai-lookalikes from master")
+            node.ssh.execute("rm -rf /root/bluekai-lookalikes; "
+                             "mkdir /root/bluekai-lookalikes")
+            node.ssh.execute("sshfs -o allow_other -C -o workaround=all "
+                             "-o reconnect -o sshfs_sync "
+                             "master:bluekai-lookalikes bluekai-lookalikes")
+        else:
+            log.error("/root/bluekai-lookalikes is already mounted")
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         pass
