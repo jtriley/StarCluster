@@ -222,22 +222,36 @@ class EBSImageCreator(ImageCreator):
             raise
 
     def _create_image_from_ebs(self, size=15):
-        log.info("Creating EBS image...")
+        log.info("Creating new EBS AMI...")
         imgid = self.ec2.create_image(self.host.id, self.name,
                                       self.description)
-        log.info("Waiting for AMI %s to become available..." % imgid,
-                 extra=dict(__nonewline__=True))
         img = self.ec2.get_image(imgid)
-        snap = img.block_device_mapping['/dev/sda1'].snapshot_id
-        self.ec2.wait_for_snapshot(snap)
+        log.info("New EBS AMI created: %s" % imgid)
+        log.info("Fetching block device mapping for %s" % imgid,
+                 extra=dict(__nonewline__=True))
         s = Spinner()
-        s.start()
-        while img.state == "pending":
-            time.sleep(15)
-            if img.update() == "failed":
-                raise exception.AWSError(
-                    "EBS image creation failed for AMI %s" % imgid)
-        s.stop()
+        try:
+            s.start()
+            while '/dev/sda1' not in img.block_device_mapping:
+                img = self.ec2.get_image(imgid)
+                time.sleep(5)
+        finally:
+            s.stop()
+        snapshot_id = img.block_device_mapping['/dev/sda1'].snapshot_id
+        snap = self.ec2.get_snapshot(snapshot_id)
+        self.ec2.wait_for_snapshot(snap)
+        log.info("Waiting for %s to become available..." % imgid,
+                 extra=dict(__nonewline__=True))
+        s = Spinner()
+        try:
+            s.start()
+            while img.state == "pending":
+                time.sleep(15)
+                if img.update() == "failed":
+                    raise exception.AWSError(
+                        "EBS image creation failed for %s" % imgid)
+        finally:
+            s.stop()
         return imgid
 
     def _create_image_from_instance_store(self, size=15):

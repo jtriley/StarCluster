@@ -161,10 +161,11 @@ class EasyEC2(EasyAWS):
         will allow all traffic between instances in the same security
         group
         """
-        if not name:
-            return None
         log.info("Creating security group %s..." % name)
         sg = self.conn.create_security_group(name, description)
+        while not self.get_group_or_none(name):
+            log.info("Waiting for security group %s..." % name)
+            time.sleep(3)
         if auth_ssh:
             ssh_port = static.DEFAULT_SSH_PORT
             sg.authorize('tcp', ssh_port, ssh_port, static.WORLD_CIDRIP)
@@ -279,7 +280,12 @@ class EasyEC2(EasyAWS):
                 (name, success))
             raise exception.AWSError(
                 "failed to create placement group '%s'" % name)
-        return self.get_placement_group(name)
+        pg = self.get_placement_group_or_none(name)
+        while not pg:
+            log.info("Waiting for placement group %s..." % name)
+            time.sleep(3)
+            pg = self.get_placement_group_or_none(name)
+        return pg
 
     def get_placement_groups(self, filters=None):
         return self.conn.get_all_placement_groups(filters=filters)
@@ -447,7 +453,7 @@ class EasyEC2(EasyAWS):
     def get_instance_user_data(self, instance_id):
         try:
             attrs = self.conn.get_instance_attribute(instance_id, 'userData')
-            user_data = attrs.get('userData', '')
+            user_data = attrs.get('userData', '') or ''
             return base64.b64decode(user_data)
         except boto.exception.EC2ResponseError, e:
             if e.error_code == "InvalidInstanceID.NotFound":
@@ -1172,7 +1178,7 @@ class EasyEC2(EasyAWS):
             data.append([timestamp, price])
         maximum = max(prices)
         avg = sum(prices) / float(len(prices))
-        log.info("Current price: $%.2f" % prices[-1])
+        log.info("Current price: $%.2f" % prices[0])
         log.info("Max price: $%.2f" % maximum)
         log.info("Average price: $%.2f" % avg)
         if plot:

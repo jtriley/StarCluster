@@ -28,7 +28,7 @@ class VolumeCreator(cluster.Cluster):
                  key_location=None, host_instance=None, device='/dev/sdz',
                  image_id=static.BASE_AMI_32, instance_type="t1.micro",
                  shutdown_instance=False, detach_vol=False,
-                 mkfs_cmd='mkfs.ext3', resizefs_cmd='resize2fs', **kwargs):
+                 mkfs_cmd='mkfs.ext3 -F', resizefs_cmd='resize2fs', **kwargs):
         self._host_instance = host_instance
         self._instance = None
         self._volume = None
@@ -204,7 +204,7 @@ class VolumeCreator(cluster.Cluster):
 
     def _format_volume(self):
         log.info("Formatting volume...")
-        self._instance.ssh.execute('%s -F %s' %
+        self._instance.ssh.execute('%s %s' %
                                    (self._mkfs_cmd, self._real_device),
                                    silent=False)
 
@@ -221,12 +221,12 @@ class VolumeCreator(cluster.Cluster):
             log.warn("There are still volume hosts running: %s" %
                      ', '.join(vol_hosts))
             if not self._instance:
-                log.warn("Run 'starcluster terminate %s' to terminate *all* "
+                log.warn("Run 'starcluster terminate -f %s' to terminate all "
                          "volume host instances" % static.VOLUME_GROUP_NAME,
                          extra=dict(__textwrap__=True))
         elif sg:
             log.info("No active volume hosts found. Run 'starcluster "
-                     "terminate %(g)s' to remove the '%(g)s' group" %
+                     "terminate -f %(g)s' to remove the '%(g)s' group" %
                      {'g': static.VOLUME_GROUP_NAME},
                      extra=dict(__textwrap__=True))
 

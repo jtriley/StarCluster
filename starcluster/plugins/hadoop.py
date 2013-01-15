@@ -273,11 +273,8 @@ class Hadoop(clustersetup.ClusterSetup):
                     group.authorize('tcp', port, port, '0.0.0.0/0')
 
     def run(self, nodes, master, user, user_shell, volumes):
-        try:
-            self._configure_hadoop(master, nodes, user)
-            self._start_hadoop(master, nodes)
-            self._open_ports(master)
-            log.info("Job tracker status: http://%s:50030" % master.dns_name)
-            log.info("Namenode status: http://%s:50070" % master.dns_name)
-        finally:
-            self.pool.shutdown()
+        self._configure_hadoop(master, nodes, user)
+        self._start_hadoop(master, nodes)
+        self._open_ports(master)
+        log.info("Job tracker status: http://%s:50030" % master.dns_name)
+        log.info("Namenode status: http://%s:50070" % master.dns_name)
