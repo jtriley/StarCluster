@@ -1683,6 +1683,7 @@ class Cluster(object):
             equivalent to setting 0, meaning that it will only try to add
             it back once before terminating.
         """
+        self.wait_for_active_spots()
         while 1:
             failures = 0
             to_recover = []
