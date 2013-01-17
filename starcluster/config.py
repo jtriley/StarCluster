@@ -2,6 +2,7 @@ import os
 import urllib
 import StringIO
 import ConfigParser
+import copy
 
 from starcluster import utils
 from starcluster import static
@@ -86,9 +87,9 @@ def json_diff(old, new):
                     else:
                         changed = True
                 elif type(current_old[k]) is not dict:
-                        changed = True
+                    changed = True
                 elif len(v) == 0 and len(current_old[k]) > 0:
-                        changed = True
+                    del current_add[k]
                 else:
                     stack.append((current_new_it, k, current_old, changed, current_add))
                     changed = False
@@ -138,6 +139,41 @@ def json_diff(old, new):
             current_old_it, k, current_new = stack.pop()
 
     return {"+" : add, "-" : remove}
+
+
+def apply_json_diff(data, diff):
+    stack = []
+    current_data = data
+    current_diff_it = diff["-"].iteritems()
+    while 1:
+        try:
+            k,v = current_diff_it.next()
+            print k
+            if v is None:
+                del current_data[k]
+            else:
+                stack.append((current_diff_it, current_data))
+                current_diff_it = v.iteritems()
+                current_data = current_data[k]
+        except StopIteration:
+            if len(stack) == 0:
+                break
+            current_diff_it, current_data = stack.pop()
+    current_diff_it = diff['+'].iteritems()
+    while 1:
+        try:
+            k,v = current_diff_it.next()
+            if k not in current_data or type(v) is not dict:
+                current_data[k] = copy.deepcopy(v)
+            if type(v) is dict:
+                stack.append((current_diff_it, current_data))
+                current_diff_it = v.iteritems()
+                current_data = current_data[k]
+        except StopIteration:
+            if len(stack) == 0:
+                break
+            current_diff_it,current_data = stack.pop()
+    return data
 
 class StarClusterConfig(object):
     """

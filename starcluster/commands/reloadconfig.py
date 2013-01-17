@@ -1,5 +1,6 @@
 from completers import NodeCompleter
-from starcluster import static, config
+from starcluster import static, config, utils
+import pprint
 
 
 class CmdReloadConfig(NodeCompleter):
@@ -50,7 +51,22 @@ class CmdReloadConfig(NodeCompleter):
             sg.remove_tag(static.USER_TAG)
             cluster.save_user_settings(sg)
 
-        import pprint
-        pprint.pprint(config.plugins_config_stored_to_json(cluster.master_node.get_plugins_config()))
-        pprint.pprint(config.plugins_config_file_to_json(self.cfg.plugins))
+        org_plugins_conf = config.plugins_config_stored_to_json(
+            cluster.master_node.get_plugins_config())
+        new_plugins_conf = config.plugins_config_file_to_json(self.cfg.plugins)
+        if "@sc-plugins" in sg.tags:
+            stored_diff = utils.decode_uncompress_load(
+                sg.tags["@sc-plugins"])
+        else:
+            stored_diff = {'+':{}, '-':{}}
+        new_diff = config.json_diff(org_plugins_conf, new_plugins_conf)
+        diff_diff = config.json_diff(new_diff, stored_diff)
+        if len(diff_diff['+']) or len(diff_diff['-']):
+            pprint.pprint(diff_diff)
+            new_diff = utils.dump_compress_encode(new_diff)
+            if len(new_diff) > 255:
+                raise Exception("New plugins config doesn't fit in a single "
+                                "tag. Multiple tag save must be implemented")
+            sg.remove_tag("@sc-plugins")
+            sg.add_tag("@sc-plugins", new_diff)
 
