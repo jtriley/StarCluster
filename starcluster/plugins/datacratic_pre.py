@@ -7,14 +7,14 @@ from starcluster import utils
 class DatacraticPrePlugin(clustersetup.DefaultClusterSetup):
 
     def __init__(self, **kwargs):
-        pass
+        self.tag_billcode = kwargs["tag_billcode"]
 
     def run(self, nodes, master, user, user_shell, volumes):
-        master.add_tag("billcode", "bluekai-rnd")
+        master.add_tag("billcode", self.tag_billcode)
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
 
-        master.ec2.get_instance(node.id).add_tag("billcode", "bluekai-rnd")
+        node.add_tag("billcode", self.tag_billcode)
         #create a 20GB swap in a background process
         launch_time = utils.iso_to_datetime_tuple(node.launch_time)
         shutdown_in = int((launch_time + datetime.timedelta(minutes=235) -
