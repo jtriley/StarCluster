@@ -140,10 +140,14 @@ class Node(object):
             self._alias = alias
         return self._alias
 
-    def get_plugins(self):
+    def get_plugins_config(self):
         plugstxt = self.user_data.get(static.UD_PLUGINS_FNAME)
         payload = plugstxt.split('\n', 2)[2]
-        plugins_metadata = utils.decode_uncompress_load(payload)
+        return utils.decode_uncompress_load(payload)
+        
+
+    def get_plugins(self):
+        plugins_metadata = self.get_plugins_config()
         plugs = []
         for klass, args, kwargs in plugins_metadata:
             mod_path, klass_name = klass.rsplit('.', 1)

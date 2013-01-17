@@ -16,4 +16,8 @@ class CmdPrintConfig(NodeCompleter):
         if len(args) != 1:
             self.parser.error("please specify a cluster <cluster_tag>")
         tag = self.tag = args[0]
-        self.cm.get_cluster(tag).print_config()
+        cluster = self.cm.get_cluster(tag)
+        cluster.print_config()
+        plugins_metadata = cluster.master_node.get_plugins_config() 
+        for klass, args, kwargs in plugins_metadata:
+            print str(klass),"-",str(args),"-",str(kwargs)

@@ -1,5 +1,5 @@
 from completers import NodeCompleter
-from starcluster import static
+from starcluster import static, config
 
 
 class CmdReloadConfig(NodeCompleter):
@@ -49,3 +49,8 @@ class CmdReloadConfig(NodeCompleter):
             cluster.save_core_settings(sg)
             sg.remove_tag(static.USER_TAG)
             cluster.save_user_settings(sg)
+
+        import pprint
+        pprint.pprint(config.plugins_config_stored_to_json(cluster.master_node.get_plugins_config()))
+        pprint.pprint(config.plugins_config_file_to_json(self.cfg.plugins))
+
