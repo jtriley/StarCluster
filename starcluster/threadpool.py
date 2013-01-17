@@ -138,6 +138,7 @@ class ThreadPool(workerpool.WorkerPool):
             pbar.finish()
         self.join()
         if self._exception_queue.qsize() > 0:
+            TreadPool.printExceptions(self._exception_queue.queue)
             raise exception.ThreadPoolException(
                 "An error occurred in ThreadPool", self._exception_queue.queue)
         if return_results:
@@ -147,6 +148,16 @@ class ThreadPool(workerpool.WorkerPool):
         log.debug('del called in threadpool')
         self.shutdown()
         self.join()
+
+    def printExceptions(exceptions_queue):
+        for exc_arr in exceptions_queue:
+            e = exc_arr[0]
+            tb_msg = exc_arr[1]
+            jid = exc_arr[2]
+            log.error(tb_msg)
+            log.error(e)
+            log.error(jid)
+            
 
 
 def get_thread_pool(size=10, worker_factory=_worker_factory,

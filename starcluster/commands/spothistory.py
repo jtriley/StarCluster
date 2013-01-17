@@ -21,6 +21,10 @@ class CmdSpotHistory(CmdBase):
     Do the same but also plot the spot history over time using matplotlib:
 
         $ starcluster spothistory -p m1.small
+
+    Show it based on a current cluster config and zone
+
+        $ starcluster spothistory -c <cluster-name>
     """
     names = ['spothistory', 'shi']
 
@@ -47,17 +51,47 @@ class CmdSpotHistory(CmdBase):
         parser.add_option("-p", "--plot", dest="plot",
                           action="store_true", default=False,
                           help="plot spot history using matplotlib")
+        parser.add_option("-c", "--cluster-name", dest="cluster_name",
+                          default=None,
+                          help="limit results to the clusters master node "
+                          "availability zone")
 
     def execute(self, args):
         instance_types = ', '.join(static.INSTANCE_TYPES.keys())
-        if len(args) != 1:
+
+        zone = None
+        instance_type = None
+        if self.opts.cluster_name:
+            cl = self.cm.get_cluster(self.opts.cluster_name,
+                                     require_keys=False)
+            instance_type = cl.node_instance_type
+            zone = cl.nodes[0].placement
+            self.log.info("Cluster zone: " + zone)
+            self.log.info("Cluster node instance type: " + instance_type)
+        if self.opts.zone:
+            if zone:
+                self.log.info("You specified a zone and a cluster to get the "
+                              "zone from. Using the cluster zone.")
+            else:
+                zone = self.opts.zone
+                self.log.info("Specified zone: " + zone)
+        if instance_type:
+            if len(args) == 1:
+                self.log.info("You provided an instance type and a cluster to "
+                              "get the instance type from. Using the cluster "
+                              "instance type.")
+
+        elif len(args) != 1:
             self.parser.error(
                 'please provide an instance type (options: %s)' %
                 instance_types)
-        instance_type = args[0]
-        if not instance_type in static.INSTANCE_TYPES:
-            self.parser.error('invalid instance type. possible options: %s' %
-                              ', '.join(static.INSTANCE_TYPES))
+        else:
+            instance_type = args[0]
+            self.log.info("Specified instance type: " + instance_type)
+            if not instance_type in static.INSTANCE_TYPES:
+                self.parser.error(
+                    'invalid instance type. possible options: %s' %
+                    ', '.join(static.INSTANCE_TYPES))
         start = self.opts.start_time
         end = self.opts.end_time
         if self.opts.days_ago:
@@ -66,6 +100,6 @@ class CmdSpotHistory(CmdBase):
             start = utils.datetime_tuple_to_iso(
                 now - timedelta(days=self.opts.days_ago))
         browser_cmd = self.cfg.globals.get("web_browser")
-        self.ec2.get_spot_history(instance_type, start, end,
-                                  zone=self.opts.zone, plot=self.opts.plot,
-                                  plot_web_browser=browser_cmd)
+
+        self.ec2.get_spot_history(instance_type, start, end, zone,
+                                  self.opts.plot, plot_web_browser=browser_cmd)

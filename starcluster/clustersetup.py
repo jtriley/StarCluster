@@ -162,11 +162,14 @@ class DefaultClusterSetup(ClusterSetup):
         the new user to be the existing uid/gid of the dir in EBS rather than
         chowning potentially terabytes of data.
         """
-        user = user or self._user
-        uid, gid = self._get_new_user_id(user)
-        log.info("Creating cluster user: %s (uid: %d, gid: %d)" %
-                 (user, uid, gid))
-        self._add_user_to_nodes(uid, gid, self._nodes)
+        log.info("TODO: repair function setup_cluster_user")
+        #TODO: not trunk - the issue is we don't want sgeadmin to be created
+        #it already exists
+        #user = user or self._user
+        #uid, gid = self._get_new_user_id(user)
+        #log.info("Creating cluster user: %s (uid: %d, gid: %d)" %
+        #         (user, uid, gid))
+        #self._add_user_to_nodes(uid, gid, self._nodes)
 
     def _add_user_to_node(self, uid, gid, node):
         existing_user = node.getpwuid(uid)
@@ -337,15 +340,17 @@ class DefaultClusterSetup(ClusterSetup):
         """
         Share /home and all EBS mount paths via NFS to all nodes
         """
-        master = self._master
-        # setup /etc/exports and start nfsd on master node
-        nodes = nodes or self.nodes
-        export_paths = export_paths or self._get_nfs_export_paths()
-        if start_server:
-            master.start_nfs_server()
-        if nodes:
-            master.export_fs_to_nodes(nodes, export_paths)
-            self._mount_nfs_shares(nodes, export_paths=export_paths)
+        log.info("TODO: repair setup nfs")
+        if False:
+            master = self._master
+            # setup /etc/exports and start nfsd on master node
+            nodes = nodes or self.nodes
+            export_paths = export_paths or self._get_nfs_export_paths()
+            if start_server:
+                master.start_nfs_server()
+            if nodes:
+                master.export_fs_to_nodes(nodes, export_paths)
+                self._mount_nfs_shares(nodes, export_paths=export_paths)
 
     def run(self, nodes, master, user, user_shell, volumes):
         """Start cluster configuration"""
@@ -396,14 +401,18 @@ class DefaultClusterSetup(ClusterSetup):
         self._add_user_to_nodes(uid, gid, nodes=[node])
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
-        self._nodes = nodes
-        self._master = master
-        self._user = user
-        self._user_shell = user_shell
-        self._volumes = volumes
-        self._setup_hostnames(nodes=[node])
-        self._setup_etc_hosts(nodes)
-        self._setup_nfs(nodes=[node], start_server=False)
-        self._create_user(node)
-        self._setup_scratch(nodes=[node])
-        self._setup_passwordless_ssh(nodes=[node])
+        try:
+            self._nodes = nodes
+            self._master = master
+            self._user = user
+            self._user_shell = user_shell
+            self._volumes = volumes
+            self._setup_hostnames(nodes=[node])
+            self._setup_etc_hosts(nodes)
+            self._setup_nfs(nodes=[node], start_server=False)
+            self._create_user(node)
+            self._setup_scratch(nodes=[node])
+            self._setup_passwordless_ssh(nodes=[node])
+        except:
+            import traceback
+            log.error(traceback.format_exc())
