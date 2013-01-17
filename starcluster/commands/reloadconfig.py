@@ -57,15 +57,14 @@ class CmdReloadConfig(NodeCompleter):
         diff = config.json_diff(current_plugins_conf, new_plugins_conf)
         if len(diff['+']) or len(diff['-']):
             pprint.pprint(diff)
-            if False:
-                org_plugins_confg = config.plugins_config_stored_to_json(
-                    cluster.master_node.get_plugins_org_metadata())
-                diff_to_store = config.json_diff(org_plugins_confg, 
-                                                 new_plugins_conf)
-                diff_to_store = utils.dump_compress_encode(diff_to_store)
-                if len(diff_to_store) > 255:
-                    raise Exception("New plugins config doesn't fit in a single "
-                                    "tag. Multiple tag save must be implemented")
-                sg.remove_tag("@sc-plugins")
-                sg.add_tag("@sc-plugins", diff_to_store)
+            org_plugins_confg = config.plugins_config_stored_to_json(
+                cluster.master_node.get_plugins_org_metadata())
+            diff_to_store = config.json_diff(org_plugins_confg, 
+                                             new_plugins_conf)
+            diff_to_store = utils.dump_compress_encode(diff_to_store)
+            if len(diff_to_store) > 255:
+                raise Exception("New plugins config doesn't fit in a single "
+                                "tag. Multiple tag save must be implemented")
+            sg.remove_tag("@sc-plugins")
+            sg.add_tag("@sc-plugins", diff_to_store)
 
