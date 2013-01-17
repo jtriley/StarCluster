@@ -2,6 +2,7 @@ import os
 import urllib
 import StringIO
 import ConfigParser
+import copy
 
 from starcluster import utils
 from starcluster import static
@@ -50,6 +51,135 @@ def get_config(config_file=None, cache=False):
     """Factory for StarClusterConfig object"""
     return StarClusterConfig(config_file, cache).load()
 
+def plugins_config_file_to_json(file_format):
+    result = {}
+    for plugin_name in file_format:
+        part_result = {}
+        for key in file_format[plugin_name]:
+            if key in ['__name__', 'setup_class']:
+                continue
+            part_result = {key : file_format[plugin_name][key]}
+        result[file_format[plugin_name]['setup_class']] = part_result
+    return result
+
+def plugins_config_stored_to_json(stored_format):
+    result = {}
+    for klass, args, kwargs in stored_format:
+        result[klass] = kwargs
+    return result
+
+def plugins_config_json_to_stored(json_format):
+    result = []
+    for k,v in json_format.iteritems():
+        result.append((k, (), v))
+    return result
+ 
+def json_diff(old, new):
+    stack = []
+    add = copy.deepcopy(new)
+    current_new_it = new.iteritems()
+    current_old = old
+    current_add = add
+    changed = False
+
+    #add
+    while 1:
+        try:
+            k,v = current_new_it.next()
+            if k in current_old:
+                if type(v) is not dict:
+                    if v == current_old[k]:
+                        del current_add[k]
+                    else:
+                        changed = True
+                elif type(current_old[k]) is not dict:
+                    changed = True
+                elif len(v) == 0 and len(current_old[k]) > 0:
+                    del current_add[k]
+                else:
+                    stack.append((current_new_it, k, current_old, changed, current_add))
+                    changed = False
+                    current_new_it = v.iteritems()
+                    current_old = current_old[k]
+                    current_add = current_add[k]
+            else:
+                changed = True
+        except StopIteration:
+            if len(stack) == 0:
+                break
+            current_new_it,k,current_old,i_changed,current_add = stack.pop()
+            if not changed:
+                del current_add[k]
+            changed = changed or i_changed
+        except:
+            break
+
+
+    remove = {}
+    current_old_it = old.iteritems()
+    current_new = new
+
+    #remove
+    def setRemove():
+        current_remove = remove
+        for i in range(0, len(stack)):
+            foo1, lk, foo2 = stack[i]
+            if lk not in current_remove:
+                current_remove[lk] = {}
+            current_remove = current_remove[lk]
+        current_remove[k] = None
+
+    while 1:
+        try:
+            k,v = current_old_it.next()
+            if k in current_new:
+                if type(v) is dict and len(current_new[k]) > 0:
+                    stack.append((current_old_it, k, current_new))
+                    current_old_it = v.iteritems()
+                    current_new = current_new[k]
+            else:
+                setRemove()
+        except StopIteration:
+            if len(stack) == 0:
+                break
+            current_old_it, k, current_new = stack.pop()
+
+    return {"+" : add, "-" : remove}
+
+
+def apply_json_diff(data, diff):
+    stack = []
+    current_data = data
+    current_diff_it = diff["-"].iteritems()
+    while 1:
+        try:
+            k,v = current_diff_it.next()
+            print k
+            if v is None:
+                del current_data[k]
+            else:
+                stack.append((current_diff_it, current_data))
+                current_diff_it = v.iteritems()
+                current_data = current_data[k]
+        except StopIteration:
+            if len(stack) == 0:
+                break
+            current_diff_it, current_data = stack.pop()
+    current_diff_it = diff['+'].iteritems()
+    while 1:
+        try:
+            k,v = current_diff_it.next()
+            if k not in current_data or type(v) is not dict:
+                current_data[k] = copy.deepcopy(v)
+            if type(v) is dict:
+                stack.append((current_diff_it, current_data))
+                current_diff_it = v.iteritems()
+                current_data = current_data[k]
+        except StopIteration:
+            if len(stack) == 0:
+                break
+            current_diff_it,current_data = stack.pop()
+    return data
 
 class StarClusterConfig(object):
     """
