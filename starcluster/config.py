@@ -67,6 +67,12 @@ def plugins_config_stored_to_json(stored_format):
     for klass, args, kwargs in stored_format:
         result[klass] = kwargs
     return result
+
+def plugins_config_json_to_stored(json_format):
+    result = []
+    for k,v in json_format.iteritems():
+        result.append((k, (), v))
+    return result
  
 def json_diff(old, new):
     stack = []

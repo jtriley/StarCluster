@@ -1,4 +1,5 @@
 from completers import NodeCompleter
+from starcluster import config, utils
 
 
 class CmdPrintConfig(NodeCompleter):
@@ -18,6 +19,7 @@ class CmdPrintConfig(NodeCompleter):
         tag = self.tag = args[0]
         cluster = self.cm.get_cluster(tag)
         cluster.print_config()
-        plugins_metadata = cluster.master_node.get_plugins_config() 
+
+        plugins_metadata = cluster.master_node.get_plugins_full_metadata()
         for klass, args, kwargs in plugins_metadata:
             print str(klass),"-",str(args),"-",str(kwargs)
