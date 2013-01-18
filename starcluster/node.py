@@ -173,7 +173,10 @@ class Node(object):
                 raise exception.PluginLoadError(
                     "Failed to import plugin %s: %s" %
                     (klass_name, e[0]))
-            plug = getattr(mod, klass_name)(*args, **kwargs)
+            try:
+                plug = getattr(mod, klass_name)(*args, **kwargs)
+            except Exception as exc:
+                raise exception.exception.PluginLoadError(exc.message)
             plugs.append(plug)
         return plugs
 
