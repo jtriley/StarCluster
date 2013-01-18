@@ -4,6 +4,7 @@ import stat
 import base64
 import posixpath
 import subprocess
+import traceback
 
 from starcluster import utils
 from starcluster import static
@@ -156,6 +157,7 @@ class Node(object):
             try:
                 plug = getattr(mod, klass_name)(*args, **kwargs)
             except Exception as exc:
+                log.debug(traceback.format_exc())
                 raise exception.PluginLoadError(
                     "Failed to load plugin %s with "
                     "the following error: %s - %s" %
