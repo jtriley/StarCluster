@@ -176,7 +176,10 @@ class Node(object):
             try:
                 plug = getattr(mod, klass_name)(*args, **kwargs)
             except Exception as exc:
-                raise exception.PluginLoadError(exc.message)
+                raise exception.PluginLoadError(
+                    "Failed to load plugin %s with "
+                    "the following error: %s - %s" %
+                    (klass_name, exc.__class__.__name__, exc.message))
             plugs.append(plug)
         return plugs
 
