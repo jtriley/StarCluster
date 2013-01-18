@@ -30,7 +30,7 @@ class CmdReloadConfig(NodeCompleter):
                           "force_spot_master", "master_image_id",
                           "master_instance_type", "node_image_id",
                           "node_instance_type", "spot_bid",
-                          "disable_cloudinit", "plugins_order"]
+                          "disable_cloudinit", "plugins_order", "cluster_size"]
 
         cluster = self.cm.get_cluster(tag)
         new_cfg = self.cfg.get_cluster_template(self.opts.cluster_template)
