@@ -379,6 +379,7 @@ class Cluster(object):
                  cluster_group=None,
                  force_spot_master=False,
                  disable_cloudinit=False,
+                 plugins_order=[],
                  **kwargs):
 
         now = time.strftime("%Y%m%d%H%M")
@@ -411,6 +412,7 @@ class Cluster(object):
         self.disable_threads = disable_threads
         self.force_spot_master = force_spot_master
         self.disable_cloudinit = disable_cloudinit
+        self.plugins_order = plugins_order
 
         self._cluster_group = None
         self._placement_group = None
@@ -589,7 +591,8 @@ class Cluster(object):
                 else:
                     raise
             if load_plugins:
-                self.plugins = self.load_plugins(master.get_plugins())
+                self.plugins = self.load_plugins(
+                    master.get_plugins(self.plugins_order))
             if load_volumes:
                 self.volumes = master.get_volumes()
         except exception.PluginError:
@@ -629,7 +632,8 @@ class Cluster(object):
                  node_image_id=self.node_image_id,
                  node_instance_type=self.node_instance_type,
                  disable_queue=self.disable_queue,
-                 disable_cloudinit=self.disable_cloudinit),
+                 disable_cloudinit=self.disable_cloudinit,
+                 plugins_order=self.plugins_order),
             use_json=True)
         sg.add_tag(static.CORE_TAG, core_settings)
 
