@@ -109,7 +109,8 @@ class CmdShell(CmdBase):
                                       'ipcontroller-client.json')
                 if cl.master_node.ssh.isfile(json):
                     log.info("Fetching connector file from cluster...")
-                    os.makedirs(ipcluster_dir)
+                    if not os.path.exists(ipcluster_dir):
+                        os.makedirs(ipcluster_dir)
                     cl.master_node.ssh.get(json, local_json)
                 else:
                     self.parser.error(
