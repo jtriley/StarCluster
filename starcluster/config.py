@@ -68,10 +68,14 @@ def plugins_config_stored_to_json(stored_format):
         result[klass] = kwargs
     return result
 
-def plugins_config_json_to_stored(json_format):
+def plugins_config_json_to_stored(json_format, order):
     result = []
-    for k,v in json_format.iteritems():
-        result.append((k, (), v))
+    for o in order:
+        for k,v in json_format.iteritems():
+            if k.split(".")[-1] == o:
+                result.append((k, (), v))
+                del json_format[k]
+                break
     return result
  
 def json_diff(old, new):
@@ -735,6 +739,10 @@ class StarClusterConfig(object):
             kwargs.update(dict(cluster_tag=tag_name))
             kwargs.update(self.clusters[template_name])
             plugs = kwargs.get('plugins')
+            plugins_order = []
+            for p in plugs:
+                plugins_order.append(p["setup_class"].split(".")[-1])
+            kwargs['plugins_order'] = plugins_order
             kwargs['plugins'] = deathrow._load_plugins(plugs,
                                                        debug=DEBUG_CONFIG)
             if not ec2_conn:

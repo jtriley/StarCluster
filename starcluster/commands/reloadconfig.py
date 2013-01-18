@@ -30,7 +30,7 @@ class CmdReloadConfig(NodeCompleter):
                           "force_spot_master", "master_image_id",
                           "master_instance_type", "node_image_id",
                           "node_instance_type", "spot_bid",
-                          "disable_cloudinit"]
+                          "disable_cloudinit", "plugins_order"]
 
         cluster = self.cm.get_cluster(tag)
         new_cfg = self.cfg.get_cluster_template(self.opts.cluster_template)
@@ -52,7 +52,7 @@ class CmdReloadConfig(NodeCompleter):
             cluster.save_user_settings(sg)
 
         current_plugins_conf = config.plugins_config_stored_to_json(
-            cluster.master_node.get_plugins_full_metadata())
+            cluster.master_node.get_plugins_full_metadata(cluster.plugins_order))
         new_plugins_conf = config.plugins_config_file_to_json(self.cfg.plugins)
         diff = config.json_diff(current_plugins_conf, new_plugins_conf)
         if len(diff['+']) or len(diff['-']):
