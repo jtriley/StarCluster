@@ -114,8 +114,15 @@ class IPCluster(ClusterSetup):
         s = spinner.Spinner()
         s.start()
         try:
-            while not master.ssh.isfile(json):
+            found_file = False
+            for i in range(30):
+                if master.ssh.isfile(json):
+                    found_file = True
+                    break
                 time.sleep(1)
+            if not found_file:
+                raise ValueError(
+                    "Timeout while waiting for the cluser json file: " + json)
         finally:
             s.stop()
         # retrieve JSON connection info
@@ -160,7 +167,8 @@ class IPCluster(ClusterSetup):
             "c.NotebookApp.port = %d" % notebook_port,
         ]))
         f.close()
-        master.ssh.execute_async("ipython notebook")
+        master.ssh.execute_async("ipython notebook --no-browser")
+
         group = master.cluster_groups[0]
         world_cidr = '0.0.0.0/0'
         port_open = master.ec2.has_permission(group, 'tcp', notebook_port,
@@ -201,21 +209,10 @@ class IPCluster(ClusterSetup):
                                        key_location=master.key_location))
         master.ssh.switch_user('root')
 
-    def _stop_cluster(self, master, user):
-        master.ssh.execute("pkill -f ipengineapp.py")
-        master.ssh.execute("pkill -f ipcontrollerapp.py")
-
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
        if not self._check_ipython_installed(master):
            return
        self._start_engines(node, user)
-
-    def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
-        if not self._check_ipython_installed(master):
-            return
-        # TODO: is there a better way?
-        log.info("Removing %s from ipcluster" % node.alias)
-        node.ssh.execute('pkill -f ipengineapp.py')
 
     def _start_engines(self, node, user):
         n = node.num_processors
@@ -235,6 +232,6 @@ class IPClusterStop(ClusterSetup):
         master.ssh.execute("pkill -f ipcontrollerapp.py",
                            ignore_exit_status=True)
         for node in nodes:
-            master.ssh.execute("pkill -f ipengineapp.py",
+            node.ssh.execute("pkill -f ipengineapp.py",
                                ignore_exit_status=True)
         master.ssh.switch_user('root')
