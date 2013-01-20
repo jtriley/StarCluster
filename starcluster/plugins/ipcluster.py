@@ -5,31 +5,16 @@ A starcluster plugin for running an IPython cluster
 import os
 import time
 import posixpath
-from threading import Thread
 
 from starcluster import utils
 from starcluster import static
 from starcluster import spinner
 from starcluster.utils import print_timing
-from starcluster.clustersetup import ClusterSetup
+from starcluster.clustersetup import DefaultClusterSetup
 
 from starcluster.logger import log
 
 IPCLUSTER_CACHE = os.path.join(static.STARCLUSTER_CFG_DIR, 'ipcluster')
-
-
-def threaded_call(f, all_args, join=True):
-    """Run a function in parallell"""
-    threads = []
-    for args in all_args:
-        t = Thread(target=f, args=args)
-        t.start()
-        threads.append(t)
-    if join:
-        for t in threads:
-            t.join()
-    else:
-        return threads
 
 
 STARTED_MSG = """\
@@ -40,9 +25,10 @@ http://star.mit.edu/cluster/docs/latest/plugins/ipython.html
 """
 
 
-class IPCluster(ClusterSetup):
+class IPCluster(DefaultClusterSetup):
     """Start an IPython (>= 0.11) cluster"""
     def __init__(self, enable_notebook=False, notebook_passwd=None):
+        super(IPCluster, self).__init__()
         self.enable_notebook = enable_notebook
         self.notebook_passwd = notebook_passwd or utils.generate_passwd(16)
 
@@ -198,9 +184,12 @@ class IPCluster(ClusterSetup):
         cfile = self._start_cluster(master, profile_dir)
 
         # Start engines on each of the non-master nodes
-        start_engine_args = [(node, user) for node in nodes
-                             if not node.is_master()]
-        threaded_call(self._start_engines, start_engine_args)
+        non_master_nodes = [node for node in nodes if not node.is_master()]
+        for node in non_master_nodes:
+            self.pool.simple_job(self._start_engines, (node, user),
+                                 jobid=node.alias)
+        if len(non_master_nodes) > 0:
+            self.pool.wait(len(non_master_nodes))
 
         if self.enable_notebook:
             self._start_notebook(master, user, profile_dir)
@@ -222,7 +211,7 @@ class IPCluster(ClusterSetup):
         node.ssh.switch_user('root')
 
 
-class IPClusterStop(ClusterSetup):
+class IPClusterStop(DefaultClusterSetup):
 
     def run(self, nodes, master, user, user_shell, volumes):
         log.info("Shutting down IPython cluster")
