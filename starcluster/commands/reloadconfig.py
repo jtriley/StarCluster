@@ -34,7 +34,7 @@ class CmdReloadConfig(NodeCompleter):
 
         cluster = self.cm.get_cluster(tag)
         new_cfg = self.cfg.get_cluster_template(self.opts.cluster_template, 
-                                                load_plugins=False)
+                                                load_plugins=True)
         to_update = {}
         for field in fieldsToUpdate:
             old_val = getattr(cluster, field)

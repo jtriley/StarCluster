@@ -3,7 +3,6 @@ Contains code that should eventually be removed. Mostly used for maintaining
 backwards compatibility while still moving the code forward.
 """
 import traceback
-
 from starcluster import utils
 from starcluster import exception
 from starcluster import clustersetup
@@ -69,9 +68,14 @@ def _load_plugins(plugins, debug=True):
             plug_obj = klass(*config_args, **config_kwargs)
         except Exception as exc:
             log.debug(traceback.format_exc())
+<<<<<<< Updated upstream
             raise exception.PluginLoadError(
                 "Failed to load plugin %s with "
                 "the following error: %s - %s" %
+=======
+            raise exception.PluginLoadError("Failed to load plugin %s with "
+                "the following error: %s - %s" % 
+>>>>>>> Stashed changes
                 (setup_class, exc.__class__.__name__, exc.message))
         if not hasattr(plug_obj, '__name__'):
             setattr(plug_obj, '__name__', plugin_name)
