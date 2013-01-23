@@ -696,13 +696,30 @@ class Node(object):
         /proc/partitions
         """
         parts = self.ssh.remote_file('/proc/partitions', 'r').read()
-        r = re.compile('(\d+)\s+((?:xv|s)d[a-z])(?:\s+|\\n)')
-        devs = r.findall(parts)
+        dev_regex = '(?:xv|s)d[a-z]'
+        part_regex = '\d+(?:p\d+)?'
+        r = re.compile('(\d+)\s+(%s)(%s)?(?:\s+|\\n)' %
+                       (dev_regex, part_regex))
+        entries = r.findall(parts)
         devmap = {}
-        for blocks, dev in devs:
-            devname = '/dev/' + dev
-            if self.ssh.path_exists(devname):
-                devmap[devname] = blocks
+        partmap = {}
+        for blocks, root_dev_name, partition in entries:
+            root_dev_file = '/dev/' + root_dev_name
+            devfile = root_dev_file + partition
+            if self.ssh.path_exists(devfile):
+                blocks = int(blocks)
+                if partition:
+                    partmap[devfile] = (root_dev_file, blocks)
+                else:
+                    devmap[devfile] = blocks
+        # check for devices attached to the instance with a partition's naming
+        # scheme (e.g. /dev/xvdb1)
+        for dev in partmap:
+            root_dev_file, blocks = partmap[dev]
+            # if a device exists with a partition naming scheme, then the root
+            # device name, e.g. /dev/xvdb for /dev/xvdb1, will not exist
+            if not root_dev_file in devmap:
+                devmap[dev] = blocks
         return devmap
 
     def get_partition_map(self):
