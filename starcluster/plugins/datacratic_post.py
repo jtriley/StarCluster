@@ -88,24 +88,9 @@ class DatacraticPostPlugin(clustersetup.DefaultClusterSetup):
         """
         Sets complex values values for a node
         """
-        dest = "/root/qconf_me_" + node.alias + ".qconf"
-        master.ssh.execute("export EDITOR=" + self._dcePath + "; "
-                           + "export DCE_DEST=" + dest + "; "
-                           + "qconf -me " + node.alias,
-                           ignore_exit_status=True)
-        qconf = master.ssh.remote_file(dest, "r")
-        qconfStr = qconf.read()
-        qconf.close()
-        qconfLines = qconfStr.split("\n")
-        for index, line in enumerate(qconfLines):
-            if line.find("complex_values") == 0:
-                qconfLines[index] = "complex_values da_mem_gb="\
-                                    + str(float(node.memory) / 1000)\
-                                    + ",da_slots="\
-                                    + str(node.num_processors)\
-                                    + ",da_exclusive=1"
-                break
-        qconf = master.ssh.remote_file(dest, "w")
-        qconf.write("\n".join(qconfLines))
-        qconf.close()
-        master.ssh.execute("qconf -Me " + dest)
+        master.ssh.execute("qconf -rattr exechost complex_values "\
+                           "da_mem_gb="\
+                           + str(float(node.memory) / 1000)\
+                           + ",da_slots="\
+                           + str(node.num_processors)\
+                           + ",da_exclusive=1 " + node.alias)
