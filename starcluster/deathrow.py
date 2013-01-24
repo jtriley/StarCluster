@@ -2,8 +2,6 @@
 Contains code that should eventually be removed. Mostly used for maintaining
 backwards compatibility while still moving the code forward.
 """
-import traceback
-
 from starcluster import utils
 from starcluster import exception
 from starcluster import clustersetup
@@ -68,7 +66,7 @@ def _load_plugins(plugins, debug=True):
         try:
             plug_obj = klass(*config_args, **config_kwargs)
         except Exception as exc:
-            log.debug(traceback.format_exc())
+            log.error("Error occured:", exc_info=True)
             raise exception.PluginLoadError(
                 "Failed to load plugin %s with "
                 "the following error: %s - %s" %
