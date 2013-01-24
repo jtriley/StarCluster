@@ -63,7 +63,14 @@ def _load_plugins(plugins, debug=True):
                 config_kwargs[arg] = plugin.get(arg)
         if debug:
             log.debug("config_kwargs = %s" % config_kwargs)
-        plug_obj = klass(*config_args, **config_kwargs)
+        try:
+            plug_obj = klass(*config_args, **config_kwargs)
+        except Exception as exc:
+            log.error("Error occured:", exc_info=True)
+            raise exception.PluginLoadError(
+                "Failed to load plugin %s with "
+                "the following error: %s - %s" %
+                (setup_class, exc.__class__.__name__, exc.message))
         if not hasattr(plug_obj, '__name__'):
             setattr(plug_obj, '__name__', plugin_name)
         plugs.append(plug_obj)
