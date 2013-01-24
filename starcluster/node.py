@@ -696,13 +696,30 @@ class Node(object):
         /proc/partitions
         """
         parts = self.ssh.remote_file('/proc/partitions', 'r').read()
-        r = re.compile('(\d+)\s+((?:xv|s)d[a-z])(?:\s+|\\n)')
-        devs = r.findall(parts)
+        dev_regex = '(?:xv|s)d[a-z]'
+        part_regex = '\d+(?:p\d+)?'
+        r = re.compile('(\d+)\s+(%s)(%s)?(?:\s+|\\n)' %
+                       (dev_regex, part_regex))
+        entries = r.findall(parts)
         devmap = {}
-        for blocks, dev in devs:
-            devname = '/dev/' + dev
-            if self.ssh.path_exists(devname):
-                devmap[devname] = blocks
+        partmap = {}
+        for blocks, root_dev_name, partition in entries:
+            root_dev_file = '/dev/' + root_dev_name
+            devfile = root_dev_file + partition
+            if self.ssh.path_exists(devfile):
+                blocks = int(blocks)
+                if partition:
+                    partmap[devfile] = (root_dev_file, blocks)
+                else:
+                    devmap[devfile] = blocks
+        # check for devices attached to the instance with a partition's naming
+        # scheme (e.g. /dev/xvdb1)
+        for dev in partmap:
+            root_dev_file, blocks = partmap[dev]
+            # if a device exists with a partition naming scheme, then the root
+            # device name, e.g. /dev/xvdb for /dev/xvdb1, will not exist
+            if not root_dev_file in devmap:
+                devmap[dev] = blocks
         return devmap
 
     def get_partition_map(self):
@@ -711,12 +728,13 @@ class Node(object):
         on 'fdisk -l'
         """
         fdiskout = '\n'.join(self.ssh.execute("fdisk -l 2>/dev/null"))
-        r = re.compile(
-            '(/dev/(?:xv|s)d[a-z][1-9][0-9]?)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)')
+        part_regex = '/dev/(?:xv|s)d[a-z]\d+(?:p\d+)?'
+        r = re.compile('(%s)\s+(\d+)\s+(\d+)\s+(\d+)(?:\+)?\s+(\d+)' %
+                       part_regex)
         partmap = {}
         for match in r.findall(fdiskout):
-            part, start, end, blocks, id = match
-            partmap[part] = [start, end, blocks, id]
+            part, start, end, blocks, sys_id = match
+            partmap[part] = [int(start), int(end), int(blocks), sys_id]
         return partmap
 
     def mount_device(self, device, path):
