@@ -19,11 +19,20 @@ class DatacraticPrePlugin(clustersetup.DefaultClusterSetup):
         launch_time = utils.iso_to_datetime_tuple(node.launch_time)
         shutdown_in = int((launch_time + datetime.timedelta(minutes=235) -
                           datetime.datetime.utcnow()).total_seconds() / 60)
-        log.info("Shutdown order in 3h55 minutes from launch ("
-                 + str(shutdown_in) + ")")
-        node.ssh.execute_async("shutdown -h +" + str(shutdown_in) +
-                               " StarCluster datacratic plugin "
-                               "sets node auto shutdown in 3h55 minutes.")
+        if shutdown_in > 0:
+            log.info("Shutdown order in 3h55 minutes from launch ("
+                     + str(shutdown_in) + ")")
+            node.ssh.execute_async("shutdown -h +" + str(shutdown_in) +
+                                   " StarCluster datacratic plugin "
+                                   "sets node auto shutdown in 3h55 minutes.")
+        else:
+            log.error("Shutdown is already expired. "
+                      "Granting the current hour block.")
+            shutdown_in = 60 - shutdown_in % 60 + 1
+            node.ssh.execute_async("shutdown -h +" + str(shutdown_in) +
+                                   " StarCluster datacratic plugin "
+                                   "sets node auto shutdown in current "
+                                   "hour block")
         log.info("Creating 20GB swap space on node " + node.alias)
         msg = node.ssh.execute("file /mnt/20GB.swap", ignore_exit_status=True)
         if msg[0].find("ERROR") != -1:
