@@ -5,7 +5,6 @@ import base64
 import posixpath
 import subprocess
 import datetime
-import traceback
 
 import config
 from starcluster import utils
@@ -166,6 +165,7 @@ class Node(object):
             mod_path, klass_name = klass.rsplit('.', 1)
             try:
                 mod = __import__(mod_path, fromlist=[klass_name])
+                plug = getattr(mod, klass_name)(*args, **kwargs)
             except SyntaxError, e:
                 raise exception.PluginSyntaxError(
                     "Plugin %s (%s) contains a syntax error at line %s" %
@@ -174,10 +174,8 @@ class Node(object):
                 raise exception.PluginLoadError(
                     "Failed to import plugin %s: %s" %
                     (klass_name, e[0]))
-            try:
-                plug = getattr(mod, klass_name)(*args, **kwargs)
             except Exception as exc:
-                log.debug(traceback.format_exc())
+                log.error("Error occured:", exc_info=True)
                 raise exception.PluginLoadError(
                     "Failed to load plugin %s with "
                     "the following error: %s - %s" %
