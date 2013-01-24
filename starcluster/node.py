@@ -728,12 +728,13 @@ class Node(object):
         on 'fdisk -l'
         """
         fdiskout = '\n'.join(self.ssh.execute("fdisk -l 2>/dev/null"))
-        r = re.compile(
-            '(/dev/(?:xv|s)d[a-z][1-9][0-9]?)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)')
+        part_regex = '/dev/(?:xv|s)d[a-z]\d+(?:p\d+)?'
+        r = re.compile('(%s)\s+(\d+)\s+(\d+)\s+(\d+)(?:\+)?\s+(\d+)' %
+                       part_regex)
         partmap = {}
         for match in r.findall(fdiskout):
-            part, start, end, blocks, id = match
-            partmap[part] = [start, end, blocks, id]
+            part, start, end, blocks, sys_id = match
+            partmap[part] = [int(start), int(end), int(blocks), sys_id]
         return partmap
 
     def mount_device(self, device, path):
