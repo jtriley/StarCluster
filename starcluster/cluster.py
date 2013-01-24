@@ -584,7 +584,9 @@ class Cluster(object):
             try:
                 master = self.master_node
             except exception.MasterDoesNotExist:
-                if self.spot_requests:
+                unfulfilled_spots = [sr for sr in self.spot_requests if not
+                                     sr.instance_id]
+                if unfulfilled_spots:
                     self.wait_for_active_spots()
                     self.wait_for_active_instances()
                     master = self.master_node
