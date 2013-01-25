@@ -6,8 +6,9 @@ from starcluster import utils
 
 class DatacraticPrePlugin(clustersetup.DefaultClusterSetup):
 
-    def __init__(self, **kwargs):
-        self.tag_billcode = kwargs["tag_billcode"]
+    def __init__(self, tag_billcode, mount):
+        self.tag_billcode = tag_billcode
+        self.mount = mount
 
     def run(self, nodes, master, user, user_shell, volumes):
         master.add_tag("billcode", self.tag_billcode)
@@ -53,15 +54,17 @@ class DatacraticPrePlugin(clustersetup.DefaultClusterSetup):
         else:
             log.error("/opt/sge6 is already mounted")
 
-        if node.ssh.execute("mount | grep bluekai | wc -l")[0] == "0":
-            log.info("Mounting bluekai-lookalikes from master")
-            node.ssh.execute("rm -rf /root/bluekai-lookalikes; "
-                             "mkdir /root/bluekai-lookalikes")
-            node.ssh.execute("sshfs -o allow_other -C -o workaround=all "
+        res = node.ssh.execute("mount | grep " + self.mount + " | wc -l")[0]
+        if res[0] == "0":
+            log.info("Mounting " + self.mount + " from master")
+            node.ssh.execute("rm -rf /root/" + self.mount + "&& "
+                             "mkdir /root/" + self.mount + "&& "
+            #node.ssh.execute(
+                            "sshfs -o allow_other -C -o workaround=all "
                              "-o reconnect -o sshfs_sync "
-                             "master:bluekai-lookalikes bluekai-lookalikes")
+                             "master:" + selc.mount + " " + self.mount)
         else:
-            log.error("/root/bluekai-lookalikes is already mounted")
+            log.error("/root/" + self.mount + " is already mounted")
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         pass
