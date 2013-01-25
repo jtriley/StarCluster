@@ -305,12 +305,6 @@ class EasyEC2(EasyAWS):
         """
         Returns placement group with name if it exists otherwise returns None
         """
-        region = self.conn.region.name
-        if not region in static.CLUSTER_REGIONS:
-            region_list = ', '.join(static.CLUSTER_REGIONS)
-            log.debug("region %s not in CLUSTER_REGIONS (%s)" % (region,
-                                                                 region_list))
-            return
         try:
             return self.get_placement_group(name)
         except exception.PlacementGroupDoesNotExist:
