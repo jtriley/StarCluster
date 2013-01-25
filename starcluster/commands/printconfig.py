@@ -1,6 +1,4 @@
 from completers import NodeCompleter
-from starcluster import config, utils
-
 
 class CmdPrintConfig(NodeCompleter):
     """
