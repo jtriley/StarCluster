@@ -330,6 +330,9 @@ class EasyEC2(EasyAWS):
         """
         Convenience method for running spot or flat-rate instances
         """
+        if not block_device_map:
+            bdmap = self.create_block_device_map(add_ephemeral_drives=True)
+            block_device_map = bdmap
         if price:
             return self.request_spot_instances(
                 price, image_id, instance_type=instance_type,
@@ -904,36 +907,26 @@ class EasyEC2(EasyAWS):
             log.info("Manifest migrated successfully. You can now run:\n" +
                      register_cmd + "\nto register your migrated image.")
 
-    def create_root_block_device_map(self, snapshot_id,
-                                     root_device_name='/dev/sda1',
-                                     add_ephemeral_drives=False,
-                                     ephemeral_drive_0='/dev/sdb1',
-                                     ephemeral_drive_1='/dev/sdc1',
-                                     ephemeral_drive_2='/dev/sdd1',
-                                     ephemeral_drive_3='/dev/sde1'):
+    def create_block_device_map(self, root_snapshot_id=None,
+                                root_device_name='/dev/sda1',
+                                add_ephemeral_drives=False,
+                                num_ephemeral_drives=24):
         """
         Utility method for building a new block_device_map for a given snapshot
         id. This is useful when creating a new image from a volume snapshot.
         The returned block device map can be used with self.register_image
         """
         bmap = boto.ec2.blockdevicemapping.BlockDeviceMapping()
-        sda1 = boto.ec2.blockdevicemapping.BlockDeviceType()
-        sda1.snapshot_id = snapshot_id
-        sda1.delete_on_termination = True
-        bmap[root_device_name] = sda1
+        if root_snapshot_id:
+            sda1 = boto.ec2.blockdevicemapping.BlockDeviceType()
+            sda1.snapshot_id = root_snapshot_id
+            sda1.delete_on_termination = True
+            bmap[root_device_name] = sda1
         if add_ephemeral_drives:
-            sdb1 = boto.ec2.blockdevicemapping.BlockDeviceType()
-            sdb1.ephemeral_name = 'ephemeral0'
-            bmap[ephemeral_drive_0] = sdb1
-            sdc1 = boto.ec2.blockdevicemapping.BlockDeviceType()
-            sdc1.ephemeral_name = 'ephemeral1'
-            bmap[ephemeral_drive_1] = sdc1
-            sdd1 = boto.ec2.blockdevicemapping.BlockDeviceType()
-            sdd1.ephemeral_name = 'ephemeral2'
-            bmap[ephemeral_drive_2] = sdd1
-            sde1 = boto.ec2.blockdevicemapping.BlockDeviceType()
-            sde1.ephemeral_name = 'ephemeral3'
-            bmap[ephemeral_drive_3] = sde1
+            for i in range(num_ephemeral_drives):
+                eph = boto.ec2.blockdevicemapping.BlockDeviceType()
+                eph.ephemeral_name = 'ephemeral%d' % i
+                bmap['/dev/sd%s1' % chr(ord('b') + i)] = eph
         return bmap
 
     @print_timing("Downloading image")
