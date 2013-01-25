@@ -2,6 +2,7 @@
 A starcluster plugin for running an IPython cluster
 (requires IPython 0.13+)
 """
+import json
 import os
 import time
 import posixpath
@@ -15,7 +16,14 @@ from starcluster.clustersetup import DefaultClusterSetup
 from starcluster.logger import log
 
 IPCLUSTER_CACHE = os.path.join(static.STARCLUSTER_CFG_DIR, 'ipcluster')
-
+CHANNEL_NAMES = (
+    "control",
+    "task",
+    "notification",
+    "mux",
+    "iopub",
+    "registration",
+)
 
 STARTED_MSG = """\
 IPCluster has been started on %(cluster)s for user '%(user)s'.
@@ -26,7 +34,16 @@ http://star.mit.edu/cluster/docs/latest/plugins/ipython.html
 
 
 class IPCluster(DefaultClusterSetup):
-    """Start an IPython (>= 0.11) cluster"""
+    """Start an IPython (>= 0.11) cluster
+
+    Example config:
+
+    [plugin ipcluster]
+    setup_class = starcluster.plugins.ipcluster.IPCluster
+    enable_notebook = True
+    notebook_passwd = secret
+
+    """
     def __init__(self, enable_notebook=False, notebook_passwd=None):
         super(IPCluster, self).__init__()
         self.enable_notebook = enable_notebook
@@ -94,7 +111,7 @@ class IPCluster(DefaultClusterSetup):
         master.ssh.execute("ipcluster start --n=%i --delay=5 --daemonize"
                            % n_engines)
         # wait for JSON file to exist
-        json = '%s/security/ipcontroller-client.json' % profile_dir
+        json_filename = '%s/security/ipcontroller-client.json' % profile_dir
         log.info("Waiting for JSON connector file...",
                  extra=dict(__nonewline__=True))
         s = spinner.Spinner()
@@ -102,13 +119,14 @@ class IPCluster(DefaultClusterSetup):
         try:
             found_file = False
             for i in range(30):
-                if master.ssh.isfile(json):
+                if master.ssh.isfile(json_filename):
                     found_file = True
                     break
                 time.sleep(1)
             if not found_file:
                 raise ValueError(
-                    "Timeout while waiting for the cluser json file: " + json)
+                    "Timeout while waiting for the cluser json file: "
+                    + json_filename)
         finally:
             s.stop()
         # retrieve JSON connection info
@@ -121,7 +139,10 @@ class IPCluster(DefaultClusterSetup):
                                                   master.region.name))
         log.info("Saving JSON connector file to '%s'" %
                  os.path.abspath(local_json))
-        master.ssh.get(json, local_json)
+        master.ssh.get(json_filename, local_json)
+        connection_params = json.load(open(local_json, 'rb'))
+        for channel in CHANNEL_NAMES:
+            self._authorize_port(master, connection_params[channel], channel)
         return local_json
 
     def _start_notebook(self, master, user, profile_dir):
@@ -154,21 +175,23 @@ class IPCluster(DefaultClusterSetup):
         ]))
         f.close()
         master.ssh.execute_async("ipython notebook --no-browser")
-
-        group = master.cluster_groups[0]
-        world_cidr = '0.0.0.0/0'
-        port_open = master.ec2.has_permission(group, 'tcp', notebook_port,
-                                              notebook_port, world_cidr)
-        if not port_open:
-            log.info("Authorizing tcp port %s on %s" %
-                     (notebook_port, world_cidr))
-            group.authorize('tcp', notebook_port, notebook_port, world_cidr)
+        self._authorize_port(master, notebook_port, 'notebook')
         log.info("IPython notebook URL: https://%s:%s" %
                  (master.dns_name, notebook_port))
         log.info("The notebook password is: %s" % self.notebook_passwd)
         log.warn("Please check your local firewall settings if you're having "
                  "issues connecting to the IPython notebook",
                  extra=dict(__textwrap__=True))
+
+    def _authorize_port(self, node, port, service_name, protocol='tcp'):
+        group = node.cluster_groups[0]
+        world_cidr = '0.0.0.0/0'
+        port_open = node.ec2.has_permission(group, protocol, port,
+                                            port, world_cidr)
+        if not port_open:
+            log.info("Authorizing tcp port %s on %s for: %s" %
+                     (port, world_cidr, service_name))
+            group.authorize('tcp', port, port, world_cidr)
 
     @print_timing("IPCluster")
     def run(self, nodes, master, user, user_shell, volumes):
