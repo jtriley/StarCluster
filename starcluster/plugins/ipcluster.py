@@ -28,6 +28,11 @@ CHANNEL_NAMES = (
 STARTED_MSG = """\
 IPCluster has been started on %(cluster)s for user '%(user)s'.
 
+To connect to cluster from your local machine use:
+
+    >>> from IPython.parallel import Client
+    >>> Client('%(connector_file)s', sshkey='%(key_location)s')
+
 See the IPCluster plugin doc for usage details:
 http://star.mit.edu/cluster/docs/latest/plugins/ipython.html
 """
@@ -142,7 +147,10 @@ class IPCluster(DefaultClusterSetup):
         master.ssh.get(json_filename, local_json)
         connection_params = json.load(open(local_json, 'rb'))
         for channel in CHANNEL_NAMES:
-            self._authorize_port(master, connection_params[channel], channel)
+            port = connection_params.get(channel)
+            if port is not None:
+                self._authorize_port(master, port, channel)
+
         return local_json
 
     def _start_notebook(self, master, user, profile_dir):
