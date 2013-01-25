@@ -849,10 +849,17 @@ class Cluster(object):
             spot_bid = None
         cluster_sg = self.cluster_group.name
         instance_type = instance_type or self.node_instance_type
-        if placement_group is None and instance_type in static.CLUSTER_TYPES:
-            #if placement_group is False -> leave false
-            placement_group = self.placement_group.name
-        #availability_zone is related to placement group
+        if placement_group or instance_type in static.PLACEMENT_GROUP_TYPES:
+            region = self.ec2.region.name
+            if not region in static.CLUSTER_REGIONS:
+                cluster_regions = ', '.join(static.CLUSTER_REGIONS)
+                log.warn("Placement groups are only supported in the "
+                         "following regions:\n%s" % cluster_regions)
+                log.warn("Instances will not be launched in a placement group")
+                placement_group = None
+            elif placement_group is None:
+                #if placement_group is False -> leave false
+                placement_group = self.placement_group.name
         availability_zone_group = None if placement_group is False \
             else cluster_sg
         #launch_group is related to placement group
