@@ -58,7 +58,7 @@ def plugins_config_file_to_json(file_format):
         for key in file_format[plugin_name]:
             if key in ['__name__', 'setup_class']:
                 continue
-            part_result = {key : file_format[plugin_name][key]}
+            part_result[key] = file_format[plugin_name][key]
         result[file_format[plugin_name]['setup_class']] = part_result
     return result
 
