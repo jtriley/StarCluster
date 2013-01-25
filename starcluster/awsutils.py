@@ -542,7 +542,7 @@ class EasyEC2(EasyAWS):
             print 'Total: %s' % len(spots)
 
     def show_instance(self, instance):
-        id = instance.id or 'N/A'
+        instance_id = instance.id or 'N/A'
         groups = ', '.join([g.name for g in instance.groups])
         dns_name = instance.dns_name or 'N/A'
         private_dns_name = instance.private_dns_name or 'N/A'
@@ -551,12 +551,13 @@ class EasyEC2(EasyAWS):
         public_ip = instance.ip_address or 'N/A'
         zone = instance.placement or 'N/A'
         ami = instance.image_id or 'N/A'
+        virt_type = instance.virtualization_type or 'N/A'
         instance_type = instance.instance_type or 'N/A'
         keypair = instance.key_name or 'N/A'
         uptime = utils.get_elapsed_time(instance.launch_time) or 'N/A'
         if state == 'stopped':
             uptime = 'N/A'
-        print "id: %s" % id
+        print "id: %s" % instance_id
         print "dns_name: %s" % dns_name
         print "private_dns_name: %s" % private_dns_name
         if instance.reason:
@@ -567,6 +568,7 @@ class EasyEC2(EasyAWS):
         print "private_ip: %s" % private_ip
         print "zone: %s" % zone
         print "ami: %s" % ami
+        print "virtualization: %s" % virt_type
         print "type: %s" % instance_type
         print "groups: %s" % groups
         print "keypair: %s" % keypair
