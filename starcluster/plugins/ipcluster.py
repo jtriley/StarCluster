@@ -285,7 +285,7 @@ class IPCluster(DefaultClusterSetup):
 class IPClusterStop(DefaultClusterSetup):
     """Shutdown all the IPython processes of the cluster
 
-    This plugin is meant to be run manuall with:
+    This plugin is meant to be run manually with:
 
       starcluster runplugin plugin_conf_name cluster_name
 
@@ -318,7 +318,11 @@ class IPClusterStop(DefaultClusterSetup):
 class IPClusterRestartEngines(DefaultClusterSetup):
     """Plugin to kill and restart all engines of an IPython cluster
 
-    This plugin is meant to be run manuall with:
+    This plugin can be useful to hard-reset the all the engines, for instance
+    to be sure to free all the used memory even when dealing with memory leaks
+    in compiled extensions.
+
+    This plugin is meant to be run manually with:
 
       starcluster runplugin plugin_conf_name cluster_name
 
