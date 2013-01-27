@@ -33,13 +33,35 @@ To connect to cluster from your local machine use:
   >>> from IPython.parallel import Client
   >>> client = Client('%(connector_file)s', sshkey='%(key_location)s')
 
+Started %(n_engines)d active engines on %(n_nodes)d.
+
 See the IPCluster plugin doc for usage details:
 http://star.mit.edu/cluster/docs/latest/plugins/ipython.html
 """
 
 
+def _start_engines(node, user, n_engines=None, kill_existing=False):
+    """Launch IPython engines on the given node
+
+    Start one engine per CPU except on master where 1 CPU is reserved for house
+    keeping tasks when possible.
+
+    If kill_existing is True, any running of IPython engines on the same node
+    are killed first.
+
+    """
+    if n_engines is None:
+        n_engines = node.num_processors
+
+    node.ssh.switch_user(user)
+    if kill_existing:
+        node.ssh.execute("pkill -f ipengineapp", ignore_exit_status=True)
+    node.ssh.execute("ipcluster engines --n=%i --daemonize" % n_engines)
+    node.ssh.switch_user('root')
+
+
 class IPCluster(DefaultClusterSetup):
-    """Start an IPython (>= 0.11) cluster
+    """Start an IPython (>= 0.13) cluster
 
     Example config:
 
@@ -48,14 +70,22 @@ class IPCluster(DefaultClusterSetup):
     enable_notebook = True
     notebook_passwd = secret
     notebook_directory = /home/user/notebooks
+    use_msgpack = True
 
     """
     def __init__(self, enable_notebook=False, notebook_passwd=None,
-                 notebook_directory=None):
+                 notebook_directory=None, use_msgpack=False):
         super(IPCluster, self).__init__()
-        self.enable_notebook = enable_notebook
+        if isinstance(enable_notebook, basestring):
+            self.enable_notebook = enable_notebook.lower().strip() == 'true'
+        else:
+            self.enable_notebook = enable_notebook
         self.notebook_passwd = notebook_passwd or utils.generate_passwd(16)
         self.notebook_directory = notebook_directory
+        if isinstance(use_msgpack, basestring):
+            self.use_msgpack = use_msgpack.lower().strip() == 'true'
+        else:
+            self.use_msgpack = use_msgpack
 
     def _check_ipython_installed(self, node):
         has_ipy = node.ssh.has_required(['ipython', 'ipcluster'])
@@ -92,15 +122,6 @@ class IPCluster(DefaultClusterSetup):
         f = master.ssh.remote_file('%s/ipython_config.py' % profile_dir)
         f.write('\n'.join([
             "c = get_config()",
-            "try:",
-            "    import msgpack",
-            "except ImportError:",
-            # use pickle if msgpack is unavailable
-            "    c.Session.packer='pickle'",
-            "else:",
-            # use msgpack if we can, because it's fast
-            "    c.Session.packer='msgpack.packb'",
-            "    c.Session.unpacker='msgpack.unpackb'",
             "c.EngineFactory.timeout = 10",
             # Engines should wait a while for url files to arrive,
             # in case Controller takes a bit to start
@@ -108,6 +129,12 @@ class IPCluster(DefaultClusterSetup):
             # "c.Application.log_level = 'DEBUG'",
             "",
         ]))
+        if self.use_msgpack:
+            f.write('\n'.join([
+                "c.Session.packer='msgpack.packb'",
+                "c.Session.unpacker='msgpack.unpackb'",
+                "",
+            ]))
         f.close()
 
     def _start_cluster(self, master, profile_dir):
@@ -154,7 +181,7 @@ class IPCluster(DefaultClusterSetup):
             if port is not None:
                 self._authorize_port(master, port, channel)
 
-        return local_json
+        return local_json, n_engines
 
     def _start_notebook(self, master, user, profile_dir):
         log.info("Setting up IPython web notebook for user: %s" % user)
@@ -222,46 +249,90 @@ class IPCluster(DefaultClusterSetup):
 
         # Start the cluster and some engines on the master (leave 1
         # processor free to handle cluster house keeping)
-        cfile = self._start_cluster(master, profile_dir)
+        cfile, n_engines_master = self._start_cluster(master, profile_dir)
 
         # Start engines on each of the non-master nodes
         non_master_nodes = [node for node in nodes if not node.is_master()]
         for node in non_master_nodes:
-            self.pool.simple_job(self._start_engines, (node, user),
-                                 jobid=node.alias)
+            self.pool.simple_job(
+                _start_engines, (node, user, node.num_processors),
+                jobid=node.alias)
+        n_engines_non_master = sum(node.num_processors
+                                   for node in non_master_nodes)
+        log.info("Adding %d engines on %d nodes", n_engines_non_master,
+                 len(non_master_nodes))
         if len(non_master_nodes) > 0:
             self.pool.wait(len(non_master_nodes))
 
         if self.enable_notebook:
             self._start_notebook(master, user, profile_dir)
+        n_engines_total = n_engines_master + n_engines_non_master
         log.info(STARTED_MSG % dict(cluster=master.parent_cluster,
-                                       user=user, connector_file=cfile,
-                                       key_location=master.key_location))
+                                    user=user, connector_file=cfile,
+                                    key_location=master.key_location,
+                                    n_engines=n_engines_total,
+                                    n_nodes=len(nodes)))
         master.ssh.switch_user('root')
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
-       if not self._check_ipython_installed(master):
+       if not self._check_ipython_installed(node):
            return
-       self._start_engines(node, user)
-
-    def _start_engines(self, node, user):
-        n = node.num_processors
-        log.info("Adding %i engines on %s to ipcluster" % (n, node.alias))
-        node.ssh.switch_user(user)
-        node.ssh.execute("ipcluster engines --n=%i --daemonize" % n)
-        node.ssh.switch_user('root')
+       n_engines = node.num_processors
+       log.info("Adding %d engines on %s", n_engines, node.alias)
+       _start_engines(node, user)
 
 
 class IPClusterStop(DefaultClusterSetup):
+    """Shutdown all the IPython processes of the cluster
+
+    This plugin is meant to be run manuall with:
+
+      starcluster runplugin plugin_conf_name cluster_name
+
+    """
 
     def run(self, nodes, master, user, user_shell, volumes):
         log.info("Shutting down IPython cluster")
         master.ssh.switch_user(user)
-        master.ssh.execute("ipcluster stop")
+        master.ssh.execute("ipcluster stop", ignore_exit_status=True)
         time.sleep(2)
-        master.ssh.execute("pkill -f ipcontrollerapp.py",
+        log.info("Stopping IPython controller on %s", master.alias)
+        master.ssh.execute("pkill -f ipcontrollerapp",
                            ignore_exit_status=True)
-        for node in nodes:
-            node.ssh.execute("pkill -f ipengineapp.py",
-                               ignore_exit_status=True)
+        master.ssh.execute("pkill -f 'ipython notebook'",
+                           ignore_exit_status=True)
         master.ssh.switch_user('root')
+
+        log.info("Stopping IPython engines on %d nodes", len(nodes))
+        def stop_engines(node, user):
+            node.ssh.switch_user(user)
+            node.ssh.execute("pkill -f ipengineapp",
+                             ignore_exit_status=True)
+            node.ssh.switch_user('root')
+
+        for node in nodes:
+            self.pool.simple_job(stop_engines, (node, user))
+        self.pool.wait(len(nodes))
+
+
+class IPClusterRestartEngines(DefaultClusterSetup):
+    """Plugin to kill and restart all engines of an IPython cluster
+
+    This plugin is meant to be run manuall with:
+
+      starcluster runplugin plugin_conf_name cluster_name
+
+    """
+
+    def run(self, nodes, master, user, user_shell, volumes):
+        n_total = 0
+        for node in nodes:
+            n_engines = node.num_processors
+            if node.is_master() and n_engines > 2:
+                n_engines -= 1
+            self.pool.simple_job(
+                _start_engines, (node, user, n_engines, True),
+                jobid=node.alias)
+            n_total += n_engines
+        log.info("Restarting %d engines on %d nodes", n_total, len(nodes))
+        self.pool.wait(len(nodes))
