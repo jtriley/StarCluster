@@ -30,6 +30,7 @@ also want to add the following settings:
     enable_notebook = True
     # set a password for the notebook for increased security
     notebook_passwd = a-secret-password
+    notebook_directory = notebooks
 
 After defining the plugin in your config, add the ipcluster plugin to the list
 of plugins in one of your cluster templates:

@@ -139,7 +139,7 @@ class IPCluster(DefaultClusterSetup):
 
     def _start_cluster(self, master, profile_dir):
         n_engines = max(1, master.num_processors - 1)
-        log.info("Starting IPython cluster with %i engines on master"
+        log.info("Starting the IPython controller and %i engines on master"
                  % n_engines)
         # cleanup existing connection files, to prevent their use
         master.ssh.execute("rm -f %s/security/*.json" % profile_dir)
@@ -164,7 +164,9 @@ class IPCluster(DefaultClusterSetup):
                     + json_filename)
         finally:
             s.stop()
-        # retrieve JSON connection info
+
+        # Retrieve JSON connection info to make it possible to connect a local
+        # client to the cluster controller
         if not os.path.isdir(IPCLUSTER_CACHE):
             log.info("Creating IPCluster cache directory: %s" %
                      IPCLUSTER_CACHE)
@@ -172,14 +174,24 @@ class IPCluster(DefaultClusterSetup):
         local_json = os.path.join(IPCLUSTER_CACHE,
                                   '%s-%s.json' % (master.parent_cluster,
                                                   master.region.name))
-        log.info("Saving JSON connector file to '%s'" %
-                 os.path.abspath(local_json))
         master.ssh.get(json_filename, local_json)
+
+        # Configure security group for remote access
         connection_params = json.load(open(local_json, 'rb'))
+
+        # For IPython version 0.14+ the list of channel ports is explicitly
+        # provided in the connector file
+        channel_authorized = False
         for channel in CHANNEL_NAMES:
             port = connection_params.get(channel)
             if port is not None:
                 self._authorize_port(master, port, channel)
+                channel_authorized = True
+
+        # For versions prior to 0.14, the channel port numbers are not given in
+        # the connector file: let's open everything in high port numbers
+        if not channel_authorized:
+            self._authorize_port(master, (1000, 65535), "IPython controller")
 
         return local_json, n_engines
 
@@ -231,12 +243,16 @@ class IPCluster(DefaultClusterSetup):
     def _authorize_port(self, node, port, service_name, protocol='tcp'):
         group = node.cluster_groups[0]
         world_cidr = '0.0.0.0/0'
-        port_open = node.ec2.has_permission(group, protocol, port,
-                                            port, world_cidr)
+        if isinstance(port, tuple):
+            port_min, port_max = port
+        else:
+            port_min, port_max = port, port
+        port_open = node.ec2.has_permission(group, protocol, port_min,
+                                            port_max, world_cidr)
         if not port_open:
-            log.info("Authorizing tcp port %s on %s for: %s" %
-                     (port, world_cidr, service_name))
-            group.authorize('tcp', port, port, world_cidr)
+            log.info("Authorizing tcp ports [%s-%s] on %s for: %s" %
+                     (port_min, port_max, world_cidr, service_name))
+            group.authorize('tcp', port_min, port_max, world_cidr)
 
     @print_timing("IPCluster")
     def run(self, nodes, master, user, user_shell, volumes):
@@ -259,9 +275,10 @@ class IPCluster(DefaultClusterSetup):
                 jobid=node.alias)
         n_engines_non_master = sum(node.num_processors
                                    for node in non_master_nodes)
-        log.info("Adding %d engines on %d nodes", n_engines_non_master,
-                 len(non_master_nodes))
         if len(non_master_nodes) > 0:
+            log.info("Adding %d engines on %d nodes",
+                     n_engines_non_master, len(non_master_nodes))
+
             self.pool.wait(len(non_master_nodes))
 
         if self.enable_notebook:
