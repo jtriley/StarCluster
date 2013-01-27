@@ -30,8 +30,8 @@ IPCluster has been started on %(cluster)s for user '%(user)s'.
 
 To connect to cluster from your local machine use:
 
-    >>> from IPython.parallel import Client
-    >>> Client('%(connector_file)s', sshkey='%(key_location)s')
+  >>> from IPython.parallel import Client
+  >>> client = Client('%(connector_file)s', sshkey='%(key_location)s')
 
 See the IPCluster plugin doc for usage details:
 http://star.mit.edu/cluster/docs/latest/plugins/ipython.html
@@ -47,12 +47,15 @@ class IPCluster(DefaultClusterSetup):
     setup_class = starcluster.plugins.ipcluster.IPCluster
     enable_notebook = True
     notebook_passwd = secret
+    notebook_directory = /home/user/notebooks
 
     """
-    def __init__(self, enable_notebook=False, notebook_passwd=None):
+    def __init__(self, enable_notebook=False, notebook_passwd=None,
+                 notebook_directory=None):
         super(IPCluster, self).__init__()
         self.enable_notebook = enable_notebook
         self.notebook_passwd = notebook_passwd or utils.generate_passwd(16)
+        self.notebook_directory = notebook_directory
 
     def _check_ipython_installed(self, node):
         has_ipy = node.ssh.has_required(['ipython', 'ipcluster'])
@@ -182,7 +185,14 @@ class IPCluster(DefaultClusterSetup):
             "c.NotebookApp.port = %d" % notebook_port,
         ]))
         f.close()
-        master.ssh.execute_async("ipython notebook --no-browser")
+        if self.notebook_directory is not None:
+            if not master.ssh.path_exists(self.notebook_directory):
+                master.ssh.makedirs(self.notebook_directory)
+            master.ssh.execute_async(
+                "ipython notebook --no-browser --notebook-dir='%s'"
+                % self.notebook_directory)
+        else:
+            master.ssh.execute_async("ipython notebook --no-browser")
         self._authorize_port(master, notebook_port, 'notebook')
         log.info("IPython notebook URL: https://%s:%s" %
                  (master.dns_name, notebook_port))
