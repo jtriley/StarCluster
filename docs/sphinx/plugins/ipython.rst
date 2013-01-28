@@ -125,6 +125,56 @@ automatically be started and connected to the controller process running on
 instance will automatically be able to leverage the new computing resources to
 speed-up ongoing computation.
 
+
+***************************
+Configuring a custom packer
+***************************
+
+The default message packer for IPython parellel is based on the JSON format
+which is quite slow but will work out of the box. It is possible to instead
+configure the faster ``'pickle'`` packer::
+
+    [plugin ipcluster]
+    setup_class = starcluster.plugins.ipcluster.IPCluster
+    enable_notebook = True
+    notebook_directory = notebooks
+    # set a password for the notebook for increased security
+    notebook_passwd = a-secret-password
+    packer = pickle
+
+When using IPython 0.13 this will require to pass an additional
+``packer='pickle'``. For instance if running the client directly from the
+master node::
+
+    $ starcluster sshmaster mycluster -u myuser
+    $ ipython
+    [~]> from IPython.parallel import Client
+    [~]> rc = Client(packer='pickle')
+
+If the ``msgpack-python`` package is installed on all the cluster nodes and on
+the client, is is possible to get even faster serialization of the messages
+with::
+
+    [plugin ipcluster]
+    setup_class = starcluster.plugins.ipcluster.IPCluster
+    enable_notebook = True
+    notebook_directory = notebooks
+    # set a password for the notebook for increased security
+    notebook_passwd = a-secret-password
+    packer = msgpack
+
+And then from the client::
+
+    $ starcluster sshmaster mycluster -u myuser
+    $ ipython
+    [~]> from IPython.parallel import Client
+    [~]> rc = Client(packer='msgpack.packb', unpacker='msgpack.unpackb')
+
+**Note**: from IPython 0.14 and on the client will automatically fetch the
+packer configuration from the controller configuration without passing an
+additional constuctor argument to the ``Client`` class.
+
+
 **********************************
 Restarting All the Engines at Once
 **********************************

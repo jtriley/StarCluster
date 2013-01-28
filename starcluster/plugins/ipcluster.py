@@ -69,11 +69,12 @@ class IPCluster(DefaultClusterSetup):
     enable_notebook = True
     notebook_passwd = secret
     notebook_directory = /home/user/notebooks
-    use_msgpack = True
+    packer = pickle
+    log_level = info
 
     """
     def __init__(self, enable_notebook=False, notebook_passwd=None,
-                 notebook_directory=None, use_msgpack=False):
+                 notebook_directory=None, packer=None, log_level='INFO'):
         super(IPCluster, self).__init__()
         if isinstance(enable_notebook, basestring):
             self.enable_notebook = enable_notebook.lower().strip() == 'true'
@@ -81,10 +82,13 @@ class IPCluster(DefaultClusterSetup):
             self.enable_notebook = enable_notebook
         self.notebook_passwd = notebook_passwd or utils.generate_passwd(16)
         self.notebook_directory = notebook_directory
-        if isinstance(use_msgpack, basestring):
-            self.use_msgpack = use_msgpack.lower().strip() == 'true'
+        self.log_level = log_level
+
+        if packer not in (None, 'json', 'pickle', 'msgpack'):
+            log.error("Unsupported packer: %s", packer)
+            self.packer = None
         else:
-            self.use_msgpack = use_msgpack
+            self.packer = packer
 
     def _check_ipython_installed(self, node):
         has_ipy = node.ssh.has_required(['ipython', 'ipcluster'])
@@ -103,7 +107,7 @@ class IPCluster(DefaultClusterSetup):
             "c = get_config()",
             "c.HubFactory.ip='%s'" % master.private_ip_address,
             "c.IPControllerApp.ssh_server='%s'" % ssh_server,
-            # "c.Application.log_level = 'DEBUG'",
+            "c.Application.log_level = '%s'" % self.log_level,
             "",
         ]))
         f.close()
@@ -114,7 +118,7 @@ class IPCluster(DefaultClusterSetup):
             # Engines should wait a while for url files to arrive,
             # in case Controller takes a bit to start:
             "c.IPEngineApp.wait_for_url_file = 30",
-            # "c.Application.log_level = 'DEBUG'",
+             "c.Application.log_level = '%s'" % self.log_level,
             "",
         ]))
         f.close()
@@ -125,15 +129,21 @@ class IPCluster(DefaultClusterSetup):
             # Engines should wait a while for url files to arrive,
             # in case Controller takes a bit to start
             "c.IPEngineApp.wait_for_url_file = 30",
-            # "c.Application.log_level = 'DEBUG'",
+             "c.Application.log_level = '%s'" % self.log_level,
             "",
         ]))
-        if self.use_msgpack:
+        if self.packer == 'msgpack':
             f.write('\n'.join([
                 "c.Session.packer='msgpack.packb'",
                 "c.Session.unpacker='msgpack.unpackb'",
                 "",
             ]))
+        elif self.packer == 'pickle':
+            f.write('\n'.join([
+                "c.Session.packer='pickle'",
+                "",
+            ]))
+        # else: use the slow default JSON packer
         f.close()
 
     def _start_cluster(self, master, profile_dir):
