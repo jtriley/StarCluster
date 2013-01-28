@@ -118,6 +118,40 @@ case the above config should be updated to::
     rc = Client('/home/user/.starcluster/ipcluster/mycluster-us-east-1.json'
                 sshkey='/home/user/.ssh/mykey.rsa')
 
+Note: it is possible to dynamically add new nodes with the ``startcluster
+addnode`` command to a pre-existing cluster. New IPython engines will
+automatically be started and connected to the controller process running on
+``master``. This means that existing ``Client`` and ``LoadBalancedView``
+instance will automatically be able to leverage the new computing resources to
+speed-up ongoing computation.
+
+**********************************
+Restarting All the Engines at Once
+**********************************
+
+Sometimes some IPython engine processes become unstable (non-interruptable,
+long running computation or memory leaks in compiled extension code for
+instance).
+
+In such a case it is possible to kill all running engine processes and start
+new ones automatically connected to the existing controller by adding a some
+configuration for the the ``IPClusterRestartEngines`` plugin in your
+``.starcluster/config`` file::
+
+    [plugin ipclusterrestart]
+    SETUP_CLASS = starcluster.plugins.ipcluster.IPClusterRestartEngines
+
+You can then trigger the restart manually using::
+
+    $ starcluster runplugin ipclusterrestart iptest
+    StarCluster - (http://star.mit.edu/cluster) (v. 0.9999)
+    Software Tools for Academics and Researchers (STAR)
+    Please submit bug reports to starcluster@mit.edu
+
+    >>> Running plugin ipclusterrestart
+    >>> Restarting 23 engines on 3 nodes
+    3/3 |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| 100%
+
 .. _ipython-notebook:
 
 *******************************
