@@ -6,8 +6,8 @@ IPython Cluster Plugin
 .. _IPython: http://ipython.org
 .. note::
 
-    These docs are for `IPython`_ 0.12+ which is installed in the latest
-    StarCluster 11.10 Ubuntu-based AMIs. See `starcluster listpublic` for
+    These docs are for `IPython`_ 0.13+ which is installed in the latest
+    StarCluster 12.10 Ubuntu-based AMIs. See `starcluster listpublic` for
     a list of available AMIs.
 
 To configure your cluster as an `interactive IPython cluster`_ you must first
@@ -28,9 +28,9 @@ also want to add the following settings:
     [plugin ipcluster]
     setup_class = starcluster.plugins.ipcluster.IPCluster
     enable_notebook = True
+    notebook_directory = notebooks
     # set a password for the notebook for increased security
     notebook_passwd = a-secret-password
-    notebook_directory = notebooks
 
 After defining the plugin in your config, add the ipcluster plugin to the list
 of plugins in one of your cluster templates:
@@ -51,7 +51,7 @@ cluster as the ``CLUSTER_USER`` and create a parallel client::
     $ starcluster sshmaster mycluster -u myuser
     $ ipython
     [~]> from IPython.parallel import Client
-    [~]> rc = Client(packer='pickle')
+    [~]> rc = Client()
 
 Once the client has been started, create a 'view' over the entire cluster and
 begin running parallel tasks. Below is an example of performing a parallel map
@@ -72,7 +72,7 @@ across all nodes in the cluster::
 .. _IPython parallel docs: http://ipython.org/ipython-doc/stable/parallel
 .. seealso::
 
-    See the `IPython parallel docs`_ (0.12+) to learn more about the IPython
+    See the `IPython parallel docs`_ (0.13+) to learn more about the IPython
     parallel API
 
 ***********************************************
@@ -80,7 +80,7 @@ Connecting from your Local IPython Installation
 ***********************************************
 .. note::
 
-    You must have IPython 0.12+ installed to use this feature
+    You must have IPython 0.13+ installed to use this feature
 
 If you'd rather control the cluster from your *local* IPython installation use
 the ``shell`` command and pass the ``--ipcluster`` option::
@@ -108,8 +108,7 @@ creating the parallel client in your code::
 
     from IPython.parallel import Client
     rc = Client('~/.starcluster/ipcluster/<cluster>-<region>.json'
-                sshkey='/path/to/cluster/keypair.rsa'
-                packer='pickle')
+                sshkey='/path/to/cluster/keypair.rsa')
 
 For example, let's say we started a cluster called 'mycluster' in region
 'us-east-1' with keypair 'mykey' stored in /home/user/.ssh/mykey.rsa. In this
@@ -117,8 +116,7 @@ case the above config should be updated to::
 
     from IPython.parallel import Client
     rc = Client('/home/user/.starcluster/ipcluster/mycluster-us-east-1.json'
-                sshkey='/home/user/.ssh/mykey.rsa'
-                packer='pickle')
+                sshkey='/home/user/.ssh/mykey.rsa')
 
 .. _ipython-notebook:
 
@@ -138,6 +136,7 @@ notebook:
     [plugin ipcluster]
     setup_class = starcluster.plugins.ipcluster.IPCluster
     enable_notebook = True
+    notebook_directory = notebooks
     # set a password for the notebook for increased security
     notebook_passwd = a-secret-password
 
@@ -149,10 +148,16 @@ cluster. In addition to enforcing a notebook password, StarCluster also enables
 SSL in the notebook server in order to secure the transmission of your password
 when logging in.
 
+The ``notebook_directory`` setting makes it possible to use a custom folder on
+the master node. The path can be relative to the user home folder or be
+absolute. If left blank, the notebooks are stored directly in the home folder.
+If ``notebook_directory`` does not exist it automatically created at cluster
+start-up time.
+
 Once you have these settings in the plugin's config simply start a cluster and
 let the plugin configure your IPython cluster::
 
-    $ starcluster start iptest
+    $ starcluster start -s 3 iptest
     StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
@@ -160,17 +165,30 @@ let the plugin configure your IPython cluster::
     ... (abbreviated output)
     >>> Running plugin ipcluster
     >>> Writing IPython cluster config files
-    >>> Starting IPython cluster with 9 engines
+    >>> Starting the IPython controller and 7 engines on master
     >>> Waiting for JSON connector file...
-    >>> Saving JSON connector file to 'iptest-us-east-1.json'
-    iptest-us-east-1.json 100% ||||||||||||||||||||||||| Time: 00:00:00   0.00 B/s
+    /home/user/.starcluster/ipcluster/SecurityGroup:@sc-iptest-us-east-1.json 100% || Time: 00:00:00  37.55 M/s
+    >>> Authorizing tcp ports [1000-65535] on 0.0.0.0/0 for: IPython controller
+    >>> Adding 16 engines on 2 nodes
+    2/2 |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| 100%
     >>> Setting up IPython web notebook for user: myuser
     >>> Creating SSL certificate for user myuser
-    >>> Authorizing tcp port 8888 on 0.0.0.0/0
-    >>> IPython notebook URL: https://ec2-99-99-99-99.compute-1.amazonaws.com:8888
-    >>> The notebook password is: XXXXXXXXX
-    >>> IPCluster has been started on iptest for user 'myuser'.
-    >>> IPCluster took 0.247 mins
+    >>> Authorizing tcp ports [8888-8888] on 0.0.0.0/0 for: notebook
+    >>> IPython notebook URL: https://ec2-184-72-131-236.compute-1.amazonaws.com:8888
+    >>> The notebook password is: XXXXXXXXXXX
+    *** WARNING - Please check your local firewall settings if you're having
+    *** WARNING - issues connecting to the IPython notebook
+    >>> IPCluster has been started on SecurityGroup:@sc-iptest for user 'myuser'
+    with 23 engines on 3 nodes.
+
+    To connect to cluster from your local machine use:
+
+    from IPython.parallel import Client
+    client = Client('/home/user/.starcluster/ipcluster/SecurityGroup:@sc-iptest-us-east-1.json', sshkey='/home/user/.ssh/mykey.rsa')
+
+    See the IPCluster plugin doc for usage details:
+    http://star.mit.edu/cluster/docs/latest/plugins/ipython.html
+    >>> IPCluster took 0.738 mins
 
 Pay special attention to the following two lines as you'll need them to login
 to the cluster's IPython notebook server from your web browser::

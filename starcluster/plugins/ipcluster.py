@@ -26,14 +26,13 @@ CHANNEL_NAMES = (
 )
 
 STARTED_MSG = """\
-IPCluster has been started on %(cluster)s for user '%(user)s'.
+IPCluster has been started on %(cluster)s for user '%(user)s'
+with %(n_engines)d engines on %(n_nodes)d nodes.
 
 To connect to cluster from your local machine use:
 
-  >>> from IPython.parallel import Client
-  >>> client = Client('%(connector_file)s', sshkey='%(key_location)s')
-
-Started %(n_engines)d active engines on %(n_nodes)d.
+from IPython.parallel import Client
+client = Client('%(connector_file)s', sshkey='%(key_location)s')
 
 See the IPCluster plugin doc for usage details:
 http://star.mit.edu/cluster/docs/latest/plugins/ipython.html
