@@ -565,7 +565,9 @@ class Cluster(object):
             try:
                 master = self.master_node
             except exception.MasterDoesNotExist:
-                if self.spot_requests:
+                unfulfilled_spots = [sr for sr in self.spot_requests if not
+                                     sr.instance_id]
+                if unfulfilled_spots:
                     self.wait_for_active_spots()
                     self.wait_for_active_instances()
                     master = self.master_node
@@ -791,8 +793,16 @@ class Cluster(object):
             spot_bid = None
         cluster_sg = self.cluster_group.name
         instance_type = instance_type or self.node_instance_type
-        if not placement_group and instance_type in static.CLUSTER_TYPES:
-            placement_group = self.placement_group.name
+        if placement_group or instance_type in static.PLACEMENT_GROUP_TYPES:
+            region = self.ec2.region.name
+            if not region in static.CLUSTER_REGIONS:
+                cluster_regions = ', '.join(static.CLUSTER_REGIONS)
+                log.warn("Placement groups are only supported in the "
+                         "following regions:\n%s" % cluster_regions)
+                log.warn("Instances will not be launched in a placement group")
+                placement_group = None
+            elif not placement_group:
+                placement_group = self.placement_group.name
         image_id = image_id or self.node_image_id
         count = len(aliases) if not spot_bid else 1
         user_data = self._get_cluster_userdata(aliases)

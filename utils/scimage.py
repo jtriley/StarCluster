@@ -544,7 +544,7 @@ mysql-server mysql-server/root_password_again seen true
     pkgs += "keychain screen tmux zsh ksh csh tcsh python-mpi4py "
     pkgs += "python-virtualenv python-imaging python-boto python-matplotlib "
     pkgs += "unzip rar unace build-essential gfortran ec2-api-tools "
-    pkgs += "ec2-ami-tools mysql-server mysql-client apache2 "
+    pkgs += "ec2-ami-tools mysql-server mysql-client apache2 liblapack-dev "
     pkgs += "libapache2-mod-wsgi sysv-rc-conf pssh emacs cython irssi htop "
     pkgs += "python-distutils-extra vim-scripts python-ctypes python-pudb "
     pkgs += "mosh python-scipy python-numpy default-jdk mpich2 xvfb"

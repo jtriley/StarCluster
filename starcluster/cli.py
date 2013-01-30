@@ -256,7 +256,8 @@ class StarClusterCLI(object):
         try:
             sc.execute(args)
         except (EC2ResponseError, S3ResponseError, BotoServerError), e:
-            log.error("%s: %s" % (e.error_code, e.error_message))
+            log.error("%s: %s" % (e.error_code, e.error_message),
+                      exc_info=True)
             sys.exit(1)
         except socket.error, e:
             log.exception("Connection error:")
