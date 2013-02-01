@@ -961,6 +961,9 @@ class Node(object):
         Reboot this instance.
         """
         self.instance.reboot()
+        if self._ssh:
+            self._ssh.close()
+            self._ssh = None
 
     def is_ssh_up(self):
         try:
