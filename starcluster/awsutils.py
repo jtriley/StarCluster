@@ -174,6 +174,7 @@ class EasyEC2(EasyAWS):
             sg.authorize('icmp', -1, -1, src_group=src_group)
             sg.authorize('tcp', 1, 65535, src_group=src_group)
             sg.authorize('udp', 1, 65535, src_group=src_group)
+
         return sg
 
     def get_all_security_groups(self, groupnames=[]):
@@ -356,13 +357,36 @@ class EasyEC2(EasyAWS):
                                security_groups=None, placement=None,
                                placement_group=None, user_data=None,
                                block_device_map=None):
-        return self.conn.request_spot_instances(
+        requests = self.conn.request_spot_instances(
             price, image_id, instance_type=instance_type, count=count,
             launch_group=launch_group, key_name=key_name,
             security_groups=security_groups,
             availability_zone_group=availability_zone_group,
             placement=placement, placement_group=placement_group,
             user_data=user_data, block_device_map=block_device_map)
+        requests_ids = []
+        for request in requests:
+            requests_ids.append(request.id)
+
+        #Make sure the spot instance request has been ingested by EC2
+        #before proceeding. Wait at most 10 sec.
+        counter = 0
+        while True:
+            all_requests = self.conn.get_all_spot_instance_requests()
+            all_requests.reverse()  # start from the end as our request will
+                                    # usually be the last
+            for request in all_requests:
+                if request.id in requests_ids:
+                    del requests_ids[requests_ids.index(request.id)]
+                    if len(requests_ids) == 0:
+                        #done
+                        return requests
+
+            if counter % 10 == 0:
+                log.info("Still waiting for instances " + str(requests_ids))
+            log.debug(str(counter) + ": Instance not propagated, sleeping")
+            time.sleep(1)
+            counter += 1
 
     def run_instances(self, image_id, instance_type='m1.small', min_count=1,
                       max_count=1, key_name=None, security_groups=None,

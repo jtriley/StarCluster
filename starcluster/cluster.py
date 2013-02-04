@@ -4,6 +4,7 @@ import time
 import string
 import pprint
 import warnings
+import datetime
 
 from starcluster import utils
 from starcluster import static
@@ -19,6 +20,7 @@ from starcluster import validators
 from starcluster import progressbar
 from starcluster import clustersetup
 from starcluster.node import Node
+from starcluster.node import NodeManager
 from starcluster.plugins import sge
 from starcluster.utils import print_timing
 from starcluster.templates import user_msgs
@@ -147,16 +149,20 @@ class ClusterManager(managers.Manager):
 
     def add_node(self, cluster_name, alias=None, no_create=False,
                  image_id=None, instance_type=None, zone=None,
-                 placement_group=None, spot_bid=None):
+                 placement_group=None, spot_bid=None, reboot_interval=10,
+                 n_reboot_restart=False):
         cl = self.get_cluster(cluster_name)
         return cl.add_node(alias=alias, image_id=image_id,
                            instance_type=instance_type, zone=zone,
                            placement_group=placement_group, spot_bid=spot_bid,
-                           no_create=no_create)
+                           no_create=no_create,
+                           reboot_interval=reboot_interval,
+                           n_reboot_restart=n_reboot_restart)
 
     def add_nodes(self, cluster_name, num_nodes, aliases=None, no_create=False,
                   image_id=None, instance_type=None, zone=None,
-                  placement_group=None, spot_bid=None):
+                  placement_group=None, spot_bid=None, reboot_interval=10,
+                  n_reboot_restart=False):
         """
         Add one or more nodes to cluster
         """
@@ -164,7 +170,9 @@ class ClusterManager(managers.Manager):
         return cl.add_nodes(num_nodes, aliases=aliases, image_id=image_id,
                             instance_type=instance_type, zone=zone,
                             placement_group=placement_group, spot_bid=spot_bid,
-                            no_create=no_create)
+                            no_create=no_create,
+                            reboot_interval=reboot_interval,
+                            n_reboot_restart=n_reboot_restart)
 
     def remove_node(self, cluster_name, alias, terminate=True):
         """
@@ -343,6 +351,7 @@ class ClusterManager(managers.Manager):
 
 
 class Cluster(object):
+
     def __init__(self,
                  ec2_conn=None,
                  spot_bid=None,
@@ -370,6 +379,7 @@ class Cluster(object):
                  cluster_group=None,
                  force_spot_master=False,
                  disable_cloudinit=False,
+                 plugins_order=[],
                  **kwargs):
 
         now = time.strftime("%Y%m%d%H%M")
@@ -402,6 +412,7 @@ class Cluster(object):
         self.disable_threads = disable_threads
         self.force_spot_master = force_spot_master
         self.disable_cloudinit = disable_cloudinit
+        self.plugins_order = plugins_order
 
         self._cluster_group = None
         self._placement_group = None
@@ -410,6 +421,7 @@ class Cluster(object):
         self._nodes = []
         self._pool = None
         self._progress_bar = None
+        self._config_fields = None
         self.__default_plugin = None
         self.__sge_plugin = None
 
@@ -535,6 +547,12 @@ class Cluster(object):
         cfg = self.__getstate__()
         return pprint.pformat(cfg)
 
+    def print_config(self):
+        config = {}
+        for key in self._config_fields:
+            config[key] = getattr(self, key)
+        pprint.pprint(config)
+
     def load_receipt(self, load_plugins=True, load_volumes=True):
         """
         Load the original settings used to launch this cluster into this
@@ -559,6 +577,7 @@ class Cluster(object):
                 user = tags.get(static.USER_TAG, '')
                 cluster_settings.update(
                     utils.decode_uncompress_load(user, use_json=True))
+            self._config_fields = cluster_settings.keys()
             self.update(cluster_settings)
             if not (load_plugins or load_volumes):
                 return True
@@ -574,7 +593,8 @@ class Cluster(object):
                 else:
                     raise
             if load_plugins:
-                self.plugins = self.load_plugins(master.get_plugins())
+                self.plugins = self.load_plugins(
+                    master.get_plugins(self.plugins_order))
             if load_volumes:
                 self.volumes = master.get_volumes()
         except exception.PluginError:
@@ -605,6 +625,26 @@ class Cluster(object):
     @property
     def _security_group(self):
         return static.SECURITY_GROUP_TEMPLATE % self.cluster_tag
+
+    def save_core_settings(self, sg):
+        core_settings = utils.dump_compress_encode(
+            dict(cluster_size=self.cluster_size,
+                 master_image_id=self.master_image_id,
+                 master_instance_type=self.master_instance_type,
+                 node_image_id=self.node_image_id,
+                 node_instance_type=self.node_instance_type,
+                 disable_queue=self.disable_queue,
+                 disable_cloudinit=self.disable_cloudinit,
+                 plugins_order=self.plugins_order),
+            use_json=True)
+        sg.add_tag(static.CORE_TAG, core_settings)
+
+    def save_user_settings(self, sg):
+        user_settings = utils.dump_compress_encode(
+            dict(cluster_user=self.cluster_user,
+                 cluster_shell=self.cluster_shell, keyname=self.keyname,
+                 spot_bid=self.spot_bid), use_json=True)
+        sg.add_tag(static.USER_TAG, user_settings)
 
     @property
     def cluster_group(self):
@@ -679,8 +719,30 @@ class Cluster(object):
         filters = {'group-name': self._security_group,
                    'instance-state-name': states}
         nodes = self.ec2.get_all_instances(filters=filters)
+
+        def filterFct(n):
+            return n.spot_instance_request_id is None or \
+                n.state in ["running", "pending"]
+
+        nodes = filter(filterFct, nodes)  # filter stopping/stopped spot
         # remove any cached nodes not in the current node list from EC2
         current_ids = [n.id for n in nodes]
+
+        #If a node was terminated due to error, even if it still shows up,
+        #ignore it
+        to_remove = set()
+        for id in NodeManager.nodes_id_ignore:
+            if id in current_ids:
+                log.info("Ignoring node id [" + id + "]")
+                del current_ids[current_ids.index(id)]
+            else:
+                log.info("Node id [" + id + "] is gone.")
+                to_remove.add(id)
+
+        for id in to_remove:
+            NodeManager.nodes_id_ignore.remove(id)
+        del to_remove
+
         remove_nodes = [n for n in self._nodes if n.id not in current_ids]
         for node in remove_nodes:
             self._nodes.remove(node)
@@ -801,16 +863,21 @@ class Cluster(object):
                          "following regions:\n%s" % cluster_regions)
                 log.warn("Instances will not be launched in a placement group")
                 placement_group = None
-            elif not placement_group:
+            elif placement_group is None:
+                #if placement_group is False -> leave false
                 placement_group = self.placement_group.name
+        availability_zone_group = None if placement_group is False \
+            else cluster_sg
+        #launch_group is related to placement group
+        launch_group = availability_zone_group
         image_id = image_id or self.node_image_id
         count = len(aliases) if not spot_bid else 1
         user_data = self._get_cluster_userdata(aliases)
         kwargs = dict(price=spot_bid, instance_type=instance_type,
                       min_count=count, max_count=count, count=count,
                       key_name=self.keyname, security_groups=[cluster_sg],
-                      availability_zone_group=cluster_sg,
-                      launch_group=cluster_sg,
+                      availability_zone_group=availability_zone_group,
+                      launch_group=launch_group,
                       placement=zone or getattr(self.zone, 'name', None),
                       user_data=user_data,
                       placement_group=placement_group)
@@ -840,7 +907,8 @@ class Cluster(object):
 
     def add_node(self, alias=None, no_create=False, image_id=None,
                  instance_type=None, zone=None, placement_group=None,
-                 spot_bid=None):
+                 spot_bid=None, reboot_interval=10, n_reboot_restart=False):
+
         """
         Add a single node to this cluster
         """
@@ -850,11 +918,14 @@ class Cluster(object):
         return self.add_nodes(1, aliases=aliases, image_id=image_id,
                               instance_type=instance_type, zone=zone,
                               placement_group=placement_group,
-                              spot_bid=spot_bid, no_create=no_create)
+                              spot_bid=spot_bid, no_create=no_create,
+                              reboot_interval=reboot_interval,
+                              n_reboot_restart=n_reboot_restart)
 
     def add_nodes(self, num_nodes, aliases=None, image_id=None,
                   instance_type=None, zone=None, placement_group=None,
-                  spot_bid=None, no_create=False):
+                  spot_bid=None, no_create=False, reboot_interval=10,
+                  n_reboot_restart=False):
         """
         Add new nodes to this cluster
 
@@ -882,7 +953,35 @@ class Cluster(object):
                               instance_type=instance_type, zone=zone,
                               placement_group=placement_group,
                               spot_bid=spot_bid)
-        self.wait_for_cluster(msg="Waiting for node(s) to come up...")
+        self.wait_for_cluster(msg="Waiting for node(s) to come up...",
+                              reboot_interval=reboot_interval,
+                              n_reboot_restart=n_reboot_restart)
+        if all([not no_create, spot_bid, reboot_interval, n_reboot_restart]):
+            #this will recreate the spot instances that might have died in
+            #wait_for_cluster
+            try_again_aliases = []
+            while 1:
+                for alias in aliases:
+                    #verify all nodes were correctly added
+                    try:
+                        self.get_node_by_alias(alias)
+                    except exception.InstanceDoesNotExist:
+                        try_again_aliases.append(alias)
+                if try_again_aliases:
+                    log.info("Some spot instances have been terminated and "
+                             "will be recreated.")
+                    self.create_nodes(try_again_aliases, image_id=image_id,
+                                      instance_type=instance_type, zone=zone,
+                                      placement_group=placement_group,
+                                      spot_bid=spot_bid)
+                    self.wait_for_cluster(
+                        msg="Waiting for node(s) to come up...",
+                        reboot_interval=reboot_interval,
+                        n_reboot_restart=n_reboot_restart)
+                else:
+                    #all nodes successfully created
+                    break
+
         log.debug("Adding node(s): %s" % aliases)
         for alias in aliases:
             node = self.get_node_by_alias(alias)
@@ -897,17 +996,19 @@ class Cluster(object):
     def remove_nodes(self, nodes, terminate=True):
         """
         Remove a list of nodes from this cluster
+        No step should prevent us to go further.
         """
         for node in nodes:
             if node.is_master():
                 raise exception.InvalidOperation("cannot remove master node")
-            self.run_plugins(method_name="on_remove_node",
-                             node=node, reverse=True)
+            try:
+                self.run_plugins(method_name="on_remove_node",
+                                 node=node, reverse=True)
+            except:
+                #will still allow node termination
+                pass
             if not terminate:
                 continue
-            if node.spot_id:
-                log.info("Canceling spot request %s" % node.spot_id)
-                node.get_spot_request().cancel()
             node.terminate()
 
     def _get_launch_map(self, reverse=False):
@@ -1247,25 +1348,36 @@ class Cluster(object):
         pbar = self.progress_bar.reset()
         pbar.maxval = len(nodes)
         pbar.update(0)
+        timeout = datetime.datetime.utcnow() + \
+            datetime.timedelta(minutes=20)
         while not pbar.finished:
             running_nodes = filter(lambda x: x.state == "running", nodes)
             pbar.maxval = len(nodes)
             pbar.update(len(running_nodes))
             if not pbar.finished:
-                time.sleep(self.refresh_interval)
+                if datetime.datetime.utcnow() > timeout:
+                    map(lambda x: x.terminate(),
+                        filter(lambda x: x not in running_nodes, nodes))
+                else:
+                    time.sleep(self.refresh_interval)
                 nodes = self.get_nodes_or_raise()
         pbar.reset()
 
-    def wait_for_ssh(self, nodes=None):
+    def wait_for_ssh(self, nodes=None, reboot_interval=10,
+                     n_reboot_restart=False):
         """
         Wait until all cluster nodes are in a 'running' state
         """
         log.info("Waiting for SSH to come up on all nodes...")
         nodes = nodes or self.get_nodes_or_raise()
-        self.pool.map(lambda n: n.wait(interval=self.refresh_interval), nodes)
+        params = {"interval": self.refresh_interval,
+                  "reboot_interval": reboot_interval,
+                  "n_reboot_restart": n_reboot_restart}
+        self.pool.map(lambda n: n.wait(**params), nodes)
 
     @print_timing("Waiting for cluster to come up")
-    def wait_for_cluster(self, msg="Waiting for cluster to come up..."):
+    def wait_for_cluster(self, msg="Waiting for cluster to come up...",
+                         reboot_interval=10, n_reboot_restart=False):
         """
         Wait for cluster to come up and display progress bar. Waits for all
         spot requests to become 'active', all instances to be in a 'running'
@@ -1279,7 +1391,8 @@ class Cluster(object):
             self.wait_for_active_spots()
             self.wait_for_active_instances()
             self.wait_for_running_instances()
-            self.wait_for_ssh()
+            self.wait_for_ssh(reboot_interval=reboot_interval,
+                              n_reboot_restart=n_reboot_restart)
         except Exception:
             self.progress_bar.finish()
             raise
@@ -1570,6 +1683,102 @@ class Cluster(object):
             raise exception.InstanceDoesNotExist(alias, label='node')
         return node.shell(user=user, forward_x11=forward_x11,
                           forward_agent=forward_agent, command=command)
+
+    def clean(self):
+        if not self.disable_queue:
+            #clean sge
+            sge_plugin = sge.SGEPlugin()
+            sge_plugin.clean_cluster(self.nodes, self.master_node,
+                                     self.cluster_user,
+                                     self.cluster_shell, self.volumes)
+
+        self.run_plugins(method_name="clean_cluster", reverse=True)
+
+    def recover(self, remove_on_error=False, retries=0):
+        """
+        Will try to recover dangling nodes.
+        remove_on_error The hour block minute after wich termination is
+            authorised. False means it will never be terminated. True is
+            equivalent to setting 0, meaning that it will only try to add
+            it back once before terminating.
+        """
+        self.wait_for_active_spots()
+        while 1:
+            failures = 0
+            to_recover = []
+            if not self.disable_queue:
+                sge_plugin = sge.SGEPlugin()
+                to_recover.append(sge_plugin.get_nodes_to_recover(self.nodes))
+            for plugin in self.plugins:
+                try:
+                    result = plugin.get_nodes_to_recover(self.nodes)
+                    to_recover.append(result)
+                except:
+                    #the plugin does not implement get_nodes_to_recover
+                    pass
+            if len(to_recover) > 1:
+                log.error("Cannot support more than one list of nodes "
+                          "to recover")
+            elif len(to_recover) == 1:
+                errors = []
+                for node in to_recover[0]:
+                    #call it one at a time so that x doesn't prevent
+                    #y to be added
+                    try:
+                        log.info("Adding back node " + node.alias)
+                        self.add_nodes(num_nodes=1, aliases=[node.alias],
+                                       no_create=True)
+                    except:
+                        failures += 1
+                        import traceback
+                        log.error(traceback.format_exc())
+                        log.error("Failed to add back node " + node.alias)
+                        errors.append(node)
+                        log.info("Rebooting node " + node.alias)
+                        node.reboot()
+
+                if remove_on_error or type(remove_on_error) == int:
+                    for node in errors:
+                        try:
+                            if remove_on_error is True:
+                                log.info("Terminating misbehaving node "
+                                         + node.alias)
+                                self.remove_nodes([node])
+                                failures -= 1
+                                NodeManager.nodes_id_ignore.add(node.id)
+                            else:
+                                dt = utils\
+                                    .iso_to_datetime_tuple(node.launch_time)
+                                now = datetime.datetime.utcnow()
+                                t_delta = now - dt
+                                if (t_delta.seconds / 60) % 60 \
+                                        > remove_on_error:
+                                    self.remove_nodes([node])
+                                    failures -= 1
+                                    NodeManager.nodes_id_ignore.add(node.id)
+                        except:
+                            import traceback
+                            log.error(traceback.format_exc())
+                            log.error("type:" + str(type(remove_on_error)))
+                            log.error("val:" + str(remove_on_error))
+                            log.error("Failed to remove misbehaving node " +
+                                      node.alias)
+                            log.error("Forcing termination via EC2")
+                            node.terminate()
+                            failures -= 1
+                            NodeManager.nodes_id_ignore.add(node.id)
+
+            if failures:
+                log.error("Failures occured, sleeping for a minute "
+                          "then trying again")
+                log.info("Sleeping, it's "
+                         + str(datetime.datetime.utcnow()))
+                time.sleep(60)
+                log.info("Waiking up, it's "
+                         + str(datetime.datetime.utcnow()))
+                continue
+            log.info("Out of recover procedure")
+            break
 
 
 class ClusterValidator(validators.Validator):

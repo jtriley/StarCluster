@@ -4,7 +4,9 @@ import stat
 import base64
 import posixpath
 import subprocess
+import datetime
 
+import config
 from starcluster import utils
 from starcluster import static
 from starcluster import sshutils
@@ -16,6 +18,9 @@ from starcluster.logger import log
 
 
 class NodeManager(managers.Manager):
+    
+    nodes_id_ignore = set()
+
     """
     Manager class for Node objects
     """
@@ -136,10 +141,25 @@ class Node(object):
             self._alias = alias
         return self._alias
 
-    def get_plugins(self):
+    def get_plugins_org_metadata(self):
         plugstxt = self.user_data.get(static.UD_PLUGINS_FNAME)
         payload = plugstxt.split('\n', 2)[2]
-        plugins_metadata = utils.decode_uncompress_load(payload)
+        return utils.decode_uncompress_load(payload)
+        
+    def get_plugins_full_metadata(self, order):
+        plugins_metadata = self.get_plugins_org_metadata()
+        sg = self.parent_cluster
+        if "@sc-plugins" in sg.tags:
+            stored_diff = utils.decode_uncompress_load(
+                sg.tags["@sc-plugins"])
+            plugins_metadata_json = config.plugins_config_stored_to_json(plugins_metadata)
+            config.apply_json_diff(plugins_metadata_json, stored_diff)
+            plugins_metadata = config.plugins_config_json_to_stored(plugins_metadata_json, order)
+        return plugins_metadata
+        
+
+    def get_plugins(self, order):
+        plugins_metadata = self.get_plugins_full_metadata(order)
         plugs = []
         for klass, args, kwargs in plugins_metadata:
             mod_path, klass_name = klass.rsplit('.', 1)
@@ -449,7 +469,7 @@ class Node(object):
         home_folder = user.pw_dir
         ssh_folder = posixpath.join(home_folder, '.ssh')
         if not self.ssh.isdir(ssh_folder):
-            self.ssh.mkdir(ssh_folder)
+            self.ssh.makedirs(ssh_folder)
         self.ssh.chown(user.pw_uid, user.pw_gid, ssh_folder)
         private_key = posixpath.join(ssh_folder, 'id_rsa')
         public_key = private_key + '.pub'
@@ -772,11 +792,13 @@ class Node(object):
 
     def remove_from_etc_hosts(self, nodes):
         """
-        Remove all network names for node in nodes arg from this node's
+        Remove all network names and ips for node in nodes arg from this node's
         /etc/hosts file
         """
         aliases = map(lambda x: x.alias, nodes)
+        ips = map(lambda x: x.private_ip_address.replace(".", "\."), nodes)
         self.ssh.remove_lines_from_file('/etc/hosts', '|'.join(aliases))
+        self.ssh.remove_lines_from_file('/etc/hosts', '|'.join(ips))
 
     def set_hostname(self, hostname=None):
         """
@@ -917,6 +939,9 @@ class Node(object):
         will also destroy the node's EBS root device. Puts this node
         into a 'terminated' state.
         """
+        if self.spot_id:
+            log.info("Canceling spot request %s" % self.spot_id)
+            self.get_spot_request().cancel()
         log.info("Terminating node: %s (%s)" % (self.alias, self.id))
         return self.instance.terminate()
 
@@ -936,6 +961,9 @@ class Node(object):
         Reboot this instance.
         """
         self.instance.reboot()
+        if self._ssh:
+            self._ssh.close()
+            self._ssh = None
 
     def is_ssh_up(self):
         try:
@@ -943,8 +971,54 @@ class Node(object):
         except exception.SSHError:
             return False
 
-    def wait(self, interval=30):
+    def wait(self, interval=30, reboot_interval=10, n_reboot_restart=False):
+        """
+        Wait for the instance to be up and running.
+        interval           The polling interval in seconds.
+        reboot_interval    The interval between reboots in minutes.
+        n_reboot_restart   The number of reboots before restarting the node
+                           instead of rebooting. Restart means stop/start,
+                           which will possibly make the instance run on
+                           different hardware, but it counts as a new billing
+                           hour. Spot instances cannot be stopped so they will
+                           be terminated instead. Defaults to False.
+        """
+        now = datetime.datetime.utcnow()
+        reboots = 0
+        if reboot_interval:
+            reboot_time = now + datetime.timedelta(minutes=reboot_interval)
+            if n_reboot_restart:
+                restart_at = n_reboot_restart
+        elif n_reboot_restart:
+            log.warn("node.wait: n_reboot_restart is useless if "
+                     "reboot_interval is 0.")
         while not self.is_up():
+            now = datetime.datetime.utcnow()
+            if reboot_interval and now > reboot_time:
+                if n_reboot_restart and restart_at == reboots:
+                    log.info("Restart interval reached -> restarting node " +
+                             self.alias)
+                    if self.is_spot():
+                        log.info(self.alias + " is a spot instance and will "
+                                 "be terminated instead.")
+                        self.terminate()
+                        break  # the node has been terminated, get out
+                    else:
+                        self.stop()
+                        time.sleep(10)
+                        while self.update() != "stopped":
+                            log.info("Waiting for node " + self.alias +
+                                     "to be in a stopped state.")
+                            time.sleep(10)
+                        self.start()
+                        restart_at += n_reboot_restart
+                else:
+                    log.info("Reboot interval reached -> rebooting node " +
+                             self.alias)
+                    self.reboot()
+                    reboots += 1
+                reboot_time = datetime.datetime.utcnow() + \
+                    datetime.timedelta(minutes=reboot_interval)
             time.sleep(interval)
 
     def is_up(self):

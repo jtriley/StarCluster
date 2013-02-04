@@ -162,6 +162,9 @@ class DefaultClusterSetup(ClusterSetup):
         the new user to be the existing uid/gid of the dir in EBS rather than
         chowning potentially terabytes of data.
         """
+        log.info("TODO: repair function setup_cluster_user")
+        #TODO: not trunk - the issue is we don't want sgeadmin to be created
+        #it already exists
         user = user or self._user
         uid, gid = self._get_new_user_id(user)
         log.info("Creating cluster user: %s (uid: %d, gid: %d)" %
@@ -337,15 +340,17 @@ class DefaultClusterSetup(ClusterSetup):
         """
         Share /home and all EBS mount paths via NFS to all nodes
         """
-        master = self._master
-        # setup /etc/exports and start nfsd on master node
-        nodes = nodes or self.nodes
-        export_paths = export_paths or self._get_nfs_export_paths()
-        if start_server:
-            master.start_nfs_server()
-        if nodes:
-            master.export_fs_to_nodes(nodes, export_paths)
-            self._mount_nfs_shares(nodes, export_paths=export_paths)
+        log.info("TODO: repair setup nfs")
+        if False:
+            master = self._master
+            # setup /etc/exports and start nfsd on master node
+            nodes = nodes or self.nodes
+            export_paths = export_paths or self._get_nfs_export_paths()
+            if start_server:
+                master.start_nfs_server()
+            if nodes:
+                master.export_fs_to_nodes(nodes, export_paths)
+                self._mount_nfs_shares(nodes, export_paths=export_paths)
 
     def run(self, nodes, master, user, user_shell, volumes):
         """Start cluster configuration"""
@@ -407,3 +412,6 @@ class DefaultClusterSetup(ClusterSetup):
         self._create_user(node)
         self._setup_scratch(nodes=[node])
         self._setup_passwordless_ssh(nodes=[node])
+
+    def clean_cluster(self, nodes, master, user, user_shell, volumes):
+        pass
