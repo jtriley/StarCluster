@@ -57,12 +57,12 @@ class DatacraticPrePlugin(clustersetup.DefaultClusterSetup):
         res = node.ssh.execute("mount | grep " + self.mount + " | wc -l")[0]
         if res[0] == "0":
             log.info("Mounting " + self.mount + " from master")
-            node.ssh.execute("rm -rf /root/" + self.mount + "&& "
-                             "mkdir /root/" + self.mount + "&& "
+            node.ssh.execute("rm -rf /root/" + self.mount + " && "
+                             "mkdir /root/" + self.mount + " && "
             #node.ssh.execute(
                             "sshfs -o allow_other -C -o workaround=all "
                              "-o reconnect -o sshfs_sync "
-                             "master:" + selc.mount + " " + self.mount)
+                             "master:" + self.mount + " " + self.mount)
         else:
             log.error("/root/" + self.mount + " is already mounted")
 
