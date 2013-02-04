@@ -182,7 +182,9 @@ See COPYING.LESSER (LGPL) and COPYING (GPL) for LICENSE details
 
 vanilla_improvements branch notes
 =============
-This branch intends to be a mirror of https://github.com/jtriley/StarCluster with more features.
+This branch intends to be a mirror of https://github.com/jtriley/StarCluster with more features. Note that in its
+current state nfs is disabled and replaced by sshfs mount. This will be reverted to StarCluster's default in the near
+future.
 
 * Added commands
     - printconfig - To print your existing cluster configuration
