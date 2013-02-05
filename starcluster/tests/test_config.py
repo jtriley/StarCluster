@@ -39,7 +39,7 @@ class TestStarClusterConfig(tests.StarClusterTest):
             raise Exception('config returned non-existent cluster')
 
     def test_int_required(self):
-        cases = [{'c1_size':'-s'}, {'c1_size': 2.5}, {'v1_partition': 'asdf'},
+        cases = [{'c1_size': '-s'}, {'c1_size': 2.5}, {'v1_partition': 'asdf'},
                  {'v1_partition': 0.33}]
         for case in cases:
             try:
