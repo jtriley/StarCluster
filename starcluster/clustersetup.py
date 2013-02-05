@@ -2,6 +2,7 @@
 clustersetup.py
 """
 import posixpath
+import datetime
 
 from starcluster import utils
 from starcluster import threadpool
@@ -101,6 +102,7 @@ class DefaultClusterSetup(ClusterSetup):
         """
         nodes = nodes or self._nodes
         log.info("Configuring hostnames...")
+        log.debug("It's " + str(datetime.datetime.utcnow()))
         for node in nodes:
             self.pool.simple_job(node.set_hostname, (), jobid=node.alias)
         self.pool.wait(numtasks=len(nodes))
@@ -225,6 +227,7 @@ class DefaultClusterSetup(ClusterSetup):
         """ Configure /etc/hosts on all StarCluster nodes"""
         log.info("Configuring /etc/hosts on each node")
         nodes = nodes or self._nodes
+        log.debug("Launching jobs " + str(datetime.datetime.utcnow()))
         for node in nodes:
             self.pool.simple_job(node.add_to_etc_hosts, (nodes, ),
                                  jobid=node.alias)
