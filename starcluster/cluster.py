@@ -1534,14 +1534,14 @@ class Cluster(object):
             log.info("Removing %s placement group" % pg.name)
             pg.delete()
             while self.ec2.get_placement_group_or_none(self._security_group):
-                log.info("Waiting for deletion of security group %s..." \
+                log.info("Waiting for deletion of security group %s..."
                          % pg.name)
                 time.sleep(3)
         if sg:
             log.info("Removing %s security group" % sg.name)
             sg.delete()
             while self.ec2.get_group_or_none(self._security_group):
-                log.info("Waiting for deletion of security group %s..." \
+                log.info("Waiting for deletion of security group %s..."
                          % sg.name)
                 time.sleep(3)
 
