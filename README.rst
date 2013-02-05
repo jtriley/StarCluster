@@ -1,6 +1,8 @@
 ===================
-StarCluster v0.9999
+StarCluster v0.9999 vanilla_improvements branch
 ===================
+vanilla_improvements notes are at the bottom.
+
 :StarCluster: Cluster Computing Toolkit for the Cloud
 :Version: 0.9999
 :Author: Justin Riley <justin.t.riley@gmail.com>
@@ -9,6 +11,7 @@ StarCluster v0.9999
 :License: LGPL
 .. image:: https://secure.travis-ci.org/jtriley/StarCluster.png?branch=develop
   :target: https://secure.travis-ci.org/jtriley/StarCluster
+
 
 Description:
 ============
@@ -176,3 +179,31 @@ Licensing
 =========
 StarCluster is licensed under the LGPLv3
 See COPYING.LESSER (LGPL) and COPYING (GPL) for LICENSE details
+
+vanilla_improvements branch notes
+=============
+This branch intends to be a mirror of https://github.com/jtriley/StarCluster with more features. Note that in its
+current state nfs is disabled and replaced by sshfs mount. This will be reverted to StarCluster's default in the near
+future.
+
+* Added commands
+    - printconfig - To print your existing cluster configuration
+    - reloadconfig - To reload the core and plugins configuration of a ''running'' cluster.
+    - cleancluster - Will clean Open Grid Engine from dead nodes. 
+      (Useful with spot instances and used by the vanilla_improvements load balancer)
+    - recover - If a newly created instance failed to initialized (it's booted but not properly configured in OGS)
+      the instance will be added back to the cluster.
+* Improved load balancer
+    - Slots count is based on OGS configured slots, not on cpus core count.
+    - More stable with spot instances with automatic cleaning, required when a spot instance dies. Note that 
+      stuck jobs resulting in a dead instance are killed by the clean command. You will need to relaunch your job.
+    - loadbalance new flags
+        + --reboot-interval - Delay in minutes beyond which a node is rebooted if it's still being unreachable via SSH. 
+          Defaults to 10.
+        + --num_reboot_restart - Number of reboots after which a node is restarted (stop/start). Helpful in case the 
+          issue comes from the hardware. If the node is a spot instance, it will be terminated instead since it cannot 
+          be stopped. Defaults to false.
+        + --ignore-master Ignores the master as an execution host. Usefull when your master node is of a different 
+          instance type than slave nodes.
+        + --ignore-grp Instances won't have the placement group constraint. When using spot instances, it makes it easier
+          to get instances at a lower price.
