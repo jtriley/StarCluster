@@ -80,7 +80,9 @@ class StarClusterConfig(object):
     instance_types = static.INSTANCE_TYPES
 
     def __init__(self, config_file=None, cache=False):
-        self.cfg_file = config_file or static.STARCLUSTER_CFG_FILE
+        self.cfg_file = config_file \
+            or os.environ.get('STARCLUSTER_CONFIG') \
+            or static.STARCLUSTER_CFG_FILE
         self.cfg_file = os.path.expanduser(self.cfg_file)
         self.cfg_file = os.path.expandvars(self.cfg_file)
         self.type_validators = {
