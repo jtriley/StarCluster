@@ -3,6 +3,7 @@ Module for storing static data structures
 """
 import os
 import sys
+import re
 import getpass
 import tempfile
 
@@ -30,6 +31,22 @@ def create_sc_config_dirs():
     __makedirs(STARCLUSTER_CFG_DIR, exit_on_failure=True)
     __makedirs(STARCLUSTER_PLUGIN_DIR)
     __makedirs(STARCLUSTER_LOG_DIR)
+
+
+def __validate_ec2url(value):
+    return re.match('^https?://ec2\.[a-z0-9-]+\.amazonaws.com', value)
+
+
+def __ec2url_region_name(value):
+    if not __validate_ec2url(value):
+        return None
+    return value.split('.')[1]
+
+
+def __ec2url_region_host(value):
+    if not __validate_ec2url(value):
+        return None
+    return value.split('://')[1]
 
 
 VERSION = "0.9999"
@@ -166,6 +183,14 @@ AWS_SETTINGS = {
     'aws_proxy_port': (int, False, None, None, None),
     'aws_proxy_user': (str, False, None, None, None),
     'aws_proxy_pass': (str, False, None, None, None),
+}
+
+# Alternate names (used by EC2 tools) for some of the above settings
+AWS_SETTINGS_ALT_NAMES = {
+    'aws_access_key_id': ('AWS_ACCESS_KEY', None),
+    'aws_secret_access_key': ('AWS_SECRET_KEY', None),
+    'aws_region_name': ('EC2_URL', __ec2url_region_name),
+    'aws_region_host': ('EC2_URL', __ec2url_region_host),
 }
 
 KEY_SETTINGS = {

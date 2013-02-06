@@ -579,6 +579,13 @@ class StarClusterConfig(object):
                 awscreds[key] = os.environ.get(key.upper())
             elif key in os.environ:
                 awscreds[key] = os.environ.get(key)
+            elif key in static.AWS_SETTINGS_ALT_NAMES:
+                alt_name, callback = static.AWS_SETTINGS_ALT_NAMES[key]
+                value = os.environ.get(alt_name)
+                if callback:
+                    value = callback(value)
+                if value is not None:
+                    awscreds[key] = value
         return awscreds
 
     def get_aws_credentials(self):
