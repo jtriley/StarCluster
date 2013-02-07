@@ -34,6 +34,8 @@ def create_sc_config_dirs():
 
 
 def __validate_ec2url(value):
+    if value is None:
+        return None
     return re.match('^https?://ec2\.[a-z0-9-]+\.amazonaws.com', value)
 
 
