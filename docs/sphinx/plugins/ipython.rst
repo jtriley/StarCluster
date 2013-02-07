@@ -118,7 +118,7 @@ case the above config should be updated to::
     rc = Client('/home/user/.starcluster/ipcluster/mycluster-us-east-1.json'
                 sshkey='/home/user/.ssh/mykey.rsa')
 
-Note: it is possible to dynamically add new nodes with the ``startcluster
+Note: it is possible to dynamically add new nodes with the ``starcluster
 addnode`` command to a pre-existing cluster. New IPython engines will
 automatically be started and connected to the controller process running on
 ``master``. This means that existing ``Client`` and ``LoadBalancedView``

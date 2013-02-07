@@ -363,7 +363,7 @@ class Cluster(object):
                  plugins=[],
                  permissions=[],
                  userdata_scripts=[],
-                 refresh_interval=5,
+                 refresh_interval=30,
                  disable_queue=False,
                  num_threads=20,
                  disable_threads=False,
