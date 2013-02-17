@@ -53,3 +53,6 @@ class PyPackageSetup(DefaultClusterSetup):
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         self.install_packages([node], dest=node.alias)
+
+    def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
+        pass
