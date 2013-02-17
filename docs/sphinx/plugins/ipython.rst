@@ -7,7 +7,7 @@ IPython Cluster Plugin
 .. note::
 
     These docs are for `IPython`_ 0.13+ which is installed in the latest
-    StarCluster 12.10 Ubuntu-based AMIs. See `starcluster listpublic` for
+    StarCluster 12.04 Ubuntu-based AMIs. See `starcluster listpublic` for
     a list of available AMIs.
 
 To configure your cluster as an `interactive IPython cluster`_ you must first
@@ -130,7 +130,7 @@ speed-up ongoing computation.
 Configuring a custom packer
 ***************************
 
-The default message packer for IPython parellel is based on the JSON format
+The default message packer for ``IPython.parallel`` is based on the JSON format
 which is quite slow but will work out of the box. It is possible to instead
 configure the faster ``'pickle'`` packer::
 
