@@ -10,6 +10,7 @@ import posixpath
 from starcluster import utils
 from starcluster import static
 from starcluster import spinner
+from starcluster import exception
 from starcluster.utils import print_timing
 from starcluster.clustersetup import DefaultClusterSetup
 
@@ -93,7 +94,7 @@ class IPCluster(DefaultClusterSetup):
     def _check_ipython_installed(self, node):
         has_ipy = node.ssh.has_required(['ipython', 'ipcluster'])
         if not has_ipy:
-            log.error("IPython is not installed... skipping plugin")
+            raise exception.PluginError("IPython is not installed!")
         return has_ipy
 
     def _write_config(self, master, user, profile_dir):
@@ -265,8 +266,7 @@ class IPCluster(DefaultClusterSetup):
 
     @print_timing("IPCluster")
     def run(self, nodes, master, user, user_shell, volumes):
-        if not self._check_ipython_installed(master):
-            return
+        self._check_ipython_installed(master)
         user_home = master.getpwnam(user).pw_dir
         profile_dir = posixpath.join(user_home, '.ipython', 'profile_default')
         master.ssh.switch_user(user)
@@ -301,8 +301,7 @@ class IPCluster(DefaultClusterSetup):
         master.ssh.switch_user('root')
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
-        if not self._check_ipython_installed(node):
-            return
+        self._check_ipython_installed(node)
         n_engines = node.num_processors
         log.info("Adding %d engines on %s", n_engines, node.alias)
         _start_engines(node, user)
