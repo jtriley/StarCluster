@@ -33,7 +33,7 @@ it to the ``plugins`` list in one of your cluster templates in the config:
     plugins = webapp-packages-installer
 
 If you already have a cluster running that didn't originally include the
-``PyPackageSetup`` plugin in it's config you can manually run the plugin on
+``PyPackageSetup`` plugin in its config you can manually run the plugin on
 the cluster using::
 
     $ starcluster runplugin webapp-packages-installer mycluster
@@ -49,14 +49,16 @@ the cluster using::
 
 
 ******************************
-Installing unreleased software
+Installing Unreleased Software
 ******************************
 
 pip can also install the development branch of software project directly from
-source code repositories such as github. For insance the following configuration
+source code repositories such as github. For instance the following configuration
 makes it possible to install the master branch of IPython. If this plugin is
-configured to run before :ref:`ipcluster-plugin`, this makes it possible to run the
-lastest unreleased feature of IPython.parallel and notebook::
+configured to run before :ref:`ipcluster-plugin`, this makes it possible to test
+yet unreleased features of IPython.parallel and notebook:
+
+.. code-block:: ini
 
     [plugin ipython-dev]
     setup_class = starcluster.plugins.pypackage.PyPackageSetup
