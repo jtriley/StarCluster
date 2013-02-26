@@ -55,4 +55,4 @@ class PyPackageSetup(DefaultClusterSetup):
         self.install_packages([node], dest=node.alias)
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
-        pass
+        raise NotImplementedError("on_remove_node method not implemented")
