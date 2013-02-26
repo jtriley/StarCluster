@@ -295,6 +295,9 @@ class IPCluster(DefaultClusterSetup):
         log.info("Adding %d engines on %s", n_engines, node.alias)
         _start_engines(node, user)
 
+    def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
+        pass
+
 
 class IPClusterStop(DefaultClusterSetup):
     """Shutdown all the IPython processes of the cluster
@@ -325,6 +328,12 @@ class IPClusterStop(DefaultClusterSetup):
         node.ssh.execute("pkill -f ipengineapp", ignore_exit_status=True)
         node.ssh.switch_user('root')
 
+    def on_add_node(self, node, nodes, master, user, user_shell, volumes):
+        pass
+
+    def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
+        pass
+
 
 class IPClusterRestartEngines(DefaultClusterSetup):
     """Plugin to kill and restart all engines of an IPython cluster
@@ -350,3 +359,9 @@ class IPClusterRestartEngines(DefaultClusterSetup):
             n_total += n_engines
         log.info("Restarting %d engines on %d nodes", n_total, len(nodes))
         self.pool.wait(len(nodes))
+
+    def on_add_node(self, node, nodes, master, user, user_shell, volumes):
+        pass
+
+    def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
+        pass
