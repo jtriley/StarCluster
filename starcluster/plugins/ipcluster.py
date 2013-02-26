@@ -118,7 +118,7 @@ class IPCluster(DefaultClusterSetup):
             # Engines should wait a while for url files to arrive,
             # in case Controller takes a bit to start:
             "c.IPEngineApp.wait_for_url_file = 30",
-             "c.Application.log_level = '%s'" % self.log_level,
+            "c.Application.log_level = '%s'" % self.log_level,
             "",
         ]))
         f.close()
@@ -129,7 +129,7 @@ class IPCluster(DefaultClusterSetup):
             # Engines should wait a while for url files to arrive,
             # in case Controller takes a bit to start
             "c.IPEngineApp.wait_for_url_file = 30",
-             "c.Application.log_level = '%s'" % self.log_level,
+            "c.Application.log_level = '%s'" % self.log_level,
             "",
         ]))
         if self.packer == 'msgpack':
@@ -301,11 +301,11 @@ class IPCluster(DefaultClusterSetup):
         master.ssh.switch_user('root')
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
-       if not self._check_ipython_installed(node):
-           return
-       n_engines = node.num_processors
-       log.info("Adding %d engines on %s", n_engines, node.alias)
-       _start_engines(node, user)
+        if not self._check_ipython_installed(node):
+            return
+        n_engines = node.num_processors
+        log.info("Adding %d engines on %s", n_engines, node.alias)
+        _start_engines(node, user)
 
 
 class IPClusterStop(DefaultClusterSetup):
@@ -330,6 +330,7 @@ class IPClusterStop(DefaultClusterSetup):
         master.ssh.switch_user('root')
 
         log.info("Stopping IPython engines on %d nodes", len(nodes))
+
         def stop_engines(node, user):
             node.ssh.switch_user(user)
             node.ssh.execute("pkill -f ipengineapp",
