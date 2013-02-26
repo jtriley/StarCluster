@@ -52,7 +52,6 @@ def _start_engines(node, user, n_engines=None, kill_existing=False):
     """
     if n_engines is None:
         n_engines = node.num_processors
-
     node.ssh.switch_user(user)
     if kill_existing:
         node.ssh.execute("pkill -f ipengineapp", ignore_exit_status=True)
@@ -84,7 +83,6 @@ class IPCluster(DefaultClusterSetup):
         self.notebook_passwd = notebook_passwd or utils.generate_passwd(16)
         self.notebook_directory = notebook_directory
         self.log_level = log_level
-
         if packer not in (None, 'json', 'pickle', 'msgpack'):
             log.error("Unsupported packer: %s", packer)
             self.packer = None
@@ -174,7 +172,6 @@ class IPCluster(DefaultClusterSetup):
                     + json_filename)
         finally:
             s.stop()
-
         # Retrieve JSON connection info to make it possible to connect a local
         # client to the cluster controller
         if not os.path.isdir(IPCLUSTER_CACHE):
@@ -185,10 +182,8 @@ class IPCluster(DefaultClusterSetup):
                                   '%s-%s.json' % (master.parent_cluster,
                                                   master.region.name))
         master.ssh.get(json_filename, local_json)
-
         # Configure security group for remote access
         connection_params = json.load(open(local_json, 'rb'))
-
         # For IPython version 0.14+ the list of channel ports is explicitly
         # provided in the connector file
         channel_authorized = False
@@ -197,12 +192,10 @@ class IPCluster(DefaultClusterSetup):
             if port is not None:
                 self._authorize_port(master, port, channel)
                 channel_authorized = True
-
         # For versions prior to 0.14, the channel port numbers are not given in
         # the connector file: let's open everything in high port numbers
         if not channel_authorized:
             self._authorize_port(master, (1000, 65535), "IPython controller")
-
         return local_json, n_engines
 
     def _start_notebook(self, master, user, profile_dir):
@@ -271,11 +264,9 @@ class IPCluster(DefaultClusterSetup):
         profile_dir = posixpath.join(user_home, '.ipython', 'profile_default')
         master.ssh.switch_user(user)
         self._write_config(master, user, profile_dir)
-
         # Start the cluster and some engines on the master (leave 1
         # processor free to handle cluster house keeping)
         cfile, n_engines_master = self._start_cluster(master, profile_dir)
-
         # Start engines on each of the non-master nodes
         non_master_nodes = [node for node in nodes if not node.is_master()]
         for node in non_master_nodes:
@@ -287,9 +278,7 @@ class IPCluster(DefaultClusterSetup):
         if len(non_master_nodes) > 0:
             log.info("Adding %d engines on %d nodes",
                      n_engines_non_master, len(non_master_nodes))
-
             self.pool.wait(len(non_master_nodes))
-
         if self.enable_notebook:
             self._start_notebook(master, user, profile_dir)
         n_engines_total = n_engines_master + n_engines_non_master
@@ -315,7 +304,6 @@ class IPClusterStop(DefaultClusterSetup):
       starcluster runplugin plugin_conf_name cluster_name
 
     """
-
     def run(self, nodes, master, user, user_shell, volumes):
         log.info("Shutting down IPython cluster")
         master.ssh.switch_user(user)
@@ -327,7 +315,6 @@ class IPClusterStop(DefaultClusterSetup):
         master.ssh.execute("pkill -f 'ipython notebook'",
                            ignore_exit_status=True)
         master.ssh.switch_user('root')
-
         log.info("Stopping IPython engines on %d nodes", len(nodes))
 
         def stop_engines(node, user):
@@ -353,7 +340,6 @@ class IPClusterRestartEngines(DefaultClusterSetup):
       starcluster runplugin plugin_conf_name cluster_name
 
     """
-
     def run(self, nodes, master, user, user_shell, volumes):
         n_total = 0
         for node in nodes:
