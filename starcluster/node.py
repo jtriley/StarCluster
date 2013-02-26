@@ -105,7 +105,7 @@ class Node(object):
                     raise exception.IncompatibleCluster(parent_cluster)
                 else:
                     raise exception.BaseException(
-                        "Error occured unbundling userdata: %s" % e)
+                        "Error occurred unbundling userdata: %s" % e)
         return self._user_data
 
     @property
