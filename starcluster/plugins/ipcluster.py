@@ -316,16 +316,14 @@ class IPClusterStop(DefaultClusterSetup):
                            ignore_exit_status=True)
         master.ssh.switch_user('root')
         log.info("Stopping IPython engines on %d nodes", len(nodes))
-
-        def stop_engines(node, user):
-            node.ssh.switch_user(user)
-            node.ssh.execute("pkill -f ipengineapp",
-                             ignore_exit_status=True)
-            node.ssh.switch_user('root')
-
         for node in nodes:
-            self.pool.simple_job(stop_engines, (node, user))
+            self.pool.simple_job(self._stop_engines, (node, user))
         self.pool.wait(len(nodes))
+
+    def _stop_engines(self, node, user):
+        node.ssh.switch_user(user)
+        node.ssh.execute("pkill -f ipengineapp", ignore_exit_status=True)
+        node.ssh.switch_user('root')
 
 
 class IPClusterRestartEngines(DefaultClusterSetup):
