@@ -296,7 +296,7 @@ class IPCluster(DefaultClusterSetup):
         _start_engines(node, user)
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
-        pass
+        raise NotImplementedError("on_remove_node method not implemented")
 
 
 class IPClusterStop(DefaultClusterSetup):
@@ -329,10 +329,10 @@ class IPClusterStop(DefaultClusterSetup):
         node.ssh.switch_user('root')
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
-        pass
+        raise NotImplementedError("on_add_node method not implemented")
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
-        pass
+        raise NotImplementedError("on_remove_node method not implemented")
 
 
 class IPClusterRestartEngines(DefaultClusterSetup):
@@ -361,7 +361,7 @@ class IPClusterRestartEngines(DefaultClusterSetup):
         self.pool.wait(len(nodes))
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
-        pass
+        raise NotImplementedError("on_add_node method not implemented")
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
-        pass
+        raise NotImplementedError("on_remove_node method not implemented")
