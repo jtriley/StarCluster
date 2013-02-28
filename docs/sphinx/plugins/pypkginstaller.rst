@@ -1,10 +1,10 @@
-.. _pypackage-plugin:
+.. _pypkginstaller-plugin:
 
 ###############################
 Python Package Installer Plugin
 ###############################
 
-The ``PyPackageSetup`` plugin installs a list of Python packages on all nodes
+The ``PyPkgInstaller`` plugin installs a list of Python packages on all nodes
 in parallel using `pip <https://pypi.python.org/pypi/pip>`_ (by default).
 
 *****
@@ -18,13 +18,13 @@ with a database:
 .. code-block:: ini
 
     [plugin webapp-packages-installer]
-    setup_class = starcluster.plugins.pypackage.PyPackageSetup
+    setup_class = starcluster.plugins.pypkginstaller.PyPkgInstaller
     packages = flask, SQLAlchemy
 
 The ``packages`` setting specifies the list of Python packages to install on
 each node.
 
-Once you've configured the ``PyPackageSetup`` plugin the next step is to add
+Once you've configured the ``PyPkgInstaller`` plugin the next step is to add
 it to the ``plugins`` list in one of your cluster templates in the config:
 
 .. code-block:: ini
@@ -33,7 +33,7 @@ it to the ``plugins`` list in one of your cluster templates in the config:
     plugins = webapp-packages-installer
 
 If you already have a cluster running that didn't originally include the
-``PyPackageSetup`` plugin in its config you can manually run the plugin on
+``PyPkgInstaller`` plugin in its config you can manually run the plugin on
 the cluster using::
 
     $ starcluster runplugin webapp-packages-installer mycluster
@@ -61,7 +61,7 @@ yet unreleased features of IPython.parallel and notebook:
 .. code-block:: ini
 
     [plugin ipython-dev]
-    setup_class = starcluster.plugins.pypackage.PyPackageSetup
+    setup_class = starcluster.plugins.pypkginstaller.PyPkgInstaller
     packages = pyzmq,
                python-msgpack,
                git+http://github.com/ipython/ipython.git
