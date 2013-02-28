@@ -164,6 +164,12 @@ class DefaultClusterSetup(ClusterSetup):
         """
         user = user or self._user
         uid, gid = self._get_new_user_id(user)
+        if uid == 0 or gid == 0:
+            raise Exception("Cannot create user: {0:s} (uid: {1:1d}, gid: "
+                            "{2:1d}). This is caused by /home/{0:s} directory "
+                            "being owned by root. To fix this you'll need to "
+                            "create a new AMI. Note that the instance is "
+                            "still up.".format(user, uid, gid))
         log.info("Creating cluster user: %s (uid: %d, gid: %d)" %
                  (user, uid, gid))
         self._add_user_to_nodes(uid, gid, self._nodes)
