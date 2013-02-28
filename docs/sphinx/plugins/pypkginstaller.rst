@@ -46,6 +46,7 @@ the cluster using::
     >>> $ pip install -U flask
     >>> $ pip install -U SQLAlchemy
     2/2 |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| 100%
+    >>> PyPkgInstaller took 0.317 mins
 
 
 ******************************
