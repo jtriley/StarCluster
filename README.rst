@@ -161,12 +161,12 @@ Dependencies:
 =============
 * Amazon AWS Account
 * Python 2.6+
-* Boto 2.7.0
+* Boto 2.8.0
 * Paramiko 1.9.0
 * WorkerPool 0.9.2
 * Jinja2 2.6
 * decorator 3.4.0
-* pyasn1 0.1.4
+* pyasn1 0.1.6
 
 Learn more...
 =============

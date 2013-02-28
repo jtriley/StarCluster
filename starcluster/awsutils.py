@@ -332,7 +332,25 @@ class EasyEC2(EasyAWS):
         Convenience method for running spot or flat-rate instances
         """
         if not block_device_map:
-            bdmap = self.create_block_device_map(add_ephemeral_drives=True)
+            img = self.get_image(image_id)
+            img_is_hvm = img.virtualization_type == 'hvm'
+            device_fmt = '/dev/sd%s1'
+            if img_is_hvm and instance_type in static.HVM_TYPES:
+                device_fmt = '/dev/sd%s'
+            bdmap = self.create_block_device_map(add_ephemeral_drives=True,
+                                                 device_fmt=device_fmt)
+            # prune any ephemeral drives defined in the AMI's block device map
+            # from the runtime block device map
+            for dev in img.block_device_mapping:
+                bdt = img.block_device_mapping.get(dev)
+                if bdt.ephemeral_name:
+                    ephnum = int(bdt.ephemeral_name.split('ephemeral')[1])
+                    drive_letter = chr(ord('b') + ephnum)
+                    device = device_fmt % drive_letter
+                    log.debug("Removing ephemeral drive %s from runtime block "
+                              "device mapping (already mapped by AMI: %s)" %
+                              (device, img.id))
+                    bdmap.pop(device)
             block_device_map = bdmap
         if price:
             return self.request_spot_instances(
@@ -936,7 +954,8 @@ class EasyEC2(EasyAWS):
     def create_block_device_map(self, root_snapshot_id=None,
                                 root_device_name='/dev/sda1',
                                 add_ephemeral_drives=False,
-                                num_ephemeral_drives=24):
+                                num_ephemeral_drives=24,
+                                device_fmt='/dev/sd%s1'):
         """
         Utility method for building a new block_device_map for a given snapshot
         id. This is useful when creating a new image from a volume snapshot.
@@ -952,7 +971,7 @@ class EasyEC2(EasyAWS):
             for i in range(num_ephemeral_drives):
                 eph = boto.ec2.blockdevicemapping.BlockDeviceType()
                 eph.ephemeral_name = 'ephemeral%d' % i
-                bmap['/dev/sd%s1' % chr(ord('b') + i)] = eph
+                bmap[device_fmt % chr(ord('b') + i)] = eph
         return bmap
 
     @print_timing("Downloading image")
