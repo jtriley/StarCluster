@@ -21,9 +21,6 @@ and the latest released version of some dependencies::
                git+http://github.com/ipython/ipython.git
 
 """
-import time
-from threading import Thread
-
 from starcluster.clustersetup import DefaultClusterSetup
 from starcluster.logger import log
 from starcluster.utils import print_timing
