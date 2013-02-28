@@ -151,12 +151,17 @@ class ThreadPool(workerpool.WorkerPool):
 
     def printExceptions(self):
         for exc_arr in self._exception_queue.queue:
+            log.error("-------threadpool exc start---------")
             e = exc_arr[0]
             tb_msg = exc_arr[1]
             jid = exc_arr[2]
+            log.error("tb_msg:")
             log.error(tb_msg)
+            log.error("e:")
             log.error(e)
+            log.error("jid:")
             log.error(jid)
+            log.error("-------threadpool exc end-----------")
             
 
 

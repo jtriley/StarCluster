@@ -2,6 +2,7 @@
 clustersetup.py
 """
 import posixpath
+import datetime
 
 from starcluster import utils
 from starcluster import threadpool
@@ -101,6 +102,7 @@ class DefaultClusterSetup(ClusterSetup):
         """
         nodes = nodes or self._nodes
         log.info("Configuring hostnames...")
+        log.debug("It's " + str(datetime.datetime.utcnow()))
         for node in nodes:
             self.pool.simple_job(node.set_hostname, (), jobid=node.alias)
         self.pool.wait(numtasks=len(nodes))
@@ -167,9 +169,13 @@ class DefaultClusterSetup(ClusterSetup):
         #it already exists
         user = user or self._user
         uid, gid = self._get_new_user_id(user)
-        log.info("Creating cluster user: %s (uid: %d, gid: %d)" %
-                 (user, uid, gid))
-        self._add_user_to_nodes(uid, gid, self._nodes)
+        if uid == 0 or gid == 0:
+            log.error("Cannot create user: %s (uid: %d, gid: %d). "
+                      "Trying to continue." % (user, uid, gid))
+        else:
+            log.info("Creating cluster user: %s (uid: %d, gid: %d)" %
+                     (user, uid, gid))
+            self._add_user_to_nodes(uid, gid, self._nodes)
 
     def _add_user_to_node(self, uid, gid, node):
         existing_user = node.getpwuid(uid)
@@ -225,6 +231,7 @@ class DefaultClusterSetup(ClusterSetup):
         """ Configure /etc/hosts on all StarCluster nodes"""
         log.info("Configuring /etc/hosts on each node")
         nodes = nodes or self._nodes
+        log.debug("Launching jobs " + str(datetime.datetime.utcnow()))
         for node in nodes:
             self.pool.simple_job(node.add_to_etc_hosts, (nodes, ),
                                  jobid=node.alias)

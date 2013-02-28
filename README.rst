@@ -194,6 +194,7 @@ future.
     - recover - If a newly created instance failed to initialized (it's booted but not properly configured in OGS)
       the instance will be added back to the cluster.
 * Improved load balancer
+    - Slots count is based on OGS configured slots, not on cpus core count.
     - More stable with spot instances with automatic cleaning, required when a spot instance dies. Note that 
       stuck jobs resulting in a dead instance are killed by the clean command. You will need to relaunch your job.
     - loadbalance new flags
