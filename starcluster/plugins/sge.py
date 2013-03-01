@@ -57,7 +57,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         # iterate through each machine and count the number of processors
         nodes = nodes or self._nodes
         #TODO: Fails if some machines go away while updating
-        num_processors = sum(self.pool.mapWithJobId(
+        num_processors = sum(self.pool.map(
             lambda n: n.num_processors, 
             nodes,
             jobid_fn=lambda n: n.alias))
