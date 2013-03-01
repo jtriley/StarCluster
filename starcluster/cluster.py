@@ -703,6 +703,12 @@ class Cluster(object):
                     self._nodes.append(n)
         self._nodes.sort(key=lambda n: n.alias)
         log.debug('returning self._nodes = %s' % self._nodes)
+
+        #FMLHHHH start ---
+        aliases = [n.alias for n in self._nodes]
+        if len(aliases) != len(set(aliases)):
+            raise Exception("FMLHHHH: bogus get nodes detected!")
+        #FMLHHHH end -----
         return self._nodes
 
     def get_nodes_or_raise(self):
@@ -1262,7 +1268,10 @@ class Cluster(object):
         """
         log.info("Waiting for SSH to come up on all nodes...")
         nodes = nodes or self.get_nodes_or_raise()
-        self.pool.map(lambda n: n.wait(interval=self.refresh_interval), nodes)
+        self.pool.mapWithJobId(
+            lambda n: n.wait(interval=self.refresh_interval),
+            lambda n: n.alias
+            nodes)
 
     @print_timing("Waiting for cluster to come up")
     def wait_for_cluster(self, msg="Waiting for cluster to come up..."):

@@ -47,7 +47,10 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         log.info("%s SGE parallel environment '%s'" % (verb, name))
         # iterate through each machine and count the number of processors
         nodes = nodes or self._nodes
-        num_processors = sum(self.pool.map(lambda n: n.num_processors, nodes))
+        num_processors = sum(self.pool.mapWithJobId(
+            lambda n: n.num_processors, 
+            lambda n: n.alias,
+            nodes))
         penv = mssh.remote_file("/tmp/pe.txt", "w")
         penv.write(sge.sge_pe_template % (name, num_processors))
         penv.close()
