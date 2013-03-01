@@ -59,8 +59,8 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         #TODO: Fails if some machines go away while updating
         num_processors = sum(self.pool.mapWithJobId(
             lambda n: n.num_processors, 
-            lambda n: n.alias,
-            nodes))
+            nodes,
+            jobid_fn=lambda n: n.alias))
         penv = mssh.remote_file("/tmp/pe.txt", "w")
         penv.write(sge.sge_pe_template % (name, num_processors))
         penv.close()

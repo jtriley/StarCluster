@@ -82,7 +82,7 @@ class TestThreadPool(tests.StarClusterTest):
         except exception.ThreadPoolException, e:
             raise Exception(e.format_excs())
 
-    def test_threadpool_map(self):
+    def test_map(self):
         try:
             r = 20
             ref = map(lambda x: x ** 2, range(r))
@@ -97,3 +97,17 @@ class TestThreadPool(tests.StarClusterTest):
             assert ref == calc
         except exception.ThreadPoolException, e:
             raise Exception(e.format_excs())
+
+    def test_map_with_jobid(self):
+        try:
+            r = 20
+            ref = map(lambda x: x ** 2, range(r))
+            calc = self.pool.map(lambda x: x ** 2, range(r),
+                                 jobid_fn=lambda x: x)
+            calc.sort()
+            assert ref == calc
+            self.pool.map(lambda x: x ** 2, range(r) + ['21'],
+                          jobid_fn=lambda x: x)
+        except exception.ThreadPoolException, e:
+            exc, tb_msg, jobid = e.exceptions[0]
+            assert jobid == '21'

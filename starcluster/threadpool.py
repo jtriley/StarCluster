@@ -108,19 +108,28 @@ class ThreadPool(workerpool.WorkerPool):
             results.append(self._results_queue.get())
         return results
 
-    def map(self, fn, *seq):
-        return self.mapWithJobId(fn, None, *seq)
+    def map(self, fn, *seq, **kwargs):
+        """
+        Uses the threadpool to return a list of the results of applying the
+        function to the items of the argument sequence(s). If more than one
+        sequence is given, the function is called with an argument list
+        consisting of the corresponding item of each sequence. If more than one
+        sequence is given with different lengths the argument list will be
+        truncated to the length of the smallest sequence.
 
-    def mapWithJobId(self, fn, jobIdFn, *seq):
+        If the kwarg jobid_fn is specified then each threadpool job will be
+        assigned a jobid based on the return value of jobid_fn(item) for each
+        item in the map.
+        """
         if self._results_queue.qsize() > 0:
             self.get_results()
         args = zip(*seq)
-        if jobIdFn:
-            for seq in args:
-                self.simple_job(fn, seq, jobid=jobIdFn(*seq))
-        else:
-            for seq in args:
-                self.simple_job(fn, seq)
+        jobid_fn = kwargs.get('jobid_fn')
+        for seq in args:
+            jobid = None
+            if jobid_fn:
+                jobid = jobid_fn(*seq)
+            self.simple_job(fn, seq, jobid=jobid)
         return self.wait(numtasks=len(args))
 
     def store_exception(self, e):
