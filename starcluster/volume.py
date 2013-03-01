@@ -257,7 +257,7 @@ class VolumeCreator(cluster.Cluster):
             newvol.detach(force=True)
             self.ec2.wait_for_volume(newvol, status='available')
             newvol.delete()
-            del self._volume
+            self._volume = None
 
     @print_timing("Creating volume")
     def create(self, volume_size, volume_zone, name=None, tags=None):
