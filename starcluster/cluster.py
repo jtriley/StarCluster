@@ -703,12 +703,6 @@ class Cluster(object):
                     self._nodes.append(n)
         self._nodes.sort(key=lambda n: n.alias)
         log.debug('returning self._nodes = %s' % self._nodes)
-
-        #FMLHHHH start ---
-        aliases = [n.alias for n in self._nodes]
-        if len(aliases) != len(set(aliases)):
-            raise Exception("FMLHHHH: bogus get nodes detected!")
-        #FMLHHHH end -----
         return self._nodes
 
     def get_nodes_or_raise(self):
