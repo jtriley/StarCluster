@@ -29,7 +29,7 @@ from starcluster.utils import print_timing
 class PyPkgInstaller(DefaultClusterSetup):
     """Install Python packages with pip."""
 
-    def __init__(self, packages="", install_command="pip install -U %s"):
+    def __init__(self, packages="", install_command="pip install %s"):
         super(PyPkgInstaller, self).__init__()
         self.install_command = install_command
         self.packages = [p.strip() for p in packages.split(",") if p.strip()]
