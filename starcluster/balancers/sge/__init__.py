@@ -2,6 +2,7 @@ import os
 import time
 import datetime
 import xml.dom.minidom
+import re
 
 from starcluster import utils
 from starcluster import static
@@ -495,7 +496,7 @@ class SGELoadBalancer(LoadBalancer):
         nodes = re.findall("\[(node[\d]+|master)=([\d]+)\]", qconf_output)
         additional_config = {}
         for node in nodes:
-            additional_config[node[0]] = {"slots" : node[1]}
+            additional_config[node[0]] = {"slots": node[1]}
 
         stats = SGEStats()
         stats.parse_qhost(qhostxml, additional_config=additional_config)
