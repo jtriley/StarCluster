@@ -3,6 +3,7 @@ import re
 import sys
 import stat
 import glob
+import atexit
 import string
 import socket
 import fnmatch
@@ -61,6 +62,7 @@ class SSHClient(object):
             raise exception.SSHNoCredentialsError()
         self._glob = SSHGlob(self)
         self.__last_status = None
+        atexit.register(self.close)
 
     def load_private_key(self, private_key, private_key_pass=None):
         # Use Private Key.
@@ -182,7 +184,7 @@ class SSHClient(object):
     @property
     def scp(self):
         """Initialize the SCP client."""
-        if not self._scp:
+        if not self._scp or not self._scp.transport.is_active():
             log.debug("creating scp connection")
             self._scp = scp.SCPClient(self.transport,
                                       progress=self._file_transfer_progress)
@@ -710,7 +712,7 @@ class SSHGlob(object):
         The pattern may contain simple shell-style wildcards a la fnmatch.
         """
         if not glob.has_magic(pathname):
-            if self.paramiko.lpath_exists(pathname):
+            if self.ssh.lpath_exists(pathname):
                 yield pathname
             return
         dirname, basename = posixpath.split(pathname)
@@ -734,10 +736,10 @@ class SSHGlob(object):
         if basename == '':
             # `os.path.split()` returns an empty basename for paths ending with
             # a directory separator.  'q*x/' should match only directories.
-            if self.paramiko.isdir(dirname):
+            if self.ssh.isdir(dirname):
                 return [basename]
         else:
-            if self.paramiko.lexists(posixpath.join(dirname, basename)):
+            if self.ssh.lexists(posixpath.join(dirname, basename)):
                 return [basename]
         return []
 
@@ -749,7 +751,7 @@ class SSHGlob(object):
             #dirname = unicode(dirname, encoding)
             dirname = unicode(dirname, 'UTF-8')
         try:
-            names = [posixpath.basename(n) for n in self.paramiko.ls(dirname)]
+            names = [posixpath.basename(n) for n in self.ssh.ls(dirname)]
         except os.error:
             return []
         if pattern[0] != '.':

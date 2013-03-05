@@ -28,7 +28,7 @@ class VolumeCreator(cluster.Cluster):
                  key_location=None, host_instance=None, device='/dev/sdz',
                  image_id=static.BASE_AMI_32, instance_type="t1.micro",
                  shutdown_instance=False, detach_vol=False,
-                 mkfs_cmd='mkfs.ext3', resizefs_cmd='resize2fs', **kwargs):
+                 mkfs_cmd='mkfs.ext3 -F', resizefs_cmd='resize2fs', **kwargs):
         self._host_instance = host_instance
         self._instance = None
         self._volume = None
@@ -89,19 +89,17 @@ class VolumeCreator(cluster.Cluster):
         return self._instance
 
     def _create_volume(self, size, zone, snapshot_id=None):
-        msg = "Creating %sGB volume in zone %s" % (size, zone)
-        if snapshot_id:
-            msg += " from snapshot %s" % snapshot_id
-        log.info(msg)
         vol = self.ec2.create_volume(size, zone, snapshot_id)
-        log.info("New volume id: %s" % vol.id)
-        s = self.get_spinner("Waiting for new volume to become 'available'...")
-        while vol.status != 'available':
-            time.sleep(5)
-            vol.update()
-        s.stop()
         self._volume = vol
-        return self._volume
+        log.info("New volume id: %s" % vol.id)
+        self.ec2.wait_for_volume(vol, status='available')
+        return vol
+
+    def _create_snapshot(self, volume):
+        snap = self.ec2.create_snapshot(volume, wait_for_snapshot=True)
+        log.info("New snapshot id: %s" % snap.id)
+        self._snapshot = snap
+        return snap
 
     def _determine_device(self):
         block_dev_map = self._instance.block_device_mapping
@@ -124,15 +122,10 @@ class VolumeCreator(cluster.Cluster):
         raise exception.BaseException("Can't find volume device")
 
     def _attach_volume(self, vol, instance_id, device):
-        s = self.get_spinner("Attaching volume %s to instance %s..." %
-                             (vol.id, instance_id))
+        log.info("Attaching volume %s to instance %s..." %
+                 (vol.id, instance_id))
         vol.attach(instance_id, device)
-        while True:
-            vol.update()
-            if vol.attachment_state() == 'attached':
-                break
-            time.sleep(5)
-        s.stop()
+        self.ec2.wait_for_volume(vol, state='attached')
         return self._volume
 
     def _validate_host_instance(self, instance, zone):
@@ -211,26 +204,29 @@ class VolumeCreator(cluster.Cluster):
 
     def _format_volume(self):
         log.info("Formatting volume...")
-        self._instance.ssh.execute('%s -F %s' %
+        self._instance.ssh.execute('%s %s' %
                                    (self._mkfs_cmd, self._real_device),
                                    silent=False)
 
     def _warn_about_volume_hosts(self):
         sg = self.ec2.get_group_or_none(static.VOLUME_GROUP)
-        if not sg:
-            return
-        vol_hosts = filter(lambda x: x.state in ['running', 'pending'],
-                           sg.instances())
+        vol_hosts = []
+        if sg:
+            vol_hosts = filter(lambda x: x.state in ['running', 'pending'],
+                               sg.instances())
+        if self._instance:
+            vol_hosts.append(self._instance)
         vol_hosts = map(lambda x: x.id, vol_hosts)
         if vol_hosts:
             log.warn("There are still volume hosts running: %s" %
                      ', '.join(vol_hosts))
-            log.warn("Run 'starcluster terminate %s' to terminate *all* "
-                     "volume host instances once they're no longer needed" %
-                     static.VOLUME_GROUP_NAME, extra=dict(__textwrap__=True))
-        else:
+            if not self._instance:
+                log.warn("Run 'starcluster terminate -f %s' to terminate all "
+                         "volume host instances" % static.VOLUME_GROUP_NAME,
+                         extra=dict(__textwrap__=True))
+        elif sg:
             log.info("No active volume hosts found. Run 'starcluster "
-                     "terminate %(g)s' to remove the '%(g)s' group" %
+                     "terminate -f %(g)s' to remove the '%(g)s' group" %
                      {'g': static.VOLUME_GROUP_NAME},
                      extra=dict(__textwrap__=True))
 
@@ -250,6 +246,18 @@ class VolumeCreator(cluster.Cluster):
         else:
             log.info("Not terminating host instance %s" %
                      host.id)
+
+    def _delete_new_volume(self):
+        """
+        Should only be used during clean-up in the case of an error
+        """
+        newvol = self._volume
+        if newvol:
+            log.error("Detaching and deleting *new* volume: %s" % newvol.id)
+            newvol.detach(force=True)
+            self.ec2.wait_for_volume(newvol, status='available')
+            newvol.delete()
+            self._volume = None
 
     @print_timing("Creating volume")
     def create(self, volume_size, volume_zone, name=None, tags=None):
@@ -274,21 +282,15 @@ class VolumeCreator(cluster.Cluster):
             self._get_volume_device(self._aws_block_device)
             self._format_volume()
             self.shutdown()
-            self._warn_about_volume_hosts()
             log.info("Your new %sGB volume %s has been created successfully" %
                      (volume_size, vol.id))
             return vol
         except Exception:
-            log.error("failed to create new volume")
-            if self._volume:
-                log.error(
-                    "Error occurred. Detaching, and deleting volume: %s" %
-                    self._volume.id)
-                self._volume.detach(force=True)
-                time.sleep(5)
-                self._volume.delete()
-            self._warn_about_volume_hosts()
+            log.error("Failed to create new volume")
+            self._delete_new_volume()
             raise
+        finally:
+            self._warn_about_volume_hosts()
 
     def _validate_resize(self, vol, size):
         self._validate_size(size)
@@ -296,6 +298,7 @@ class VolumeCreator(cluster.Cluster):
             log.warn("You are attempting to shrink an EBS volume. "
                      "Data loss may occur")
 
+    @print_timing("Resizing volume")
     def resize(self, vol, size, dest_zone=None):
         """
         Resize EBS volume
@@ -314,9 +317,13 @@ class VolumeCreator(cluster.Cluster):
                 self._validate_zone(dest_zone)
                 zone = dest_zone
             host = self._request_instance(zone)
-            self._validate_required_progs([self._resizefs_cmd.split()[0]])
+            resizefs_exe = self._resizefs_cmd.split()[0]
+            required = [resizefs_exe]
+            if resizefs_exe == 'resize2fs':
+                required.append('e2fsck')
+            self._validate_required_progs(required)
             self._determine_device()
-            snap = self.ec2.create_snapshot(vol, wait_for_snapshot=True)
+            snap = self._create_snapshot(vol)
             new_vol = self._create_volume(size, zone, snap.id)
             self._attach_volume(new_vol, host.id, self._aws_block_device)
             device = self._get_volume_device()
@@ -331,12 +338,21 @@ class VolumeCreator(cluster.Cluster):
                 raise exception.InvalidOperation(
                     "EBS volume %s has more than 1 partition. "
                     "You must resize this volume manually" % vol.id)
+            if resizefs_exe == "resize2fs":
+                log.info("Running e2fsck on new volume")
+                host.ssh.execute("e2fsck -y -f %s" % device)
+            log.info("Running %s on new volume" % self._resizefs_cmd)
             host.ssh.execute(' '.join([self._resizefs_cmd, device]))
-            log.info("Removing generated snapshot %s" % snap.id)
-            snap.delete()
             self.shutdown()
-            self._warn_about_volume_hosts()
             return new_vol.id
         except Exception:
-            self._warn_about_volume_hosts()
+            log.error("Failed to resize volume %s" % vol.id)
+            self._delete_new_volume()
             raise
+        finally:
+            snap = self._snapshot
+            if snap:
+                log_func = log.info if self._volume else log.error
+                log_func("Deleting snapshot %s" % snap.id)
+                snap.delete()
+            self._warn_about_volume_hosts()

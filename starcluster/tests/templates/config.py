@@ -1,5 +1,5 @@
 default_config = {
-    'default': 'smallcluster',
+    'default_template': 'c1',
     'enable_experimental': 'False',
     'aws_access_key_id': 'asd0asd9f0asd0fas0d9f0',
     'aws_secret_access_key': 'asdf0a9sdf09203fj0asdf',
@@ -72,7 +72,7 @@ default_config = {
 
 config_test_template = """
 [global]
-DEFAULT=%(default)s
+DEFAULT_TEMPLATE=%(default_template)s
 ENABLE_EXPERIMENTAL=%(enable_experimental)s
 
 [aws info]

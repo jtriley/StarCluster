@@ -3,36 +3,32 @@
 This script is meant to be run inside of a ubuntu cloud image available at
 uec-images.ubuntu.com::
 
-    $ EC2_UBUNTU_IMG_URL=http://uec-images.ubuntu.com/precise/current
-    $ wget $EC2_UBUNTU_IMG_URL/precise-server-cloudimg-amd64.tar.gz
+    $ EC2_UBUNTU_IMG_URL=http://uec-images.ubuntu.com/oneiric/current
+    $ wget $EC2_UBUNTU_IMG_URL/oneiric-server-cloudimg-amd64.tar.gz
 
 or::
 
-    $ wget $EC2_UBUNTU_IMG_URL/precise-server-cloudimg-i386.tar.gz
+    $ wget $EC2_UBUNTU_IMG_URL/oneiric-server-cloudimg-i386.tar.gz
 
 After downloading a Ubuntu cloud image the next step is to extract the image::
 
-    $ tar xvzf precise-server-cloudimg-amd64.tar.gz
+    $ tar xvzf oneiric-server-cloudimg-amd64.tar.gz
 
 Then resize it to 10GB::
 
-    $ e2fsck -f precise-server-cloudimg-amd64.img
-    $ resize2fs precise-server-cloudimg-amd64.img 10G
+    $ e2fsck -f oneiric-server-cloudimg-amd64.img
+    $ resize2fs oneiric-server-cloudimg-amd64.img 10G
 
 Next you need to mount the image::
 
     $ mkdir /tmp/img-mount
-    $ mount precise-server-cloudimg-amd64.img /tmp/img-mount
+    $ mount oneiric-server-cloudimg-amd64.img /tmp/img-mount
     $ mount -t proc none /tmp/img-mount/proc
-    $ mount -t sysfs none /tmp/img-mount/sys
     $ mount -o bind /dev /tmp/img-mount/dev
-    $ mount -t devpts none /tmp/img-mount/dev/pts
-    $ mount -o rbind /var/run/dbus /tmp/img-mount/var/run/dbus
 
 Copy /etc/resolv.conf and /etc/mtab to the image::
 
-    $ mkdir -p /tmp/img-mount/var/run/resolvconf
-    $ cp /etc/resolv.conf /tmp/img-mount/var/run/resolvconf/resolv.conf
+    $ cp /etc/resolv.conf /tmp/img-mount/etc/resolv.conf
     $ grep -v rootfs /etc/mtab > /tmp/img-mount/etc/mtab
 
 Next copy this script inside the image::
@@ -56,12 +52,12 @@ import multiprocessing
 
 SRC_DIR = "/usr/local/src"
 APT_SOURCES_FILE = "/etc/apt/sources.list"
-BUILD_UTILS_PKGS = "build-essential devscripts debconf debconf-utils dpkg-dev "
-BUILD_UTILS_PKGS += "cdbs patch python-setuptools python-pip python-nose"
+BUILD_UTILS_PKGS = "build-essential devscripts debconf debconf-utils "
+BUILD_UTILS_PKGS += "python-setuptools python-pip python-nose"
 CLOUD_CFG_FILE = '/etc/cloud/cloud.cfg'
 GRID_SCHEDULER_GIT = 'git://github.com/jtriley/gridscheduler.git'
 CLOUDERA_ARCHIVE_KEY = 'http://archive.cloudera.com/debian/archive.key'
-CLOUDERA_APT = 'http://archive.cloudera.com/debian maverick-cdh3u5 contrib'
+CLOUDERA_APT = 'http://archive.cloudera.com/debian maverick-cdh3 contrib'
 CONDOR_APT = 'http://www.cs.wisc.edu/condor/debian/development lenny contrib'
 NUMPY_SCIPY_SITE_CFG = """\
 [DEFAULT]
@@ -92,28 +88,27 @@ __/\_____| |_ __ _ _ __ ___| |_   _ ___| |_ ___ _ __
 /_  _\__ \ || (_| | | | (__| | |_| \__ \ ||  __/ |
   \/ |___/\__\__,_|_|  \___|_|\__,_|___/\__\___|_|
 
-StarCluster Ubuntu 12.04 AMI
+StarCluster Ubuntu 11.10 AMI
 Software Tools for Academics and Researchers (STAR)
-Homepage: http://star.mit.edu/cluster
-Documentation: http://star.mit.edu/cluster/docs/latest
+Homepage: http://web.mit.edu/starcluster
+Documentation: http://web.mit.edu/starcluster/docs/latest
 Code: https://github.com/jtriley/StarCluster
 Mailing list: starcluster@mit.edu
 
 This AMI Contains:
 
-  * Open Grid Scheduler (OGS - formerly SGE) queuing system
+  * Custom-Compiled Atlas, Numpy, Scipy, etc
+  * Open Grid Scheduler (OGS) queuing system
   * Condor workload management system
   * OpenMPI compiled with Open Grid Scheduler support
-  * OpenBLAS- Highly optimized Basic Linear Algebra Routines
-  * NumPy/SciPy linked against OpenBlas
-  * IPython 0.13 with parallel support
+  * IPython 0.12 with parallel support
   * and more! (use 'dpkg -l' to show all installed packages)
 
 Open Grid Scheduler/Condor cheat sheet:
 
   * qstat/condor_q - show status of batch jobs
   * qhost/condor_status- show status of hosts, queues, and jobs
-  * qsub/condor_submit - submit batch jobs (e.g. qsub -cwd ./job.sh)
+  * qsub/condor_submit - submit batch jobs (e.g. qsub -cwd ./jobscript.sh)
   * qdel/condor_rm - delete batch jobs (e.g. qdel 7)
   * qconf - configure Open Grid Scheduler system
 
@@ -166,27 +161,6 @@ apt_sources:
  - source: deb-src %(CLOUDERA_APT)s
  - source: deb %(CONDOR_APT)s
 """ % dict(CLOUDERA_APT=CLOUDERA_APT, CONDOR_APT=CONDOR_APT)
-OPENBLAS_0_1ALPHA_2_PATCH = """\
-diff --git a/Makefile.system b/Makefile.system
-index f0487ac..84f41a7 100644
---- a/Makefile.system
-+++ b/Makefile.system
-@@ -27,7 +27,13 @@ HOSTCC    = $(CC)
- endif
-
- ifdef TARGET
--GETARCH_FLAGS += -DFORCE_$(TARGET)
-+GETARCH_FLAGS := -DFORCE_$(TARGET)
-+endif
-+
-+#TARGET_CORE will override TARGET which is used in DYNAMIC_ARCH=1.
-+#
-+ifdef TARGET_CORE
-+GETARCH_FLAGS := -DFORCE_$(TARGET_CORE)
- endif
-
- ifdef INTERFACE64
-"""
 
 
 def run_command(cmd, ignore_failure=False, failure_callback=None,
@@ -287,6 +261,7 @@ def install_gridscheduler():
         run_command('tar xvzf gridscheduler-scbuild.tar.gz')
         run_command('mv gridscheduler /opt/sge6-fresh')
         return
+    apt_install('git')
     run_command('git clone %s' % GRID_SCHEDULER_GIT)
     sts, out = run_command('readlink -f `which java`', get_output=True)
     java_home = out.strip().split('/jre')[0]
@@ -306,8 +281,7 @@ def install_gridscheduler():
 def install_condor():
     chdir(SRC_DIR)
     run_command("rm /var/lock")
-    apt_install('condor=7.7.2-1')
-    run_command('echo condor hold | dpkg --set-selections')
+    apt_install('condor')
     run_command('ln -s /etc/condor/condor_config /etc/condor_config.local')
     run_command('mkdir /var/lib/condor/log')
     run_command('mkdir /var/lib/condor/run')
@@ -336,38 +310,6 @@ def install_atlas():
     chdir('atlas-*')
     run_command('fakeroot debian/rules custom')
     run_command('dpkg -i ../*atlas*.deb')
-
-
-def install_openblas():
-    """docstring for install_openblas"""
-    chdir(SRC_DIR)
-    apt_command('build-dep libopenblas-dev')
-    if glob.glob("*openblas*.deb"):
-        run_command('dpkg -i *openblas*.deb')
-    else:
-        apt_command('source libopenblas-dev')
-        chdir('openblas-*')
-        patch = open('fix_makefile_system.patch', 'w')
-        patch.write(OPENBLAS_0_1ALPHA_2_PATCH)
-        patch.close()
-        run_command('patch -p1 < %s' % patch.name)
-        rule_file = open('Makefile.rule', 'a')
-        # NO_AFFINITY=1 is required to utilize all cores on all non
-        # cluster-compute/GPU instance types due to the shared virtualization
-        # layer not supporting processor affinity properly. However, Cluster
-        # Compute/GPU instance types use a near-bare-metal hypervisor which
-        # *does* support processor affinity. From minimal testing it appears
-        # that there is a ~20% increase in performance when using affinity on
-        # cc1/cg1 types implying NO_AFFINITY=1 should *not* be set for cluster
-        # compute/GPU AMIs.
-        lines = ['DYNAMIC_ARCH=1', 'NUM_THREADS=64', 'NO_LAPACK=1',
-                 'NO_AFFINITY=1']
-        rule_file.write('\n'.join(lines))
-        rule_file.close()
-        run_command('fakeroot debian/rules custom')
-        run_command('dpkg -i ../*openblas*.deb')
-    run_command('echo libopenblas-base hold | dpkg --set-selections')
-    run_command('echo libopenblas-dev hold | dpkg --set-selections')
 
 
 def install_numpy():
@@ -416,47 +358,30 @@ def install_scipy():
     run_command('dpkg -i ../*scipy*.deb')
 
 
-def install_pandas():
-    """docstring for install_pandas"""
-    chdir(SRC_DIR)
-    apt_command('build-dep pandas')
-    run_command('pip install pandas')
-
-
 def install_openmpi():
     chdir(SRC_DIR)
-    apt_command('build-dep openmpi')
+    apt_command('build-dep libopenmpi-dev')
     apt_install('blcr-util')
     if glob.glob('*openmpi*.deb'):
         run_command('dpkg -i *openmpi*.deb')
-    else:
-        apt_command('source openmpi')
-        chdir('openmpi*')
-        for line in fileinput.input('debian/rules', inplace=1):
-            print line,
-            if '--enable-heterogeneous' in line:
-                print '                        --with-sge \\'
+        return
+    apt_command('source libopenmpi-dev')
+    chdir('openmpi*')
+    for line in fileinput.input('debian/rules', inplace=1):
+        print line,
+        if '--enable-heterogeneous' in line:
+            print '                        --with-sge \\'
 
-        def _deb_failure_callback(retval):
-            if not glob.glob('../*openmpi*.deb'):
-                return False
-            return True
-        run_command('dch --local=\'+custom\' '
-                    '"custom build on: `uname -s -r -v -m -p -i -o`"')
-        run_command('dpkg-buildpackage -rfakeroot -b',
-                    failure_callback=_deb_failure_callback)
-        run_command('dpkg -i ../*openmpi*.deb')
+    def _deb_failure_callback(retval):
+        if not glob.glob('../*openmpi*.deb'):
+            return False
+        return True
+    run_command('dpkg-buildpackage -rfakeroot -b',
+                failure_callback=_deb_failure_callback)
+    run_command('dpkg -i ../*openmpi*.deb')
     sts, out = run_command('ompi_info | grep -i grid', get_output=True)
     if 'gridengine' not in out:
-        raise Exception("failed to build OpenMPI with "
-                        "Open Grid Scheduler support")
-    run_command('echo libopenmpi1.3 hold | dpkg --set-selections')
-    run_command('echo libopenmpi-dev hold | dpkg --set-selections')
-    run_command('echo libopenmpi-dbg hold | dpkg --set-selections')
-    run_command('echo openmpi-bin hold | dpkg --set-selections')
-    run_command('echo openmpi-checkpoint hold | dpkg --set-selections')
-    run_command('echo openmpi-common hold | dpkg --set-selections')
-    run_command('echo openmpi-doc hold | dpkg --set-selections')
+        raise Exception("failed to build openmpi with Grid Engine support")
 
 
 def install_hadoop():
@@ -471,7 +396,8 @@ def install_hadoop():
 def install_ipython():
     chdir(SRC_DIR)
     apt_install('libzmq-dev')
-    run_command('pip install ipython tornado pygments pyzmq')
+    run_command('pip install pyzmq==2.1.9')
+    run_command('pip install ipython tornado pygments')
     mjax_install = 'from IPython.external.mathjax import install_mathjax'
     mjax_install += '; install_mathjax()'
     run_command("python -c '%s'" % mjax_install)
@@ -513,9 +439,6 @@ def setup_environ():
     num_cpus = multiprocessing.cpu_count()
     os.environ['MAKEFLAGS'] = '-j%d' % (num_cpus + 1)
     os.environ['DEBIAN_FRONTEND'] = "noninteractive"
-    if os.path.isfile('/sbin/initctl') and not os.path.islink('/sbin/initctl'):
-        run_command('mv /sbin/initctl /sbin/initctl.bak')
-        run_command('ln -s /bin/true /sbin/initctl')
 
 
 def install_nfs():
@@ -544,10 +467,9 @@ mysql-server mysql-server/root_password_again seen true
     pkgs += "keychain screen tmux zsh ksh csh tcsh python-mpi4py "
     pkgs += "python-virtualenv python-imaging python-boto python-matplotlib "
     pkgs += "unzip rar unace build-essential gfortran ec2-api-tools "
-    pkgs += "ec2-ami-tools mysql-server mysql-client apache2 liblapack-dev "
-    pkgs += "libapache2-mod-wsgi sysv-rc-conf pssh emacs cython irssi htop "
-    pkgs += "python-distutils-extra vim-scripts python-ctypes python-pudb "
-    pkgs += "mosh python-scipy python-numpy default-jdk mpich2 xvfb"
+    pkgs += "ec2-ami-tools mysql-server mysql-client apache2 "
+    pkgs += "libapache2-mod-wsgi sysv-rc-conf pssh emacs cython irssi "
+    pkgs += "python-distutils-extra htop vim-scripts python-ctypes python-pudb"
     apt_install(pkgs)
 
 
@@ -557,9 +479,8 @@ def configure_init():
 
 
 def cleanup():
-    run_command('rm -f /etc/resolv.conf')
-    run_command('rm -rf /var/run/resolvconf')
-    run_command('rm -f /etc/mtab')
+    run_command('rm /etc/resolv.conf')
+    run_command('rm /etc/mtab')
     run_command('rm -rf /root/*')
     exclude = ['/root/.bashrc', '/root/.profile', '/root/.bash_aliases']
     for dot in glob.glob("/root/.*"):
@@ -572,9 +493,7 @@ def cleanup():
     run_command('rm -f /var/cache/apt/archives/partial/*')
     for f in glob.glob('/etc/profile.d'):
         if 'byobu' in f:
-            run_command('rm -f %s' % f)
-    if os.path.islink('/sbin/initctl') and os.path.isfile('/sbin/initctl.bak'):
-        run_command('mv -f /sbin/initctl.bak /sbin/initctl')
+            run_command('rm %s' % f)
 
 
 def main():
@@ -589,22 +508,18 @@ def main():
     configure_apt_sources()
     upgrade_packages()
     install_build_utils()
-    install_default_packages()
     install_gridscheduler()
     install_condor()
     #install_torque()
     install_pydrmaa()
-    # Replace ATLAS with OpenBLAS
-    # install_atlas()
-    install_openblas()
-    # Custom NumPy/SciPy install is no longer needed in 12.04
-    # install_numpy()
-    # install_scipy()
-    install_pandas()
+    install_atlas()
+    install_numpy()
+    install_scipy()
     install_ipython()
     install_openmpi()
     install_hadoop()
     install_nfs()
+    install_default_packages()
     configure_init()
     cleanup()
 

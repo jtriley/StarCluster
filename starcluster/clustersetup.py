@@ -3,9 +3,11 @@ clustersetup.py
 """
 import posixpath
 
+from starcluster import utils
 from starcluster import threadpool
 from starcluster.utils import print_timing
 from starcluster.logger import log
+from starcluster import exception
 
 
 class ClusterSetup(object):
@@ -51,6 +53,18 @@ class ClusterSetup(object):
         been performed
         """
         raise NotImplementedError('run method not implemented')
+
+    def __new__(typ, *args, **kwargs):
+        """
+        DO NOT OVERRIDE!
+
+        This is an internal method used for plugin accounting.
+        Do not override! If you *must* don't forget to call super!
+        """
+        plugin = super(ClusterSetup, typ).__new__(typ)
+        plugin_class_name = utils.get_fq_class_name(plugin)
+        plugin.__plugin_metadata__ = (plugin_class_name, args, kwargs)
+        return plugin
 
 
 class DefaultClusterSetup(ClusterSetup):
@@ -151,6 +165,12 @@ class DefaultClusterSetup(ClusterSetup):
         """
         user = user or self._user
         uid, gid = self._get_new_user_id(user)
+        if uid == 0 or gid == 0:
+            raise exception.BaseException(
+                "Cannot create user: {0:s} (uid: {1:1d}, gid: {2:1d}). This "
+                "is caused by /home/{0:s} directory being owned by root. To "
+                "fix this you'll need to create a new AMI. Note that the "
+                "instance is still up.".format(user, uid, gid))
         log.info("Creating cluster user: %s (uid: %d, gid: %d)" %
                  (user, uid, gid))
         self._add_user_to_nodes(uid, gid, self._nodes)
@@ -336,21 +356,18 @@ class DefaultClusterSetup(ClusterSetup):
 
     def run(self, nodes, master, user, user_shell, volumes):
         """Start cluster configuration"""
-        try:
-            self._nodes = nodes
-            self._master = master
-            self._user = user
-            self._user_shell = user_shell
-            self._volumes = volumes
-            self._setup_hostnames()
-            self._setup_ebs_volumes()
-            self._setup_cluster_user()
-            self._setup_scratch()
-            self._setup_etc_hosts()
-            self._setup_nfs()
-            self._setup_passwordless_ssh()
-        finally:
-            self.pool.shutdown()
+        self._nodes = nodes
+        self._master = master
+        self._user = user
+        self._user_shell = user_shell
+        self._volumes = volumes
+        self._setup_hostnames()
+        self._setup_ebs_volumes()
+        self._setup_cluster_user()
+        self._setup_scratch()
+        self._setup_etc_hosts()
+        self._setup_nfs()
+        self._setup_passwordless_ssh()
 
     def _remove_from_etc_hosts(self, node):
         nodes = filter(lambda x: x.id != node.id, self.running_nodes)

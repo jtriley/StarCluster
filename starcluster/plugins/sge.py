@@ -47,7 +47,8 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         log.info("%s SGE parallel environment '%s'" % (verb, name))
         # iterate through each machine and count the number of processors
         nodes = nodes or self._nodes
-        num_processors = sum(self.pool.map(lambda n: n.num_processors, nodes))
+        num_processors = sum(self.pool.map(lambda n: n.num_processors, nodes,
+                                           jobid_fn=lambda n: n.alias))
         penv = mssh.remote_file("/tmp/pe.txt", "w")
         penv.write(sge.sge_pe_template % (name, num_processors))
         penv.close()
@@ -125,15 +126,12 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             log.error("SGE is not installed on this AMI, skipping...")
             return
         log.info("Configuring SGE...")
-        try:
-            self._nodes = nodes
-            self._master = master
-            self._user = user
-            self._user_shell = user_shell
-            self._volumes = volumes
-            self._setup_sge()
-        finally:
-            self.pool.shutdown()
+        self._nodes = nodes
+        self._master = master
+        self._user = user
+        self._user_shell = user_shell
+        self._volumes = volumes
+        self._setup_sge()
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes

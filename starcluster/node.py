@@ -96,8 +96,16 @@ class Node(object):
     @property
     def user_data(self):
         if not self._user_data:
-            raw = self._get_user_data()
-            self._user_data = userdata.unbundle_userdata(raw)
+            try:
+                raw = self._get_user_data()
+                self._user_data = userdata.unbundle_userdata(raw)
+            except IOError, e:
+                parent_cluster = self.parent_cluster
+                if self.parent_cluster:
+                    raise exception.IncompatibleCluster(parent_cluster)
+                else:
+                    raise exception.BaseException(
+                        "Error occurred unbundling userdata: %s" % e)
         return self._user_data
 
     @property
@@ -131,6 +139,33 @@ class Node(object):
     def get_plugins(self):
         plugstxt = self.user_data.get(static.UD_PLUGINS_FNAME)
         payload = plugstxt.split('\n', 2)[2]
+        plugins_metadata = utils.decode_uncompress_load(payload)
+        plugs = []
+        for klass, args, kwargs in plugins_metadata:
+            mod_path, klass_name = klass.rsplit('.', 1)
+            try:
+                mod = __import__(mod_path, fromlist=[klass_name])
+                plug = getattr(mod, klass_name)(*args, **kwargs)
+            except SyntaxError, e:
+                raise exception.PluginSyntaxError(
+                    "Plugin %s (%s) contains a syntax error at line %s" %
+                    (klass_name, e.filename, e.lineno))
+            except ImportError, e:
+                raise exception.PluginLoadError(
+                    "Failed to import plugin %s: %s" %
+                    (klass_name, e[0]))
+            except Exception as exc:
+                log.error("Error occured:", exc_info=True)
+                raise exception.PluginLoadError(
+                    "Failed to load plugin %s with "
+                    "the following error: %s - %s" %
+                    (klass_name, exc.__class__.__name__, exc.message))
+            plugs.append(plug)
+        return plugs
+
+    def get_volumes(self):
+        volstxt = self.user_data.get(static.UD_VOLUMES_FNAME)
+        payload = volstxt.split('\n', 2)[2]
         return utils.decode_uncompress_load(payload)
 
     def _remove_all_tags(self):
@@ -162,13 +197,10 @@ class Node(object):
 
     @property
     def parent_cluster(self):
-        cluster_tag = "--UNKNOWN--"
         try:
-            cg = self.cluster_groups[0].name
-            cluster_tag = cg.replace(static.SECURITY_GROUP_PREFIX + '-', '')
+            return self.cluster_groups[0]
         except IndexError:
             pass
-        return cluster_tag
 
     @property
     def num_processors(self):
@@ -670,13 +702,30 @@ class Node(object):
         /proc/partitions
         """
         parts = self.ssh.remote_file('/proc/partitions', 'r').read()
-        r = re.compile('(\d+)\s+((?:xv|s)d[a-z])(?:\s+|\\n)')
-        devs = r.findall(parts)
+        dev_regex = '(?:xv|s)d[a-z]'
+        part_regex = '\d+(?:p\d+)?'
+        r = re.compile('(\d+)\s+(%s)(%s)?(?:\s+|\\n)' %
+                       (dev_regex, part_regex))
+        entries = r.findall(parts)
         devmap = {}
-        for blocks, dev in devs:
-            devname = '/dev/' + dev
-            if self.ssh.path_exists(devname):
-                devmap[devname] = blocks
+        partmap = {}
+        for blocks, root_dev_name, partition in entries:
+            root_dev_file = '/dev/' + root_dev_name
+            devfile = root_dev_file + partition
+            if self.ssh.path_exists(devfile):
+                blocks = int(blocks)
+                if partition:
+                    partmap[devfile] = (root_dev_file, blocks)
+                else:
+                    devmap[devfile] = blocks
+        # check for devices attached to the instance with a partition's naming
+        # scheme (e.g. /dev/xvdb1)
+        for dev in partmap:
+            root_dev_file, blocks = partmap[dev]
+            # if a device exists with a partition naming scheme, then the root
+            # device name, e.g. /dev/xvdb for /dev/xvdb1, will not exist
+            if not root_dev_file in devmap:
+                devmap[dev] = blocks
         return devmap
 
     def get_partition_map(self):
@@ -685,12 +734,16 @@ class Node(object):
         on 'fdisk -l'
         """
         fdiskout = '\n'.join(self.ssh.execute("fdisk -l 2>/dev/null"))
-        r = re.compile(
-            '(/dev/(?:xv|s)d[a-z][1-9][0-9]?)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)')
+        part_regex = '/dev/(?:xv|s)d[a-z]\d+(?:p\d+)?'
+        r = re.compile('(%s)\s+'
+                       '(\d+)(?:[-+])?\s+'
+                       '(\d+)(?:[-+])?\s+'
+                       '(\d+)(?:[-+])?\s+'
+                       '(\d+)(?:[-+])?' % part_regex)
         partmap = {}
         for match in r.findall(fdiskout):
-            part, start, end, blocks, id = match
-            partmap[part] = [start, end, blocks, id]
+            part, start, end, blocks, sys_id = match
+            partmap[part] = [int(start), int(end), int(blocks), sys_id]
         return partmap
 
     def mount_device(self, device, path):
@@ -944,6 +997,7 @@ class Node(object):
             label = 'instance'
             if alias == "master":
                 label = "master"
+                alias = "node"
             elif alias:
                 label = "node"
             instance_id = alias or self.id
