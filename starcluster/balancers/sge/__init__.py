@@ -491,20 +491,8 @@ class SGELoadBalancer(LoadBalancer):
         qstatxml = '\n'.join(master.ssh.execute(qstat_cmd))
         qacct = '\n'.join(master.ssh.execute(qacct_cmd))
 
-        sccePath = "/usr/bin/starClusterCopyEditor"
-        qconfPath = "/root/scqueueconfig.qconf"
-        if not master.ssh.path_exists(sccePath):
-            scce = master.ssh.remote_file(sccePath, "w")
-            scce.write("#!/bin/bash\ncp $1 " + qconfPath + "\n")
-            scce.close()
-        #with our copy editor, the current config is printed to a file
-        master.ssh.execute("export EDITOR=" + sccePath + "; "\
-            + "chmod +x $EDITOR; "\
-            + "echo $EDITOR; "\
-            + "qconf -mq all.q", source_profile=True)
-        qconf = master.ssh.remote_file(qconfPath, "r")
-        qconfStr = qconf.read()
-        nodes = re.findall("\[(node[\d]+)=([\d]+)\]", qconfStr)
+        qconf_output = '\n'.join(master.ssh.execute('qconf -sq all.q'))
+        nodes = re.findall("\[(node[\d]+)=([\d]+)\]", qconf_output)
         additional_config = {}
         for node in nodes:
             additional_config[node[0]] = {"slots" : node[1]}
