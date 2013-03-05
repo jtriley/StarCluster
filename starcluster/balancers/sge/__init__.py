@@ -492,7 +492,7 @@ class SGELoadBalancer(LoadBalancer):
         qacct = '\n'.join(master.ssh.execute(qacct_cmd))
 
         qconf_output = '\n'.join(master.ssh.execute('qconf -sq all.q'))
-        nodes = re.findall("\[(node[\d]+)=([\d]+)\]", qconf_output)
+        nodes = re.findall("\[(node[\d]+|master)=([\d]+)\]", qconf_output)
         additional_config = {}
         for node in nodes:
             additional_config[node[0]] = {"slots" : node[1]}
