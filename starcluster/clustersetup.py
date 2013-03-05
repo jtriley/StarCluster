@@ -165,9 +165,6 @@ class DefaultClusterSetup(ClusterSetup):
         the new user to be the existing uid/gid of the dir in EBS rather than
         chowning potentially terabytes of data.
         """
-        log.info("TODO: repair function setup_cluster_user")
-        #TODO: not trunk - the issue is we don't want sgeadmin to be created
-        #it already exists
         user = user or self._user
         uid, gid = self._get_new_user_id(user)
         if uid == 0 or gid == 0:
