@@ -712,7 +712,7 @@ class SSHGlob(object):
         The pattern may contain simple shell-style wildcards a la fnmatch.
         """
         if not glob.has_magic(pathname):
-            if self.paramiko.lpath_exists(pathname):
+            if self.ssh.lpath_exists(pathname):
                 yield pathname
             return
         dirname, basename = posixpath.split(pathname)
@@ -736,10 +736,10 @@ class SSHGlob(object):
         if basename == '':
             # `os.path.split()` returns an empty basename for paths ending with
             # a directory separator.  'q*x/' should match only directories.
-            if self.paramiko.isdir(dirname):
+            if self.ssh.isdir(dirname):
                 return [basename]
         else:
-            if self.paramiko.lexists(posixpath.join(dirname, basename)):
+            if self.ssh.lexists(posixpath.join(dirname, basename)):
                 return [basename]
         return []
 
@@ -751,7 +751,7 @@ class SSHGlob(object):
             #dirname = unicode(dirname, encoding)
             dirname = unicode(dirname, 'UTF-8')
         try:
-            names = [posixpath.basename(n) for n in self.paramiko.ls(dirname)]
+            names = [posixpath.basename(n) for n in self.ssh.ls(dirname)]
         except os.error:
             return []
         if pattern[0] != '.':

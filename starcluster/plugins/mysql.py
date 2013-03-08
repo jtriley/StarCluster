@@ -343,7 +343,7 @@ class MysqlCluster(DefaultClusterSetup):
         return crontab
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
-        pass
+        raise NotImplementedError("on_add_node method not implemented")
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
-        pass
+        raise NotImplementedError("on_remove_node method not implemented")

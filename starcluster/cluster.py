@@ -1262,7 +1262,8 @@ class Cluster(object):
         """
         log.info("Waiting for SSH to come up on all nodes...")
         nodes = nodes or self.get_nodes_or_raise()
-        self.pool.map(lambda n: n.wait(interval=self.refresh_interval), nodes)
+        self.pool.map(lambda n: n.wait(interval=self.refresh_interval), nodes,
+                      jobid_fn=lambda n: n.alias)
 
     @print_timing("Waiting for cluster to come up")
     def wait_for_cluster(self, msg="Waiting for cluster to come up..."):

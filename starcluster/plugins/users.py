@@ -149,4 +149,4 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
         self._setup_scratch(nodes=[node], users=self._usernames)
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
-        pass
+        raise NotImplementedError('on_remove_node method not implemented')
