@@ -43,8 +43,8 @@ the cluster using::
 
     >>> Running plugin webapp-packages-installer
     >>> Installing Python packages on all nodes:
-    >>> $ pip install -U flask
-    >>> $ pip install -U SQLAlchemy
+    >>> $ pip install flask
+    >>> $ pip install SQLAlchemy
     2/2 |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| 100%
     >>> PyPkgInstaller took 0.317 mins
 
