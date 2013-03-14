@@ -111,3 +111,12 @@ class TestThreadPool(tests.StarClusterTest):
         except exception.ThreadPoolException, e:
             exc, tb_msg, jobid = e.exceptions[0]
             assert jobid == '21'
+
+    def test_exception_queue(self):
+        assert self.pool._exception_queue.qsize() == 0
+        r = 10
+        try:
+            self.pool.map(lambda x: x ** 2, [str(i) for i in range(r)])
+        except exception.ThreadPoolException, e:
+            assert len(e.exceptions) == r
+            assert self.pool._exception_queue.qsize() == 0
