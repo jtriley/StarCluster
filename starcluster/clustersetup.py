@@ -347,17 +347,15 @@ class DefaultClusterSetup(ClusterSetup):
         """
         Share /home and all EBS mount paths via NFS to all nodes
         """
-        log.info("TODO: repair setup nfs")
-        if False:
-            master = self._master
-            # setup /etc/exports and start nfsd on master node
-            nodes = nodes or self.nodes
-            export_paths = export_paths or self._get_nfs_export_paths()
-            if start_server:
-                master.start_nfs_server()
-            if nodes:
-                master.export_fs_to_nodes(nodes, export_paths)
-                self._mount_nfs_shares(nodes, export_paths=export_paths)
+        master = self._master
+        # setup /etc/exports and start nfsd on master node
+        nodes = nodes or self.nodes
+        export_paths = export_paths or self._get_nfs_export_paths()
+        if start_server:
+            master.start_nfs_server()
+        if nodes:
+            master.export_fs_to_nodes(nodes, export_paths)
+            self._mount_nfs_shares(nodes, export_paths=export_paths)
 
     def run(self, nodes, master, user, user_shell, volumes):
         """Start cluster configuration"""
