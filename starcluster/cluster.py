@@ -172,7 +172,7 @@ class ClusterManager(managers.Manager):
         """
         Returns human readable cluster name/tag prefixed with '@sc-'
         """
-        if not cluster_name.startswith(static.SECURITY_GROUP_PREFIX):
+        if not cluster_name.startswith(static.SECURITY_GROUP_TEMPLATE % ''):
             cluster_name = static.SECURITY_GROUP_TEMPLATE % cluster_name
         return cluster_name
 
@@ -275,7 +275,7 @@ class ClusterManager(managers.Manager):
             print get_tag_from_sg(sg)
             mycluster
         """
-        regex = re.compile('^' + static.SECURITY_GROUP_PREFIX + '-(.*)')
+        regex = re.compile('^' + static.SECURITY_GROUP_TEMPLATE % '(.*)')
         match = regex.match(sg)
         tag = None
         if match:
@@ -655,12 +655,13 @@ class Cluster(object):
         return static.SECURITY_GROUP_TEMPLATE % self.cluster_tag
 
     def securitygroup_from_clusterprops(self):
+        # TODO: unused method
         desc = base64.b64encode(zlib.compress(cPickle.dumps(self)))
         desc = '-'.join([static.VERSION, desc])
         sg = self.ec2.get_or_create_group(self._security_group,
-                                              desc,
-                                              auth_ssh=True,
-                                              auth_group_traffic=True)
+                                          desc,
+                                          auth_ssh=True,
+                                          auth_group_traffic=True)
         return sg
 
     @property
@@ -671,7 +672,8 @@ class Cluster(object):
             if not sg:
                 sg = self.ec2.create_group(self._security_group,
                                            description=desc, auth_ssh=True,
-                                           auth_group_traffic=True)
+                                           auth_group_traffic=True,
+                                           vpc_id=self.vpc_id)
                 if not static.VERSION_TAG in sg.tags:
                     sg.add_tag(static.VERSION_TAG, str(static.VERSION))
                 core_settings = utils.dump_compress_encode(
