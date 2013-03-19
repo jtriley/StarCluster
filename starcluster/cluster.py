@@ -68,6 +68,7 @@ class ClusterManager(managers.Manager):
             cl = self.cfg.get_cluster_template(default_template, cltag,
                                                self.ec2)
             if not issubclass(type(cl), Cluster):
+                # TODO: maybe just raise error instead?
                 cl = Cluster(ec2_conn=self.ec2, cluster_tag=cltag,
                              cluster_group=group)
 
@@ -2166,8 +2167,8 @@ class VPCCluster(Cluster):
         self.vpc_id = kwargs['vpc_id']
         self.subnet_id = kwargs['subnet_id']
 
-    def load_receipt(self, load_plugins=True):
-        #can't save pickle in description
+    def load_receipt(self, load_plugins=True, load_volumes=True):
+        #can't save pickle in description using vpc.
         pass
 
     def securitygroup_from_clusterprops(self):
