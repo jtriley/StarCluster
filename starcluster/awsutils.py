@@ -1229,8 +1229,13 @@ class EasyEC2(EasyAWS):
 
     def show_console_output(self, instance_id):
         instance = self.get_instance(instance_id)
-        console_output = instance.get_console_output().output
-        print ''.join([c for c in console_output if c in string.printable])
+        console_output = instance.get_console_output().output or ''
+        console_output = ''.join([c for c in console_output if c in
+                                  string.printable])
+        if console_output:
+            print console_output
+        else:
+            log.info("No console output available...")
 
 
 class EasyS3(EasyAWS):
