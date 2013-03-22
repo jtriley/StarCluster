@@ -643,8 +643,8 @@ class EasyEC2(EasyAWS):
 
     def get_securityids_from_names(self, groupnames):
         name_id = dict([(sec.name, sec.id) for sec in
-                self.conn.get_all_security_groups()])
-        return [name_id[gname] for gname in groupnames]
+                        self.conn.get_all_security_groups()])
+        return [name_id[gname] for gname in groupnames if gname in name_id]
 
     def get_all_instances(self, instance_ids=[], filters={}):
 
@@ -653,8 +653,11 @@ class EasyEC2(EasyAWS):
         #should move all code to instance.group-id
         if 'group-name' in filters:
             groupname = filters['group-name']
-            secid = self.get_securityids_from_names([groupname])[0]
-            filters['instance.group-id'] = secid
+            try:
+                secid = self.get_securityids_from_names([groupname])[0]
+                filters['instance.group-id'] = secid
+            except IndexError:
+                return []  # Haven't created the security group in aws yet
             del filters['group-name']
 
         reservations = self.conn.get_all_instances(instance_ids,
