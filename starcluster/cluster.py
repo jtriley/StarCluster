@@ -61,9 +61,6 @@ class ClusterManager(managers.Manager):
             if not group:
                 group = self.ec2.get_security_group(clname)
 
-            #VPCLuster alwasy loaded from cluster file
-            #TODO : manage cluster config differently cloudinit,
-            #dynamodb? Wed Apr 25 10:32:58 2012
             default_template = self.cfg.get_default_cluster_template()
             cl = self.cfg.get_cluster_template(default_template, cltag,
                                                self.ec2)
@@ -653,16 +650,6 @@ class Cluster(object):
     @property
     def _security_group(self):
         return static.SECURITY_GROUP_TEMPLATE % self.cluster_tag
-
-    def securitygroup_from_clusterprops(self):
-        # TODO: unused method
-        desc = base64.b64encode(zlib.compress(cPickle.dumps(self)))
-        desc = '-'.join([static.VERSION, desc])
-        sg = self.ec2.get_or_create_group(self._security_group,
-                                          desc,
-                                          auth_ssh=True,
-                                          auth_group_traffic=True)
-        return sg
 
     @property
     def cluster_group(self):
@@ -1512,7 +1499,6 @@ class Cluster(object):
         if sg:
             log.info("Removing %s security group" % sg.name)
             self.ec2.conn.delete_security_group(group_id=sg.id)
-            #sg.delete()
 
     def start(self, create=True, create_only=False, validate=True,
               validate_only=False, validate_running=False):
