@@ -252,18 +252,23 @@ class EasyEC2(EasyAWS):
         if auth_ssh:
             ssh_port = static.DEFAULT_SSH_PORT
             self.conn.authorize_security_group(group_id=sg.id,
-                    ip_protocol='tcp', from_port=ssh_port, to_port=ssh_port,
-                    cidr_ip=static.WORLD_CIDRIP)
+                                               ip_protocol='tcp',
+                                               from_port=ssh_port,
+                                               to_port=ssh_port,
+                                               cidr_ip=static.WORLD_CIDRIP)
         if auth_group_traffic:
             self.conn.authorize_security_group(group_id=sg.id,
-                    ip_protocol='icmp', from_port=-1, to_port=-1,
-                    cidr_ip=static.WORLD_CIDRIP)
+                                               ip_protocol='icmp',
+                                               from_port=-1, to_port=-1,
+                                               cidr_ip=static.WORLD_CIDRIP)
             self.conn.authorize_security_group(group_id=sg.id,
-                    ip_protocol='tcp', from_port=1, to_port=65535,
-                    cidr_ip=static.WORLD_CIDRIP)
+                                               ip_protocol='tcp',
+                                               from_port=1, to_port=65535,
+                                               cidr_ip=static.WORLD_CIDRIP)
             self.conn.authorize_security_group(group_id=sg.id,
-                    ip_protocol='udp', from_port=1, to_port=65535,
-                    cidr_ip=static.WORLD_CIDRIP)
+                                               ip_protocol='udp',
+                                               from_port=1, to_port=65535,
+                                               cidr_ip=static.WORLD_CIDRIP)
         return sg
 
     def get_all_security_groups(self, groupnames=[]):
@@ -532,31 +537,25 @@ class EasyEC2(EasyAWS):
                       max_count=1, key_name=None, security_groups=None,
                       placement=None, user_data=None, placement_group=None,
                       block_device_map=None, subnet_id=None):
+        kwargs = dict(
+            instance_type=instance_type,
+            min_count=min_count,
+            max_count=max_count,
+            key_name=key_name,
+            subnet_id=subnet_id,
+            placement=placement,
+            user_data=user_data,
+            placement_group=placement_group,
+            block_device_map=block_device_map
+        )
         if subnet_id:
-            sec_group_ids = self.get_securityids_from_names(security_groups)
-
-            return self.conn.run_instances(image_id,
-                                           instance_type=instance_type,
-                                           min_count=min_count,
-                                           max_count=max_count,
-                                           key_name=key_name,
-                                           security_group_ids=sec_group_ids,
-                                           subnet_id=subnet_id,
-                                           placement=placement,
-                                           user_data=user_data,
-                                           placement_group=placement_group,
-                                           block_device_map=block_device_map)
+            kwargs.update(
+                security_group_ids=self.get_securityids_from_names(
+                    security_groups))
+            return self.conn.run_instances(image_id, **kwargs)
         else:
-            return self.conn.run_instances(image_id,
-                                           instance_type=instance_type,
-                                           min_count=min_count,
-                                           max_count=max_count,
-                                           key_name=key_name,
-                                           security_groups=security_groups,
-                                           placement=placement,
-                                           user_data=user_data,
-                                           placement_group=placement_group,
-                                           block_device_map=block_device_map)
+            kwargs.update(security_groups=security_groups)
+            return self.conn.run_instances(image_id, **kwargs)
 
     def create_image(self, instance_id, name, description=None,
                      no_reboot=False):
@@ -666,9 +665,6 @@ class EasyEC2(EasyAWS):
         instances = []
         for res in reservations:
             insts = res.instances
-            # for i in insts:
-                # set group info
-                # i.groups = res.groups
             instances.extend(insts)
         return instances
 

@@ -622,7 +622,7 @@ class StarClusterConfig(object):
             if not ec2_conn:
                 ec2_conn = self.get_easy_ec2()
 
-            if 'vpc_id'  in kwargs and 'subnet_id' in kwargs:
+            if 'vpc_id' in kwargs and 'subnet_id' in kwargs:
                 clust = VPCCluster(ec2_conn, **kwargs)
             else:
                 clust = Cluster(ec2_conn, **kwargs)
