@@ -45,10 +45,12 @@ class ImageCreator(object):
         self.ec2 = easy_ec2
         self.host = self.ec2.get_instance(instance_id)
         if self.host.state != 'running':
-            raise exception.InstanceNotRunning(self.host.id, self.host.state,
-                                               self.host.dns_name)
-        self.host_ssh = sshutils.SSHClient(self.host.dns_name, username='root',
-                                           private_key=key_location)
+            raise exception.InstanceNotRunning(
+                self.host.id, self.host.state,
+                self.host.dns_name or self.host.private_ip_address)
+        self.host_ssh = sshutils.SSHClient(
+            self.host.dns_name or self.host.private_ip_address,
+            username='root', private_key=key_location)
         self.description = description
         self.kernel_id = kernel_id or self.host.kernel
         self.ramdisk_id = ramdisk_id or self.host.ramdisk
