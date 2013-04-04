@@ -375,9 +375,12 @@ class SGEStats(object):
         bits.append(self.avg_wait_time())
         #last field is array of loads for hosts
         arr = self.get_loads()
-        load_sum = float(reduce(self._add, arr))
-        avg_load = load_sum / len(arr)
-        bits.append(avg_load)
+        if arr:
+            load_sum = float(reduce(self._add, arr))
+            avg_load = load_sum / len(arr)
+            bits.append(avg_load)
+        else:
+            bits.append(0)
         return bits
 
     def write_stats_to_csv(self, filename):
