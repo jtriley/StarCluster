@@ -9,8 +9,6 @@ vanilla_improvements notes are at the bottom.
 :Team: Software Tools for Academics and Researchers (http://star.mit.edu)
 :Homepage: http://star.mit.edu/cluster
 :License: LGPL
-.. image:: https://secure.travis-ci.org/jtriley/StarCluster.png?branch=develop
-  :target: https://secure.travis-ci.org/jtriley/StarCluster
 
 
 Description:
@@ -205,3 +203,7 @@ This branch intends to be a mirror of https://github.com/jtriley/StarCluster wit
           instance type than slave nodes.
         + --ignore-grp Instances won't have the placement group constraint. When using spot instances, it makes it easier
           to get instances at a lower price.
+* Improved node cleanup - Merged `robbyt`_ `pull request`_ which makes node cleanup faster.
+
+.. _robbyt: https://github.com/robbyt 
+.. _pull request: https://github.com/jtriley/StarCluster/pull/123
