@@ -39,11 +39,8 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         queue - configure queue to use the new parallel environment
         """
         mssh = self._master.ssh
-        pe_exists = mssh.get_status('qconf -sp %s' % name)
-        pe_exists = pe_exists == 0
-        verb = 'Updating'
-        if not pe_exists:
-            verb = 'Creating'
+        pe_exists = mssh.get_status('qconf -sp %s' % name) == 0
+        verb = 'Updating' if pe_exists else 'Creating'
         log.info("%s SGE parallel environment '%s'" % (verb, name))
         # iterate through each machine and count the number of processors
         nodes = nodes or self._nodes
