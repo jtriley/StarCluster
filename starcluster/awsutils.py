@@ -572,6 +572,8 @@ class EasyEC2(EasyAWS):
         instance_type = instance.instance_type or 'N/A'
         keypair = instance.key_name or 'N/A'
         uptime = utils.get_elapsed_time(instance.launch_time) or 'N/A'
+        tags = ', '.join(['%s=%s' % (k, v) for k, v in
+                          instance.tags.iteritems()]) or 'N/A'
         if state == 'stopped':
             uptime = 'N/A'
         print "id: %s" % instance_id
@@ -590,6 +592,7 @@ class EasyEC2(EasyAWS):
         print "groups: %s" % groups
         print "keypair: %s" % keypair
         print "uptime: %s" % uptime
+        print "tags: %s" % tags
         print
 
     def list_all_instances(self, show_terminated=False):
