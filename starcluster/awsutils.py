@@ -132,10 +132,9 @@ class EasyEC2(EasyAWS):
         """
         regions = self.regions.items()
         regions.sort(reverse=True)
-        for region in regions:
-            name, endpoint = region
+        for name, endpoint in regions:
             print 'name: ', name
-            print 'endpoint: ', endpoint
+            print 'endpoint: ', endpoint.endpoint
             print
 
     @property
