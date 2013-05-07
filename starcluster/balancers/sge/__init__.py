@@ -2,6 +2,7 @@ import os
 import time
 import datetime
 import xml.dom.minidom
+import re
 
 from starcluster import utils
 from starcluster import static
@@ -37,7 +38,7 @@ class SGEStats(object):
         if self.jobs:
             return int(self.jobs[-1]['JB_job_number'])
 
-    def parse_qhost(self, qhost_out):
+    def parse_qhost(self, qhost_out, additional_config={}):
         """
         this function parses qhost -xml output and makes a neat array
         takes in a string, so we can pipe in output from ssh.exec('qhost -xml')
@@ -55,6 +56,9 @@ class SGEStats(object):
                         val = hvalue.data
                     hash[attr] = val
             if hash['name'] != u'global':
+                if name in additional_config:
+                    for k, v in additional_config[name].items():
+                        hash[k] = v
                 self.hosts.append(hash)
         return self.hosts
 
@@ -194,9 +198,7 @@ class SGEStats(object):
         """
         slots = 0
         for h in self.hosts:
-            if h['num_proc'] == '-':
-                h['num_proc'] = 0
-            slots = slots + int(h['num_proc'])
+            slots = slots + int(h['slots'])
         return slots
 
     def slots_per_host(self):
@@ -208,9 +210,7 @@ class SGEStats(object):
         total = self.count_total_slots()
         if total == 0:
             return total
-        if self.hosts[0][u'num_proc'] == '-':
-            self.hosts[0][u'num_proc'] = 0
-        single = int(self.hosts[0][u'num_proc'])
+        single = int(self.hosts[0][u'slots'])
         if (total != (single * len(self.hosts))):
             log.error("ERROR: Number of slots not consistent across cluster")
             return -1
@@ -491,8 +491,15 @@ class SGELoadBalancer(LoadBalancer):
         qhostxml = '\n'.join(master.ssh.execute('qhost -xml'))
         qstatxml = '\n'.join(master.ssh.execute(qstat_cmd))
         qacct = '\n'.join(master.ssh.execute(qacct_cmd))
+
+        qconf_output = '\n'.join(master.ssh.execute('qconf -sq all.q'))
+        nodes = re.findall("\[(node[\d]+|master)=([\d]+)\]", qconf_output)
+        additional_config = {}
+        for node in nodes:
+            additional_config[node[0]] = {"slots": node[1]}
+
         stats = SGEStats()
-        stats.parse_qhost(qhostxml)
+        stats.parse_qhost(qhostxml, additional_config=additional_config)
         stats.parse_qstat(qstatxml, queues=["all.q", ""])
         stats.parse_qacct(qacct, now)
         log.debug("sizes: qhost: %d, qstat: %d, qacct: %d" %
