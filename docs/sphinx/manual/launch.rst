@@ -11,7 +11,7 @@ will be used throughout this section.
 .. code-block:: none
 
     $ starcluster start physicscluster # this line starts the cluster
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
@@ -103,7 +103,7 @@ To list all of your StarClusters on Amazon EC2 run the following command::
 The output should look something like::
 
     $ starcluster listclusters
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
@@ -191,7 +191,7 @@ starting::
 This command will prompt for confirmation before destroying the cluster::
 
     $ starcluster terminate physicscluster
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
@@ -224,7 +224,7 @@ charged for ``stopped`` instance hours, only for the EBS volume storage backing
 the nodes::
 
     $ starcluster listclusters
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 

@@ -40,7 +40,7 @@ executed. If you already have a cluster running that didn't originally have
 tmux in its plugin list you can manually run the plugin using::
 
     $ starcluster runplugin tmux mycluster
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 

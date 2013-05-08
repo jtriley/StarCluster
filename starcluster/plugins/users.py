@@ -33,7 +33,7 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
         if usernames and num_users and len(usernames) != num_users:
             raise exception.BaseException(
                 "only %d usernames provided - %d required" %
-                (len(usernames), self._num_users))
+                (len(usernames), num_users))
         self._num_users = num_users
         if not usernames:
             usernames = ['user%.3d' % i for i in range(1, num_users + 1)]
@@ -149,4 +149,4 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
         self._setup_scratch(nodes=[node], users=self._usernames)
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
-        pass
+        raise NotImplementedError('on_remove_node method not implemented')

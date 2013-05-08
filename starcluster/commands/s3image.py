@@ -47,9 +47,6 @@ class CmdS3Image(InstanceCompleter):
             help="Remove generated image files on the "
             "instance after registering (for S3 AMIs)")
 
-    def cancel_command(self, signum, frame):
-        raise exception.CancelledS3ImageCreation(self.bucket, self.image_name)
-
     def execute(self, args):
         if "createimage" in sys.argv:
             warnings.warn("createimage is deprecated and will go away in the "
@@ -67,10 +64,13 @@ class CmdS3Image(InstanceCompleter):
         aws_user_id = self.cfg.aws.get('aws_user_id')
         ec2_cert = self.cfg.aws.get('ec2_cert')
         ec2_private_key = self.cfg.aws.get('ec2_private_key')
-        self.catch_ctrl_c()
-        ami_id = self.ec2.create_s3_image(instanceid, key_location,
-                                          aws_user_id, ec2_cert,
-                                          ec2_private_key, bucket,
-                                          image_name=image_name,
-                                          **self.specified_options_dict)
-        log.info("Your new AMI id is: %s" % ami_id)
+        try:
+            ami_id = self.ec2.create_s3_image(instanceid, key_location,
+                                              aws_user_id, ec2_cert,
+                                              ec2_private_key, bucket,
+                                              image_name=image_name,
+                                              **self.specified_options_dict)
+            log.info("Your new AMI id is: %s" % ami_id)
+        except KeyboardInterrupt:
+            raise exception.CancelledS3ImageCreation(self.bucket,
+                                                     self.image_name)

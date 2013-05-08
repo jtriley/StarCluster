@@ -339,13 +339,13 @@ News
 
 You can find the new docs for 0.92rc1 here:
 
-http://web.mit.edu/stardev/cluster/docs/0.92rc1/
+http://star.mit.edu/cluster/docs/0.92rc1/
 
 NOTE: these docs are still very much a work in progress. If anyone is
 interested in helping to improve the docs, please fork the project on github
 and submit pull requests. Here's a guide to get you started:
 
-http://web.mit.edu/stardev/cluster/docs/0.92rc1/contribute.html
+http://star.mit.edu/cluster/docs/0.92rc1/contribute.html
 
 Please upgrade at your leisure, test the new release candidate, and submit any
 bug reports preferably on StarCluster's github issue tracker or this mailing
@@ -411,7 +411,7 @@ Features
   using a global -z option. For example::
 
     $ starcluster -r eu-west-1 listclusters
-    StarCluster - (http://web.mit.edu/starcluster) (v. 0.92rc1)
+    StarCluster - (http://star.mit.edu/cluster) (v. 0.92rc1)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 

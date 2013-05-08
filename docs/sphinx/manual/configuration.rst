@@ -20,7 +20,7 @@ the command-line.  Provided that the configuration file does not exist, you
 will see the following::
 
     $ starcluster help
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
@@ -58,7 +58,7 @@ would be prompted with the same menu above offering to generate a template at
 the specified path::
 
     $ starcluster -c /path/to/nonexistent/config listclusters
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 

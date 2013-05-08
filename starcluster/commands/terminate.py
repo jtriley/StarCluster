@@ -30,25 +30,25 @@ class CmdTerminate(ClusterCompleter):
                           action="store_true", default=False,
                           help="Do not prompt for confirmation, "
                           "just terminate the cluster")
+        parser.add_option("-f", "--force", dest="force", action="store_true",
+                          default=False,  help="Terminate cluster regardless "
+                          "of errors if possible ")
 
-    def _terminate_cluster(self, cluster_name):
-        cl = self.cm.get_cluster(cluster_name, require_keys=False)
+    def _terminate_cluster(self, cl):
         if not self.opts.confirm:
             action = 'Terminate'
             if cl.is_ebs_cluster():
                 action = 'Terminate EBS'
             resp = raw_input(
-                "%s cluster %s (y/n)? " % (action, cluster_name))
+                "%s cluster %s (y/n)? " % (action, cl.cluster_tag))
             if resp not in ['y', 'Y', 'yes']:
                 log.info("Aborting...")
                 return
         cl.terminate_cluster()
 
-    def _terminate_manually(self, cluster_name):
-        cl = self.cm.get_cluster(cluster_name, load_receipt=False,
-                                 require_keys=False)
+    def _terminate_manually(self, cl):
         if not self.opts.confirm:
-            resp = raw_input("Terminate cluster %s (y/n)? " % cluster_name)
+            resp = raw_input("Terminate cluster %s (y/n)? " % cl.cluster_tag)
             if resp not in ['y', 'Y', 'yes']:
                 log.info("Aborting...")
                 return
@@ -56,20 +56,35 @@ class CmdTerminate(ClusterCompleter):
         for inst in insts:
             log.info("Terminating %s" % inst.id)
             inst.terminate()
-        cl.terminate_cluster()
+        cl.terminate_cluster(force=True)
 
-    def terminate(self, cluster_name):
+    def terminate(self, cluster_name, force=False):
         try:
-            self._terminate_cluster(cluster_name)
-        except exception.IncompatibleCluster:
-            self._terminate_manually(cluster_name)
+            cl = self.cm.get_cluster(cluster_name)
+            self._terminate_cluster(cl)
+        except exception.ClusterDoesNotExist:
+            raise
+        except Exception, e:
+            errmsg = "Failed to load cluster settings!"
+            log.debug(errmsg,  exc_info=True)
+            if force:
+                log.warn(errmsg)
+                log.warn("Ignoring cluster settings due to --force option")
+                cl = self.cm.get_cluster(cluster_name, load_receipt=False,
+                                         require_keys=False)
+                self._terminate_manually(cl)
+            else:
+                log.error(errmsg)
+                if not isinstance(e, exception.IncompatibleCluster):
+                    log.error("Use -f to forcefully terminate the cluster")
+                raise
 
     def execute(self, args):
         if not args:
             self.parser.error("please specify a cluster")
         for cluster_name in args:
             try:
-                self.terminate(cluster_name)
+                self.terminate(cluster_name, force=self.opts.force)
             except EOFError:
                 print 'Interrupted, exiting...'
                 return

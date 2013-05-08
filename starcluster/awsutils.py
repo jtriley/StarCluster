@@ -16,6 +16,7 @@ import boto.s3.connection
 from starcluster import image
 from starcluster import utils
 from starcluster import static
+from starcluster import spinner
 from starcluster import webtools
 from starcluster import exception
 from starcluster import progressbar
@@ -131,10 +132,9 @@ class EasyEC2(EasyAWS):
         """
         regions = self.regions.items()
         regions.sort(reverse=True)
-        for region in regions:
-            name, endpoint = region
+        for name, endpoint in regions:
             print 'name: ', name
-            print 'endpoint: ', endpoint
+            print 'endpoint: ', endpoint.endpoint
             print
 
     @property
@@ -160,10 +160,11 @@ class EasyEC2(EasyAWS):
         will allow all traffic between instances in the same security
         group
         """
-        if not name:
-            return None
         log.info("Creating security group %s..." % name)
         sg = self.conn.create_security_group(name, description)
+        while not self.get_group_or_none(name):
+            log.info("Waiting for security group %s..." % name)
+            time.sleep(3)
         if auth_ssh:
             ssh_port = static.DEFAULT_SSH_PORT
             sg.authorize('tcp', ssh_port, ssh_port, static.WORLD_CIDRIP)
@@ -278,7 +279,12 @@ class EasyEC2(EasyAWS):
                 (name, success))
             raise exception.AWSError(
                 "failed to create placement group '%s'" % name)
-        return self.get_placement_group(name)
+        pg = self.get_placement_group_or_none(name)
+        while not pg:
+            log.info("Waiting for placement group %s..." % name)
+            time.sleep(3)
+            pg = self.get_placement_group_or_none(name)
+        return pg
 
     def get_placement_groups(self, filters=None):
         return self.conn.get_all_placement_groups(filters=filters)
@@ -298,12 +304,6 @@ class EasyEC2(EasyAWS):
         """
         Returns placement group with name if it exists otherwise returns None
         """
-        region = self.conn.region.name
-        if not region in static.CLUSTER_REGIONS:
-            region_list = ', '.join(static.CLUSTER_REGIONS)
-            log.debug("region %s not in CLUSTER_REGIONS (%s)" % (region,
-                                                                 region_list))
-            return
         try:
             return self.get_placement_group(name)
         except exception.PlacementGroupDoesNotExist:
@@ -324,10 +324,32 @@ class EasyEC2(EasyAWS):
                           min_count=1, max_count=1, count=1, key_name=None,
                           security_groups=None, launch_group=None,
                           availability_zone_group=None, placement=None,
-                          user_data=None, placement_group=None):
+                          user_data=None, placement_group=None,
+                          block_device_map=None):
         """
         Convenience method for running spot or flat-rate instances
         """
+        if not block_device_map:
+            img = self.get_image(image_id)
+            img_is_hvm = img.virtualization_type == 'hvm'
+            device_fmt = '/dev/sd%s1'
+            if img_is_hvm and instance_type in static.HVM_TYPES:
+                device_fmt = '/dev/sd%s'
+            bdmap = self.create_block_device_map(add_ephemeral_drives=True,
+                                                 device_fmt=device_fmt)
+            # prune any ephemeral drives defined in the AMI's block device map
+            # from the runtime block device map
+            for dev in img.block_device_mapping:
+                bdt = img.block_device_mapping.get(dev)
+                if bdt.ephemeral_name:
+                    ephnum = int(bdt.ephemeral_name.split('ephemeral')[1])
+                    drive_letter = chr(ord('b') + ephnum)
+                    device = device_fmt % drive_letter
+                    log.debug("Removing ephemeral drive %s from runtime block "
+                              "device mapping (already mapped by AMI: %s)" %
+                              (device, img.id))
+                    bdmap.pop(device)
+            block_device_map = bdmap
         if price:
             return self.request_spot_instances(
                 price, image_id, instance_type=instance_type,
@@ -335,31 +357,34 @@ class EasyEC2(EasyAWS):
                 security_groups=security_groups,
                 availability_zone_group=availability_zone_group,
                 placement=placement, placement_group=placement_group,
-                user_data=user_data)
+                user_data=user_data, block_device_map=block_device_map)
         else:
             return self.run_instances(
                 image_id, instance_type=instance_type,
                 min_count=min_count, max_count=max_count,
                 key_name=key_name, security_groups=security_groups,
                 placement=placement, user_data=user_data,
-                placement_group=placement_group)
+                placement_group=placement_group,
+                block_device_map=block_device_map)
 
     def request_spot_instances(self, price, image_id, instance_type='m1.small',
                                count=1, launch_group=None, key_name=None,
                                availability_zone_group=None,
                                security_groups=None, placement=None,
-                               placement_group=None, user_data=None):
+                               placement_group=None, user_data=None,
+                               block_device_map=None):
         return self.conn.request_spot_instances(
             price, image_id, instance_type=instance_type, count=count,
             launch_group=launch_group, key_name=key_name,
             security_groups=security_groups,
             availability_zone_group=availability_zone_group,
             placement=placement, placement_group=placement_group,
-            user_data=user_data)
+            user_data=user_data, block_device_map=block_device_map)
 
     def run_instances(self, image_id, instance_type='m1.small', min_count=1,
                       max_count=1, key_name=None, security_groups=None,
-                      placement=None, user_data=None, placement_group=None):
+                      placement=None, user_data=None, placement_group=None,
+                      block_device_map=None):
         return self.conn.run_instances(image_id, instance_type=instance_type,
                                        min_count=min_count,
                                        max_count=max_count,
@@ -367,7 +392,8 @@ class EasyEC2(EasyAWS):
                                        security_groups=security_groups,
                                        placement=placement,
                                        user_data=user_data,
-                                       placement_group=placement_group)
+                                       placement_group=placement_group,
+                                       block_device_map=block_device_map)
 
     def create_image(self, instance_id, name, description=None,
                      no_reboot=False):
@@ -446,7 +472,7 @@ class EasyEC2(EasyAWS):
     def get_instance_user_data(self, instance_id):
         try:
             attrs = self.conn.get_instance_attribute(instance_id, 'userData')
-            user_data = attrs.get('userData', '')
+            user_data = attrs.get('userData', '') or ''
             return base64.b64decode(user_data)
         except boto.exception.EC2ResponseError, e:
             if e.error_code == "InvalidInstanceID.NotFound":
@@ -533,7 +559,7 @@ class EasyEC2(EasyAWS):
             print 'Total: %s' % len(spots)
 
     def show_instance(self, instance):
-        id = instance.id or 'N/A'
+        instance_id = instance.id or 'N/A'
         groups = ', '.join([g.name for g in instance.groups])
         dns_name = instance.dns_name or 'N/A'
         private_dns_name = instance.private_dns_name or 'N/A'
@@ -542,12 +568,15 @@ class EasyEC2(EasyAWS):
         public_ip = instance.ip_address or 'N/A'
         zone = instance.placement or 'N/A'
         ami = instance.image_id or 'N/A'
+        virt_type = instance.virtualization_type or 'N/A'
         instance_type = instance.instance_type or 'N/A'
         keypair = instance.key_name or 'N/A'
         uptime = utils.get_elapsed_time(instance.launch_time) or 'N/A'
+        tags = ', '.join(['%s=%s' % (k, v) for k, v in
+                          instance.tags.iteritems()]) or 'N/A'
         if state == 'stopped':
             uptime = 'N/A'
-        print "id: %s" % id
+        print "id: %s" % instance_id
         print "dns_name: %s" % dns_name
         print "private_dns_name: %s" % private_dns_name
         if instance.reason:
@@ -558,10 +587,12 @@ class EasyEC2(EasyAWS):
         print "private_ip: %s" % private_ip
         print "zone: %s" % zone
         print "ami: %s" % ami
+        print "virtualization: %s" % virt_type
         print "type: %s" % instance_type
         print "groups: %s" % groups
         print "keypair: %s" % keypair
         print "uptime: %s" % uptime
+        print "tags: %s" % tags
         print
 
     def list_all_instances(self, show_terminated=False):
@@ -670,6 +701,10 @@ class EasyEC2(EasyAWS):
         self.list_images(imgs, sort_key=sc_public_sort, reverse=True)
 
     def create_volume(self, size, zone, snapshot_id=None):
+        msg = "Creating %sGB volume in zone %s" % (size, zone)
+        if snapshot_id:
+            msg += " from snapshot %s" % snapshot_id
+        log.info(msg)
         return self.conn.create_volume(size, zone, snapshot_id)
 
     def remove_volume(self, volume_id):
@@ -894,36 +929,27 @@ class EasyEC2(EasyAWS):
             log.info("Manifest migrated successfully. You can now run:\n" +
                      register_cmd + "\nto register your migrated image.")
 
-    def create_root_block_device_map(self, snapshot_id,
-                                     root_device_name='/dev/sda1',
-                                     add_ephemeral_drives=False,
-                                     ephemeral_drive_0='/dev/sdb1',
-                                     ephemeral_drive_1='/dev/sdc1',
-                                     ephemeral_drive_2='/dev/sdd1',
-                                     ephemeral_drive_3='/dev/sde1'):
+    def create_block_device_map(self, root_snapshot_id=None,
+                                root_device_name='/dev/sda1',
+                                add_ephemeral_drives=False,
+                                num_ephemeral_drives=24,
+                                device_fmt='/dev/sd%s1'):
         """
         Utility method for building a new block_device_map for a given snapshot
         id. This is useful when creating a new image from a volume snapshot.
         The returned block device map can be used with self.register_image
         """
         bmap = boto.ec2.blockdevicemapping.BlockDeviceMapping()
-        sda1 = boto.ec2.blockdevicemapping.BlockDeviceType()
-        sda1.snapshot_id = snapshot_id
-        sda1.delete_on_termination = True
-        bmap[root_device_name] = sda1
+        if root_snapshot_id:
+            sda1 = boto.ec2.blockdevicemapping.BlockDeviceType()
+            sda1.snapshot_id = root_snapshot_id
+            sda1.delete_on_termination = True
+            bmap[root_device_name] = sda1
         if add_ephemeral_drives:
-            sdb1 = boto.ec2.blockdevicemapping.BlockDeviceType()
-            sdb1.ephemeral_name = 'ephemeral0'
-            bmap[ephemeral_drive_0] = sdb1
-            sdc1 = boto.ec2.blockdevicemapping.BlockDeviceType()
-            sdc1.ephemeral_name = 'ephemeral1'
-            bmap[ephemeral_drive_1] = sdc1
-            sdd1 = boto.ec2.blockdevicemapping.BlockDeviceType()
-            sdd1.ephemeral_name = 'ephemeral2'
-            bmap[ephemeral_drive_2] = sdd1
-            sde1 = boto.ec2.blockdevicemapping.BlockDeviceType()
-            sde1.ephemeral_name = 'ephemeral3'
-            bmap[ephemeral_drive_3] = sde1
+            for i in range(num_ephemeral_drives):
+                eph = boto.ec2.blockdevicemapping.BlockDeviceType()
+                eph.ephemeral_name = 'ephemeral%d' % i
+                bmap[device_fmt % chr(ord('b') + i)] = eph
         return bmap
 
     @print_timing("Downloading image")
@@ -1000,6 +1026,28 @@ class EasyEC2(EasyAWS):
         except exception.VolumeDoesNotExist:
             pass
 
+    def wait_for_volume(self, volume, status=None, state=None,
+                        refresh_interval=5, log_func=log.info):
+        if status:
+            log_func("Waiting for %s to become '%s'..." % (volume.id, status),
+                     extra=dict(__nonewline__=True))
+            s = spinner.Spinner()
+            s.start()
+            while volume.update() != status:
+                time.sleep(refresh_interval)
+            s.stop()
+        if state:
+            log_func("Waiting for %s to transition to: %s... " %
+                     (volume.id, state), extra=dict(__nonewline__=True))
+            if not status:
+                volume.update()
+            s = spinner.Spinner()
+            s.start()
+            while volume.attachment_state() != state:
+                time.sleep(refresh_interval)
+                volume.update()
+            s.stop()
+
     def wait_for_snapshot(self, snapshot, refresh_interval=30):
         snap = snapshot
         log.info("Waiting for snapshot to complete: %s" % snap.id)
@@ -1010,12 +1058,15 @@ class EasyEC2(EasyAWS):
         while snap.status != 'completed':
             try:
                 progress = int(snap.update().replace('%', ''))
-                pbar.update(progress)
+                if not pbar.finished:
+                    pbar.update(progress)
             except ValueError:
                 time.sleep(5)
                 continue
-            time.sleep(refresh_interval)
-        pbar.finish()
+            if snap.status != 'completed':
+                time.sleep(refresh_interval)
+        if not pbar.finished:
+            pbar.finish()
 
     def create_snapshot(self, vol, description=None, wait_for_snapshot=False,
                         refresh_interval=30):
@@ -1116,8 +1167,8 @@ class EasyEC2(EasyAWS):
                 print
         print 'Total: %s' % len(vols)
 
-    def get_spot_history(self, instance_type, start=None, end=None, plot=False,
-                         plot_server_interface="localhost",
+    def get_spot_history(self, instance_type, start=None, end=None, zone=None,
+                         plot=False, plot_server_interface="localhost",
                          plot_launch_browser=True, plot_web_browser=None,
                          plot_shutdown_server=True):
         if start and not utils.is_iso_time(start):
@@ -1126,6 +1177,7 @@ class EasyEC2(EasyAWS):
             raise exception.InvalidIsoDate(end)
         pdesc = "Linux/UNIX"
         hist = self.conn.get_spot_price_history(start_time=start, end_time=end,
+                                                availability_zone=zone,
                                                 instance_type=instance_type,
                                                 product_description=pdesc)
         if not hist:
@@ -1141,7 +1193,7 @@ class EasyEC2(EasyAWS):
             data.append([timestamp, price])
         maximum = max(prices)
         avg = sum(prices) / float(len(prices))
-        log.info("Current price: $%.2f" % prices[-1])
+        log.info("Current price: $%.2f" % prices[0])
         log.info("Max price: $%.2f" % maximum)
         log.info("Average price: $%.2f" % avg)
         if plot:
@@ -1179,8 +1231,13 @@ class EasyEC2(EasyAWS):
 
     def show_console_output(self, instance_id):
         instance = self.get_instance(instance_id)
-        console_output = instance.get_console_output().output
-        print ''.join([c for c in console_output if c in string.printable])
+        console_output = instance.get_console_output().output or ''
+        console_output = ''.join([c for c in console_output if c in
+                                  string.printable])
+        if console_output:
+            print console_output
+        else:
+            log.info("No console output available...")
 
 
 class EasyS3(EasyAWS):

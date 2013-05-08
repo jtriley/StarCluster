@@ -13,7 +13,7 @@ Install StarCluster using easy_install::
 
 or to install StarCluster manually::
 
-    $ (Download StarCluster from http://web.mit.edu/starcluster)
+    $ (Download StarCluster from http://star.mit.edu/cluster)
     $ tar xvzf starcluster-X.X.X.tar.gz  (where x.x.x is a version number)
     $ cd starcluster-X.X.X
     $ sudo python setup.py install
@@ -22,7 +22,7 @@ After the software has been installed, the next step is to setup the
 configuration file::
 
     $ starcluster help
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
@@ -128,10 +128,10 @@ Have a look at the rest of StarCluster's available commands::
 
 Learn more...
 -------------
-Watch an ~8min screencast @ http://web.mit.edu/stardev/cluster
+Watch an ~8min screencast @ http://star.mit.edu/cluster
 
 To learn more have a look at the rest of the documentation:
-http://web.mit.edu/stardev/cluster/docs
+http://star.mit.edu/cluster/docs
 
 The docs explain the configuration file in detail, how to create/use EBS
 volumes with StarCluster, how to use the Sun Grid Engine queueing system to

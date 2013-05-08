@@ -55,17 +55,14 @@ class CmdCreateVolume(CmdBase):
             help="The AMI to use when launching volume host instance")
         parser.add_option(
             "-I", "--instance-type", dest="instance_type",
-            action="store", type="choice", default="m1.small",
+            action="store", type="choice", default="t1.micro",
             choices=static.INSTANCE_TYPES.keys(),
             help="The instance type to use when launching volume "
-            "host instance")
+            "host instance (default: t1.micro)")
         parser.add_option(
             "-t", "--tag", dest="tags", action="callback", type="string",
             default={}, callback=self._build_dict,
             help="One or more tags to apply to the new volume (key=value)")
-
-    def cancel_command(self, signum, frame):
-        raise exception.CancelledCreateVolume()
 
     def _load_keypair(self, keypair=None):
         key_location = None
@@ -130,5 +127,7 @@ class CmdCreateVolume(CmdBase):
         vc = volume.VolumeCreator(self.ec2, **kwargs)
         if host_instance:
             vc._validate_host_instance(host_instance, zone)
-        self.catch_ctrl_c()
-        vc.create(size, zone, name=self.opts.name, tags=self.opts.tags)
+        try:
+            vc.create(size, zone, name=self.opts.name, tags=self.opts.tags)
+        except KeyboardInterrupt:
+            raise exception.CancelledCreateVolume()

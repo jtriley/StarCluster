@@ -67,6 +67,16 @@ SECURITY_GROUP_TEMPLATE = '-'.join([SECURITY_GROUP_PREFIX, "%s"])
 VOLUME_GROUP_NAME = "volumecreator"
 VOLUME_GROUP = SECURITY_GROUP_TEMPLATE % VOLUME_GROUP_NAME
 
+# Cluster group tag keys
+VERSION_TAG = '-'.join([SECURITY_GROUP_PREFIX, 'version'])
+CORE_TAG = '-'.join([SECURITY_GROUP_PREFIX, 'core'])
+USER_TAG = '-'.join([SECURITY_GROUP_PREFIX, 'user'])
+
+# Internal StarCluster userdata filenames
+UD_PLUGINS_FNAME = "_sc_plugins.txt"
+UD_VOLUMES_FNAME = "_sc_volumes.txt"
+UD_ALIASES_FNAME = "_sc_aliases.txt"
+
 INSTANCE_STATES = ['pending', 'running', 'shutting-down',
                    'terminated', 'stopping', 'stopped']
 VOLUME_STATUS = ['creating', 'available', 'in-use',
@@ -84,23 +94,37 @@ INSTANCE_TYPES = {
     'm2.xlarge': ['x86_64'],
     'm2.2xlarge': ['x86_64'],
     'm2.4xlarge': ['x86_64'],
+    'm3.xlarge': ['x86_64'],
+    'm3.2xlarge': ['x86_64'],
     'cc1.4xlarge': ['x86_64'],
     'cc2.8xlarge': ['x86_64'],
     'cg1.4xlarge': ['x86_64'],
+    'cr1.8xlarge': ['x86_64'],
     'hi1.4xlarge': ['x86_64'],
+    'hs1.8xlarge': ['x86_64'],
 }
 
 MICRO_INSTANCE_TYPES = ['t1.micro']
+
+SEC_GEN_TYPES = ['m3.xlarge', 'm3.2xlarge']
 
 CLUSTER_COMPUTE_TYPES = ['cc1.4xlarge', 'cc2.8xlarge']
 
 CLUSTER_GPU_TYPES = ['cg1.4xlarge']
 
-CLUSTER_TYPES = CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES
+CLUSTER_HIMEM_TYPES = ['cr1.8xlarge']
 
 HI_IO_TYPES = ['hi1.4xlarge']
 
-CLUSTER_REGIONS = ['us-east-1']
+HI_STORAGE_TYPES = ['hs1.8xlarge']
+
+CLUSTER_TYPES = CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES + CLUSTER_HIMEM_TYPES
+
+HVM_TYPES = CLUSTER_TYPES + HI_IO_TYPES + HI_STORAGE_TYPES + SEC_GEN_TYPES
+
+PLACEMENT_GROUP_TYPES = CLUSTER_TYPES + HI_IO_TYPES + HI_STORAGE_TYPES
+
+CLUSTER_REGIONS = ['us-east-1', 'us-west-2', 'eu-west-1']
 
 PROTOCOLS = ['tcp', 'udp', 'icmp']
 
@@ -188,7 +212,9 @@ CLUSTER_SETTINGS = {
     'volumes': (list, False, [], None, None),
     'plugins': (list, False, [], None, None),
     'permissions': (list, False, [], None, None),
+    'userdata_scripts': (list, False, [], None, None),
     'disable_queue': (bool, False, False, None, None),
     'force_spot_master': (bool, False, False, None, None),
     'static_security_groups': (list, False, [], None, None),
+    'disable_cloudinit': (bool, False, False, None, None),
 }

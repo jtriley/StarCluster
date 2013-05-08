@@ -8,25 +8,16 @@ from starcluster.tests import StarClusterTest
 
 class TestClusterValidation(StarClusterTest):
 
-    def test_aws_credentials_validation(self):
-        cluster = self.config.get_cluster_template('c1')
-        try:
-            cluster.validator.validate_credentials()
-        except exception.ClusterValidationError:
-            pass
-        else:
-            raise Exception("cluster allows invalid aws credentials")
-
     def test_plugin_loading(self):
         # default test template should have valid plugins by default
         # make them invalid
         cases = [
             {'p1_class': 'None'},
-            {'p1_class':'unittest.TestCase'},
+            {'p1_class': 'unittest.TestCase'},
         ]
         for case in cases:
-            cfg = self.get_custom_config(**case)
             try:
+                cfg = self.get_custom_config(**case)
                 cfg.get_cluster_template('c1')
             except exception.PluginError:
                 pass
@@ -174,9 +165,9 @@ class TestClusterValidation(StarClusterTest):
         assert self.config.permissions.s3.ip_protocol == 'tcp'
         assert self.config.permissions.s3.cidr_ip == '0.0.0.0/0'
         cases = [
-            {'s1_from_port':90, 's1_to_port': 10},
-            {'s1_from_port':-1},
-            {'s1_cidr_ip':'asdfasdf'},
+            {'s1_from_port': 90, 's1_to_port': 10},
+            {'s1_from_port': -1},
+            {'s1_cidr_ip': 'asdfasdf'},
         ]
         failed = self.__test_cases_from_cfg(cases,
                                             'validate_permission_settings',

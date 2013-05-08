@@ -22,9 +22,6 @@ class CmdEbsImage(InstanceCompleter):
     """
     names = ['ebsimage', 'eimg']
 
-    image_name = None
-    is_ebs_backed = None
-
     def addopts(self, parser):
         parser.add_option(
             "-d", "--description", dest="description", action="store",
@@ -50,21 +47,19 @@ class CmdEbsImage(InstanceCompleter):
             help="size of root volume (only used when creating an "
             "EBS image from an S3 instance)")
 
-    def cancel_command(self, signum, frame):
-        raise exception.CancelledEBSImageCreation(self.image_name,
-                                                  self.is_ebs_backed)
-
     def execute(self, args):
         if len(args) != 2:
             self.parser.error(
                 'you must specify an instance-id and image name')
         instanceid, image_name = args
-        self.image_name = image_name
         i = self.ec2.get_instance(instanceid)
-        self.is_ebs_backed = (i.root_device_type == "ebs")
+        is_ebs_backed = (i.root_device_type == "ebs")
         key_location = self.cfg.get_key(i.key_name).get('key_location')
-        self.catch_ctrl_c()
-        ami_id = self.ec2.create_ebs_image(instanceid, key_location,
-                                           image_name,
-                                           **self.specified_options_dict)
-        log.info("Your new AMI id is: %s" % ami_id)
+        try:
+            ami_id = self.ec2.create_ebs_image(instanceid, key_location,
+                                               image_name,
+                                               **self.specified_options_dict)
+            log.info("Your new AMI id is: %s" % ami_id)
+        except KeyboardInterrupt:
+            raise exception.CancelledEBSImageCreation(image_name,
+                                                      is_ebs_backed)

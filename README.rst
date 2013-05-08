@@ -4,9 +4,11 @@ StarCluster v0.9999
 :StarCluster: Cluster Computing Toolkit for the Cloud
 :Version: 0.9999
 :Author: Justin Riley <justin.t.riley@gmail.com>
-:Team: Software Tools for Academics and Researchers (http://web.mit.edu/star)
-:Homepage: http://web.mit.edu/starcluster
+:Team: Software Tools for Academics and Researchers (http://star.mit.edu)
+:Homepage: http://star.mit.edu/cluster
 :License: LGPL
+.. image:: https://secure.travis-ci.org/jtriley/StarCluster.png?branch=develop
+  :target: https://secure.travis-ci.org/jtriley/StarCluster
 
 Description:
 ============
@@ -49,7 +51,7 @@ Install StarCluster using easy_install::
 
 or to install StarCluster manually::
 
-    $ (Download StarCluster from http://web.mit.edu/starcluster)
+    $ (Download StarCluster from http://star.mit.edu/cluster)
     $ tar xvzf starcluster-X.X.X.tar.gz  (where x.x.x is a version number)
     $ cd starcluster-X.X.X
     $ sudo python setup.py install
@@ -58,7 +60,7 @@ After the software has been installed, the next step is to setup the
 configuration file::
 
     $ starcluster help
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
@@ -155,20 +157,20 @@ Have a look at the rest of StarCluster's available commands::
 Dependencies:
 =============
 * Amazon AWS Account
-* Python 2.5+
-* Boto 2.3.0
-* Python SSH 1.7.13
+* Python 2.6+
+* Boto 2.8.0
+* Paramiko 1.9.0
 * WorkerPool 0.9.2
 * Jinja2 2.6
-* decorator 3.3.1
-* pyasn1 0.0.13b
+* decorator 3.4.0
+* pyasn1 0.1.6
 
 Learn more...
 =============
-Watch an ~8 minute screencast @ http://web.mit.edu/starcluster
+Watch an ~8 minute screencast @ http://star.mit.edu/cluster
 
 To learn more have a look at the documentation:
-http://web.mit.edu/starcluster/docs/latest
+http://star.mit.edu/cluster/docs/latest
 
 Licensing
 =========

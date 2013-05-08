@@ -55,6 +55,14 @@ class SSHNoCredentialsError(SSHError):
         self.msg = "No password or key specified"
 
 
+class RemoteCommandFailed(SSHError):
+    def __init__(self, msg, command, exit_status, output):
+        self.msg = msg
+        self.command = command
+        self.exit_status = exit_status
+        self.output = output
+
+
 class SSHAccessDeniedViaAuthKeys(BaseException):
     """
     Raised when SSH access for a given user has been restricted via
@@ -231,6 +239,7 @@ class ConfigNotFound(ConfigError):
         cfg_file = open(self.cfg, 'w')
         cfg_file.write(config.config_template)
         cfg_file.close()
+        os.chmod(self.cfg, 0600)
         log.info("Config template written to %s" % self.cfg)
         log.info("Please customize the config template")
 
@@ -507,7 +516,7 @@ The cluster '%(tag)s' does not have any nodes and is safe to terminate.
     terminate_msg = """\
 Please terminate the cluster using:
 
-    $ starcluster terminate %(tag)s
+    $ starcluster terminate -f %(tag)s
 """
 
     def __init__(self, group):

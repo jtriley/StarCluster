@@ -4,11 +4,16 @@ Utils module for StarCluster
 
 import os
 import re
+import sys
+import zlib
 import time
+import json
 import types
 import string
 import random
 import inspect
+import cPickle
+import StringIO
 import calendar
 import urlparse
 import decorator
@@ -443,7 +448,7 @@ def test_version_to_float():
     print("All tests passed")
 
 
-def get_arg_spec(func):
+def get_arg_spec(func, debug=True):
     """
     Convenience wrapper around inspect.getargspec
 
@@ -461,12 +466,13 @@ def get_arg_spec(func):
     nrequired = nargs - ndefaults
     args = allargs[:nrequired]
     kwargs = allargs[nrequired:]
-    log.debug('nargs = %s' % nargs)
-    log.debug('ndefaults = %s' % ndefaults)
-    log.debug('nrequired = %s' % nrequired)
-    log.debug('args = %s' % args)
-    log.debug('kwargs = %s' % kwargs)
-    log.debug('defaults = %s' % str(defaults))
+    if debug:
+        log.debug('nargs = %s' % nargs)
+        log.debug('ndefaults = %s' % ndefaults)
+        log.debug('nrequired = %s' % nrequired)
+        log.debug('args = %s' % args)
+        log.debug('kwargs = %s' % kwargs)
+        log.debug('defaults = %s' % str(defaults))
     return args, kwargs
 
 
@@ -545,3 +551,40 @@ class struct_passwd(tuple):
             return self[self.attrs.index(attr)]
         except ValueError:
             raise AttributeError
+
+
+def dump_compress_encode(obj, use_json=False):
+    serializer = cPickle
+    if use_json:
+        serializer = json
+    return zlib.compress(serializer.dumps(obj)).encode('base64')
+
+
+def decode_uncompress_load(string, use_json=False):
+    serializer = cPickle
+    if use_json:
+        serializer = json
+    return serializer.loads(zlib.decompress(string.decode('base64')))
+
+
+def string_to_file(string, filename):
+    s = StringIO.StringIO(string)
+    s.name = filename
+    return s
+
+
+def strings_to_files(strings, fname_prefix=''):
+    fileobjs = [StringIO.StringIO(s) for s in strings]
+    if fname_prefix:
+        fname_prefix += '_'
+    for i, f in enumerate(fileobjs):
+        f.name = '%s%d' % (fname_prefix, i)
+    return fileobjs
+
+
+def get_fq_class_name(obj):
+    return '.'.join([obj.__module__, obj.__class__.__name__])
+
+
+def size_in_kb(obj):
+    return sys.getsizeof(obj) / 1024.
