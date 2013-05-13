@@ -57,6 +57,15 @@ class ClusterManager(managers.Manager):
                 if require_keys:
                     raise
                 cl.key_location = ''
+
+            # Treat any security group on the master node that does not begin
+            # with the StarCluster security group prefix as a static
+            # security group of the cluster.
+            nodes = cl.nodes
+            if len(nodes) > 0:
+                master_node = nodes[0]
+                cl.static_security_groups = map(lambda g: g.name, master_node.static_groups)
+
             return cl
         except exception.SecurityGroupDoesNotExist:
             raise exception.ClusterDoesNotExist(cluster_name)
@@ -266,15 +275,19 @@ class ClusterManager(managers.Manager):
                           extra=dict(__textwrap__=True))
                 print
                 continue
-            header = '%s (security group: %s)' % (tag, scg.name)
-            print '-' * len(header)
-            print header
-            print '-' * len(header)
+
             nodes = cl.nodes
             try:
                 n = nodes[0]
+                header = '%s (security groups: %s)' % (tag, ', '.join(map(lambda x: x.name, n.groups)))
             except IndexError:
                 n = None
+                header = "%s" % tag
+
+            print '-' * len(header)
+            print header
+            print '-' * len(header)
+
             state = getattr(n, 'state', None)
             ltime = 'N/A'
             uptime = 'N/A'
@@ -401,7 +414,7 @@ class Cluster(object):
         self.disable_queue = disable_queue
         self.num_threads = num_threads
         self.disable_threads = disable_threads
-        self.static_security_groups=static_security_groups
+        self.static_security_groups = static_security_groups
         self.force_spot_master = force_spot_master
         self.disable_cloudinit = disable_cloudinit
 
@@ -1634,10 +1647,10 @@ class ClusterValidator(validators.Validator):
         """
         Check that the specified security groups actually exist.
         """
-        for group in self.static_security_groups:
+        for group in self.cluster.static_security_groups:
             # This will throw an exception if the security group does not exist.
             try:
-                self.ec2.get_security_groups(filters={'group-name': group})
+                self.cluster.ec2.get_security_groups(filters={'group-name': group})
             except:
                 raise exception.ClusterValidationError(
                     "Specified security group does not exist: {0}".format(group))

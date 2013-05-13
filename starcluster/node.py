@@ -196,6 +196,11 @@ class Node(object):
         return filter(lambda x: x.name.startswith(sg_prefix), self.groups)
 
     @property
+    def static_groups(self):
+        sg_prefix = static.SECURITY_GROUP_PREFIX
+        return filter(lambda x: not x.name.startswith(sg_prefix), self.groups)
+
+    @property
     def parent_cluster(self):
         try:
             return self.cluster_groups[0]
