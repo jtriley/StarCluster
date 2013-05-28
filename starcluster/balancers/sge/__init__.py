@@ -198,13 +198,12 @@ class SGEStats(object):
 
     def count_total_slots(self):
         """
-        returns a count of total slots available in this cluser
+        Returns a count of the total slots available in this cluster
         """
         slots = 0
-        for h in self.hosts:
-            if h['num_proc'] == '-':
-                h['num_proc'] = 0
-            slots = slots + int(h['num_proc'])
+        for q in self.queues:
+            if q.startswith('all.q@'):
+                slots += self.queues.get(q).get('slots')
         return slots
 
     def slots_per_host(self):
@@ -216,12 +215,14 @@ class SGEStats(object):
         total = self.count_total_slots()
         if total == 0:
             return total
-        if self.hosts[0][u'num_proc'] == '-':
-            self.hosts[0][u'num_proc'] = 0
-        single = int(self.hosts[0][u'num_proc'])
+        single = 0
+        for q in self.queues:
+            if q.startswith('all.q@'):
+                single = self.queues.get(q).get('slots')
+                break
         if (total != (single * len(self.hosts))):
-            log.error("ERROR: Number of slots not consistent across cluster")
-            return -1
+            raise exception.BaseException(
+                "ERROR: Number of slots not consistent across cluster")
         return single
 
     def oldest_queued_job_age(self):
