@@ -20,7 +20,7 @@ class SGEStats(object):
     SunGridEngine stats parser
     """
     _default_fields = ["JB_job_number", "state", "JB_submission_time",
-                       "queue_name", "slots", "tasks"]
+                       "JAT_start_time", "queue_name", "slots", "tasks"]
 
     def __init__(self):
         self.jobstat_cachesize = 200
