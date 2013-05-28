@@ -26,6 +26,7 @@ class SGEStats(object):
         self.jobstat_cachesize = 200
         self.hosts = []
         self.jobs = []
+        self.queues = {}
         self.jobstats = self.jobstat_cachesize * [None]
         self.max_job_id = 0
 
@@ -65,6 +66,7 @@ class SGEStats(object):
         This method parses qstat -xml output and makes a neat array
         """
         self.jobs = []  # clear the old jobs
+        self.queues = {}  # clear the old queues
         fields = fields or self._default_fields
         doc = xml.dom.minidom.parseString(qstat_out)
         for job in doc.getElementsByTagName("job_list"):
@@ -85,6 +87,10 @@ class SGEStats(object):
                 self.job_multiply(hash)
             else:
                 self.jobs.append(hash)
+        for q in doc.getElementsByTagName("Queue-List"):
+            name = q.getElementsByTagName("name")[0].childNodes[0].data
+            slots = q.getElementsByTagName("slots_total")[0].childNodes[0].data
+            self.queues[name] = dict(slots=int(slots))
         return self.jobs
 
     def job_multiply(self, hash):
@@ -489,7 +495,7 @@ class SGELoadBalancer(LoadBalancer):
         now = self.get_remote_time()
         qatime = self.get_qatime(now)
         qacct_cmd = 'qacct -j -b ' + qatime
-        qstat_cmd = 'qstat -u \* -xml'
+        qstat_cmd = 'qstat -u \* -xml -f'
         qhostxml = '\n'.join(master.ssh.execute('qhost -xml'))
         qstatxml = '\n'.join(master.ssh.execute(qstat_cmd))
         qacct = '\n'.join(master.ssh.execute(qacct_cmd))
