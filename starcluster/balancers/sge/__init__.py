@@ -19,13 +19,15 @@ class SGEStats(object):
     """
     SunGridEngine stats parser
     """
-    jobstat_cachesize = 200
-    hosts = []
-    jobs = []
-    jobstats = jobstat_cachesize * [None]
-    max_job_id = 0
     _default_fields = ["JB_job_number", "state", "JB_submission_time",
                        "queue_name", "slots", "tasks"]
+
+    def __init__(self):
+        self.jobstat_cachesize = 200
+        self.hosts = []
+        self.jobs = []
+        self.jobstats = self.jobstat_cachesize * [None]
+        self.max_job_id = 0
 
     @property
     def first_job_id(self):
