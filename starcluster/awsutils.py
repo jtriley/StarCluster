@@ -420,6 +420,7 @@ class EasyEC2(EasyAWS):
                           security_groups=None, launch_group=None,
                           availability_zone_group=None, placement=None,
                           user_data=None, placement_group=None,
+                          security_group_ids=None,
                           block_device_map=None, subnet_id=None):
         """
         Convenience method for running spot or flat-rate instances
@@ -449,7 +450,8 @@ class EasyEC2(EasyAWS):
             return self.request_spot_instances(
                 price, image_id, instance_type=instance_type,
                 count=count, launch_group=launch_group, key_name=key_name,
-                security_groups=security_groups,
+                security_group_ids=security_group_ids,
+                subnet_id=subnet_id,
                 availability_zone_group=availability_zone_group,
                 placement=placement, placement_group=placement_group,
                 user_data=user_data, block_device_map=block_device_map)
@@ -466,13 +468,14 @@ class EasyEC2(EasyAWS):
     def request_spot_instances(self, price, image_id, instance_type='m1.small',
                                count=1, launch_group=None, key_name=None,
                                availability_zone_group=None,
-                               security_groups=None, placement=None,
+                               security_group_ids=None, subnet_id=None, placement=None,
                                placement_group=None, user_data=None,
                                block_device_map=None):
         return self.conn.request_spot_instances(
             price, image_id, instance_type=instance_type, count=count,
             launch_group=launch_group, key_name=key_name,
-            security_groups=security_groups,
+            security_group_ids=security_group_ids,
+            subnet_id=subnet_id,
             availability_zone_group=availability_zone_group,
             placement=placement, placement_group=placement_group,
             user_data=user_data, block_device_map=block_device_map)
