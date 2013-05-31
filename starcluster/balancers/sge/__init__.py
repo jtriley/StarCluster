@@ -640,7 +640,8 @@ class SGELoadBalancer(LoadBalancer):
                      self.max_nodes)
             return
         need_to_add = 0
-        qlen = len(self.stat.get_queued_jobs())
+        queued_jobs = self.stat.get_queued_jobs()
+        qlen = sum([int(j['slots']) for j in queued_jobs])
         sph = self.stat.slots_per_host()
         ts = self.stat.count_total_slots()
         num_exec_hosts = len(self.stat.hosts)
@@ -649,7 +650,7 @@ class SGELoadBalancer(LoadBalancer):
         if num_exec_hosts > 0:
             #calculate job duration
             avg_duration = self.stat.avg_job_duration()
-            ettc = avg_duration * qlen / num_exec_hosts
+            ettc = avg_duration * len(queued_jobs) / num_exec_hosts
         if qlen > ts:
             if not self.has_cluster_stabilized():
                 return
