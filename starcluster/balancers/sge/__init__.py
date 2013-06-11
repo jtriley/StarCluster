@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import datetime
 import xml.dom.minidom
@@ -19,9 +20,6 @@ class SGEStats(object):
     """
     SunGridEngine stats parser
     """
-    _default_fields = ["JB_job_number", "state", "JB_submission_time",
-                       "JAT_start_time", "queue_name", "slots", "tasks"]
-
     def __init__(self):
         self.jobstat_cachesize = 200
         self.hosts = []
@@ -61,55 +59,56 @@ class SGEStats(object):
                 self.hosts.append(hash)
         return self.hosts
 
-    def parse_qstat(self, qstat_out, fields=None, queues=None):
+    def parse_qstat(self, qstat_out):
         """
         This method parses qstat -xml output and makes a neat array
         """
         self.jobs = []  # clear the old jobs
         self.queues = {}  # clear the old queues
-        fields = fields or self._default_fields
         doc = xml.dom.minidom.parseString(qstat_out)
-        for job in doc.getElementsByTagName("job_list"):
-            qname = job.getAttribute("queue_name")
-            if queues:
-                if qname not in queues:
-                    continue
-            jstate = job.getAttribute("state")
-            hash = dict(job_state=jstate, queue_name=qname)
-            for tag in fields:
-                es = job.getElementsByTagName(tag)
-                for node in es:
-                    for node2 in node.childNodes:
-                        if node2.nodeType == xml.dom.minidom.Node.TEXT_NODE:
-                            hash[tag] = node2.data
-            # grab the submit time on all jobs, the last job's val stays
-            if 'tasks' in hash and hash['tasks'].find('-') > 0:
-                self.job_multiply(hash)
-            else:
-                self.jobs.append(hash)
         for q in doc.getElementsByTagName("Queue-List"):
             name = q.getElementsByTagName("name")[0].childNodes[0].data
             slots = q.getElementsByTagName("slots_total")[0].childNodes[0].data
             self.queues[name] = dict(slots=int(slots))
+            for job in q.getElementsByTagName("job_list"):
+                self.jobs.extend(self._parse_job(job, queue_name=name))
+        for job in doc.getElementsByTagName("job_list"):
+            if job.parentNode.nodeName == 'job_info':
+                self.jobs.extend(self._parse_job(job))
         return self.jobs
 
-    def job_multiply(self, hash):
+    def _parse_job(self, job, queue_name=None):
+        jstate = job.getAttribute("state")
+        jdict = dict(job_state=jstate, queue_name=queue_name)
+        for node in job.childNodes:
+            if node.nodeType == xml.dom.minidom.Node.ELEMENT_NODE:
+                for child in node.childNodes:
+                    jdict[node.nodeName] = child.data
+        num_tasks = self._count_tasks(jdict)
+        log.debug("Job contains %d tasks" % num_tasks)
+        return [jdict] * num_tasks
+
+    def _count_tasks(self, jdict):
         """
-        This function deals with sge jobs with a task range.  For example,
-        'qsub -t 1-20:1' makes 20 jobs. self.jobs needs to represent that it is
-        20 jobs instead of just 1.
+        This function returns the number of tasks in a task array job. For
+        example, 'qsub -t 1-20:1' returns 20.
         """
-        sz_range = hash['tasks']
-        dashpos = sz_range.find('-')
-        colpos = sz_range.find(':')
-        start = int(sz_range[0:dashpos])
-        fin = int(sz_range[dashpos + 1:colpos])
-        gran = int(sz_range[colpos + 1:len(sz_range)])
-        log.debug("start = %d, fin = %d, granularity = %d, sz_range = %s" %
-                  (start, fin, gran, sz_range))
-        num_jobs = (fin - start) / gran
-        log.debug("This job expands to %d tasks" % num_jobs)
-        self.jobs.extend([hash] * num_jobs)
+        tasks = jdict.get('tasks', '')
+        if ',' in tasks:
+            num_tasks = len(tasks.split(','))
+        elif '-' in tasks:
+            regex = "(\d+)-?(\d+)?:?(\d+)?"
+            r = re.compile(regex)
+            start, end, step = r.match(tasks).groups()
+            start = int(start)
+            end = int(end)
+            step = int(step) if step else 1
+            num_tasks = (end - start) / step + 1
+        else:
+            num_tasks = 1
+        log.debug("task array job has %s tasks (tasks: %s)" %
+                  (num_tasks, tasks))
+        return num_tasks
 
     def qacct_to_datetime_tuple(self, qacct):
         """
@@ -496,13 +495,13 @@ class SGELoadBalancer(LoadBalancer):
         now = self.get_remote_time()
         qatime = self.get_qatime(now)
         qacct_cmd = 'qacct -j -b ' + qatime
-        qstat_cmd = 'qstat -u \* -xml -f'
+        qstat_cmd = 'qstat -u \* -xml -f -r'
         qhostxml = '\n'.join(master.ssh.execute('qhost -xml'))
         qstatxml = '\n'.join(master.ssh.execute(qstat_cmd))
         qacct = '\n'.join(master.ssh.execute(qacct_cmd))
         stats = SGEStats()
         stats.parse_qhost(qhostxml)
-        stats.parse_qstat(qstatxml, queues=["all.q", ""])
+        stats.parse_qstat(qstatxml)
         stats.parse_qacct(qacct, now)
         log.debug("sizes: qhost: %d, qstat: %d, qacct: %d" %
                   (len(qhostxml), len(qstatxml), len(qacct)))
