@@ -180,7 +180,6 @@ class ThreadPool(workerpool.WorkerPool):
             log.error("jid:")
             log.error(jid)
             log.error("-------threadpool exc end-----------")
-            
 
 
 def get_thread_pool(size=10, worker_factory=_worker_factory,

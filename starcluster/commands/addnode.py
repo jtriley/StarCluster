@@ -54,33 +54,35 @@ class CmdAddNode(ClusterCompleter):
 
     def addopts(self, parser):
         parser.add_option(
-                "-a", "--alias", dest="alias", action="append", type="string",
-                default=[], help="alias to give to the new node "
-                "(e.g. node007, mynode, etc.)")
+            "-a", "--alias", dest="alias", action="append", type="string",
+            default=[], help="alias to give to the new node "
+            "(e.g. node007, mynode, etc.)")
         parser.add_option(
-                "-n", "--num-nodes", dest="num_nodes", action="store", type="int",
-                default=1, help="number of new nodes to launch")
+            "-n", "--num-nodes", dest="num_nodes", action="store", type="int",
+            default=1, help="number of new nodes to launch")
         parser.add_option(
-                "-i", "--image-id", dest="image_id", action="store", type="string",
-                default=None, help="image id for new node(s) "
-                "(e.g. ami-12345678).")
+            "-i", "--image-id", dest="image_id", action="store", type="string",
+            default=None, help="image id for new node(s) "
+            "(e.g. ami-12345678).")
         parser.add_option(
-                "-I", "--instance-type", dest="instance_type",
-                action="store", type="choice", default=None,
-                choices=static.INSTANCE_TYPES.keys(),
-                help="The instance type to use when launching volume "
-                "host instance")
+            "-I", "--instance-type", dest="instance_type",
+            action="store", type="choice", default=None,
+            choices=static.INSTANCE_TYPES.keys(),
+            help="The instance type to use when launching volume "
+            "host instance")
         parser.add_option(
-                "-z", "--availability-zone", dest="zone", action="store",
-                type="string", default=None, help="availability zone for "
-                "new node(s) (e.g. us-east-1)")
+            "-z", "--availability-zone", dest="zone", action="store",
+            type="string", default=None, help="availability zone for "
+            "new node(s) (e.g. us-east-1)")
         parser.add_option(
-                "-b", "--bid", dest="spot_bid", action="store", type="float",
-                default=None, help="spot bid for new node(s) (in $ per hour)")
+            "-b", "--bid", dest="spot_bid", action="store", type="float",
+            default=None, help="spot bid for new node(s) (in $ per hour)")
         parser.add_option(
-                "-x", "--no-create", dest="no_create", action="store_true",
-                default=False, help="do not launch new EC2 instances when "
-                "adding nodes (use existing instances instead)")
+            "-x", "--no-create", dest="no_create",
+            action="store_true",
+            default=False,
+            help="do not launch new EC2 instances when "
+            "adding nodes (use existing instances instead)")
         parser.add_option(
             "--reboot-interval", dest="reboot_interval", type="int",
             default=10, help="Delay in minutes beyond which a node is "

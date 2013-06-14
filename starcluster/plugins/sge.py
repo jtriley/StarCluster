@@ -58,7 +58,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         nodes = nodes or self._nodes
         #TODO: Fails if some machines go away while updating
         num_processors = sum(self.pool.map(
-            lambda n: n.num_processors, 
+            lambda n: n.num_processors,
             nodes,
             jobid_fn=lambda n: n.alias))
         penv = mssh.remote_file("/tmp/pe.txt", "w")

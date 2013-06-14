@@ -51,6 +51,7 @@ def get_config(config_file=None, cache=False):
     """Factory for StarClusterConfig object"""
     return StarClusterConfig(config_file, cache).load()
 
+
 def plugins_config_file_to_json(file_format):
     result = {}
     for plugin_name in file_format:
@@ -62,22 +63,25 @@ def plugins_config_file_to_json(file_format):
         result[file_format[plugin_name]['setup_class']] = part_result
     return result
 
+
 def plugins_config_stored_to_json(stored_format):
     result = {}
     for klass, args, kwargs in stored_format:
         result[klass] = kwargs
     return result
 
+
 def plugins_config_json_to_stored(json_format, order):
     result = []
     for o in order:
-        for k,v in json_format.iteritems():
+        for k, v in json_format.iteritems():
             if k.split(".")[-1] == o:
                 result.append((k, (), v))
                 del json_format[k]
                 break
     return result
- 
+
+
 def json_diff(old, new):
     stack = []
     add = copy.deepcopy(new)
@@ -89,7 +93,7 @@ def json_diff(old, new):
     #add
     while 1:
         try:
-            k,v = current_new_it.next()
+            k, v = current_new_it.next()
             if k in current_old:
                 if type(v) is not dict:
                     if v == current_old[k]:
@@ -101,7 +105,8 @@ def json_diff(old, new):
                 elif len(v) == 0 and len(current_old[k]) > 0:
                     del current_add[k]
                 else:
-                    stack.append((current_new_it, k, current_old, changed, current_add))
+                    stack.append((current_new_it, k, current_old, changed,
+                                  current_add))
                     changed = False
                     current_new_it = v.iteritems()
                     current_old = current_old[k]
@@ -111,13 +116,13 @@ def json_diff(old, new):
         except StopIteration:
             if len(stack) == 0:
                 break
-            current_new_it,k,current_old,i_changed,current_add = stack.pop()
+            current_new_it, k, current_old, i_changed, current_add = \
+                stack.pop()
             if not changed:
                 del current_add[k]
             changed = changed or i_changed
         except:
             break
-
 
     remove = {}
     current_old_it = old.iteritems()
@@ -135,7 +140,7 @@ def json_diff(old, new):
 
     while 1:
         try:
-            k,v = current_old_it.next()
+            k, v = current_old_it.next()
             if k in current_new:
                 if type(v) is dict and len(current_new[k]) > 0:
                     stack.append((current_old_it, k, current_new))
@@ -148,7 +153,7 @@ def json_diff(old, new):
                 break
             current_old_it, k, current_new = stack.pop()
 
-    return {"+" : add, "-" : remove}
+    return {"+": add, "-": remove}
 
 
 def apply_json_diff(data, diff):
@@ -157,7 +162,7 @@ def apply_json_diff(data, diff):
     current_diff_it = diff["-"].iteritems()
     while 1:
         try:
-            k,v = current_diff_it.next()
+            k, v = current_diff_it.next()
             print k
             if v is None:
                 del current_data[k]
@@ -172,7 +177,7 @@ def apply_json_diff(data, diff):
     current_diff_it = diff['+'].iteritems()
     while 1:
         try:
-            k,v = current_diff_it.next()
+            k, v = current_diff_it.next()
             if k not in current_data or type(v) is not dict:
                 current_data[k] = copy.deepcopy(v)
             if type(v) is dict:
@@ -182,8 +187,9 @@ def apply_json_diff(data, diff):
         except StopIteration:
             if len(stack) == 0:
                 break
-            current_diff_it,current_data = stack.pop()
+            current_diff_it, current_data = stack.pop()
     return data
+
 
 class StarClusterConfig(object):
     """

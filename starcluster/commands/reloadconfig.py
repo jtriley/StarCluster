@@ -33,7 +33,7 @@ class CmdReloadConfig(NodeCompleter):
                           "disable_cloudinit", "plugins_order", "cluster_size"]
 
         cluster = self.cm.get_cluster(tag, load_plugins=False)
-        new_cfg = self.cfg.get_cluster_template(self.opts.cluster_template, 
+        new_cfg = self.cfg.get_cluster_template(self.opts.cluster_template,
                                                 load_plugins=False)
         to_update = {}
         for field in fieldsToUpdate:
@@ -53,14 +53,15 @@ class CmdReloadConfig(NodeCompleter):
             cluster.save_user_settings(sg)
 
         current_plugins_conf = config.plugins_config_stored_to_json(
-            cluster.master_node.get_plugins_full_metadata(cluster.plugins_order))
+            cluster.master_node.get_plugins_full_metadata(
+                cluster.plugins_order))
         new_plugins_conf = config.plugins_config_file_to_json(self.cfg.plugins)
         diff = config.json_diff(current_plugins_conf, new_plugins_conf)
         if len(diff['+']) or len(diff['-']):
             pprint.pprint(diff)
             org_plugins_confg = config.plugins_config_stored_to_json(
                 cluster.master_node.get_plugins_org_metadata())
-            diff_to_store = config.json_diff(org_plugins_confg, 
+            diff_to_store = config.json_diff(org_plugins_confg,
                                              new_plugins_conf)
             diff_to_store = utils.dump_compress_encode(diff_to_store)
             if len(diff_to_store) > 255:
@@ -68,4 +69,3 @@ class CmdReloadConfig(NodeCompleter):
                                 "tag. Multiple tag save must be implemented")
             sg.remove_tag("@sc-plugins")
             sg.add_tag("@sc-plugins", diff_to_store)
-

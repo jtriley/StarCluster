@@ -18,7 +18,7 @@ from starcluster.logger import log
 
 
 class NodeManager(managers.Manager):
-    
+
     nodes_id_ignore = set()
 
     """
@@ -145,18 +145,20 @@ class Node(object):
         plugstxt = self.user_data.get(static.UD_PLUGINS_FNAME)
         payload = plugstxt.split('\n', 2)[2]
         return utils.decode_uncompress_load(payload)
-        
+
     def get_plugins_full_metadata(self, order):
         plugins_metadata = self.get_plugins_org_metadata()
         sg = self.parent_cluster
         if "@sc-plugins" in sg.tags:
             stored_diff = utils.decode_uncompress_load(
                 sg.tags["@sc-plugins"])
-            plugins_metadata_json = config.plugins_config_stored_to_json(plugins_metadata)
+            plugins_metadata_json = config.plugins_config_stored_to_json(
+                plugins_metadata)
             config.apply_json_diff(plugins_metadata_json, stored_diff)
-            plugins_metadata = config.plugins_config_json_to_stored(plugins_metadata_json, order)
+            plugins_metadata = config.plugins_config_json_to_stored(
+                plugins_metadata_json,
+                order)
         return plugins_metadata
-        
 
     def get_plugins(self, order):
         plugins_metadata = self.get_plugins_full_metadata(order)
