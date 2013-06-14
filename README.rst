@@ -204,6 +204,7 @@ This branch intends to be a mirror of https://github.com/jtriley/StarCluster wit
         + --ignore-grp Instances won't have the placement group constraint. When using spot instances, it makes it easier
           to get instances at a lower price.
 * Improved node cleanup - Merged `robbyt`_ `pull request`_ which makes node cleanup faster.
+* Improved node addition - Removed some remote read/writes (very slow) and replaced them get/edit/push.
 
 .. _robbyt: https://github.com/robbyt 
 .. _pull request: https://github.com/jtriley/StarCluster/pull/123
