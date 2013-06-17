@@ -498,7 +498,14 @@ class SGELoadBalancer(LoadBalancer):
         qstat_cmd = 'qstat -u \* -xml -f -r'
         qhostxml = '\n'.join(master.ssh.execute('qhost -xml'))
         qstatxml = '\n'.join(master.ssh.execute(qstat_cmd))
-        qacct = '\n'.join(master.ssh.execute(qacct_cmd))
+        try:
+            qacct = '\n'.join(master.ssh.execute(qacct_cmd))
+        except exception.RemoteCommandFailed:
+            if master.ssh.isfile('/opt/sge6/default/common/accounting'):
+                raise
+            else:
+                log.info("No jobs have completed yet!")
+                qacct = ''
         stats = SGEStats()
         stats.parse_qhost(qhostxml)
         stats.parse_qstat(qstatxml)
