@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import datetime
 import xml.dom.minidom
@@ -19,13 +20,13 @@ class SGEStats(object):
     """
     SunGridEngine stats parser
     """
-    jobstat_cachesize = 200
-    hosts = []
-    jobs = []
-    jobstats = jobstat_cachesize * [None]
-    max_job_id = 0
-    _default_fields = ["JB_job_number", "state", "JB_submission_time",
-                       "queue_name", "slots", "tasks"]
+    def __init__(self):
+        self.jobstat_cachesize = 200
+        self.hosts = []
+        self.jobs = []
+        self.queues = {}
+        self.jobstats = self.jobstat_cachesize * [None]
+        self.max_job_id = 0
 
     @property
     def first_job_id(self):
@@ -58,50 +59,56 @@ class SGEStats(object):
                 self.hosts.append(hash)
         return self.hosts
 
-    def parse_qstat(self, qstat_out, fields=None, queues=None):
+    def parse_qstat(self, qstat_out):
         """
         This method parses qstat -xml output and makes a neat array
         """
         self.jobs = []  # clear the old jobs
-        fields = fields or self._default_fields
+        self.queues = {}  # clear the old queues
         doc = xml.dom.minidom.parseString(qstat_out)
+        for q in doc.getElementsByTagName("Queue-List"):
+            name = q.getElementsByTagName("name")[0].childNodes[0].data
+            slots = q.getElementsByTagName("slots_total")[0].childNodes[0].data
+            self.queues[name] = dict(slots=int(slots))
+            for job in q.getElementsByTagName("job_list"):
+                self.jobs.extend(self._parse_job(job, queue_name=name))
         for job in doc.getElementsByTagName("job_list"):
-            qname = job.getAttribute("queue_name")
-            if queues:
-                if qname not in queues:
-                    continue
-            jstate = job.getAttribute("state")
-            hash = dict(job_state=jstate, queue_name=qname)
-            for tag in fields:
-                es = job.getElementsByTagName(tag)
-                for node in es:
-                    for node2 in node.childNodes:
-                        if node2.nodeType == xml.dom.minidom.Node.TEXT_NODE:
-                            hash[tag] = node2.data
-            # grab the submit time on all jobs, the last job's val stays
-            if 'tasks' in hash and hash['tasks'].find('-') > 0:
-                self.job_multiply(hash)
-            else:
-                self.jobs.append(hash)
+            if job.parentNode.nodeName == 'job_info':
+                self.jobs.extend(self._parse_job(job))
         return self.jobs
 
-    def job_multiply(self, hash):
+    def _parse_job(self, job, queue_name=None):
+        jstate = job.getAttribute("state")
+        jdict = dict(job_state=jstate, queue_name=queue_name)
+        for node in job.childNodes:
+            if node.nodeType == xml.dom.minidom.Node.ELEMENT_NODE:
+                for child in node.childNodes:
+                    jdict[node.nodeName] = child.data
+        num_tasks = self._count_tasks(jdict)
+        log.debug("Job contains %d tasks" % num_tasks)
+        return [jdict] * num_tasks
+
+    def _count_tasks(self, jdict):
         """
-        This function deals with sge jobs with a task range.  For example,
-        'qsub -t 1-20:1' makes 20 jobs. self.jobs needs to represent that it is
-        20 jobs instead of just 1.
+        This function returns the number of tasks in a task array job. For
+        example, 'qsub -t 1-20:1' returns 20.
         """
-        sz_range = hash['tasks']
-        dashpos = sz_range.find('-')
-        colpos = sz_range.find(':')
-        start = int(sz_range[0:dashpos])
-        fin = int(sz_range[dashpos + 1:colpos])
-        gran = int(sz_range[colpos + 1:len(sz_range)])
-        log.debug("start = %d, fin = %d, granularity = %d, sz_range = %s" %
-                  (start, fin, gran, sz_range))
-        num_jobs = (fin - start) / gran
-        log.debug("This job expands to %d tasks" % num_jobs)
-        self.jobs.extend([hash] * num_jobs)
+        tasks = jdict.get('tasks', '')
+        if ',' in tasks:
+            num_tasks = len(tasks.split(','))
+        elif '-' in tasks:
+            regex = "(\d+)-?(\d+)?:?(\d+)?"
+            r = re.compile(regex)
+            start, end, step = r.match(tasks).groups()
+            start = int(start)
+            end = int(end)
+            step = int(step) if step else 1
+            num_tasks = (end - start) / step + 1
+        else:
+            num_tasks = 1
+        log.debug("task array job has %s tasks (tasks: %s)" %
+                  (num_tasks, tasks))
+        return num_tasks
 
     def qacct_to_datetime_tuple(self, qacct):
         """
@@ -190,13 +197,12 @@ class SGEStats(object):
 
     def count_total_slots(self):
         """
-        returns a count of total slots available in this cluser
+        Returns a count of the total slots available in this cluster
         """
         slots = 0
-        for h in self.hosts:
-            if h['num_proc'] == '-':
-                h['num_proc'] = 0
-            slots = slots + int(h['num_proc'])
+        for q in self.queues:
+            if q.startswith('all.q@'):
+                slots += self.queues.get(q).get('slots')
         return slots
 
     def slots_per_host(self):
@@ -208,12 +214,14 @@ class SGEStats(object):
         total = self.count_total_slots()
         if total == 0:
             return total
-        if self.hosts[0][u'num_proc'] == '-':
-            self.hosts[0][u'num_proc'] = 0
-        single = int(self.hosts[0][u'num_proc'])
+        single = 0
+        for q in self.queues:
+            if q.startswith('all.q@'):
+                single = self.queues.get(q).get('slots')
+                break
         if (total != (single * len(self.hosts))):
-            log.error("ERROR: Number of slots not consistent across cluster")
-            return -1
+            raise exception.BaseException(
+                "ERROR: Number of slots not consistent across cluster")
         return single
 
     def oldest_queued_job_age(self):
@@ -487,13 +495,20 @@ class SGELoadBalancer(LoadBalancer):
         now = self.get_remote_time()
         qatime = self.get_qatime(now)
         qacct_cmd = 'qacct -j -b ' + qatime
-        qstat_cmd = 'qstat -u \* -xml'
+        qstat_cmd = 'qstat -u \* -xml -f -r'
         qhostxml = '\n'.join(master.ssh.execute('qhost -xml'))
         qstatxml = '\n'.join(master.ssh.execute(qstat_cmd))
-        qacct = '\n'.join(master.ssh.execute(qacct_cmd))
+        try:
+            qacct = '\n'.join(master.ssh.execute(qacct_cmd))
+        except exception.RemoteCommandFailed:
+            if master.ssh.isfile('/opt/sge6/default/common/accounting'):
+                raise
+            else:
+                log.info("No jobs have completed yet!")
+                qacct = ''
         stats = SGEStats()
         stats.parse_qhost(qhostxml)
-        stats.parse_qstat(qstatxml, queues=["all.q", ""])
+        stats.parse_qstat(qstatxml)
         stats.parse_qacct(qacct, now)
         log.debug("sizes: qhost: %d, qstat: %d, qacct: %d" %
                   (len(qhostxml), len(qstatxml), len(qacct)))
@@ -631,7 +646,8 @@ class SGELoadBalancer(LoadBalancer):
                      self.max_nodes)
             return
         need_to_add = 0
-        qlen = len(self.stat.get_queued_jobs())
+        queued_jobs = self.stat.get_queued_jobs()
+        qlen = sum([int(j['slots']) for j in queued_jobs])
         sph = self.stat.slots_per_host()
         ts = self.stat.count_total_slots()
         num_exec_hosts = len(self.stat.hosts)
@@ -640,7 +656,7 @@ class SGELoadBalancer(LoadBalancer):
         if num_exec_hosts > 0:
             #calculate job duration
             avg_duration = self.stat.avg_job_duration()
-            ettc = avg_duration * qlen / num_exec_hosts
+            ettc = avg_duration * len(queued_jobs) / num_exec_hosts
         if qlen > ts:
             if not self.has_cluster_stabilized():
                 return
@@ -680,11 +696,12 @@ class SGELoadBalancer(LoadBalancer):
             return
         if not self.has_cluster_stabilized():
             return
-        if len(self.stat.hosts) <= self.min_nodes:
+        num_nodes = len(self._cluster.nodes)
+        if num_nodes <= self.min_nodes:
             log.info("Not removing nodes: already at or below minimum (%d)"
                      % self.min_nodes)
             return
-        max_remove = len(self.stat.hosts) - self.min_nodes
+        max_remove = num_nodes - self.min_nodes
         log.info("Looking for nodes to remove...")
         remove_nodes = self._find_nodes_for_removal(max_remove=max_remove)
         if not remove_nodes:
