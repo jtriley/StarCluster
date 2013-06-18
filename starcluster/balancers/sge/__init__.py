@@ -696,11 +696,12 @@ class SGELoadBalancer(LoadBalancer):
             return
         if not self.has_cluster_stabilized():
             return
-        if len(self.stat.hosts) <= self.min_nodes:
+        num_nodes = len(self._cluster.nodes)
+        if num_nodes <= self.min_nodes:
             log.info("Not removing nodes: already at or below minimum (%d)"
                      % self.min_nodes)
             return
-        max_remove = len(self.stat.hosts) - self.min_nodes
+        max_remove = num_nodes - self.min_nodes
         log.info("Looking for nodes to remove...")
         remove_nodes = self._find_nodes_for_removal(max_remove=max_remove)
         if not remove_nodes:
