@@ -254,11 +254,10 @@ class SSHClient(object):
         If matching is set to False then only lines *not* containing a pattern
         that matches regex will be returned
         """
-        f = tempfile.NamedTemporaryFile(
-            prefix=os.path.basename(remote_file) + "_")
-        self.get(remote_file, f.name)
-        flines = f.readlines()
-        f.close()
+        with tempfile.NamedTemporaryFile(
+                prefix=os.path.basename(remote_file) + "_") as f:
+            self.get(remote_file, f.name)
+            flines = f.readlines()
         if regex is None:
             return flines
         r = re.compile(regex)
@@ -299,11 +298,11 @@ class SSHClient(object):
         """
         Overwrites the remote file with the provided lines
         """
-        f = tempfile.NamedTemporaryFile(
-            prefix=os.path.basename(filename) + "_")
-        f.writelines(lines)
-        self.put(f.name, filename)
-        f.close()
+        with tempfile.NamedTemporaryFile(
+                prefix=os.path.basename(filename) + "_") as f:
+            f.writelines(lines)
+            self.put(f.name, filename)
+
 
     def path_exists(self, path):
         """
