@@ -232,6 +232,11 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         #delete the host config
         for c in cleaned:
             log.info("Cleaning node " + c)
+            if len(master.ssh.get_remote_file_lines("/etc/hosts", c)) == 0:
+                log.error(c + " is missing from /etc/hosts, creating a dummy entry 1.1.1.1")
+                rfile = master.ssh.remote_file("/etc/hosts", 'a')
+                rfile.write("1.1.1.1 " + c)
+                rfile.close()
             self._remove_from_sge(DeadNode(c), only_clean_master=True)
 
         #fix to allow pickling
