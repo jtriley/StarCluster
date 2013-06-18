@@ -46,12 +46,6 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         nodes = nodes or self._nodes
         num_processors = sum(self.pool.map(lambda n: n.num_processors, nodes,
                                            jobid_fn=lambda n: n.alias))
-<<<<<<< HEAD
-        penv = mssh.remote_file("/tmp/pe.txt", "w")
-        penv.write(sge.sge_pe_template % (name, num_processors, allocation_rule))
-        penv.close()
-=======
->>>>>>> 167fc3b7e2a68408358bd13a89aa5b2743bf5671
         if not pe_exists:
             penv = mssh.remote_file("/tmp/pe.txt", "w")
             penv.write(sge.sge_pe_template % (name, num_processors))
