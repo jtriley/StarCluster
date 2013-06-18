@@ -233,7 +233,8 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         for c in cleaned:
             log.info("Cleaning node " + c)
             if len(master.ssh.get_remote_file_lines("/etc/hosts", c)) == 0:
-                log.warn(c + " is missing from /etc/hosts, creating a dummy entry 1.1.1.1")
+                log.warn(c + " is missing from /etc/hosts, creating a dummy "
+                         "entry 1.1.1.1")
                 rfile = master.ssh.remote_file("/etc/hosts", 'a')
                 rfile.write("1.1.1.1 " + c)
                 rfile.close()

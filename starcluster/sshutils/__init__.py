@@ -303,7 +303,6 @@ class SSHClient(object):
             f.writelines(lines)
             self.put(f.name, filename)
 
-
     def path_exists(self, path):
         """
         Test whether a remote path exists.
