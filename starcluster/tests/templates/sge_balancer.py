@@ -43,36 +43,63 @@ qstat_xml = """<?xml version='1.0'?>
 <job_info  xmlns:xsd="http://gridengine.sunsource.net/source/browse/*checkout*\
 /gridengine/source/dist/util/resources/schemas/qstat/qstat.xsd?revision=1.11">
   <queue_info>
-    <job_list state="running">
-      <JB_job_number>1</JB_job_number>
-      <JAT_prio>0.55500</JAT_prio>
-      <JB_name>sleep</JB_name>
-      <JB_owner>root</JB_owner>
-      <state>r</state>
-      <JAT_start_time>2010-06-18T23:39:24</JAT_start_time>
-      <queue_name>all.q@ip-10-196-142-180.ec2.internal</queue_name>
-      <slots>1</slots>
-    </job_list>
-    <job_list state="running">
-      <JB_job_number>2</JB_job_number>
-      <JAT_prio>0.55500</JAT_prio>
-      <JB_name>sleep</JB_name>
-      <JB_owner>root</JB_owner>
-      <state>r</state>
-      <JAT_start_time>2010-06-18T23:39:24</JAT_start_time>
-      <queue_name>all.q@ip-10-196-215-50.ec2.internal</queue_name>
-      <slots>1</slots>
-    </job_list>
-    <job_list state="running">
-      <JB_job_number>3</JB_job_number>
-      <JAT_prio>0.55500</JAT_prio>
-      <JB_name>sleep</JB_name>
-      <JB_owner>root</JB_owner>
-      <state>r</state>
-      <JAT_start_time>2010-06-18T23:39:24</JAT_start_time>
-      <queue_name>all.q@ip-10-196-214-162.ec2.internal</queue_name>
-      <slots>1</slots>
-    </job_list>
+    <Queue-List>
+      <name>all.q@ip-10-196-142-180.ec2.internal</name>
+      <qtype>BIP</qtype>
+      <slots_used>0</slots_used>
+      <slots_resv>0</slots_resv>
+      <slots_total>8</slots_total>
+      <load_avg>0.01000</load_avg>
+      <arch>linux-x64</arch>
+      <job_list state="running">
+        <JB_job_number>1</JB_job_number>
+        <JAT_prio>0.55500</JAT_prio>
+        <JB_name>sleep</JB_name>
+        <JB_owner>root</JB_owner>
+        <state>r</state>
+        <JAT_start_time>2010-06-18T23:39:24</JAT_start_time>
+        <queue_name>all.q@ip-10-196-142-180.ec2.internal</queue_name>
+        <slots>1</slots>
+      </job_list>
+    </Queue-List>
+    <Queue-List>
+      <name>all.q@ip-10-196-215-50.ec2.internal</name>
+      <qtype>BIP</qtype>
+      <slots_used>0</slots_used>
+      <slots_resv>0</slots_resv>
+      <slots_total>8</slots_total>
+      <load_avg>0.01000</load_avg>
+      <arch>linux-x64</arch>
+      <job_list state="running">
+        <JB_job_number>2</JB_job_number>
+        <JAT_prio>0.55500</JAT_prio>
+        <JB_name>sleep</JB_name>
+        <JB_owner>root</JB_owner>
+        <state>r</state>
+        <JAT_start_time>2010-06-18T23:39:24</JAT_start_time>
+        <queue_name>all.q@ip-10-196-215-50.ec2.internal</queue_name>
+        <slots>1</slots>
+      </job_list>
+    </Queue-List>
+    <Queue-List>
+      <name>all.q@ip-10-196-214-162.ec2.internal</name>
+      <qtype>BIP</qtype>
+      <slots_used>0</slots_used>
+      <slots_resv>0</slots_resv>
+      <slots_total>8</slots_total>
+      <load_avg>0.01000</load_avg>
+      <arch>linux-x64</arch>
+      <job_list state="running">
+        <JB_job_number>3</JB_job_number>
+        <JAT_prio>0.55500</JAT_prio>
+        <JB_name>sleep</JB_name>
+        <JB_owner>root</JB_owner>
+        <state>r</state>
+        <JAT_start_time>2010-06-18T23:39:24</JAT_start_time>
+        <queue_name>all.q@ip-10-196-214-162.ec2.internal</queue_name>
+        <slots>1</slots>
+      </job_list>
+    </Queue-List>
   </queue_info>
   <job_info>
     <job_list state="pending">
@@ -1169,46 +1196,140 @@ loaded_qstat_xml = """<?xml version='1.0'?>
 <job_info  xmlns:xsd="http://gridengine.sunsource.net/source/browse/*checkout\
 */gridengine/source/dist/util/resources/schemas/qstat/qstat.xsd?revision=1.11">
   <queue_info>
-    <job_list state="running">
-      <JB_job_number>385</JB_job_number>
-      <JAT_prio>0.55500</JAT_prio>
-      <JB_name>sm-haar-str-kconico-r4-dc10</JB_name>
-      <JB_owner>root</JB_owner>
-      <state>r</state>
-      <JAT_start_time>2010-07-08T04:40:46</JAT_start_time>
-      <queue_name>all.q@domU-12-31-39-0B-C4-C1.compute-1.internal</queue_name>
-      <slots>20</slots>
-    </job_list>
-    <job_list state="running">
-      <JB_job_number>386</JB_job_number>
-      <JAT_prio>0.55500</JAT_prio>
-      <JB_name>sm-haar-str-kconico-r4-dc7</JB_name>
-      <JB_owner>root</JB_owner>
-      <state>r</state>
-      <JAT_start_time>2010-07-08T04:40:47</JAT_start_time>
-      <queue_name>all.q@domU-12-31-39-0B-C4-C1.compute-1.internal</queue_name>
-      <slots>20</slots>
-    </job_list>
-    <job_list state="running">
-      <JB_job_number>387</JB_job_number>
-      <JAT_prio>0.55500</JAT_prio>
-      <JB_name>sm-haar-str-kconico-r4-dc8</JB_name>
-      <JB_owner>root</JB_owner>
-      <state>r</state>
-      <JAT_start_time>2010-07-08T04:40:47</JAT_start_time>
-      <queue_name>all.q@domU-12-31-39-0B-C4-C1.compute-1.internal</queue_name>
-      <slots>20</slots>
-    </job_list>
-    <job_list state="running">
-      <JB_job_number>388</JB_job_number>
-      <JAT_prio>0.55500</JAT_prio>
-      <JB_name>sm-haar-str-kconico-r4-dc9</JB_name>
-      <JB_owner>root</JB_owner>
-      <state>r</state>
-      <JAT_start_time>2010-07-08T04:40:47</JAT_start_time>
-      <queue_name>all.q@domU-12-31-39-0B-C4-C1.compute-1.internal</queue_name>
-      <slots>20</slots>
-    </job_list>
+    <Queue-List>
+      <name>all.q@domU-12-31-39-0B-C4-C1.compute-1.internal</name>
+      <qtype>BIP</qtype>
+      <slots_used>0</slots_used>
+      <slots_resv>0</slots_resv>
+      <slots_total>8</slots_total>
+      <load_avg>0.01000</load_avg>
+      <arch>linux-x64</arch>
+      <job_list state="running">
+        <JB_job_number>385</JB_job_number>
+        <JAT_prio>0.55500</JAT_prio>
+        <JB_name>sm-haar-str-kconico-r4-dc10</JB_name>
+        <JB_owner>root</JB_owner>
+        <state>r</state>
+        <JAT_start_time>2010-07-08T04:40:46</JAT_start_time>
+        <queue_name>\
+all.q@domU-12-31-39-0B-C4-C1.compute-1.internal</queue_name>
+        <slots>20</slots>
+      </job_list>
+      <job_list state="running">
+        <JB_job_number>386</JB_job_number>
+        <JAT_prio>0.55500</JAT_prio>
+        <JB_name>sm-haar-str-kconico-r4-dc7</JB_name>
+        <JB_owner>root</JB_owner>
+        <state>r</state>
+        <JAT_start_time>2010-07-08T04:40:47</JAT_start_time>
+        <queue_name>\
+all.q@domU-12-31-39-0B-C4-C1.compute-1.internal</queue_name>
+        <slots>20</slots>
+      </job_list>
+      <job_list state="running">
+        <JB_job_number>387</JB_job_number>
+        <JAT_prio>0.55500</JAT_prio>
+        <JB_name>sm-haar-str-kconico-r4-dc8</JB_name>
+        <JB_owner>root</JB_owner>
+        <state>r</state>
+        <JAT_start_time>2010-07-08T04:40:47</JAT_start_time>
+        <queue_name>\
+all.q@domU-12-31-39-0B-C4-C1.compute-1.internal</queue_name>
+        <slots>20</slots>
+      </job_list>
+      <job_list state="running">
+        <JB_job_number>388</JB_job_number>
+        <JAT_prio>0.55500</JAT_prio>
+        <JB_name>sm-haar-str-kconico-r4-dc9</JB_name>
+        <JB_owner>root</JB_owner>
+        <state>r</state>
+        <JAT_start_time>2010-07-08T04:40:47</JAT_start_time>
+        <queue_name>\
+all.q@domU-12-31-39-0B-C4-C1.compute-1.internal</queue_name>
+        <slots>20</slots>
+      </job_list>
+    </Queue-List>
+    <Queue-List>
+      <name>all.q@domU-12-31-39-0B-C4-61.compute-1.internal</name>
+      <qtype>BIP</qtype>
+      <slots_used>0</slots_used>
+      <slots_resv>0</slots_resv>
+      <slots_total>8</slots_total>
+      <load_avg>0.01000</load_avg>
+      <arch>linux-x64</arch>
+    </Queue-List>
+    <Queue-List>
+      <name>all.q@domU-12-31-39-0B-C6-51.compute-1.internal</name>
+      <qtype>BIP</qtype>
+      <slots_used>0</slots_used>
+      <slots_resv>0</slots_resv>
+      <slots_total>8</slots_total>
+      <load_avg>0.01000</load_avg>
+      <arch>linux-x64</arch>
+    </Queue-List>
+    <Queue-List>
+      <name>all.q@domU-12-31-39-0E-FC-31.compute-1.internal</name>
+      <qtype>BIP</qtype>
+      <slots_used>0</slots_used>
+      <slots_resv>0</slots_resv>
+      <slots_total>8</slots_total>
+      <load_avg>0.01000</load_avg>
+      <arch>linux-x64</arch>
+    </Queue-List>
+    <Queue-List>
+      <name>all.q@domU-12-31-39-0E-FC-71.compute-1.internal</name>
+      <qtype>BIP</qtype>
+      <slots_used>0</slots_used>
+      <slots_resv>0</slots_resv>
+      <slots_total>8</slots_total>
+      <load_avg>0.01000</load_avg>
+      <arch>linux-x64</arch>
+    </Queue-List>
+    <Queue-List>
+      <name>all.q@domU-12-31-39-0E-FC-D1.compute-1.internal</name>
+      <qtype>BIP</qtype>
+      <slots_used>0</slots_used>
+      <slots_resv>0</slots_resv>
+      <slots_total>8</slots_total>
+      <load_avg>0.01000</load_avg>
+      <arch>linux-x64</arch>
+    </Queue-List>
+    <Queue-List>
+      <name>all.q@domU-12-31-39-0E-FD-01.compute-1.internal</name>
+      <qtype>BIP</qtype>
+      <slots_used>0</slots_used>
+      <slots_resv>0</slots_resv>
+      <slots_total>8</slots_total>
+      <load_avg>0.01000</load_avg>
+      <arch>linux-x64</arch>
+    </Queue-List>
+    <Queue-List>
+      <name>all.q@domU-12-31-39-0E-FD-81.compute-1.internal</name>
+      <qtype>BIP</qtype>
+      <slots_used>0</slots_used>
+      <slots_resv>0</slots_resv>
+      <slots_total>8</slots_total>
+      <load_avg>0.01000</load_avg>
+      <arch>linux-x64</arch>
+    </Queue-List>
+    <Queue-List>
+      <name>all.q@domU-12-31-39-0E-FE-51.compute-1.internal</name>
+      <qtype>BIP</qtype>
+      <slots_used>0</slots_used>
+      <slots_resv>0</slots_resv>
+      <slots_total>8</slots_total>
+      <load_avg>0.01000</load_avg>
+      <arch>linux-x64</arch>
+    </Queue-List>
+    <Queue-List>
+      <name>all.q@domU-12-31-39-0E-FE-71.compute-1.internal</name>
+      <qtype>BIP</qtype>
+      <slots_used>0</slots_used>
+      <slots_resv>0</slots_resv>
+      <slots_total>8</slots_total>
+      <load_avg>0.01000</load_avg>
+      <arch>linux-x64</arch>
+    </Queue-List>
   </queue_info>
   <job_info>
     <job_list state="pending">
