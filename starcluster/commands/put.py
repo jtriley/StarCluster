@@ -46,7 +46,7 @@ class CmdPut(ClusterCompleter):
             if not os.path.exists(lpath):
                 raise exception.BaseException(
                     "Local file or directory does not exist: %s" % lpath)
-        cl = self.cm.get_cluster(ctag)
+        cl = self.cm.get_cluster(ctag, load_receipt=False)
         node = cl.get_node_by_alias(self.opts.node)
         if self.opts.user:
             node.ssh.switch_user(self.opts.user)
