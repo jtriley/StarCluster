@@ -108,28 +108,12 @@ class ThreadPool(workerpool.WorkerPool):
             results.append(self._results_queue.get())
         return results
 
-    def map(self, fn, *seq, **kwargs):
-        """
-        Uses the threadpool to return a list of the results of applying the
-        function to the items of the argument sequence(s). If more than one
-        sequence is given, the function is called with an argument list
-        consisting of the corresponding item of each sequence. If more than one
-        sequence is given with different lengths the argument list will be
-        truncated to the length of the smallest sequence.
-
-        If the kwarg jobid_fn is specified then each threadpool job will be
-        assigned a jobid based on the return value of jobid_fn(item) for each
-        item in the map.
-        """
+    def map(self, fn, *seq):
         if self._results_queue.qsize() > 0:
             self.get_results()
         args = zip(*seq)
-        jobid_fn = kwargs.get('jobid_fn')
         for seq in args:
-            jobid = None
-            if jobid_fn:
-                jobid = jobid_fn(*seq)
-            self.simple_job(fn, seq, jobid=jobid)
+            self.simple_job(fn, seq)
         return self.wait(numtasks=len(args))
 
     def store_exception(self, e):
@@ -153,11 +137,9 @@ class ThreadPool(workerpool.WorkerPool):
         if pbar.maxval != 0:
             pbar.finish()
         self.join()
-        exc_queue = self._exception_queue
-        if exc_queue.qsize() > 0:
-            excs = [exc_queue.get() for i in range(exc_queue.qsize())]
+        if self._exception_queue.qsize() > 0:
             raise exception.ThreadPoolException(
-                "An error occurred in ThreadPool", excs)
+                "An error occurred in ThreadPool", self._exception_queue.queue)
         if return_results:
             return self.get_results()
 

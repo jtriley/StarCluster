@@ -272,16 +272,9 @@ NODE_INSTANCE_TYPE = m1.small
 # latency message passing via ZeroMQ.
 # [plugin ipcluster]
 # SETUP_CLASS = starcluster.plugins.ipcluster.IPCluster
-# # Enable the IPython notebook server (optional)
 # ENABLE_NOTEBOOK = True
-# # Set a password for the notebook for increased security
-# # This is optional but *highly* recommended
+# #set a password for the notebook for increased security
 # NOTEBOOK_PASSWD = a-secret-password
-# # Set a custom directory for storing/loading notebooks (optional)
-# NOTEBOOK_DIRECTORY = /path/to/notebook/dir
-# # Set a custom packer. Must be one of 'json', 'pickle', or 'msgpack'
-# # This is optional.
-# PACKER = pickle
 #
 # Use this plugin to create a cluster SSH "dashboard" using tmux. The plugin
 # creates a tmux session on the master node that automatically connects to all

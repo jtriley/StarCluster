@@ -132,9 +132,10 @@ class EasyEC2(EasyAWS):
         """
         regions = self.regions.items()
         regions.sort(reverse=True)
-        for name, endpoint in regions:
+        for region in regions:
+            name, endpoint = region
             print 'name: ', name
-            print 'endpoint: ', endpoint.endpoint
+            print 'endpoint: ', endpoint
             print
 
     @property
@@ -572,8 +573,6 @@ class EasyEC2(EasyAWS):
         instance_type = instance.instance_type or 'N/A'
         keypair = instance.key_name or 'N/A'
         uptime = utils.get_elapsed_time(instance.launch_time) or 'N/A'
-        tags = ', '.join(['%s=%s' % (k, v) for k, v in
-                          instance.tags.iteritems()]) or 'N/A'
         if state == 'stopped':
             uptime = 'N/A'
         print "id: %s" % instance_id
@@ -592,7 +591,6 @@ class EasyEC2(EasyAWS):
         print "groups: %s" % groups
         print "keypair: %s" % keypair
         print "uptime: %s" % uptime
-        print "tags: %s" % tags
         print
 
     def list_all_instances(self, show_terminated=False):
@@ -1231,13 +1229,8 @@ class EasyEC2(EasyAWS):
 
     def show_console_output(self, instance_id):
         instance = self.get_instance(instance_id)
-        console_output = instance.get_console_output().output or ''
-        console_output = ''.join([c for c in console_output if c in
-                                  string.printable])
-        if console_output:
-            print console_output
-        else:
-            log.info("No console output available...")
+        console_output = instance.get_console_output().output
+        print ''.join([c for c in console_output if c in string.printable])
 
 
 class EasyS3(EasyAWS):
