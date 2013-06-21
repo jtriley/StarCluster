@@ -3,6 +3,7 @@ import time
 import string
 
 from starcluster import utils
+from starcluster import static
 from starcluster import sshutils
 from starcluster import exception
 from starcluster.spinner import Spinner
@@ -48,6 +49,11 @@ class ImageCreator(object):
         conn.execute('rm -rf /tmp/*')
         conn.execute('rm -rf /root/*.hist*')
         conn.execute('rm -rf /var/log/*.gz')
+
+    def _get_root_device(self):
+        bmap_meta_url = ("%s/meta-data/block-device-mapping/root" %
+                         static.INSTANCE_METADATA_URI)
+        return self.host_ssh.execute('GET %s' % bmap_meta_url)[0]
 
 
 class S3ImageCreator(ImageCreator):
@@ -222,6 +228,8 @@ class EBSImageCreator(ImageCreator):
             raise
 
     def _create_image_from_ebs(self, size=15):
+        log.info("Fetching root device...")
+        root_dev = self._get_root_device()
         log.info("Creating new EBS AMI...")
         imgid = self.ec2.create_image(self.host.id, self.name,
                                       self.description)
@@ -232,12 +240,12 @@ class EBSImageCreator(ImageCreator):
         s = Spinner()
         try:
             s.start()
-            while '/dev/sda1' not in img.block_device_mapping:
+            while root_dev not in img.block_device_mapping:
                 img = self.ec2.get_image(imgid)
                 time.sleep(5)
         finally:
             s.stop()
-        snapshot_id = img.block_device_mapping['/dev/sda1'].snapshot_id
+        snapshot_id = img.block_device_mapping[root_dev].snapshot_id
         snap = self.ec2.get_snapshot(snapshot_id)
         self.ec2.wait_for_snapshot(snap)
         log.info("Waiting for %s to become available..." % imgid,
