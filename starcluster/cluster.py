@@ -1,3 +1,4 @@
+import iptools
 import os
 import re
 import time
@@ -8,7 +9,6 @@ import warnings
 from starcluster import utils
 from starcluster import static
 from starcluster import spinner
-from starcluster import iptools
 from starcluster import sshutils
 from starcluster import managers
 from starcluster import userdata
@@ -1886,7 +1886,7 @@ class ClusterValidator(validators.Validator):
                     from_port, to_port,
                     reason="'from_port' must be <= 'to_port'")
             cidr_ip = permission.get('cidr_ip')
-            if not iptools.validate_cidr(cidr_ip):
+            if not iptools.ipv4.validate_cidr(cidr_ip):
                 raise exception.InvalidCIDRSpecified(cidr_ip)
 
     def validate_ebs_settings(self):
