@@ -16,9 +16,10 @@ import cPickle
 import StringIO
 import calendar
 import urlparse
-import decorator
-import iptools
 from datetime import datetime
+
+import iptools
+import decorator
 
 from starcluster import exception
 from starcluster.logger import log

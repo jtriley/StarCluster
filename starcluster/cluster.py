@@ -1,10 +1,11 @@
-import iptools
 import os
 import re
 import time
 import string
 import pprint
 import warnings
+
+import iptools
 
 from starcluster import utils
 from starcluster import static
