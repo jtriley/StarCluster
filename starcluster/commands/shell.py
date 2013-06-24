@@ -128,7 +128,8 @@ class CmdShell(CmdBase):
         modules = [(starcluster.__name__ + '.' + module, module)
                    for module in starcluster.__all__]
         modules += [('boto', 'boto'), ('paramiko', 'paramiko'),
-                    ('workerpool', 'workerpool'), ('jinja2', 'jinja2')]
+                    ('workerpool', 'workerpool'), ('jinja2', 'jinja2'),
+                    ('pyasn1', 'pyasn1'), ('iptools', 'iptools')]
         for fullname, modname in modules:
             log.info('Importing module %s' % modname)
             try:

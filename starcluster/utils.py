@@ -16,10 +16,11 @@ import cPickle
 import StringIO
 import calendar
 import urlparse
-import decorator
 from datetime import datetime
 
-from starcluster import iptools
+import iptools
+import decorator
+
 from starcluster import exception
 from starcluster.logger import log
 
@@ -141,7 +142,7 @@ def is_valid_bucket_name(bucket_name):
     regex = re.compile('[a-z0-9][a-z0-9\._-]{2,254}$')
     if not regex.match(bucket_name):
         return False
-    if iptools.validate_ip(bucket_name):
+    if iptools.ipv4.validate_ip(bucket_name):
         return False
     return True
 
