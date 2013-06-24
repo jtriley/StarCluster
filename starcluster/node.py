@@ -311,7 +311,37 @@ class Node(object):
 
     @property
     def root_device_name(self):
-        return self.instance.root_device_name
+        root_dev = self.instance.root_device_name
+        if root_dev in self.block_device_mapping:
+            return root_dev
+        elif self.is_up():
+            return self._get_real_root_device_name()
+        elif self.is_ebs_backed():
+            log.warn("Root device %s is not in the block device map" %
+                     root_dev)
+            log.warn("This most likely means the AMI was registered with "
+                     "the wrong root device name")
+            if root_dev.endswith('1'):
+                sd = root_dev[:-1]
+                log.info("Searching for incorrect root device: %s" % sd)
+                if sd in self.block_device_mapping:
+                    log.warn("Found '%s' - assuming its the real root device" %
+                             sd)
+                    root_dev = sd
+                else:
+                    log.warn("Cant find a root device in block device map")
+        return root_dev
+
+    def _get_real_root_device_name(self):
+        """
+        Returns the *real* root device name by ssh'ing to the instance and
+        querying the local instance metadata server (ie http://169.254.169.254)
+        Unfortunately not all instances correctly declare their root device.
+        For example, the CentOS AMIs
+        """
+        bmap_meta_url = ("%s/meta-data/block-device-mapping/root" %
+                         static.INSTANCE_METADATA_URI)
+        return self.ssh.execute('GET %s' % bmap_meta_url)[0]
 
     @property
     def root_device_type(self):
