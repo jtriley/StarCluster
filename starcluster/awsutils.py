@@ -1193,9 +1193,9 @@ class EasyEC2(EasyAWS):
             data.append([timestamp, price])
         maximum = max(prices)
         avg = sum(prices) / float(len(prices))
-        log.info("Current price: $%.2f" % prices[0])
-        log.info("Max price: $%.2f" % maximum)
-        log.info("Average price: $%.2f" % avg)
+        log.info("Current price: $%.4f" % prices[0])
+        log.info("Max price: $%.4f" % maximum)
+        log.info("Average price: $%.4f" % avg)
         if plot:
             xaxisrange = dates[-1] - dates[0]
             xpanrange = [dates[0] - xaxisrange / 2.,
