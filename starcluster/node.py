@@ -312,36 +312,29 @@ class Node(object):
     @property
     def root_device_name(self):
         root_dev = self.instance.root_device_name
-        if root_dev in self.block_device_mapping:
-            return root_dev
-        elif self.is_up():
-            return self._get_real_root_device_name()
-        elif self.is_ebs_backed():
+        if root_dev not in self.block_device_mapping and self.is_ebs_backed():
+            # Hack for misconfigured AMIs (e.g. CentOS 6.3 Marketplace) These
+            # AMIs have root device name set to /dev/sda1 but no /dev/sda1 in
+            # block device map - only /dev/sda. These AMIs somehow magically
+            # work so check if /dev/sda exists and return that instead to
+            # prevent detach_external_volumes() from trying to detach the root
+            # volume on these AMIs.
             log.warn("Root device %s is not in the block device map" %
                      root_dev)
-            log.warn("This most likely means the AMI was registered with "
-                     "the wrong root device name")
-            if root_dev.endswith('1'):
-                sd = root_dev[:-1]
-                log.info("Searching for incorrect root device: %s" % sd)
-                if sd in self.block_device_mapping:
+            log.warn("This means the AMI was registered with either "
+                     "an incorrect root device name or an incorrect block "
+                     "device mapping")
+            sda, sda1 = '/dev/sda', '/dev/sda1'
+            if root_dev == sda1:
+                log.info("Searching for possible root device: %s" % sda)
+                if sda in self.block_device_mapping:
                     log.warn("Found '%s' - assuming its the real root device" %
-                             sd)
-                    root_dev = sd
+                             sda)
+                    root_dev = sda
                 else:
-                    log.warn("Cant find a root device in block device map")
+                    log.warn("Device %s isn't in the block device map either" %
+                             sda)
         return root_dev
-
-    def _get_real_root_device_name(self):
-        """
-        Returns the *real* root device name by ssh'ing to the instance and
-        querying the local instance metadata server (ie http://169.254.169.254)
-        Unfortunately not all instances correctly declare their root device.
-        For example, the CentOS AMIs
-        """
-        bmap_meta_url = ("%s/meta-data/block-device-mapping/root" %
-                         static.INSTANCE_METADATA_URI)
-        return self.ssh.execute('GET %s' % bmap_meta_url)[0]
 
     @property
     def root_device_type(self):
@@ -840,8 +833,9 @@ class Node(object):
         attached_vols.update(self.block_device_mapping)
         if self.is_ebs_backed():
             # exclude the root device from the list
-            if self.root_device_name in attached_vols:
-                attached_vols.pop(self.root_device_name)
+            root_dev = self.root_device_name
+            if root_dev in attached_vols:
+                attached_vols.pop(root_dev)
         return attached_vols
 
     def detach_external_volumes(self):
