@@ -9,6 +9,7 @@ import shlex
 import socket
 import optparse
 import platform
+import optcomplete
 
 from boto.exception import BotoServerError, EC2ResponseError, S3ResponseError
 
@@ -17,7 +18,6 @@ from starcluster import static
 from starcluster import logger
 from starcluster import commands
 from starcluster import exception
-from starcluster import optcomplete
 from starcluster.logger import log, console
 from starcluster import __version__
 

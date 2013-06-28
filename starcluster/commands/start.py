@@ -1,8 +1,8 @@
 import time
+import optcomplete
 
 from starcluster import static
 from starcluster import exception
-from starcluster import optcomplete
 from starcluster.templates import user_msgs
 from starcluster.logger import log
 
