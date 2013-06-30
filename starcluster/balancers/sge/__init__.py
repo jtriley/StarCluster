@@ -93,19 +93,19 @@ class SGEStats(object):
         This function returns the number of tasks in a task array job. For
         example, 'qsub -t 1-20:1' returns 20.
         """
-        tasks = jdict.get('tasks', '')
-        if ',' in tasks:
-            num_tasks = len(tasks.split(','))
-        elif '-' in tasks:
-            regex = "(\d+)-?(\d+)?:?(\d+)?"
-            r = re.compile(regex)
-            start, end, step = r.match(tasks).groups()
-            start = int(start)
-            end = int(end)
-            step = int(step) if step else 1
-            num_tasks = (end - start) / step + 1
-        else:
-            num_tasks = 1
+        tasks = jdict.get('tasks', '').split(',')
+        num_tasks = 0
+        for task in tasks:
+            if '-' in task:
+                regex = "(\d+)-?(\d+)?:?(\d+)?"
+                r = re.compile(regex)
+                start, end, step = r.match(task).groups()
+                start = int(start)
+                end = int(end)
+                step = int(step) if step else 1
+                num_tasks += (end - start) / step + 1
+            else:
+                num_tasks += 1
         log.debug("task array job has %s tasks (tasks: %s)" %
                   (num_tasks, tasks))
         return num_tasks
