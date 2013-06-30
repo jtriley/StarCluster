@@ -393,10 +393,10 @@ class SGELoadBalancer(LoadBalancer):
         self._visualizer = None
         self.__last_cluster_mod_time = datetime.datetime.utcnow()
         self.stat = SGEStats()
-        self.polling_interval = min(interval, 300)
+        self.polling_interval = interval
         self.kill_after = kill_after
         self.max_nodes = max_nodes
-        self.longest_allowed_queue_time = max(300, wait_time)
+        self.longest_allowed_queue_time = wait_time
         self.add_nodes_per_iteration = add_pi
         self.stabilization_time = stab
         self.lookback_window = lookback_win
