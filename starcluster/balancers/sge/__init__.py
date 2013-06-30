@@ -285,16 +285,6 @@ class SGEStats(object):
         else:
             return total_seconds / count
 
-    def on_first_job(self):
-        """
-        returns true if the cluster is processing the first job,
-        False otherwise
-        """
-        if len(self.jobs) > 0 and self.jobs[0]['JB_job_number'] != u'1':
-            log.info("ON THE FIRST JOB")
-            return True
-        return False
-
     def get_loads(self):
         """
         returns an array containing the loads on each host in cluster
@@ -650,13 +640,6 @@ class SGELoadBalancer(LoadBalancer):
         qlen = sum([int(j['slots']) for j in queued_jobs])
         sph = self.stat.slots_per_host()
         ts = self.stat.count_total_slots()
-        num_exec_hosts = len(self.stat.hosts)
-        #calculate estimated time to completion
-        ettc = 0
-        if num_exec_hosts > 0:
-            #calculate job duration
-            avg_duration = self.stat.avg_job_duration()
-            ettc = avg_duration * len(queued_jobs) / num_exec_hosts
         if qlen > 0 and ts == 0:
             #no slots, add one now
             need_to_add = 1
@@ -673,9 +656,6 @@ class SGELoadBalancer(LoadBalancer):
                          "max %d" % (age_delta.seconds,
                                      self.longest_allowed_queue_time))
                 need_to_add = qlen / sph if sph != 0 else 1
-                if 0 < ettc < 600 and not self.stat.on_first_job():
-                    log.warn("There is a possibility that the job queue is"
-                             " shorter than 10 minutes in duration")
         max_add = self.max_nodes - len(self._cluster.running_nodes)
         need_to_add = min(self.add_nodes_per_iteration, need_to_add, max_add)
         if need_to_add > 0:
