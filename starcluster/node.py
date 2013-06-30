@@ -312,7 +312,8 @@ class Node(object):
     @property
     def root_device_name(self):
         root_dev = self.instance.root_device_name
-        if root_dev not in self.block_device_mapping and self.is_ebs_backed():
+        bmap = self.block_device_mapping
+        if bmap and root_dev not in bmap and self.is_ebs_backed():
             # Hack for misconfigured AMIs (e.g. CentOS 6.3 Marketplace) These
             # AMIs have root device name set to /dev/sda1 but no /dev/sda1 in
             # block device map - only /dev/sda. These AMIs somehow magically
