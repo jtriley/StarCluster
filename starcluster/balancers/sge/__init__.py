@@ -631,7 +631,7 @@ class SGELoadBalancer(LoadBalancer):
         TODO: See if the recent jobs have taken more than 5 minutes (how
         long it takes to start an instance)
         """
-        if len(self.stat.hosts) >= self.max_nodes:
+        if len(self._cluster.running_nodes) >= self.max_nodes:
             log.info("Not adding nodes: already at or above maximum (%d)" %
                      self.max_nodes)
             return
