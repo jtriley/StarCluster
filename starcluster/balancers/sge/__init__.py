@@ -626,36 +626,47 @@ class SGELoadBalancer(LoadBalancer):
 
     def _eval_add_node(self):
         """
-        This function uses the metrics available to it to decide whether to
-        add a new node to the cluster or not. It isn't able to add a node yet.
-        TODO: See if the recent jobs have taken more than 5 minutes (how
-        long it takes to start an instance)
+        This function inspects the current state of the SGE queue and decides
+        whether or not to add nodes to the cluster. Returns the number of nodes
+        to add.
         """
         if len(self._cluster.running_nodes) >= self.max_nodes:
             log.info("Not adding nodes: already at or above maximum (%d)" %
                      self.max_nodes)
             return
-        need_to_add = 0
         queued_jobs = self.stat.get_queued_jobs()
-        qlen = sum([int(j['slots']) for j in queued_jobs])
-        sph = self.stat.slots_per_host()
-        ts = self.stat.count_total_slots()
-        if qlen > 0 and ts == 0:
+        if not queued_jobs:
+            log.info("Not adding nodes: no queued jobs...")
+            return
+        if not self.has_cluster_stabilized():
+            return
+        running_jobs = self.stat.get_running_jobs()
+        used_slots = sum([int(j['slots']) for j in running_jobs])
+        qw_slots = sum([int(j['slots']) for j in queued_jobs])
+        slots_per_host = self.stat.slots_per_host()
+        total_slots = self.stat.count_total_slots()
+        avail_slots = total_slots - used_slots
+        need_to_add = 0
+        if total_slots == 0:
             #no slots, add one now
             need_to_add = 1
-        elif qlen > ts:
-            if not self.has_cluster_stabilized():
-                return
-            #there are more jobs queued than will be consumed with one
-            #cycle of job processing from all nodes
+        elif qw_slots > avail_slots:
+            log.info("Queued jobs need more slots (%d) than available (%d)" %
+                     (qw_slots, avail_slots))
             oldest_job_dt = self.stat.oldest_queued_job_age()
             now = self.get_remote_time()
             age_delta = now - oldest_job_dt
             if age_delta.seconds > self.longest_allowed_queue_time:
-                log.info("A job has been waiting for %d sec, longer than "
-                         "max %d" % (age_delta.seconds,
-                                     self.longest_allowed_queue_time))
-                need_to_add = qlen / sph if sph != 0 else 1
+                log.info("A job has been waiting for %d seconds "
+                         "longer than max: %d" %
+                         (age_delta.seconds, self.longest_allowed_queue_time))
+                if slots_per_host != 0:
+                    need_to_add = qw_slots / slots_per_host
+                else:
+                    need_to_add = 1
+            else:
+                log.info("No queued jobs older than %d seconds" %
+                         self.longest_allowed_queue_time)
         max_add = self.max_nodes - len(self._cluster.running_nodes)
         need_to_add = min(self.add_nodes_per_iteration, need_to_add, max_add)
         if need_to_add > 0:
