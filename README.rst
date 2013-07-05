@@ -165,6 +165,7 @@ Dependencies:
 * Jinja2 2.6
 * decorator 3.4.0
 * pyasn1 0.1.6
+* iptools 0.6.1
 
 Learn more...
 =============
@@ -190,7 +191,6 @@ This branch intends to be a mirror of https://github.com/jtriley/StarCluster wit
     - recover - If a newly created instance failed to initialized (it's booted but not properly configured in OGS)
       the instance will be added back to the cluster.
 * Improved load balancer
-    - Slots count is based on OGS configured slots, not on cpus core count.
     - More stable with spot instances with automatic cleaning, required when a spot instance dies. Note that 
       stuck jobs resulting in a dead instance are killed by the clean command. You will need to relaunch your job.
     - loadbalance new flags
@@ -199,8 +199,6 @@ This branch intends to be a mirror of https://github.com/jtriley/StarCluster wit
         + --num_reboot_restart - Number of reboots after which a node is restarted (stop/start). Helpful in case the 
           issue comes from the hardware. If the node is a spot instance, it will be terminated instead since it cannot 
           be stopped. Defaults to false.
-        + --ignore-master Ignores the master as an execution host. Usefull when your master node is of a different 
-          instance type than slave nodes.
         + --ignore-grp Instances won't have the placement group constraint. When using spot instances, it makes it easier
           to get instances at a lower price.
 * Improved node cleanup - Merged `robbyt`_ `pull request`_ which makes node cleanup faster.

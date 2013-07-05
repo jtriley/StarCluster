@@ -50,31 +50,39 @@ class CmdLoadBalance(ClusterCompleter):
                           "(default: %s)" % sge.DEFAULT_STATS_DIR %
                           "<cluster_tag>")
         parser.add_option("-i", "--interval", dest="interval",
-                          action="store", type="int", default=None,
+                          action="callback", type="int", default=None,
+                          callback=self._positive_int,
                           help="Load balancer polling interval in seconds "
                           "(max: 300s)")
         parser.add_option("-m", "--max_nodes", dest="max_nodes",
-                          action="store", type="int", default=None,
+                          action="callback", type="int", default=None,
+                          callback=self._positive_int,
                           help="Maximum # of nodes in cluster")
         parser.add_option("-w", "--job_wait_time", dest="wait_time",
-                          action="store", type="int", default=None,
+                          action="callback", type="int", default=None,
+                          callback=self._positive_int,
                           help=("Maximum wait time for a job before "
                                 "adding nodes, seconds"))
         parser.add_option("-a", "--add_nodes_per_iter", dest="add_pi",
-                          action="store", type="int", default=None,
+                          action="callback", type="int", default=None,
+                          callback=self._positive_int,
                           help="Number of nodes to add per iteration")
         parser.add_option("-k", "--kill_after", dest="kill_after",
-                          action="store", type="int", default=None,
+                          action="callback", type="int", default=None,
+                          callback=self._positive_int,
                           help="Minutes after which a node can be killed")
         parser.add_option("-s", "--stabilization_time", dest="stab",
-                          action="store", type="int", default=None,
+                          action="callback", type="int", default=None,
+                          callback=self._positive_int,
                           help="Seconds to wait before cluster "
                           "stabilizes (min: 300s)")
         parser.add_option("-l", "--lookback_window", dest="lookback_win",
-                          action="store", type="int", default=None,
+                          action="callback", type="int", default=None,
+                          callback=self._positive_int,
                           help="Minutes to look back for past job history")
         parser.add_option("-n", "--min_nodes", dest="min_nodes",
-                          action="store", type="int", default=None,
+                          action="callback", type="int", default=None,
+                          callback=self._positive_int,
                           help="Minimum number of nodes in cluster")
         parser.add_option("-K", "--kill-cluster", dest="kill_cluster",
                           action="store_true", default=False,
@@ -91,9 +99,6 @@ class CmdLoadBalance(ClusterCompleter):
             "the hardware. If the node is a spot instance, it "
             "will be terminated instead since it cannot be stopped. Defaults "
             "to false.")
-        parser.add_option("--ignore-master", dest="ignore_master",
-                          action="store_true", default=False,
-                          help="Ignores the master as an execution host")
         parser.add_option(
             "--ignore-grp", dest="ignore_grp", action="store_true",
             default=False, help="if set, instances of type " +

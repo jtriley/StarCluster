@@ -6,10 +6,11 @@ import pprint
 import warnings
 import datetime
 
+import iptools
+
 from starcluster import utils
 from starcluster import static
 from starcluster import spinner
-from starcluster import iptools
 from starcluster import sshutils
 from starcluster import managers
 from starcluster import userdata
@@ -1528,21 +1529,24 @@ class Cluster(object):
             if spot.state not in ['cancelled', 'closed']:
                 log.info("Canceling spot instance request: %s" % spot.id)
                 spot.cancel()
-        sg = self.ec2.get_group_or_none(self._security_group)
-        pg = self.ec2.get_placement_group_or_none(self._security_group)
         s = self.get_spinner("Waiting for cluster to terminate...")
         try:
             while not self.is_cluster_terminated():
                 time.sleep(5)
         finally:
             s.stop()
-        if pg:
-            log.info("Removing %s placement group" % pg.name)
-            pg.delete()
-            while self.ec2.get_placement_group_or_none(self._security_group):
-                log.info("Waiting for deletion of security group %s..."
-                         % pg.name)
-                time.sleep(3)
+        region = self.ec2.region.name
+        if region in static.CLUSTER_REGIONS:
+            pg = self.ec2.get_placement_group_or_none(self._security_group)
+            if pg:
+                log.info("Removing %s placement group" % pg.name)
+                pg.delete()
+                while self.ec2.get_placement_group_or_none(
+                        self._security_group):
+                    log.info("Waiting for deletion of security group %s..."
+                             % pg.name)
+                    time.sleep(3)
+        sg = self.ec2.get_group_or_none(self._security_group)
         if sg:
             log.info("Removing %s security group" % sg.name)
             sg.delete()
@@ -2106,7 +2110,7 @@ class ClusterValidator(validators.Validator):
                     from_port, to_port,
                     reason="'from_port' must be <= 'to_port'")
             cidr_ip = permission.get('cidr_ip')
-            if not iptools.validate_cidr(cidr_ip):
+            if not iptools.ipv4.validate_cidr(cidr_ip):
                 raise exception.InvalidCIDRSpecified(cidr_ip)
 
     def validate_ebs_settings(self):

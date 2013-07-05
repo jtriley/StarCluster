@@ -1,5 +1,5 @@
 boto==2.9.5
-paramiko==1.10.0
+paramiko==1.10.1
 workerpool==0.9.2
 Jinja2==2.6
 decorator==3.4.0
@@ -7,5 +7,6 @@ pyasn1==0.1.6
 ipython==0.13.1
 pep8==1.4.1
 pyflakes==0.6.1
+iptools==0.6.1
 nose==1.2.1
 nose-progressive==1.4

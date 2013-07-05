@@ -77,6 +77,7 @@ UD_PLUGINS_FNAME = "_sc_plugins.txt"
 UD_VOLUMES_FNAME = "_sc_volumes.txt"
 UD_ALIASES_FNAME = "_sc_aliases.txt"
 
+INSTANCE_METADATA_URI = "http://169.254.169.254/latest"
 INSTANCE_STATES = ['pending', 'running', 'shutting-down',
                    'terminated', 'stopping', 'stopped']
 VOLUME_STATUS = ['creating', 'available', 'in-use',

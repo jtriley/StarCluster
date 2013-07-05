@@ -227,19 +227,23 @@ class EBSImageCreator(ImageCreator):
                                       self.description)
         img = self.ec2.get_image(imgid)
         log.info("New EBS AMI created: %s" % imgid)
-        log.info("Fetching block device mapping for %s" % imgid,
-                 extra=dict(__nonewline__=True))
-        s = Spinner()
-        try:
-            s.start()
-            while '/dev/sda1' not in img.block_device_mapping:
-                img = self.ec2.get_image(imgid)
-                time.sleep(5)
-        finally:
-            s.stop()
-        snapshot_id = img.block_device_mapping['/dev/sda1'].snapshot_id
-        snap = self.ec2.get_snapshot(snapshot_id)
-        self.ec2.wait_for_snapshot(snap)
+        root_dev = self.host.root_device_name
+        if root_dev in self.host.block_device_mapping:
+            log.info("Fetching block device mapping for %s" % imgid,
+                     extra=dict(__nonewline__=True))
+            s = Spinner()
+            try:
+                s.start()
+                while root_dev not in img.block_device_mapping:
+                    img = self.ec2.get_image(imgid)
+                    time.sleep(5)
+            finally:
+                s.stop()
+            snapshot_id = img.block_device_mapping[root_dev].snapshot_id
+            snap = self.ec2.get_snapshot(snapshot_id)
+            self.ec2.wait_for_snapshot(snap)
+        else:
+            log.warn("Unable to find root device - cant wait for snapshot")
         log.info("Waiting for %s to become available..." % imgid,
                  extra=dict(__nonewline__=True))
         s = Spinner()

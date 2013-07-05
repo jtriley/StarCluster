@@ -132,10 +132,9 @@ class EasyEC2(EasyAWS):
         """
         regions = self.regions.items()
         regions.sort(reverse=True)
-        for region in regions:
-            name, endpoint = region
+        for name, endpoint in regions:
             print 'name: ', name
-            print 'endpoint: ', endpoint
+            print 'endpoint: ', endpoint.endpoint
             print
 
     @property
@@ -333,24 +332,17 @@ class EasyEC2(EasyAWS):
         """
         if not block_device_map:
             img = self.get_image(image_id)
-            img_is_hvm = img.virtualization_type == 'hvm'
-            device_fmt = '/dev/sd%s1'
-            if img_is_hvm and instance_type in static.HVM_TYPES:
-                device_fmt = '/dev/sd%s'
             bdmap = self.create_block_device_map(add_ephemeral_drives=True,
-                                                 device_fmt=device_fmt)
-            # prune any ephemeral drives defined in the AMI's block device map
-            # from the runtime block device map
+                                                 num_ephemeral_drives=24)
+            # Prune drives from runtime block device map that may override EBS
+            # volumes specified in the AMIs block device map
             for dev in img.block_device_mapping:
                 bdt = img.block_device_mapping.get(dev)
-                if bdt.ephemeral_name:
-                    ephnum = int(bdt.ephemeral_name.split('ephemeral')[1])
-                    drive_letter = chr(ord('b') + ephnum)
-                    device = device_fmt % drive_letter
-                    log.debug("Removing ephemeral drive %s from runtime block "
-                              "device mapping (already mapped by AMI: %s)" %
-                              (device, img.id))
-                    bdmap.pop(device)
+                if not bdt.ephemeral_name and dev in bdmap:
+                    log.debug("EBS volume already mapped to %s by AMI" % dev)
+                    log.debug("Removing %s from runtime block device map" %
+                              dev)
+                    bdmap.pop(dev)
             block_device_map = bdmap
         if price:
             return self.request_spot_instances(
@@ -597,6 +589,8 @@ class EasyEC2(EasyAWS):
         instance_type = instance.instance_type or 'N/A'
         keypair = instance.key_name or 'N/A'
         uptime = utils.get_elapsed_time(instance.launch_time) or 'N/A'
+        tags = ', '.join(['%s=%s' % (k, v) for k, v in
+                          instance.tags.iteritems()]) or 'N/A'
         if state == 'stopped':
             uptime = 'N/A'
         print "id: %s" % instance_id
@@ -615,6 +609,7 @@ class EasyEC2(EasyAWS):
         print "groups: %s" % groups
         print "keypair: %s" % keypair
         print "uptime: %s" % uptime
+        print "tags: %s" % tags
         print
 
     def list_all_instances(self, show_terminated=False):
@@ -954,8 +949,7 @@ class EasyEC2(EasyAWS):
     def create_block_device_map(self, root_snapshot_id=None,
                                 root_device_name='/dev/sda1',
                                 add_ephemeral_drives=False,
-                                num_ephemeral_drives=24,
-                                device_fmt='/dev/sd%s1'):
+                                num_ephemeral_drives=24):
         """
         Utility method for building a new block_device_map for a given snapshot
         id. This is useful when creating a new image from a volume snapshot.
@@ -967,11 +961,14 @@ class EasyEC2(EasyAWS):
             sda1.snapshot_id = root_snapshot_id
             sda1.delete_on_termination = True
             bmap[root_device_name] = sda1
+        drives = ['/dev/xvd%s%%s' % s for s in string.lowercase]
         if add_ephemeral_drives:
             for i in range(num_ephemeral_drives):
+                j, k = i % 26, i / 26
+                device_fmt = drives[k]
                 eph = boto.ec2.blockdevicemapping.BlockDeviceType()
                 eph.ephemeral_name = 'ephemeral%d' % i
-                bmap[device_fmt % chr(ord('b') + i)] = eph
+                bmap[device_fmt % chr(ord('a') + j)] = eph
         return bmap
 
     @print_timing("Downloading image")
@@ -1215,9 +1212,9 @@ class EasyEC2(EasyAWS):
             data.append([timestamp, price])
         maximum = max(prices)
         avg = sum(prices) / float(len(prices))
-        log.info("Current price: $%.2f" % prices[0])
-        log.info("Max price: $%.2f" % maximum)
-        log.info("Average price: $%.2f" % avg)
+        log.info("Current price: $%.4f" % prices[0])
+        log.info("Max price: $%.4f" % maximum)
+        log.info("Average price: $%.4f" % avg)
         if plot:
             xaxisrange = dates[-1] - dates[0]
             xpanrange = [dates[0] - xaxisrange / 2.,
