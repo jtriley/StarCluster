@@ -1742,6 +1742,8 @@ class Cluster(object):
                 for node in to_recover[0]:
                     #call it one at a time so that x doesn't prevent
                     #y to be added
+                    if node.alias == "master":
+                        raise Exception("Cannot add back master node")
                     try:
                         log.info("Adding back node " + node.alias)
                         self.add_nodes(num_nodes=1, aliases=[node.alias],

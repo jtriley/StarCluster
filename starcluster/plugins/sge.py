@@ -145,7 +145,10 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             aliases.append(line[0:line.find(" ")])
         for node in nodes:
             if node.alias not in aliases:
-                missing.append(node)
+                if node.alias == "master":
+                    assert(not self.master_is_exec_host)
+                else:
+                    missing.append(node)
 
         return missing
 
