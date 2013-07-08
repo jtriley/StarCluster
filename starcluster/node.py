@@ -736,18 +736,19 @@ class Node(object):
             devmap[dev] = int(r.findall(proc_parts)[0])
         return devmap
 
-    def get_partition_map(self):
+    def get_partition_map(self, device=None):
         """
         Returns a dictionary mapping partitions->(start, end, blocks, id) based
         on 'fdisk -l'
         """
-        fdiskout = '\n'.join(self.ssh.execute("fdisk -l 2>/dev/null"))
-        part_regex = '/dev/(?:xv|s)d[a-z]\d+(?:p\d+)?'
-        r = re.compile('(%s)\s+'
+        fdiskout = '\n'.join(self.ssh.execute("fdisk -l %s 2>/dev/null" %
+                                              (device or '')))
+        part_regex = '/dev/[A-Za-z0-9/]+'
+        r = re.compile('(%s)\s+\*?\s+'
                        '(\d+)(?:[-+])?\s+'
                        '(\d+)(?:[-+])?\s+'
                        '(\d+)(?:[-+])?\s+'
-                       '(\d+)(?:[-+])?' % part_regex)
+                       '([\da-fA-F][\da-fA-F]?)' % part_regex)
         partmap = {}
         for match in r.findall(fdiskout):
             part, start, end, blocks, sys_id = match
