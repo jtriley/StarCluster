@@ -153,12 +153,6 @@ class CmdBase(optcomplete.CmdComplete):
             parser.error("option %s must be a positive integer" % opt_str)
         setattr(parser.values, option.dest, value)
 
-    def _gte_0_int(self, option, opt_str, value, parser):
-        if value < 0:
-            parser.error("option %s must be an integer greater or equal to "
-                         "zero" % opt_str)
-        setattr(parser.values, option.dest, value)
-
     def _build_dict(self, option, opt_str, value, parser):
         tagdict = getattr(parser.values, option.dest)
         tags = value.split(',')

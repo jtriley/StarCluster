@@ -82,7 +82,7 @@ class CmdLoadBalance(ClusterCompleter):
                           help="Minutes to look back for past job history")
         parser.add_option("-n", "--min_nodes", dest="min_nodes",
                           action="callback", type="int", default=None,
-                          callback=self._gte_0_int,
+                          callback=self._positive_int,
                           help="Minimum number of nodes in cluster")
         parser.add_option("-K", "--kill-cluster", dest="kill_cluster",
                           action="store_true", default=False,
