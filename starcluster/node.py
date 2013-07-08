@@ -723,33 +723,17 @@ class Node(object):
     def get_device_map(self):
         """
         Returns a dictionary mapping devices->(# of blocks) based on
-        /proc/partitions
+        'fdisk -l' and /proc/partitions
         """
-        parts = self.ssh.remote_file('/proc/partitions', 'r').read()
-        dev_regex = '(?:xv|s)d[a-z]'
-        part_regex = '\d+(?:p\d+)?'
-        r = re.compile('(\d+)\s+(%s)(%s)?(?:\s+|\\n)' %
-                       (dev_regex, part_regex))
-        entries = r.findall(parts)
+        dev_regex = '/dev/[A-Za-z0-9/]+'
+        r = re.compile('Disk (%s):' % dev_regex)
+        fdiskout = '\n'.join(self.ssh.execute("fdisk -l 2>/dev/null"))
+        proc_parts = '\n'.join(self.ssh.execute("cat /proc/partitions"))
         devmap = {}
-        partmap = {}
-        for blocks, root_dev_name, partition in entries:
-            root_dev_file = '/dev/' + root_dev_name
-            devfile = root_dev_file + partition
-            if self.ssh.path_exists(devfile):
-                blocks = int(blocks)
-                if partition:
-                    partmap[devfile] = (root_dev_file, blocks)
-                else:
-                    devmap[devfile] = blocks
-        # check for devices attached to the instance with a partition's naming
-        # scheme (e.g. /dev/xvdb1)
-        for dev in partmap:
-            root_dev_file, blocks = partmap[dev]
-            # if a device exists with a partition naming scheme, then the root
-            # device name, e.g. /dev/xvdb for /dev/xvdb1, will not exist
-            if not root_dev_file in devmap:
-                devmap[dev] = blocks
+        for dev in r.findall(fdiskout):
+            short_name = dev.replace('/dev/', '')
+            r = re.compile("(\d+)\s+%s(?:\s+|$)" % short_name)
+            devmap[dev] = int(r.findall(proc_parts)[0])
         return devmap
 
     def get_partition_map(self):
