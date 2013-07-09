@@ -286,18 +286,22 @@ class ClusterManager(managers.Manager):
             print 'Uptime: %s' % uptime
             print 'Zone: %s' % getattr(n, 'placement', 'N/A')
             print 'Keypair: %s' % getattr(n, 'key_name', 'N/A')
-            ebs_nodes = [n for n in nodes if n.attached_vols]
-            if ebs_nodes:
+            ebs_vols = []
+            for node in nodes:
+                devices = node.attached_vols
+                if not devices:
+                    continue
+                node_id = node.alias or node.id
+                for dev in devices:
+                    d = devices.get(dev)
+                    vol_id = d.volume_id
+                    status = d.status
+                    ebs_vols.append((vol_id, node_id, dev, status))
+            if ebs_vols:
                 print 'EBS volumes:'
-                for node in ebs_nodes:
-                    devices = node.attached_vols
-                    node_id = node.alias or node.id
-                    for dev in devices:
-                        d = devices.get(dev)
-                        vol_id = d.volume_id
-                        status = d.status
-                        print('    %s on %s:%s (status: %s)' %
-                              (vol_id, node_id, dev, status))
+                for vid, nid, dev, status in ebs_vols:
+                    print('    %s on %s:%s (status: %s)' %
+                          (vid, nid, dev, status))
             else:
                 print 'EBS volumes: N/A'
             spot_reqs = cl.spot_requests
