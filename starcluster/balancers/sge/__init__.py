@@ -706,7 +706,7 @@ class SGELoadBalancer(LoadBalancer):
             else:
                 log.info("No queued jobs older than %d seconds" %
                          self.longest_allowed_queue_time)
-        running_nodes = len(self._cluster.running_nodes)
+        max_add = self.max_nodes - len(self._cluster.running_nodes)
         need_to_add = min(self.add_nodes_per_iteration, need_to_add, max_add)
         if need_to_add > 0:
             log.warn("Adding %d nodes at %s" %
