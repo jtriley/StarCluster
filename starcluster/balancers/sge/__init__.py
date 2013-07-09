@@ -496,13 +496,12 @@ class SGELoadBalancer(LoadBalancer):
             else:
                 log.info("No jobs have completed yet!")
                 qacct = ''
-        stats = SGEStats()
-        stats.parse_qhost(qhostxml)
-        stats.parse_qstat(qstatxml)
-        stats.parse_qacct(qacct, now)
+        self.stat.parse_qhost(qhostxml)
+        self.stat.parse_qstat(qstatxml)
+        self.stat.parse_qacct(qacct, now)
         log.debug("sizes: qhost: %d, qstat: %d, qacct: %d" %
                   (len(qhostxml), len(qstatxml), len(qacct)))
-        return stats
+        return self.stat
 
     @utils.print_timing("Fetching SGE stats", debug=True)
     def get_stats(self):
@@ -517,8 +516,7 @@ class SGELoadBalancer(LoadBalancer):
         retries = 5
         for i in range(retries):
             try:
-                self.stat = self._get_stats()
-                return self.stat
+                return self._get_stats()
             except Exception:
                 log.warn("Failed to retrieve stats (%d/%d):" %
                          (i + 1, retries), exc_info=True)
