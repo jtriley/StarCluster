@@ -698,6 +698,7 @@ class StarClusterConfig(object):
             self.aws.update(self.get_aws_from_environ())
         self.keys = self._load_sections('key', self.key_settings)
         self.vols = self._load_sections('volume', self.volume_settings)
+        self.vols.update(self._load_sections('vol', self.volume_settings))
         self.plugins = self._load_sections('plugin', self.plugin_settings,
                                            filter_settings=False)
         self.permissions = self._load_sections('permission',
