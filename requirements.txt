@@ -8,6 +8,7 @@ ipython==0.13.1
 pep8==1.4.1
 pyflakes==0.6.1
 iptools==0.6.1
+optcomplete==1.2.0
 nose==1.2.1
 nose-progressive==1.4
 optcomplete=1.2.0
