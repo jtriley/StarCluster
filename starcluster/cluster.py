@@ -681,8 +681,12 @@ class Cluster(object):
     @property
     def nodes(self):
         states = ['pending', 'running', 'stopping', 'stopped']
-        filters = {'group-name': self._security_group,
-                   'instance-state-name': states}
+        filters = {'instance-state-name': states}
+        cluster_group = self.cluster_group
+        if cluster_group.vpc_id:
+            filters['instance.group-name'] = cluster_group.name
+        else:
+            filters['group-name'] = cluster_group.name
         nodes = self.ec2.get_all_instances(filters=filters)
         # remove any cached nodes not in the current node list from EC2
         current_ids = [n.id for n in nodes]
