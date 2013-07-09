@@ -1312,6 +1312,7 @@ class Cluster(object):
         """
         Attach each volume to the master node
         """
+        wait_for_volumes = []
         for vol in self.volumes:
             volume = self.volumes.get(vol)
             device = volume.get('device')
@@ -1329,6 +1330,8 @@ class Cluster(object):
                      (vol.id, device))
             resp = vol.attach(self.master_node.id, device)
             log.debug("resp = %s" % resp)
+            wait_for_volumes.append(vol)
+        for vol in wait_for_volumes:
             self.ec2.wait_for_volume(vol, state='attached')
 
     def detach_volumes(self):
