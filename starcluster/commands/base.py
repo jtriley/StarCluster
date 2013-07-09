@@ -1,13 +1,14 @@
 import os
 import sys
 import time
+
 from starcluster import node
 from starcluster import cluster
-from starcluster import optcomplete
+from starcluster import completion
 from starcluster.logger import log
 
 
-class CmdBase(optcomplete.CmdComplete):
+class CmdBase(completion.CmdComplete):
     """
     Base class for StarCluster commands
 

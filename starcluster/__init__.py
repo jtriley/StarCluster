@@ -28,7 +28,7 @@ __all__ = [
     "templates",
     "exception",
     "tests",
-    "optcomplete",
+    "completion",
     "progressbar",
     "spinner",
 ]

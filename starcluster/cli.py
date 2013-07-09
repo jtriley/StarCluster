@@ -17,7 +17,7 @@ from starcluster import static
 from starcluster import logger
 from starcluster import commands
 from starcluster import exception
-from starcluster import optcomplete
+from starcluster import completion
 from starcluster.logger import log, console
 from starcluster import __version__
 
@@ -232,10 +232,10 @@ class StarClusterCLI(object):
                 sc.gopts = gopts
                 for n in sc.names:
                     scmap[n] = sc
-            listcter = optcomplete.ListCompleter(scmap.keys())
-            subcter = optcomplete.NoneCompleter()
-            optcomplete.autocomplete(gparser, listcter, None, subcter,
-                                     subcommands=scmap)
+            listcter = completion.ListCompleter(scmap.keys())
+            subcter = completion.NoneCompleter()
+            completion.autocomplete(gparser, listcter, None, subcter,
+                                    subcommands=scmap)
             sys.exit(1)
 
     def main(self):
