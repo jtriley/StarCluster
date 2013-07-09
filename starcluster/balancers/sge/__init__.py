@@ -645,7 +645,7 @@ class SGELoadBalancer(LoadBalancer):
         total_slots = self.stat.count_total_slots()
         avail_slots = total_slots - used_slots
         need_to_add = 0
-        if total_slots == 0:
+        if total_slots == 0 and qw_slots > 0:
             #no slots, add one now
             need_to_add = 1
         elif qw_slots > avail_slots:
