@@ -1,4 +1,4 @@
-from starcluster import optcomplete
+import optcomplete
 from starcluster.logger import log
 
 from base import CmdBase

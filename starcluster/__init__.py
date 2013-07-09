@@ -28,7 +28,6 @@ __all__ = [
     "templates",
     "exception",
     "tests",
-    "optcomplete",
     "progressbar",
     "spinner",
 ]

@@ -10,3 +10,4 @@ pyflakes==0.6.1
 iptools==0.6.1
 nose==1.2.1
 nose-progressive==1.4
+optcomplete=1.2.0

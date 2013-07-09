@@ -1,9 +1,9 @@
 import os
 import sys
 import time
+import optcomplete
 from starcluster import node
 from starcluster import cluster
-from starcluster import optcomplete
 from starcluster.logger import log
 
 
