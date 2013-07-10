@@ -13,6 +13,12 @@ def __expand_all(path):
     return path
 
 
+def __expand_all_in_list(lst):
+    for i, path in enumerate(lst):
+        lst[i] = __expand_all(path)
+    return lst
+
+
 def __makedirs(path, exit_on_failure=False):
     if not os.path.exists(path):
         try:
@@ -213,7 +219,7 @@ CLUSTER_SETTINGS = {
     'volumes': (list, False, [], None, None),
     'plugins': (list, False, [], None, None),
     'permissions': (list, False, [], None, None),
-    'userdata_scripts': (list, False, [], None, None),
+    'userdata_scripts': (list, False, [], None, __expand_all_in_list),
     'disable_queue': (bool, False, False, None, None),
     'force_spot_master': (bool, False, False, None, None),
     'disable_cloudinit': (bool, False, False, None, None),
