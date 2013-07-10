@@ -681,12 +681,8 @@ class Cluster(object):
     @property
     def nodes(self):
         states = ['pending', 'running', 'stopping', 'stopped']
-        filters = {'instance-state-name': states}
-        cluster_group = self.cluster_group
-        if cluster_group.vpc_id:
-            filters['instance.group-name'] = cluster_group.name
-        else:
-            filters['group-name'] = cluster_group.name
+        filters = {'instance-state-name': states,
+                   'instance.group-name': self._security_group}
         nodes = self.ec2.get_all_instances(filters=filters)
         # remove any cached nodes not in the current node list from EC2
         current_ids = [n.id for n in nodes]
@@ -717,7 +713,7 @@ class Cluster(object):
     def get_nodes_or_raise(self):
         nodes = self.nodes
         if not nodes:
-            filters = {'group-name': self._security_group}
+            filters = {'instance.group-name': self._security_group}
             terminated_nodes = self.ec2.get_all_instances(filters=filters)
             raise exception.NoClusterNodesFound(terminated_nodes)
         return nodes
@@ -1311,7 +1307,7 @@ class Cluster(object):
         Check whether all nodes are in a 'terminated' state
         """
         states = filter(lambda x: x != 'terminated', static.INSTANCE_STATES)
-        filters = {'group-name': self._security_group,
+        filters = {'instance.group-name': self._security_group,
                    'instance-state-name': states}
         insts = self.ec2.get_all_instances(filters=filters)
         return len(insts) == 0
