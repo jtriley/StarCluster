@@ -66,7 +66,7 @@ except ImportError:
             out = [item for item in out if not fnmatchcase(item, pat)]
         return out
 
-    extra = {}
+    extra = {'scripts': ['bin/starcluster']}
 
 VERSION = 0.9999
 static = os.path.join('starcluster', 'static.py')
@@ -80,7 +80,6 @@ setup(
     packages=find_packages(),
     package_data={'starcluster.templates':
                   ['web/*.*', 'web/css/*', 'web/js/*']},
-    scripts=['bin/starcluster'],
     license='LGPL3',
     author='Justin Riley',
     author_email='justin.t.riley@gmail.com',
