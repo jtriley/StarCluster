@@ -132,7 +132,7 @@ class CmdStart(ClusterCompleter):
                           help="path to an ssh private key that matches the "
                           "cluster keypair")
         parser.add_option("-U", "--userdata-script", dest="userdata_scripts",
-                          action="append", default=[], metavar="FILE",
+                          action="append", default=None, metavar="FILE",
                           help="Path to userdata script that will run on "
                           "each node on start-up. Can be used multiple times.")
 
