@@ -307,13 +307,14 @@ def warn_debug_file_moved():
 
 
 def main():
-    static.create_sc_config_dirs()
-    logger.configure_sc_logging()
-    warn_debug_file_moved()
-    StarClusterCLI().main()
-
-if __name__ == '__main__':
     try:
-        main()
+        static.create_sc_config_dirs()
+        logger.configure_sc_logging()
+        warn_debug_file_moved()
+        StarClusterCLI().main()
     except KeyboardInterrupt:
         print "Interrupted, exiting."
+        sys.exit(1)
+
+if __name__ == '__main__':
+    main()
