@@ -82,9 +82,29 @@ class EasyEC2(EasyAWS):
                       aws_proxy_pass=aws_proxy_pass)
         self.s3 = EasyS3(aws_access_key_id, aws_secret_access_key, **kwargs)
         self._regions = None
+        self._platforms = None
+        self._default_vpc = None
 
     def __repr__(self):
         return '<EasyEC2: %s (%s)>' % (self.region.name, self.region.endpoint)
+
+    def _fetch_account_attrs(self):
+        resp = self.conn.describe_account_attributes(
+            ['default-vpc', 'supported-platforms'])
+        self._platforms = resp[0].attribute_values
+        self._default_vpc = resp[1].attribute_values[0]
+
+    @property
+    def supported_platforms(self):
+        if not self._platforms:
+            self._fetch_account_attrs()
+        return self._platforms
+
+    @property
+    def default_vpc(self):
+        if not self._default_vpc:
+            self._fetch_account_attrs()
+        return self._default_vpc
 
     def connect_to_region(self, region_name):
         """
@@ -94,6 +114,8 @@ class EasyEC2(EasyAWS):
         """
         region = self.get_region(region_name)
         self._kwargs['region'] = region
+        self._platforms = None
+        self._default_vpc = None
         self.reload()
         return self
 
