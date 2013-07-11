@@ -281,6 +281,7 @@ class StarClusterCLI(object):
             sys.exit(1)
         except exception.BaseException, e:
             log.error(e.msg, extra={'__textwrap__': True})
+            log.debug(e.msg, exc_info=True)
             sys.exit(1)
         except SystemExit:
             # re-raise SystemExit to avoid the bug-catcher below
