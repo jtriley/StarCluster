@@ -1,8 +1,8 @@
 import time
 import string
 
-from starcluster import static
 from starcluster import utils
+from starcluster import static
 from starcluster import exception
 from starcluster import cluster
 from starcluster.utils import print_timing
@@ -81,8 +81,8 @@ class VolumeCreator(cluster.Cluster):
             self.wait_for_cluster(msg="Waiting for volume host to come up...")
             self._instance = self.get_node_by_alias(alias)
         else:
-            s = self.get_spinner("Waiting for instance %s to come up..." %
-                                 self._instance.id)
+            s = utils.get_spinner("Waiting for instance %s to come up..." %
+                                  self._instance.id)
             while not self._instance.is_up():
                 time.sleep(self.refresh_interval)
             s.stop()

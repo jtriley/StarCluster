@@ -9,7 +9,6 @@ import iptools
 
 from starcluster import utils
 from starcluster import static
-from starcluster import spinner
 from starcluster import sshutils
 from starcluster import managers
 from starcluster import userdata
@@ -1165,20 +1164,6 @@ class Cluster(object):
                 return False
         return True
 
-    def get_spinner(self, msg):
-        """
-        Logs a status msg, starts a spinner, and returns the spinner object.
-        This is useful for long running processes:
-
-            s = self.get_spinner("Long running process running...")
-            (do something)
-            s.stop()
-        """
-        s = spinner.Spinner()
-        log.info(msg, extra=dict(__nonewline__=True))
-        s.start()
-        return s
-
     @property
     def progress_bar(self):
         if not self._progress_bar:
@@ -1235,7 +1220,7 @@ class Cluster(object):
         """
         nodes = nodes or self.nodes
         if len(nodes) == 0:
-            s = self.get_spinner("Waiting for instances to activate...")
+            s = utils.get_spinner("Waiting for instances to activate...")
             try:
                 while len(nodes) == 0:
                     time.sleep(self.refresh_interval)
@@ -1418,7 +1403,7 @@ class Cluster(object):
             if spot.state not in ['cancelled', 'closed']:
                 log.info("Canceling spot instance request: %s" % spot.id)
                 spot.cancel()
-        s = self.get_spinner("Waiting for cluster to terminate...")
+        s = utils.get_spinner("Waiting for cluster to terminate...")
         try:
             while not self.is_cluster_terminated():
                 time.sleep(5)

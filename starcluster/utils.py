@@ -21,6 +21,7 @@ from datetime import datetime
 import iptools
 import decorator
 
+from starcluster import spinner
 from starcluster import exception
 from starcluster.logger import log
 
@@ -589,3 +590,20 @@ def get_fq_class_name(obj):
 
 def size_in_kb(obj):
     return sys.getsizeof(obj) / 1024.
+
+
+def get_spinner(msg):
+    """
+    Logs a status msg, starts a spinner, and returns the spinner object.
+    This is useful for long running processes:
+
+    s = get_spinner("Long running process running...")
+    try:
+        (do something)
+    finally:
+        s.stop()
+    """
+    s = spinner.Spinner()
+    log.info(msg, extra=dict(__nonewline__=True))
+    s.start()
+    return s
