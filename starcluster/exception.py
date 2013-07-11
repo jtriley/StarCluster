@@ -496,39 +496,39 @@ class ThreadPoolException(BaseException):
 
 
 class IncompatibleCluster(BaseException):
-    main_msg = """\
-The cluster '%(tag)s' was either created by a previous stable or development \
-version of StarCluster or you manually created the '%(group)s' group. In any \
-case '%(tag)s' cannot be used with this version of StarCluster (%(version)s).
+    default_msg = """\
+INCOMPATIBLE CLUSTER: %(tag)s
 
-"""
+The cluster '%(tag)s' is not compatible with StarCluster %(version)s. \
+Possible reasons are:
 
-    insts_msg = """\
+1. The '%(group)s' group was created using an incompatible version of \
+StarCluster (stable or development).
+
+2. The '%(group)s' group was manually created outside of StarCluster.
+
+3. One of the nodes belonging to '%(group)s' was manually created outside of \
+StarCluster.
+
+4. StarCluster was interrupted very early on when first creating the \
+cluster's security group.
+
+In any case '%(tag)s' and its nodes cannot be used with this version of \
+StarCluster (%(version)s).
+
 The cluster '%(tag)s' currently has %(num_nodes)d active nodes.
 
-"""
-
-    no_insts_msg = """\
-The cluster '%(tag)s' does not have any nodes and is safe to terminate.
-
-"""
-
-    terminate_msg = """\
 Please terminate the cluster using:
 
-    $ starcluster terminate -f %(tag)s
+    $ starcluster terminate --force %(tag)s
 """
 
     def __init__(self, group):
         tag = group.name.replace(static.SECURITY_GROUP_PREFIX + '-', '')
-        self.msg = "Incompatible Cluster: %(tag)s\n\n" % dict(tag=tag)
-        self.msg += self.main_msg % dict(group=group.name, tag=tag,
-                                         version=static.VERSION)
         states = ['pending', 'running', 'stopping', 'stopped']
-        insts = filter(lambda x: x.state in states, group.instances())
-        ctx = dict(tag=tag, num_nodes=len(insts))
-        if insts:
-            self.msg += self.insts_msg % ctx
-        else:
-            self.msg += self.no_insts_msg % ctx
-        self.msg += self.terminate_msg % ctx
+        insts = group.connection.get_all_instances(
+            filters={'instance-state-name': states,
+                     'instance.group-name': group.name})
+        ctx = dict(group=group.name, tag=tag, num_nodes=len(insts),
+                   version=static.VERSION)
+        self.msg = self.default_msg % ctx
