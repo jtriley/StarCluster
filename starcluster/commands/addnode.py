@@ -67,7 +67,7 @@ class CmdAddNode(ClusterCompleter):
         parser.add_option(
             "-I", "--instance-type", dest="instance_type",
             action="store", type="choice", default=None,
-            choices=static.INSTANCE_TYPES.keys(),
+            choices=sorted(static.INSTANCE_TYPES.keys()),
             help="The instance type to use when launching volume "
             "host instance")
         parser.add_option(

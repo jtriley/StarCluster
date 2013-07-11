@@ -109,11 +109,12 @@ class CmdStart(ClusterCompleter):
                           help="AMI to use when launching nodes")
         parser.add_option("-I", "--master-instance-type",
                           dest="master_instance_type", action="store",
-                          choices=static.INSTANCE_TYPES.keys(), default=None,
-                          help="instance type for the master instance")
+                          choices=sorted(static.INSTANCE_TYPES.keys()),
+                          default=None, help="instance type for the master "
+                          "instance")
         opt = parser.add_option("-i", "--node-instance-type",
                                 dest="node_instance_type", action="store",
-                                choices=static.INSTANCE_TYPES.keys(),
+                                choices=sorted(static.INSTANCE_TYPES.keys()),
                                 default=None,
                                 help="instance type for the node instances")
         if completion:

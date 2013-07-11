@@ -56,7 +56,7 @@ class CmdCreateVolume(CmdBase):
         parser.add_option(
             "-I", "--instance-type", dest="instance_type",
             action="store", type="choice", default="t1.micro",
-            choices=static.INSTANCE_TYPES.keys(),
+            choices=sorted(static.INSTANCE_TYPES.keys()),
             help="The instance type to use when launching volume "
             "host instance (default: t1.micro)")
         parser.add_option(

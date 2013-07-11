@@ -49,7 +49,7 @@ class CmdSpotHistory(CmdBase):
                           help="plot spot history using matplotlib")
 
     def execute(self, args):
-        instance_types = ', '.join(static.INSTANCE_TYPES.keys())
+        instance_types = ', '.join(sorted(static.INSTANCE_TYPES.keys()))
         if len(args) != 1:
             self.parser.error(
                 'please provide an instance type (options: %s)' %
@@ -57,7 +57,7 @@ class CmdSpotHistory(CmdBase):
         instance_type = args[0]
         if not instance_type in static.INSTANCE_TYPES:
             self.parser.error('invalid instance type. possible options: %s' %
-                              ', '.join(static.INSTANCE_TYPES))
+                              instance_types)
         start = self.opts.start_time
         end = self.opts.end_time
         if self.opts.days_ago:
