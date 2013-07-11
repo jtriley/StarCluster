@@ -174,6 +174,28 @@ class EasyEC2(EasyAWS):
             if img.id == image_id:
                 return img
 
+    def delete_group(self, group):
+        """
+        This method deletes the security group using group.delete() but in the
+        case that group.delete() throws a DependencyViolation error it will
+        keep retrying until it's successful. Waits 5 seconds between each
+        retry.
+        """
+        s = utils.get_spinner("Removing %s security group..." % group.name)
+        try:
+            while True:
+                try:
+                    return group.delete()
+                except boto.exception.EC2ResponseError, e:
+                    if e.error_code == 'DependencyViolation':
+                        log.debug('DependencyViolation error - retrying in 5s',
+                                  exc_info=True)
+                        time.sleep(5)
+                    else:
+                        raise
+        finally:
+            s.stop()
+
     def create_group(self, name, description, auth_ssh=False,
                      auth_group_traffic=False):
         """

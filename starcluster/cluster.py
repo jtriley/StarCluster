@@ -1417,8 +1417,7 @@ class Cluster(object):
                 pg.delete()
         sg = self.ec2.get_group_or_none(self._security_group)
         if sg:
-            log.info("Removing %s security group" % sg.name)
-            sg.delete()
+            self.ec2.delete_group(sg)
 
     def start(self, create=True, create_only=False, validate=True,
               validate_only=False, validate_running=False):
