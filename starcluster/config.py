@@ -553,9 +553,8 @@ class StarClusterConfig(object):
         try:
             self.aws = self._load_section('aws info', self.aws_settings)
         except exception.ConfigSectionMissing:
-            log.warn("no [aws info] section found in config")
-            log.warn("attempting to load credentials from environment...")
-            self.aws.update(self.get_aws_from_environ())
+            log.warn("No [aws info] section found in the config!")
+        self.aws.update(self.get_settings_from_env(self.aws_settings))
         self.keys = self._load_sections('key', self.key_settings)
         self.vols = self._load_sections('volume', self.volume_settings)
         self.vols.update(self._load_sections('vol', self.volume_settings))
@@ -567,28 +566,20 @@ class StarClusterConfig(object):
         self.clusters = self._load_cluster_sections(sections)
         return self
 
-    def get_aws_from_environ(self):
+    def get_settings_from_env(self, settings):
         """
         Returns AWS credentials defined in the user's shell
         environment.
         """
-        awscreds = {}
-        for key in static.AWS_SETTINGS:
+        found = {}
+        for key in settings:
             if key.upper() in os.environ:
-                awscreds[key] = os.environ.get(key.upper())
+                log.warn("Setting '%s' from environment..." % key.upper())
+                found[key] = os.environ.get(key.upper())
             elif key in os.environ:
-                awscreds[key] = os.environ.get(key)
-        return awscreds
-
-    def get_aws_credentials(self):
-        """
-        Returns AWS credentials defined in the configuration
-        file. Defining any of the AWS settings in the environment
-        overrides the configuration file.
-        """
-        # first override with environment settings if they exist
-        self.aws.update(self.get_aws_from_environ())
-        return self.aws
+                log.warn("Setting '%s' from environment..." % key)
+                found[key] = os.environ.get(key)
+        return found
 
     def get_cluster_template(self, template_name, tag_name=None,
                              ec2_conn=None):
@@ -653,9 +644,8 @@ class StarClusterConfig(object):
         the StarCluster config file. Returns an EasyS3 object if
         successful.
         """
-        aws = self.get_aws_credentials()
         try:
-            s3 = awsutils.EasyS3(**aws)
+            s3 = awsutils.EasyS3(**self.aws)
             return s3
         except TypeError:
             raise exception.ConfigError("no aws credentials found")
@@ -666,9 +656,8 @@ class StarClusterConfig(object):
         the StarCluster config file. Returns an EasyEC2 object if
         successful.
         """
-        aws = self.get_aws_credentials()
         try:
-            ec2 = awsutils.EasyEC2(**aws)
+            ec2 = awsutils.EasyEC2(**self.aws)
             return ec2
         except TypeError:
             raise exception.ConfigError("no aws credentials found")

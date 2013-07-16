@@ -101,6 +101,16 @@ required:
     ec2_cert = /path/to/your/ec2_cert.pem
     ec2_private_key = /path/to/your/ec2_pk.pem
 
+All of the settings in the **[aws info]** section can be overridden by the
+environment. StarCluster will log a warning whenever it uses settings from the
+environment. For example::
+
+   $ export AWS_ACCESS_KEY_ID=your_aws_access_key_id
+   $ export AWS_SECRET_ACCESS_KEY=your_secret_access_key
+   $ starcluster listclusters
+   *** WARNING - Setting 'AWS_SECRET_ACCESS_KEY' from environment...
+   *** WARNING - Setting 'AWS_ACCESS_KEY_ID' from environment...
+
 Amazon EC2 Regions
 ------------------
 StarCluster uses the us-east-1 EC2 region by default. If you wish to
