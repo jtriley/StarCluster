@@ -301,6 +301,7 @@ class SSHClient(object):
         with tempfile.NamedTemporaryFile(
                 prefix=os.path.basename(filename) + "_") as f:
             f.writelines(lines)
+            f.flush()
             self.put(f.name, filename)
 
     def path_exists(self, path):
