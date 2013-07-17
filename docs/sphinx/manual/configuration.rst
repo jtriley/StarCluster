@@ -47,15 +47,22 @@ called ``smallcluster`` that is set as the default *cluster template*.
 Storing the config in an alternate location
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 If you wish to store your StarCluster config in a location other than the
-default (``~/.starcluster/config``) you will need to specify the global
-``--config`` (``-c``) option with every StarCluster command you use. For
-example::
+default (``~/.starcluster/config``), you will need to set the
+``STARCLUSTER_CONFIG`` environment variable to point to your file::
+
+    $ export STARCLUSTER_CONFIG="/path/to/starcluster/config"
+
+After doing so, all StarCluster commands will use the config identified by
+``STARCLUSTER_CONFIG``.
+
+Alternatively, you can specify the global ``--config`` (``-c``) option with
+every StarCluster command you use. For example::
 
     $ starcluster -c /path/to/starcluster/config listclusters
 
-In the above example, if the config didn't exist at the specified path you
-would be prompted with the same menu above offering to generate a template at
-the specified path::
+In either case, if the config didn't exist at the specified path you would be
+prompted with the same menu above offering to generate a template at the
+specified path::
 
     $ starcluster -c /path/to/nonexistent/config listclusters
     StarCluster - (http://star.mit.edu/cluster)
