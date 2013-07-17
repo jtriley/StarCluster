@@ -636,13 +636,13 @@ class SGELoadBalancer(LoadBalancer):
         if not queued_jobs:
             log.info("Not adding nodes: no queued jobs...")
             return
-        if not self.has_cluster_stabilized():
+        total_slots = self.stat.count_total_slots()
+        if not self.has_cluster_stabilized() and total_slots > 0:
             return
         running_jobs = self.stat.get_running_jobs()
         used_slots = sum([int(j['slots']) for j in running_jobs])
         qw_slots = sum([int(j['slots']) for j in queued_jobs])
         slots_per_host = self.stat.slots_per_host()
-        total_slots = self.stat.count_total_slots()
         avail_slots = total_slots - used_slots
         need_to_add = 0
         if total_slots == 0:
