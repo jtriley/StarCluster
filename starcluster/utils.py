@@ -87,16 +87,16 @@ def print_timing(msg=None, debug=False):
     appear in the sentence "[msg] took XXX mins". If no msg is specified,
     msg will default to the decorated function's name. e.g:
 
-    @print_timing
-    def myfunc():
-        print 'Running myfunc'
+    >>> @print_timing
+    ... def myfunc():
+    ...     print 'Running myfunc'
     >>> myfunc()
     Running myfunc
     myfunc took 0.000 mins
 
-    @print_timing('My function')
-    def myfunc():
-        print 'Running myfunc'
+    >>> @print_timing('My function')
+    ... def myfunc():
+    ...    print 'Running myfunc'
     >>> myfunc()
     Running myfunc
     My function took 0.000 mins
