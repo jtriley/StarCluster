@@ -81,9 +81,9 @@ AWS_DEBUG_FILE = os.path.join(STARCLUSTER_LOG_DIR, 'aws-debug.log')
 CRASH_FILE = os.path.join(STARCLUSTER_LOG_DIR, 'crash-report-%d.txt' % PID)
 
 # StarCluster BASE AMIs (us-east-1)
-BASE_AMI_32 = "ami-899d49e0"
-BASE_AMI_64 = "ami-999d49f0"
-BASE_AMI_HVM = "ami-4583572c"
+BASE_AMI_32 = "ami-7c5c3915"
+BASE_AMI_64 = "ami-765b3e1f"
+BASE_AMI_HVM = "ami-52a0c53b"
 
 SECURITY_GROUP_PREFIX = "@sc"
 SECURITY_GROUP_TEMPLATE = '-'.join([SECURITY_GROUP_PREFIX, "%s"])
