@@ -172,9 +172,7 @@ class EasyEC2(EasyAWS):
             sg.authorize('icmp', -1, -1, src_group=src_group)
             sg.authorize('tcp', 1, 65535, src_group=src_group)
             sg.authorize('udp', 1, 65535, src_group=src_group)
-
         return sg
-
 
     def get_all_security_groups(self, groupnames=[]):
         """
@@ -338,7 +336,6 @@ class EasyEC2(EasyAWS):
                 availability_zone_group=availability_zone_group,
                 placement=placement, placement_group=placement_group,
                 user_data=user_data)
-
         else:
             return self.run_instances(
                 image_id, instance_type=instance_type,
@@ -363,13 +360,13 @@ class EasyEC2(EasyAWS):
         for request in requests:
             requests_ids.append(request.id)
 
-        #Make sure the spot instance request has been ingested by EC2 
+        #Make sure the spot instance request has been ingested by EC2
         #before proceeding. Wait at most 10 sec.
         counter = 0
         while True:
             all_requests = self.conn.get_all_spot_instance_requests()
-            all_requests.reverse()#start from the end as our request will usually
-                                 #be the last
+            all_requests.reverse()  # start from the end as our request will
+                                    # usually be the last
             for request in all_requests:
                 if request.id in requests_ids:
                     del requests_ids[requests_ids.index(request.id)]
