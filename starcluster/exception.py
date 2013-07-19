@@ -322,9 +322,11 @@ class NoClusterNodesFound(ValidationError):
         self.msg += "\n\nBelow is a list of terminated instances:\n"
         for tnode in terminated:
             id = tnode.id
-            reason = tnode.reason or 'N/A'
-            state = tnode.state or 'N/A'
-            self.msg += "\n%s (state: %s, reason: %s)" % (id, state, reason)
+            reason = 'N/A'
+            if tnode.state_reason:
+                reason = tnode.state_reason['message']
+            state = tnode.state
+            self.msg += "\n%s (%s) %s" % (id, state, reason)
 
 
 class NoClusterSpotRequests(ValidationError):
