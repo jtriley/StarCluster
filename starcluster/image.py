@@ -57,14 +57,18 @@ class ImageCreator(object):
         log.info('Removing private data...')
         conn = self.host_ssh
         conn.execute('find /home -maxdepth 1 -type d -exec rm -rf {}/.ssh \;')
+        log.info("Cleaning up SSH host keys")
         conn.execute('rm -f /etc/ssh/ssh_host*key*')
+        log.info("Cleaning up /var/log")
         conn.execute('rm -f /var/log/secure')
         conn.execute('rm -f /var/log/lastlog')
-        conn.execute('rm -rf /root/*')
-        conn.execute('rm -f ~/.bash_history')
-        conn.execute('rm -rf /tmp/*')
-        conn.execute('rm -rf /root/*.hist*')
         conn.execute('rm -rf /var/log/*.gz')
+        log.info("Cleaning out /root")
+        conn.execute('rm -rf /root/*')
+        conn.execute('rm -f /root/.bash_history')
+        conn.execute('rm -rf /root/*.hist*')
+        log.info("Cleaning up /tmp")
+        conn.execute('rm -rf /tmp/*')
 
 
 class S3ImageCreator(ImageCreator):
