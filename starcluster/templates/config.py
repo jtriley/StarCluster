@@ -136,6 +136,10 @@ NODE_INSTANCE_TYPE = m1.small
 # this template. The following example will place a $0.50 bid for each spot
 # request.
 #SPOT_BID = 0.50
+# Uncomment to specify one or more userdata scripts to use when launching
+# cluster instances. Supports cloudinit. All scripts combined must be less than
+# 16KB
+#USERDATA_SCRIPTS = /path/to/script1, /path/to/script2
 
 ###########################################
 ## Defining Additional Cluster Templates ##
