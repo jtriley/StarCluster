@@ -53,8 +53,8 @@ __all__ = [
 
 def test():
     try:
-        from nose.core import TestProgram
-        TestProgram(argv=[__file__, "starcluster.tests", '-s'], exit=False)
+        from nose import run
+        run(argv=['sctest', '-s', '--exe', 'starcluster'], exit=False)
     except ImportError:
         print 'error importing nose'
 
