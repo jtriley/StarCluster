@@ -3,6 +3,8 @@
 *.pyo
 *.pkl
 *~
+.DS_Store
+pip-log.txt
 MANIFEST
 build
 dist

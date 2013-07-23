@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 from starcluster import exception
 from starcluster.logger import log
 
@@ -30,25 +47,25 @@ class CmdTerminate(ClusterCompleter):
                           action="store_true", default=False,
                           help="Do not prompt for confirmation, "
                           "just terminate the cluster")
+        parser.add_option("-f", "--force", dest="force", action="store_true",
+                          default=False,  help="Terminate cluster regardless "
+                          "of errors if possible ")
 
-    def _terminate_cluster(self, cluster_name):
-        cl = self.cm.get_cluster(cluster_name, require_keys=False)
+    def _terminate_cluster(self, cl):
         if not self.opts.confirm:
             action = 'Terminate'
             if cl.is_ebs_cluster():
                 action = 'Terminate EBS'
             resp = raw_input(
-                "%s cluster %s (y/n)? " % (action, cluster_name))
+                "%s cluster %s (y/n)? " % (action, cl.cluster_tag))
             if resp not in ['y', 'Y', 'yes']:
                 log.info("Aborting...")
                 return
         cl.terminate_cluster()
 
-    def _terminate_manually(self, cluster_name):
-        cl = self.cm.get_cluster(cluster_name, load_receipt=False,
-                                 require_keys=False)
+    def _terminate_manually(self, cl):
         if not self.opts.confirm:
-            resp = raw_input("Terminate cluster %s (y/n)? " % cluster_name)
+            resp = raw_input("Terminate cluster %s (y/n)? " % cl.cluster_tag)
             if resp not in ['y', 'Y', 'yes']:
                 log.info("Aborting...")
                 return
@@ -56,20 +73,32 @@ class CmdTerminate(ClusterCompleter):
         for inst in insts:
             log.info("Terminating %s" % inst.id)
             inst.terminate()
-        cl.terminate_cluster()
+        cl.terminate_cluster(force=True)
 
-    def terminate(self, cluster_name):
+    def terminate(self, cluster_name, force=False):
+        if force:
+            log.warn("Ignoring cluster settings due to --force option")
         try:
-            self._terminate_cluster(cluster_name)
-        except exception.IncompatibleCluster:
-            self._terminate_manually(cluster_name)
+            cl = self.cm.get_cluster(cluster_name, load_receipt=not force,
+                                     require_keys=not force)
+            if force:
+                self._terminate_manually(cl)
+            else:
+                self._terminate_cluster(cl)
+        except exception.ClusterDoesNotExist:
+            raise
+        except Exception:
+            log.error("Failed to terminate cluster!", exc_info=True)
+            if not force:
+                log.error("Use -f to forcefully terminate the cluster")
+            raise
 
     def execute(self, args):
         if not args:
             self.parser.error("please specify a cluster")
         for cluster_name in args:
             try:
-                self.terminate(cluster_name)
+                self.terminate(cluster_name, force=self.opts.force)
             except EOFError:
                 print 'Interrupted, exiting...'
                 return

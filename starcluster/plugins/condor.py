@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 from starcluster import clustersetup
 from starcluster.templates import condor
 from starcluster.logger import log
@@ -38,15 +55,12 @@ class CondorPlugin(clustersetup.DefaultClusterSetup):
         self.pool.wait(numtasks=len(nodes))
 
     def run(self, nodes, master, user, user_shell, volumes):
-        try:
-            self._nodes = nodes
-            self._master = master
-            self._user = user
-            self._user_shell = user_shell
-            self._volumes = volumes
-            self._setup_condor()
-        finally:
-            self.pool.shutdown()
+        self._nodes = nodes
+        self._master = master
+        self._user = user
+        self._user_shell = user_shell
+        self._volumes = volumes
+        self._setup_condor()
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes

@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 from starcluster import node
 from starcluster import volume
 from starcluster import static
@@ -47,10 +64,10 @@ class CmdResizeVolume(CmdCreateVolume):
             help="The AMI to use when launching volume host instance")
         parser.add_option(
             "-I", "--instance-type", dest="instance_type",
-            action="store", type="choice", default="m1.small",
-            choices=static.INSTANCE_TYPES.keys(),
+            action="store", type="choice", default="t1.micro",
+            choices=sorted(static.INSTANCE_TYPES.keys()),
             help="The instance type to use when launching volume "
-            "host instance")
+            "host instance (default: t1.micro)")
         parser.add_option(
             "-r", "--resizefs-cmd", dest="resizefs_cmd",
             action="store", type="string", default="resize2fs",
@@ -82,11 +99,13 @@ class CmdResizeVolume(CmdCreateVolume):
         vc = volume.VolumeCreator(self.ec2, **kwargs)
         if host_instance:
             vc._validate_host_instance(host_instance, zone)
-        self.catch_ctrl_c()
-        new_volid = vc.resize(vol, size, dest_zone=self.opts.dest_zone)
-        if new_volid:
-            self.log.info(
-                "Volume %s was successfully resized to %sGB" % (volid, size))
-            self.log.info("New volume id is: %s" % new_volid)
-        else:
-            self.log.error("failed to resize volume %s" % volid)
+        try:
+            new_volid = vc.resize(vol, size, dest_zone=self.opts.dest_zone)
+            if new_volid:
+                self.log.info("Volume %s was successfully resized to %sGB" %
+                              (volid, size))
+                self.log.info("New volume id is: %s" % new_volid)
+            else:
+                self.log.error("failed to resize volume %s" % volid)
+        except KeyboardInterrupt:
+            self.cancel_command()

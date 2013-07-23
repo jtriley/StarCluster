@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 from starcluster.logger import log
 from starcluster import exception
 
@@ -48,6 +65,9 @@ class CmdStop(ClusterCompleter):
                           dest="terminate_unstoppable", action="store_true",
                           default=False,  help="Terminate nodes that are not "
                           "stoppable (i.e. spot or S3-backed nodes)")
+        parser.add_option("-f", "--force", dest="force", action="store_true",
+                          default=False,  help="Stop cluster regardless of "
+                          " errors if possible")
 
     def execute(self, args):
         if not args:
@@ -60,7 +80,21 @@ class CmdStop(ClusterCompleter):
                 msg = " ".join([msg, '(options:', opts, ')'])
             self.parser.error(msg)
         for cluster_name in args:
-            cl = self.cm.get_cluster(cluster_name, require_keys=False)
+            try:
+                cl = self.cm.get_cluster(cluster_name)
+            except exception.ClusterDoesNotExist:
+                raise
+            except Exception, e:
+                log.debug("Failed to load cluster settings!", exc_info=True)
+                log.error("Failed to load cluster settings!")
+                if self.opts.force:
+                    log.warn("Ignoring cluster settings due to --force option")
+                    cl = self.cm.get_cluster(cluster_name, load_receipt=False,
+                                             require_keys=False)
+                else:
+                    if not isinstance(e, exception.IncompatibleCluster):
+                        log.error("Use -f to forcefully stop the cluster")
+                    raise
             is_stoppable = cl.is_stoppable()
             if not is_stoppable:
                 has_stoppable_nodes = cl.has_stoppable_nodes()
@@ -85,7 +119,8 @@ class CmdStop(ClusterCompleter):
                 if resp not in ['y', 'Y', 'yes']:
                     log.info("Aborting...")
                     continue
-            cl.stop_cluster(self.opts.terminate_unstoppable)
+            cl.stop_cluster(self.opts.terminate_unstoppable,
+                            force=self.opts.force)
             log.warn("All non-spot, EBS-backed nodes are now in a "
                      "'stopped' state")
             log.warn("You can restart this cluster by passing -x "

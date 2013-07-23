@@ -2,7 +2,4 @@
 from starcluster import cli
 
 if __name__ == '__main__':
-    try:
-        cli.main()
-    except KeyboardInterrupt:
-        print "Interrupted, exiting."
+    cli.main()

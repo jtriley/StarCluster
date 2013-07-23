@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 from starcluster import static
 
 config_template = """\
@@ -119,6 +136,10 @@ NODE_INSTANCE_TYPE = m1.small
 # this template. The following example will place a $0.50 bid for each spot
 # request.
 #SPOT_BID = 0.50
+# Uncomment to specify one or more userdata scripts to use when launching
+# cluster instances. Supports cloudinit. All scripts combined must be less than
+# 16KB
+#USERDATA_SCRIPTS = /path/to/script1, /path/to/script2
 
 ###########################################
 ## Defining Additional Cluster Templates ##
@@ -238,7 +259,7 @@ NODE_INSTANCE_TYPE = m1.small
 ######################
 # The following plugins ship with StarCluster and should work out-of-the-box.
 # Uncomment as needed. Don't forget to update your PLUGINS list!
-# See http://web.mit.edu/star/cluster/docs/latest/plugins for plugin details.
+# See http://star.mit.edu/cluster/docs/latest/plugins for plugin details.
 #
 # Use this plugin to install one or more packages on all nodes
 # [plugin pkginstaller]
@@ -272,9 +293,16 @@ NODE_INSTANCE_TYPE = m1.small
 # latency message passing via ZeroMQ.
 # [plugin ipcluster]
 # SETUP_CLASS = starcluster.plugins.ipcluster.IPCluster
+# # Enable the IPython notebook server (optional)
 # ENABLE_NOTEBOOK = True
-# #set a password for the notebook for increased security
+# # Set a password for the notebook for increased security
+# # This is optional but *highly* recommended
 # NOTEBOOK_PASSWD = a-secret-password
+# # Set a custom directory for storing/loading notebooks (optional)
+# NOTEBOOK_DIRECTORY = /path/to/notebook/dir
+# # Set a custom packer. Must be one of 'json', 'pickle', or 'msgpack'
+# # This is optional.
+# PACKER = pickle
 #
 # Use this plugin to create a cluster SSH "dashboard" using tmux. The plugin
 # creates a tmux session on the master node that automatically connects to all

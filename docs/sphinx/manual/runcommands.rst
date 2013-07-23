@@ -12,7 +12,7 @@ For example, to check which hosts are listed in the master node's
 ``/etc/hosts`` file::
 
     $ starcluster sshmaster mycluster 'cat /etc/hosts'
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
@@ -23,7 +23,7 @@ For example, to check which hosts are listed in the master node's
 or to quickly check the files in a given directory on ``node001``::
 
     $ starcluster sshnode mycluster node001 'ls -l /data'
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
@@ -41,7 +41,7 @@ If the remote command is successful the exit code of either the **sshmaster**,
 **sshnode**, or **sshinstance** command will be 0::
 
     $ starcluster sshmaster mycluster 'uptime'
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
@@ -53,7 +53,7 @@ Otherwise, the exit code will be identical to the remote command's non-zero
 exit code::
 
     $ starcluster sshmaster mycluster 'uptimes2'
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 

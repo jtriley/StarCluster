@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 import sys
 import time
 import warnings
@@ -47,9 +64,6 @@ class CmdS3Image(InstanceCompleter):
             help="Remove generated image files on the "
             "instance after registering (for S3 AMIs)")
 
-    def cancel_command(self, signum, frame):
-        raise exception.CancelledS3ImageCreation(self.bucket, self.image_name)
-
     def execute(self, args):
         if "createimage" in sys.argv:
             warnings.warn("createimage is deprecated and will go away in the "
@@ -67,10 +81,13 @@ class CmdS3Image(InstanceCompleter):
         aws_user_id = self.cfg.aws.get('aws_user_id')
         ec2_cert = self.cfg.aws.get('ec2_cert')
         ec2_private_key = self.cfg.aws.get('ec2_private_key')
-        self.catch_ctrl_c()
-        ami_id = self.ec2.create_s3_image(instanceid, key_location,
-                                          aws_user_id, ec2_cert,
-                                          ec2_private_key, bucket,
-                                          image_name=image_name,
-                                          **self.specified_options_dict)
-        log.info("Your new AMI id is: %s" % ami_id)
+        try:
+            ami_id = self.ec2.create_s3_image(instanceid, key_location,
+                                              aws_user_id, ec2_cert,
+                                              ec2_private_key, bucket,
+                                              image_name=image_name,
+                                              **self.specified_options_dict)
+            log.info("Your new AMI id is: %s" % ami_id)
+        except KeyboardInterrupt:
+            raise exception.CancelledS3ImageCreation(self.bucket,
+                                                     self.image_name)

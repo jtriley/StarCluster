@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 import os
 import tempfile
 
@@ -8,25 +25,16 @@ from starcluster.tests import StarClusterTest
 
 class TestClusterValidation(StarClusterTest):
 
-    def test_aws_credentials_validation(self):
-        cluster = self.config.get_cluster_template('c1')
-        try:
-            cluster._validate_credentials()
-        except exception.ClusterValidationError:
-            pass
-        else:
-            raise Exception("cluster allows invalid aws credentials")
-
     def test_plugin_loading(self):
         # default test template should have valid plugins by default
         # make them invalid
         cases = [
             {'p1_class': 'None'},
-            {'p1_class':'unittest.TestCase'},
+            {'p1_class': 'unittest.TestCase'},
         ]
         for case in cases:
-            cfg = self.get_custom_config(**case)
             try:
+                cfg = self.get_custom_config(**case)
                 cfg.get_cluster_template('c1')
             except exception.PluginError:
                 pass
@@ -44,7 +52,7 @@ class TestClusterValidation(StarClusterTest):
             cfg = self.get_custom_config(**case)
             try:
                 cluster = cfg.get_cluster_template('c1')
-                cluster._validate_cluster_size()
+                cluster.validator.validate_cluster_size()
             except exception.ClusterValidationError:
                 pass
             else:
@@ -58,10 +66,10 @@ class TestClusterValidation(StarClusterTest):
             {'cluster_shell': 2},
         ]
         failed = self.__test_cases_from_cluster(
-            cases, '_validate_shell_setting')
+            cases, 'validate_shell_setting')
         if failed:
             raise Exception('cluster allows invalid cluster shell (cases: %s)'
-                           % failed)
+                            % failed)
 
     def test_keypair_validation(self):
         tmpfile = tempfile.NamedTemporaryFile()
@@ -73,7 +81,7 @@ class TestClusterValidation(StarClusterTest):
             cfg = self.get_custom_config(**case)
             cluster = cfg.get_cluster_template('c1')
             try:
-                cluster._validate_keypair()
+                cluster.validator.validate_keypair()
             except exception.ClusterValidationError:
                 pass
             else:
@@ -91,7 +99,7 @@ class TestClusterValidation(StarClusterTest):
             cfg = self.get_custom_config(**case)
             cluster = cfg.get_cluster_template(cluster_name)
             try:
-                getattr(cluster, test)()
+                getattr(cluster.validator, test)()
             except exception.ClusterValidationError, e:
                 print "case: %s, error: %s" % (str(case), e)
                 continue
@@ -110,7 +118,7 @@ class TestClusterValidation(StarClusterTest):
         for case in cases:
             cluster = Cluster(**case)
             try:
-                getattr(cluster, test)()
+                getattr(cluster.validator, test)()
             except exception.ClusterValidationError:
                 continue
             else:
@@ -123,7 +131,7 @@ class TestClusterValidation(StarClusterTest):
             {'master_instance_type': 'fdsa', 'node_instance_type': 'm1.small'},
         ]
         failed = self.__test_cases_from_cluster(cases,
-                                                "_validate_instance_types")
+                                                "validate_instance_types")
         if failed:
             raise Exception(
                 'cluster allows invalid instance type settings (cases: %s)' %
@@ -132,14 +140,14 @@ class TestClusterValidation(StarClusterTest):
     def test_ebs_validation(self):
         try:
             failed = self.__test_cases_from_cfg(
-                [{'v1_device': '/dev/asd'}], '_validate_ebs_settings')
+                [{'v1_device': '/dev/asd'}], 'validate_ebs_settings')
             raise Exception(
                 'cluster allows invalid ebs settings (cases: %s)' % failed)
         except exception.InvalidDevice:
             pass
         try:
             failed = self.__test_cases_from_cfg(
-                [{'v1_partition': -1}], '_validate_ebs_settings')
+                [{'v1_partition': -1}], 'validate_ebs_settings')
             raise Exception(
                 'cluster allows invalid ebs settings (cases: %s)' % failed)
         except exception.InvalidPartition:
@@ -156,7 +164,7 @@ class TestClusterValidation(StarClusterTest):
              'v1_device': '/dev/sdz', 'v2_device': '/dev/sdd',
              'c1_vols': 'v1, v2'}
         ]
-        failed = self.__test_cases_from_cfg(cases, '_validate_ebs_settings')
+        failed = self.__test_cases_from_cfg(cases, 'validate_ebs_settings')
         if failed:
             raise Exception(
                 'cluster allows invalid ebs settings (cases: %s)' % failed)
@@ -165,7 +173,7 @@ class TestClusterValidation(StarClusterTest):
             {'v4_id': 'vol-abcdefg', 'v5_id': 'vol-abcdefg',
              'v4_partition': 1, 'v5_partition': 2, 'c1_vols': 'v4, v5'},
         ]
-        passed = self.__test_cases_from_cfg(cases, '_validate_ebs_settings')
+        passed = self.__test_cases_from_cfg(cases, 'validate_ebs_settings')
         if len(passed) != len(cases):
             raise Exception("validation fails on valid cases: %s" %
                             str(passed))
@@ -174,12 +182,12 @@ class TestClusterValidation(StarClusterTest):
         assert self.config.permissions.s3.ip_protocol == 'tcp'
         assert self.config.permissions.s3.cidr_ip == '0.0.0.0/0'
         cases = [
-            {'s1_from_port':90, 's1_to_port': 10},
-            {'s1_from_port':-1},
-            {'s1_cidr_ip':'asdfasdf'},
+            {'s1_from_port': 90, 's1_to_port': 10},
+            {'s1_from_port': -1},
+            {'s1_cidr_ip': 'asdfasdf'},
         ]
         failed = self.__test_cases_from_cfg(cases,
-                                            '_validate_permission_settings',
+                                            'validate_permission_settings',
                                             cluster_name='c4')
         if failed:
             raise Exception(

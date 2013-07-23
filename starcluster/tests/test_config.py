@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 import os
 import copy
 import tempfile
@@ -39,7 +56,7 @@ class TestStarClusterConfig(tests.StarClusterTest):
             raise Exception('config returned non-existent cluster')
 
     def test_int_required(self):
-        cases = [{'c1_size':'-s'}, {'c1_size': 2.5}, {'v1_partition': 'asdf'},
+        cases = [{'c1_size': '-s'}, {'c1_size': 2.5}, {'v1_partition': 'asdf'},
                  {'v1_partition': 0.33}]
         for case in cases:
             try:
@@ -153,26 +170,29 @@ class TestStarClusterConfig(tests.StarClusterTest):
         c1 = self.config.get_cluster_template('c1')
         plugs = c1.plugins
         assert len(plugs) == 3
-        plugs = self.config.clusters.c1.plugins
         # test that order is preserved
-        p1 = plugs[0]
-        p2 = plugs[1]
-        p3 = plugs[2]
-        assert p1['__name__'] == 'p1'
-        assert p1['setup_class'] == 'starcluster.tests.mytestplugin.SetupClass'
-        assert p1['my_arg'] == '23'
-        assert p1['my_other_arg'] == 'skidoo'
-        assert p2['__name__'] == 'p2'
+        p1, p2, p3 = plugs
+        p1_name = p1.__name__
+        p1_class = utils.get_fq_class_name(p1)
+        p2_name = p2.__name__
+        p2_class = utils.get_fq_class_name(p2)
+        p3_name = p3.__name__
+        p3_class = utils.get_fq_class_name(p3)
+        assert p1_name == 'p1'
+        assert p1_class == 'starcluster.tests.mytestplugin.SetupClass'
+        assert p1.my_arg == '23'
+        assert p1.my_other_arg == 'skidoo'
+        assert p2_name == 'p2'
         setup_class2 = 'starcluster.tests.mytestplugin.SetupClass2'
-        assert p2['setup_class'] == setup_class2
-        assert p2['my_arg'] == 'hello'
-        assert p2['my_other_arg'] == 'world'
-        assert p3['__name__'] == 'p3'
+        assert p2_class == setup_class2
+        assert p2.my_arg == 'hello'
+        assert p2.my_other_arg == 'world'
+        assert p3_name == 'p3'
         setup_class3 = 'starcluster.tests.mytestplugin.SetupClass3'
-        assert p3['setup_class'] == setup_class3
-        assert p3['my_arg'] == 'bon'
-        assert p3['my_other_arg'] == 'jour'
-        assert p3['my_other_other_arg'] == 'monsignour'
+        assert p3_class == setup_class3
+        assert p3.my_arg == 'bon'
+        assert p3.my_other_arg == 'jour'
+        assert p3.my_other_other_arg == 'monsignour'
 
     def test_plugin_not_defined(self):
         try:
@@ -267,13 +287,14 @@ class TestStarClusterConfig(tests.StarClusterTest):
         Test that config properly handles multiple instance types syntax
         (within node_instance_type setting)
         """
-        invalid_cases = [{'c1_node_type': 'c1.xlarge:ami-asdffdas'},
-                 {'c1_node_type': 'c1.xlarge:3'},
-                 {'c1_node_type': 'c1.xlarge:ami-asdffdas:3'},
-                 {'c1_node_type': 'c1.xlarge:asdf:asdf:asdf,m1.small'},
-                 {'c1_node_type': 'c1.asdf:4, m1.small'},
-                 {'c1_node_type': 'c1.xlarge: 0, m1.small'},
-                 {'c1_node_type': 'c1.xlarge:-1, m1.small'}]
+        invalid_cases = [
+            {'c1_node_type': 'c1.xlarge:ami-asdffdas'},
+            {'c1_node_type': 'c1.xlarge:3'},
+            {'c1_node_type': 'c1.xlarge:ami-asdffdas:3'},
+            {'c1_node_type': 'c1.xlarge:asdf:asdf:asdf,m1.small'},
+            {'c1_node_type': 'c1.asdf:4, m1.small'},
+            {'c1_node_type': 'c1.xlarge: 0, m1.small'},
+            {'c1_node_type': 'c1.xlarge:-1, m1.small'}]
         for case in invalid_cases:
             try:
                 self.get_custom_config(**case)
@@ -296,3 +317,22 @@ class TestStarClusterConfig(tests.StarClusterTest):
             except exception.ConfigError:
                 raise Exception(('config rejects valid multiple instance ' +
                                  'type syntax: %s') % case)
+
+    def test_inline_comments(self):
+        """
+        Test that config ignores inline comments.
+        """
+        invalid_case = {'c1_node_type': 'c1.xlarge:3, m1.small# some comment'}
+        try:
+            self.get_custom_config(**invalid_case)
+        except exception.ConfigError:
+            pass
+        else:
+            raise Exception(('config incorrectly ignores line with non-inline '
+                             'comment pound sign: %s') % invalid_case)
+        valid_case = {'c1_node_type': 'c1.xlarge:3, m1.small # some #comment '}
+        try:
+            self.get_custom_config(**valid_case)
+        except exception.ConfigError:
+            raise Exception(('config does not ignore inline '
+                             'comment: %s') % valid_case)

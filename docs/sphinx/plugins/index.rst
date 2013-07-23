@@ -10,10 +10,12 @@ The links below are for plugin-specific docs. Please see the :ref:`plugin guide
    sge
    users
    ipython
+   boto
    tmux
    condor
    hadoop
    mpich2
    mysqlcluster
    pkginstaller
+   pypkginstaller
    xvfb

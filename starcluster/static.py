@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 """
 Module for storing static data structures
 """
@@ -11,6 +28,12 @@ def __expand_all(path):
     path = os.path.expanduser(path)
     path = os.path.expandvars(path)
     return path
+
+
+def __expand_all_in_list(lst):
+    for i, path in enumerate(lst):
+        lst[i] = __expand_all(path)
+    return lst
 
 
 def __makedirs(path, exit_on_failure=False):
@@ -32,7 +55,7 @@ def create_sc_config_dirs():
     __makedirs(STARCLUSTER_LOG_DIR)
 
 
-VERSION = "0.93.3"
+VERSION = "0.94"
 PID = os.getpid()
 TMP_DIR = tempfile.gettempdir()
 if os.path.exists("/tmp"):
@@ -58,23 +81,28 @@ AWS_DEBUG_FILE = os.path.join(STARCLUSTER_LOG_DIR, 'aws-debug.log')
 CRASH_FILE = os.path.join(STARCLUSTER_LOG_DIR, 'crash-report-%d.txt' % PID)
 
 # StarCluster BASE AMIs (us-east-1)
-BASE_AMI_32 = "ami-899d49e0"
-BASE_AMI_64 = "ami-999d49f0"
-BASE_AMI_HVM = "ami-4583572c"
+BASE_AMI_32 = "ami-7c5c3915"
+BASE_AMI_64 = "ami-765b3e1f"
+BASE_AMI_HVM = "ami-52a0c53b"
 
 SECURITY_GROUP_PREFIX = "@sc"
 SECURITY_GROUP_TEMPLATE = '-'.join([SECURITY_GROUP_PREFIX, "%s"])
-MASTER_GROUP_NAME = "masters"
-MASTER_GROUP = SECURITY_GROUP_TEMPLATE % MASTER_GROUP_NAME
-MASTER_GROUP_DESCRIPTION = "StarCluster Master Nodes"
 VOLUME_GROUP_NAME = "volumecreator"
 VOLUME_GROUP = SECURITY_GROUP_TEMPLATE % VOLUME_GROUP_NAME
 
-IGNORE_GROUPS = [MASTER_GROUP]
+# Cluster group tag keys
+VERSION_TAG = '-'.join([SECURITY_GROUP_PREFIX, 'version'])
+CORE_TAG = '-'.join([SECURITY_GROUP_PREFIX, 'core'])
+USER_TAG = '-'.join([SECURITY_GROUP_PREFIX, 'user'])
 
+# Internal StarCluster userdata filenames
+UD_PLUGINS_FNAME = "_sc_plugins.txt"
+UD_VOLUMES_FNAME = "_sc_volumes.txt"
+UD_ALIASES_FNAME = "_sc_aliases.txt"
+
+INSTANCE_METADATA_URI = "http://169.254.169.254/latest"
 INSTANCE_STATES = ['pending', 'running', 'shutting-down',
                    'terminated', 'stopping', 'stopped']
-
 VOLUME_STATUS = ['creating', 'available', 'in-use',
                  'deleting', 'deleted', 'error']
 VOLUME_ATTACH_STATUS = ['attaching', 'attached', 'detaching', 'detached']
@@ -90,20 +118,37 @@ INSTANCE_TYPES = {
     'm2.xlarge': ['x86_64'],
     'm2.2xlarge': ['x86_64'],
     'm2.4xlarge': ['x86_64'],
+    'm3.xlarge': ['x86_64'],
+    'm3.2xlarge': ['x86_64'],
     'cc1.4xlarge': ['x86_64'],
     'cc2.8xlarge': ['x86_64'],
     'cg1.4xlarge': ['x86_64'],
+    'cr1.8xlarge': ['x86_64'],
+    'hi1.4xlarge': ['x86_64'],
+    'hs1.8xlarge': ['x86_64'],
 }
 
 MICRO_INSTANCE_TYPES = ['t1.micro']
+
+SEC_GEN_TYPES = ['m3.xlarge', 'm3.2xlarge']
 
 CLUSTER_COMPUTE_TYPES = ['cc1.4xlarge', 'cc2.8xlarge']
 
 CLUSTER_GPU_TYPES = ['cg1.4xlarge']
 
-CLUSTER_TYPES = CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES
+CLUSTER_HIMEM_TYPES = ['cr1.8xlarge']
 
-CLUSTER_REGIONS = ['us-east-1']
+HI_IO_TYPES = ['hi1.4xlarge']
+
+HI_STORAGE_TYPES = ['hs1.8xlarge']
+
+CLUSTER_TYPES = CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES + CLUSTER_HIMEM_TYPES
+
+HVM_TYPES = CLUSTER_TYPES + HI_IO_TYPES + HI_STORAGE_TYPES + SEC_GEN_TYPES
+
+PLACEMENT_GROUP_TYPES = CLUSTER_TYPES + HI_IO_TYPES + HI_STORAGE_TYPES
+
+CLUSTER_REGIONS = ['us-east-1', 'us-west-2', 'eu-west-1']
 
 PROTOCOLS = ['tcp', 'udp', 'icmp']
 
@@ -145,6 +190,7 @@ AWS_SETTINGS = {
     'aws_proxy_port': (int, False, None, None, None),
     'aws_proxy_user': (str, False, None, None, None),
     'aws_proxy_pass': (str, False, None, None, None),
+    'aws_validate_certs': (bool, False, True, None, None),
 }
 
 KEY_SETTINGS = {
@@ -191,6 +237,8 @@ CLUSTER_SETTINGS = {
     'volumes': (list, False, [], None, None),
     'plugins': (list, False, [], None, None),
     'permissions': (list, False, [], None, None),
+    'userdata_scripts': (list, False, [], None, __expand_all_in_list),
     'disable_queue': (bool, False, False, None, None),
     'force_spot_master': (bool, False, False, None, None),
+    'disable_cloudinit': (bool, False, False, None, None),
 }

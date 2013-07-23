@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 """
 ThreadPool module for StarCluster based on WorkerPool
 """
@@ -108,12 +125,28 @@ class ThreadPool(workerpool.WorkerPool):
             results.append(self._results_queue.get())
         return results
 
-    def map(self, fn, *seq):
+    def map(self, fn, *seq, **kwargs):
+        """
+        Uses the threadpool to return a list of the results of applying the
+        function to the items of the argument sequence(s). If more than one
+        sequence is given, the function is called with an argument list
+        consisting of the corresponding item of each sequence. If more than one
+        sequence is given with different lengths the argument list will be
+        truncated to the length of the smallest sequence.
+
+        If the kwarg jobid_fn is specified then each threadpool job will be
+        assigned a jobid based on the return value of jobid_fn(item) for each
+        item in the map.
+        """
         if self._results_queue.qsize() > 0:
             self.get_results()
         args = zip(*seq)
+        jobid_fn = kwargs.get('jobid_fn')
         for seq in args:
-            self.simple_job(fn, seq)
+            jobid = None
+            if jobid_fn:
+                jobid = jobid_fn(*seq)
+            self.simple_job(fn, seq, jobid=jobid)
         return self.wait(numtasks=len(args))
 
     def store_exception(self, e):
@@ -137,9 +170,11 @@ class ThreadPool(workerpool.WorkerPool):
         if pbar.maxval != 0:
             pbar.finish()
         self.join()
-        if self._exception_queue.qsize() > 0:
+        exc_queue = self._exception_queue
+        if exc_queue.qsize() > 0:
+            excs = [exc_queue.get() for i in range(exc_queue.qsize())]
             raise exception.ThreadPoolException(
-                "An error occurred in ThreadPool", self._exception_queue.queue)
+                "An error occurred in ThreadPool", excs)
         if return_results:
             return self.get_results()
 

@@ -1,5 +1,22 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 default_config = {
-    'default': 'smallcluster',
+    'default_template': 'c1',
     'enable_experimental': 'False',
     'aws_access_key_id': 'asd0asd9f0asd0fas0d9f0',
     'aws_secret_access_key': 'asdf0a9sdf09203fj0asdf',
@@ -72,7 +89,7 @@ default_config = {
 
 config_test_template = """
 [global]
-DEFAULT=%(default)s
+DEFAULT_TEMPLATE=%(default_template)s
 ENABLE_EXPERIMENTAL=%(enable_experimental)s
 
 [aws info]

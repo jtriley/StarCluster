@@ -107,7 +107,7 @@ the volume host::
 Let's look at an example of creating a 20GB volume in ``us-east-1c``::
 
     $ starcluster createvolume --name=myvol --bid=0.50 20 us-east-1c
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
@@ -167,7 +167,7 @@ be created in a given availability zone without launching a new instance for
 each volume. To see the volume hosts simply run the **listclusters** command::
 
     $ starcluster listclusters volumecreator
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
@@ -221,7 +221,7 @@ To get a list of all your volumes as well as their current status use the
 **listvolumes** command::
 
     $ starcluster listvolumes
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 

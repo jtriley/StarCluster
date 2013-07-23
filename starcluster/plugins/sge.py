@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 from starcluster import clustersetup
 from starcluster.templates import sge
 from starcluster.logger import log
@@ -11,11 +28,11 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
 
     def _add_sge_submit_host(self, node):
         mssh = self._master.ssh
-        mssh.execute('qconf -as %s' % node.alias, source_profile=True)
+        mssh.execute('qconf -as %s' % node.alias)
 
     def _add_sge_admin_host(self, node):
         mssh = self._master.ssh
-        mssh.execute('qconf -ah %s' % node.alias, source_profile=True)
+        mssh.execute('qconf -ah %s' % node.alias)
 
     def _setup_sge_profile(self, node):
         sge_profile = node.ssh.remote_file("/etc/profile.d/sge.sh", "w")
@@ -39,27 +56,25 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         queue - configure queue to use the new parallel environment
         """
         mssh = self._master.ssh
-        pe_exists = mssh.get_status('qconf -sp %s' % name, source_profile=True)
-        pe_exists = pe_exists == 0
-        verb = 'Updating'
-        if not pe_exists:
-            verb = 'Creating'
+        pe_exists = mssh.get_status('qconf -sp %s' % name) == 0
+        verb = 'Updating' if pe_exists else 'Creating'
         log.info("%s SGE parallel environment '%s'" % (verb, name))
         # iterate through each machine and count the number of processors
         nodes = nodes or self._nodes
-        num_processors = sum(self.pool.map(lambda n: n.num_processors, nodes))
-        penv = mssh.remote_file("/tmp/pe.txt", "w")
-        penv.write(sge.sge_pe_template % (name, num_processors))
-        penv.close()
+        num_processors = sum(self.pool.map(lambda n: n.num_processors, nodes,
+                                           jobid_fn=lambda n: n.alias))
         if not pe_exists:
-            mssh.execute("qconf -Ap %s" % penv.name, source_profile=True)
+            penv = mssh.remote_file("/tmp/pe.txt", "w")
+            penv.write(sge.sge_pe_template % (name, num_processors))
+            penv.close()
+            mssh.execute("qconf -Ap %s" % penv.name)
         else:
-            mssh.execute("qconf -Mp %s" % penv.name, source_profile=True)
+            mssh.execute("qconf -mattr pe slots %s %s" %
+                         (num_processors, name))
         if queue:
             log.info("Adding parallel environment '%s' to queue '%s'" %
                      (name, queue))
-            mssh.execute('qconf -mattr queue pe_list "%s" %s' % (name, queue),
-                         source_profile=True)
+            mssh.execute('qconf -mattr queue pe_list "%s" %s' % (name, queue))
 
     def _inst_sge(self, node, exec_host=True):
         inst_sge = 'cd /opt/sge6 && TERM=rxvt ./inst_sge '
@@ -102,8 +117,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._inst_sge(master, exec_host=self.master_is_exec_host)
         self._setup_sge_profile(master)
         # set all.q shell to bash
-        master.ssh.execute('qconf -mattr queue shell "/bin/bash" all.q',
-                           source_profile=True)
+        master.ssh.execute('qconf -mattr queue shell "/bin/bash" all.q')
         for node in self.nodes:
             self._add_sge_admin_host(node)
             self._add_sge_submit_host(node)
@@ -114,11 +128,10 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
     def _remove_from_sge(self, node):
         master = self._master
         master.ssh.execute('qconf -dattr hostgroup hostlist %s @allhosts' %
-                           node.alias, source_profile=True)
-        master.ssh.execute('qconf -purge queue slots all.q@%s' % node.alias,
-                           source_profile=True)
-        master.ssh.execute('qconf -dconf %s' % node.alias, source_profile=True)
-        master.ssh.execute('qconf -de %s' % node.alias, source_profile=True)
+                           node.alias)
+        master.ssh.execute('qconf -purge queue slots all.q@%s' % node.alias)
+        master.ssh.execute('qconf -dconf %s' % node.alias)
+        master.ssh.execute('qconf -de %s' % node.alias)
         node.ssh.execute('pkill -9 sge_execd')
         nodes = filter(lambda n: n.alias != node.alias, self._nodes)
         self._create_sge_pe(nodes=nodes)
@@ -128,15 +141,12 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             log.error("SGE is not installed on this AMI, skipping...")
             return
         log.info("Configuring SGE...")
-        try:
-            self._nodes = nodes
-            self._master = master
-            self._user = user
-            self._user_shell = user_shell
-            self._volumes = volumes
-            self._setup_sge()
-        finally:
-            self.pool.shutdown()
+        self._nodes = nodes
+        self._master = master
+        self._user = user
+        self._user_shell = user_shell
+        self._volumes = volumes
+        self._setup_sge()
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes

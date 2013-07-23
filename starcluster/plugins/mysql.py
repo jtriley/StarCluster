@@ -1,9 +1,25 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 import posixpath
 from starcluster.clustersetup import DefaultClusterSetup
 from starcluster.logger import log
 
-ndb_mgmd_template = \
-'''
+ndb_mgmd_template = """
 [NDBD DEFAULT]
 NoOfReplicas=%(num_replicas)s
 DataMemory=%(data_memory)s    # How much memory to allocate for data storage
@@ -16,18 +32,16 @@ IndexMemory=%(index_memory)s   # How much memory to allocate for index storage
 # IP address of the management node (this system)
 HostName=%(mgm_ip)s
 # Section for the storage nodes
-'''
+"""
 
-ndb_mgmd_storage = \
-'''
+ndb_mgmd_storage = """
 [NDBD]
 HostName=%(storage_ip)s
 DataDir=%(data_dir)s
 BackupDataDir=%(backup_data_dir)s
-'''
+"""
 
-MY_CNF = \
-'''
+MY_CNF = """
 #
 # The MySQL database server configuration file.
 #
@@ -164,7 +178,7 @@ ndb-connectstring=%(mgm_ip)s
 #   The files must end with '.cnf', otherwise they'll be ignored.
 #
 !includedir /etc/mysql/conf.d/
-'''
+"""
 
 
 class MysqlCluster(DefaultClusterSetup):
@@ -346,7 +360,7 @@ class MysqlCluster(DefaultClusterSetup):
         return crontab
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
-        pass
+        raise NotImplementedError("on_add_node method not implemented")
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
-        pass
+        raise NotImplementedError("on_remove_node method not implemented")

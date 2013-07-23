@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 import os
 import urllib
 import StringIO
@@ -7,6 +24,7 @@ from starcluster import utils
 from starcluster import static
 from starcluster import cluster
 from starcluster import awsutils
+from starcluster import deathrow
 from starcluster import exception
 from starcluster.cluster import Cluster
 from starcluster.utils import AttributeDict
@@ -47,7 +65,7 @@ def get_cluster_manager(config_file=None, cache=False):
 
 def get_config(config_file=None, cache=False):
     """Factory for StarClusterConfig object"""
-    return StarClusterConfig(config_file, cache)
+    return StarClusterConfig(config_file, cache).load()
 
 
 class StarClusterConfig(object):
@@ -79,7 +97,9 @@ class StarClusterConfig(object):
     instance_types = static.INSTANCE_TYPES
 
     def __init__(self, config_file=None, cache=False):
-        self.cfg_file = config_file or static.STARCLUSTER_CFG_FILE
+        self.cfg_file = config_file \
+            or os.environ.get('STARCLUSTER_CONFIG') \
+            or static.STARCLUSTER_CFG_FILE
         self.cfg_file = os.path.expanduser(self.cfg_file)
         self.cfg_file = os.path.expandvars(self.cfg_file)
         self.type_validators = {
@@ -192,7 +212,7 @@ class StarClusterConfig(object):
         """
         cfg = self._get_cfg_fp()
         try:
-            cp = ConfigParser.ConfigParser()
+            cp = InlineCommentsIgnoredConfigParser()
             cp.readfp(cfg)
             self._config = cp
             try:
@@ -214,7 +234,7 @@ class StarClusterConfig(object):
                         raise exception.ConfigError("include %s not found" %
                                                     include)
                 mashup.seek(0)
-                cp = ConfigParser.ConfigParser()
+                cp = InlineCommentsIgnoredConfigParser()
                 cp.readfp(mashup)
                 self._config = cp
             except exception.ConfigSectionMissing:
@@ -320,10 +340,7 @@ class StarClusterConfig(object):
         if DEBUG_CONFIG:
             log.debug('%s extends %s' % (section_name, extends))
         extensions = [section]
-        while True:
-            extends = section.get('extends', None)
-            if not extends:
-                break
+        while extends is not None:
             try:
                 section = store[extends]
                 if section in extensions:
@@ -337,6 +354,7 @@ class StarClusterConfig(object):
                 raise exception.ConfigError(
                     "%s can't extend non-existent section %s" %
                     (section_name, extends))
+            extends = section.get('extends')
         transform = AttributeDict()
         for extension in extensions:
             transform.update(extension)
@@ -365,7 +383,8 @@ class StarClusterConfig(object):
             if not volume in self.vols:
                 raise exception.ConfigError(
                     "volume '%s' not defined in config" % volume)
-            vol = self.vols.get(volume)
+            vol = self.vols.get(volume).copy()
+            del vol['__name__']
             vols[volume] = vol
 
     def _load_plugins(self, store):
@@ -374,15 +393,12 @@ class StarClusterConfig(object):
         if not plugins or isinstance(plugins[0], AttributeDict):
             return
         plugs = []
-        cluster_section['plugins'] = plugs
         for plugin in plugins:
-            if plugin in self.plugins:
-                p = self.plugins.get(plugin)
-                p['__name__'] = p['__name__'].split()[-1]
-                plugs.append(p)
-            else:
+            if not plugin in self.plugins:
                 raise exception.ConfigError(
                     "plugin '%s' not defined in config" % plugin)
+            plugs.append(self.plugins.get(plugin))
+        cluster_section['plugins'] = plugs
 
     def _load_permissions(self, store):
         cluster_section = store
@@ -556,11 +572,11 @@ class StarClusterConfig(object):
         try:
             self.aws = self._load_section('aws info', self.aws_settings)
         except exception.ConfigSectionMissing:
-            log.warn("no [aws info] section found in config")
-            log.warn("attempting to load credentials from environment...")
-            self.aws.update(self.get_aws_from_environ())
+            log.warn("No [aws info] section found in the config!")
+        self.aws.update(self.get_settings_from_env(self.aws_settings))
         self.keys = self._load_sections('key', self.key_settings)
         self.vols = self._load_sections('volume', self.volume_settings)
+        self.vols.update(self._load_sections('vol', self.volume_settings))
         self.plugins = self._load_sections('plugin', self.plugin_settings,
                                            filter_settings=False)
         self.permissions = self._load_sections('permission',
@@ -569,31 +585,20 @@ class StarClusterConfig(object):
         self.clusters = self._load_cluster_sections(sections)
         return self
 
-    def get_aws_from_environ(self):
+    def get_settings_from_env(self, settings):
         """
         Returns AWS credentials defined in the user's shell
         environment.
         """
-        awscreds = {}
-        for key in static.AWS_SETTINGS:
+        found = {}
+        for key in settings:
             if key.upper() in os.environ:
-                awscreds[key] = os.environ.get(key.upper())
+                log.warn("Setting '%s' from environment..." % key.upper())
+                found[key] = os.environ.get(key.upper())
             elif key in os.environ:
-                awscreds[key] = os.environ.get(key)
-        return awscreds
-
-    def get_aws_credentials(self):
-        """
-        Returns AWS credentials defined in the configuration
-        file. Defining any of the AWS settings in the environment
-        overrides the configuration file.
-        """
-        # first override with environment settings if they exist
-        self.aws.update(self.get_aws_from_environ())
-        return self.aws
-
-    def get_cluster_names(self):
-        return self.clusters
+                log.warn("Setting '%s' from environment..." % key)
+                found[key] = os.environ.get(key)
+        return found
 
     def get_cluster_template(self, template_name, tag_name=None,
                              ec2_conn=None):
@@ -603,14 +608,16 @@ class StarClusterConfig(object):
 
         template_name is the name of a cluster section defined in the config
 
-        tag_name, if specified, will be passed to Cluster instance
-        as cluster_tag
+        tag_name if not specified will be set to template_name
         """
         try:
             kwargs = {}
-            if tag_name:
-                kwargs.update(dict(cluster_tag=tag_name))
+            tag_name = tag_name or template_name
+            kwargs.update(dict(cluster_tag=tag_name))
             kwargs.update(self.clusters[template_name])
+            plugs = kwargs.get('plugins')
+            kwargs['plugins'] = deathrow._load_plugins(plugs,
+                                                       debug=DEBUG_CONFIG)
             if not ec2_conn:
                 ec2_conn = self.get_easy_ec2()
             clust = Cluster(ec2_conn, **kwargs)
@@ -635,7 +642,7 @@ class StarClusterConfig(object):
     def get_clusters(self):
         clusters = []
         for cl in self.clusters:
-            cl.append(self.get_cluster_template(cluster))
+            clusters.append(self.get_cluster_template(cl, tag_name=cl))
         return clusters
 
     def get_plugin(self, plugin):
@@ -656,9 +663,8 @@ class StarClusterConfig(object):
         the StarCluster config file. Returns an EasyS3 object if
         successful.
         """
-        aws = self.get_aws_credentials()
         try:
-            s3 = awsutils.EasyS3(**aws)
+            s3 = awsutils.EasyS3(**self.aws)
             return s3
         except TypeError:
             raise exception.ConfigError("no aws credentials found")
@@ -669,9 +675,8 @@ class StarClusterConfig(object):
         the StarCluster config file. Returns an EasyEC2 object if
         successful.
         """
-        aws = self.get_aws_credentials()
         try:
-            ec2 = awsutils.EasyEC2(**aws)
+            ec2 = awsutils.EasyEC2(**self.aws)
             return ec2
         except TypeError:
             raise exception.ConfigError("no aws credentials found")
@@ -679,6 +684,58 @@ class StarClusterConfig(object):
     def get_cluster_manager(self):
         ec2 = self.get_easy_ec2()
         return cluster.ClusterManager(self, ec2)
+
+
+class InlineCommentsIgnoredConfigParser(ConfigParser.ConfigParser):
+    """
+    Class for custom config file parsing that ignores inline comments.
+
+    By default, ConfigParser.ConfigParser only ignores inline comments denoted
+    by a semicolon. This class extends this support to allow inline comments
+    denoted by '#' as well. Just as with semicolons, a spacing character must
+    precede the pound sign for it to be considered an inline comment.
+
+    For example, the following line would have the inline comment ignored:
+
+        FOO = bar # some comment...
+
+    And would be parsed as:
+
+        FOO = bar
+
+    The following would NOT have the comment removed:
+
+        FOO = bar# some comment...
+    """
+
+    def readfp(self, fp, filename=None):
+        """
+        Overrides ConfigParser.ConfigParser.readfp() to ignore inline comments.
+        """
+        if filename is None:
+            try:
+                filename = fp.name
+            except AttributeError:
+                filename = '<???>'
+
+        # We don't use the file iterator here because ConfigParser.readfp()
+        # guarantees to only call readline() on fp, so we want to adhere to
+        # this as well.
+        commentless_fp = StringIO.StringIO()
+        line = fp.readline()
+        while line:
+            pound_pos = line.find('#')
+
+            # A pound sign only starts an inline comment if it is preceded by
+            # whitespace.
+            if pound_pos > 0 and line[pound_pos - 1].isspace():
+                line = line[:pound_pos].rstrip() + '\n'
+            commentless_fp.write(line)
+            line = fp.readline()
+        commentless_fp.seek(0)
+
+        # Cannot use super() because ConfigParser is not a new-style class.
+        ConfigParser.ConfigParser.readfp(self, commentless_fp, filename)
 
 
 if __name__ == "__main__":

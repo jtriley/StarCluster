@@ -1,20 +1,44 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 """
 Utils module for StarCluster
 """
 
 import os
 import re
+import sys
+import zlib
 import time
+import json
 import types
 import string
 import random
 import inspect
+import cPickle
+import StringIO
 import calendar
 import urlparse
-import decorator
 from datetime import datetime
 
-from starcluster import iptools
+import iptools
+import decorator
+
+from starcluster import spinner
 from starcluster import exception
 from starcluster.logger import log
 
@@ -63,22 +87,22 @@ def print_timing(msg=None, debug=False):
     appear in the sentence "[msg] took XXX mins". If no msg is specified,
     msg will default to the decorated function's name. e.g:
 
-    @print_timing
-    def myfunc():
-        print 'Running myfunc'
+    >>> @print_timing
+    ... def myfunc():
+    ...     print 'Running myfunc'
     >>> myfunc()
     Running myfunc
     myfunc took 0.000 mins
 
-    @print_timing('My function')
-    def myfunc():
-        print 'Running myfunc'
+    >>> @print_timing('My function')
+    ... def myfunc():
+    ...    print 'Running myfunc'
     >>> myfunc()
     Running myfunc
     My function took 0.000 mins
     """
     prefix = msg
-    if type(msg) == types.FunctionType:
+    if isinstance(msg, types.FunctionType):
         prefix = msg.func_name
 
     def wrap_f(func, *arg, **kargs):
@@ -93,7 +117,7 @@ def print_timing(msg=None, debug=False):
             log.info(msg)
         return res
 
-    if type(msg) == types.FunctionType:
+    if isinstance(msg, types.FunctionType):
         return decorator.decorator(wrap_f, msg)
     else:
         return decorator.decorator(wrap_f)
@@ -136,7 +160,7 @@ def is_valid_bucket_name(bucket_name):
     regex = re.compile('[a-z0-9][a-z0-9\._-]{2,254}$')
     if not regex.match(bucket_name):
         return False
-    if iptools.validate_ip(bucket_name):
+    if iptools.ipv4.validate_ip(bucket_name):
         return False
     return True
 
@@ -443,7 +467,7 @@ def test_version_to_float():
     print("All tests passed")
 
 
-def get_arg_spec(func):
+def get_arg_spec(func, debug=True):
     """
     Convenience wrapper around inspect.getargspec
 
@@ -461,12 +485,13 @@ def get_arg_spec(func):
     nrequired = nargs - ndefaults
     args = allargs[:nrequired]
     kwargs = allargs[nrequired:]
-    log.debug('nargs = %s' % nargs)
-    log.debug('ndefaults = %s' % ndefaults)
-    log.debug('nrequired = %s' % nrequired)
-    log.debug('args = %s' % args)
-    log.debug('kwargs = %s' % kwargs)
-    log.debug('defaults = %s' % str(defaults))
+    if debug:
+        log.debug('nargs = %s' % nargs)
+        log.debug('ndefaults = %s' % ndefaults)
+        log.debug('nrequired = %s' % nrequired)
+        log.debug('args = %s' % args)
+        log.debug('kwargs = %s' % kwargs)
+        log.debug('defaults = %s' % str(defaults))
     return args, kwargs
 
 
@@ -545,3 +570,57 @@ class struct_passwd(tuple):
             return self[self.attrs.index(attr)]
         except ValueError:
             raise AttributeError
+
+
+def dump_compress_encode(obj, use_json=False):
+    serializer = cPickle
+    if use_json:
+        serializer = json
+    return zlib.compress(serializer.dumps(obj)).encode('base64')
+
+
+def decode_uncompress_load(string, use_json=False):
+    serializer = cPickle
+    if use_json:
+        serializer = json
+    return serializer.loads(zlib.decompress(string.decode('base64')))
+
+
+def string_to_file(string, filename):
+    s = StringIO.StringIO(string)
+    s.name = filename
+    return s
+
+
+def strings_to_files(strings, fname_prefix=''):
+    fileobjs = [StringIO.StringIO(s) for s in strings]
+    if fname_prefix:
+        fname_prefix += '_'
+    for i, f in enumerate(fileobjs):
+        f.name = '%s%d' % (fname_prefix, i)
+    return fileobjs
+
+
+def get_fq_class_name(obj):
+    return '.'.join([obj.__module__, obj.__class__.__name__])
+
+
+def size_in_kb(obj):
+    return sys.getsizeof(obj) / 1024.
+
+
+def get_spinner(msg):
+    """
+    Logs a status msg, starts a spinner, and returns the spinner object.
+    This is useful for long running processes:
+
+    s = get_spinner("Long running process running...")
+    try:
+        (do something)
+    finally:
+        s.stop()
+    """
+    s = spinner.Spinner()
+    log.info(msg, extra=dict(__nonewline__=True))
+    s.start()
+    return s

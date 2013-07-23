@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 import time
 
 from starcluster import exception
@@ -21,9 +38,6 @@ class CmdEbsImage(InstanceCompleter):
     list.
     """
     names = ['ebsimage', 'eimg']
-
-    image_name = None
-    is_ebs_backed = None
 
     def addopts(self, parser):
         parser.add_option(
@@ -50,21 +64,19 @@ class CmdEbsImage(InstanceCompleter):
             help="size of root volume (only used when creating an "
             "EBS image from an S3 instance)")
 
-    def cancel_command(self, signum, frame):
-        raise exception.CancelledEBSImageCreation(self.image_name,
-                                                  self.is_ebs_backed)
-
     def execute(self, args):
         if len(args) != 2:
             self.parser.error(
                 'you must specify an instance-id and image name')
         instanceid, image_name = args
-        self.image_name = image_name
         i = self.ec2.get_instance(instanceid)
-        self.is_ebs_backed = (i.root_device_type == "ebs")
+        is_ebs_backed = (i.root_device_type == "ebs")
         key_location = self.cfg.get_key(i.key_name).get('key_location')
-        self.catch_ctrl_c()
-        ami_id = self.ec2.create_ebs_image(instanceid, key_location,
-                                           image_name,
-                                           **self.specified_options_dict)
-        log.info("Your new AMI id is: %s" % ami_id)
+        try:
+            ami_id = self.ec2.create_ebs_image(instanceid, key_location,
+                                               image_name,
+                                               **self.specified_options_dict)
+            log.info("Your new AMI id is: %s" % ami_id)
+        except KeyboardInterrupt:
+            raise exception.CancelledEBSImageCreation(image_name,
+                                                      is_ebs_backed)
