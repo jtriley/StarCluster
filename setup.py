@@ -26,8 +26,6 @@ if sys.version_info < (2, 6):
 
 try:
     from setuptools import setup, find_packages
-    setup
-    find_packages
     console_scripts = ['starcluster = starcluster.cli:main']
     extra = dict(test_suite="starcluster.tests",
                  tests_require="nose",
