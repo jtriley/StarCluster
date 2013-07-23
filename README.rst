@@ -64,7 +64,7 @@ configuration file::
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
-    cli.py:87 - ERROR - config file /home/user/.starcluster/config does not exist
+    !!! ERROR - config file /home/user/.starcluster/config does not exist
 
     Options:
     --------
@@ -158,13 +158,14 @@ Dependencies:
 =============
 * Amazon AWS Account
 * Python 2.6+
-* Boto 2.8.0
-* Paramiko 1.9.0
+* Boto 2.9.8
+* Paramiko 1.10.1
 * WorkerPool 0.9.2
-* Jinja2 2.6
+* Jinja2 2.7
 * decorator 3.4.0
-* pyasn1 0.1.6
+* pyasn1 0.1.7
 * iptools 0.6.1
+* optcomplete 1.2-devel
 
 Learn more...
 =============
