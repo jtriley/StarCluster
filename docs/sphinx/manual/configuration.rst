@@ -282,48 +282,74 @@ In order to launch StarCluster(s) on Amazon EC2, you must first provide a
 *cluster template* has been defined, you can launch multiple StarClusters from
 it. Below is an example *cluster template* called ``smallcluster`` which
 defines a 2-node cluster using ``m1.small`` EC2 instances and the mykeypair1
-keypair we defined above.
+keypair we defined above:
 
 .. code-block:: ini
 
-    # Sections starting with "cluster" define your cluster templates
-    # The section name is the name you give to your cluster template e.g.:
     [cluster smallcluster]
-    # change this to the name of one of the keypair sections defined above
-    # (see the EC2 getting started guide tutorial on using ec2-add-keypair to learn
-    # how to create new keypairs)
     keyname = mykeypair1
-
-    # number of ec2 instances to launch
     cluster_size = 2
-
-    # create the following user on the cluster
     cluster_user = sgeadmin
-    # optionally specify shell (defaults to bash)
-    # options: bash, zsh, csh, ksh, tcsh
     cluster_shell = bash
-
-    # AMI for master node. Defaults to NODE_IMAGE_ID if not specified
-    # The base i386 StarCluster AMI is ami-0330d16a
-    # The base x86_64 StarCluster AMI is ami-0f30d166
     master_image_id = ami-0330d16a
-
-    # instance type for master node.
-    # defaults to NODE_INSTANCE_TYPE if not specified
     master_instance_type = m1.small
-
-    # AMI for worker nodes.
-    # Also used for the master node if MASTER_IMAGE_ID is not specified
-    # The base i386 StarCluster AMI is ami-0330d16a
-    # The base x86_64 StarCluster AMI is ami-0f30d166
     node_image_id = ami-0330d16a
-
-    # instance type for worker nodes. Also used for the master node if
-    # MASTER_INSTANCE_TYPE is not specified
     node_instance_type = m1.small
 
-    # availability zone
-    availability_zone = us-east-1c
+Cluster Settings
+^^^^^^^^^^^^^^^^
+The table below describes all required and optional settings for a cluster
+template in detail.
+
++----------------------+----------+---------------------------------------------------------------------------------+
+| Setting              | Required | Description                                                                     |
++======================+==========+=================================================================================+
+| keyname              | **Yes**  | The keypair to use for the cluster (the keypair must be defined in a            |
+|                      |          | **[keypair]** section)                                                          |
++----------------------+----------+---------------------------------------------------------------------------------+
+| cluster_size         | **Yes**  | Number of nodes in the cluster (including master)                               |
++----------------------+----------+---------------------------------------------------------------------------------+
+| node_image_id        | **Yes**  | The AMI to use for worker nodes                                                 |
++----------------------+----------+---------------------------------------------------------------------------------+
+| node_instance_type   | **Yes**  | The instance type for worker nodes                                              |
++----------------------+----------+---------------------------------------------------------------------------------+
+| cluster_user         | No       | The cluster user to create (defaults to sgeadmin)                               |
++----------------------+----------+---------------------------------------------------------------------------------+
+| cluster_shell        | No       | Sets the cluster user's shell (default: bash, options: bash, zsh, csh, ksh,     |
+|                      |          | tcsh)                                                                           |
++----------------------+----------+---------------------------------------------------------------------------------+
+| master_image_id      | No       | The AMI to use for the master node. (defaults to **node_image_id**)             |
++----------------------+----------+---------------------------------------------------------------------------------+
+| master_instance_type | No       | The instance type for the master node. (defaults to **node_instance_type**)     |
++----------------------+----------+---------------------------------------------------------------------------------+
+| userdata_scripts     | No       | List of userdata scripts to use when launching instances                        |
++----------------------+----------+---------------------------------------------------------------------------------+
+| volumes              | No       | List of EBS volumes to attach and NFS-share to the cluster (each volume must be |
+|                      |          | defined in a **[volume]** section)                                              |
++----------------------+----------+---------------------------------------------------------------------------------+
+| plugins              | No       | List of StarCluster plugins to use when launching the cluster (each plugin must |
+|                      |          | be defined in a **[plugin]** section)                                           |
++----------------------+----------+---------------------------------------------------------------------------------+
+| permissions          | No       | List of permissions to apply to the cluster's security group (each permission   |
+|                      |          | must be defined in a **[permission]** section)                                  |
++----------------------+----------+---------------------------------------------------------------------------------+
+| userdata_scripts     | No       | List of user data scripts to run on boot for each instance in the cluster       |
++----------------------+----------+---------------------------------------------------------------------------------+
+| spot_bid             | No       | Always use spot instances with this cluster template                            |
++----------------------+----------+---------------------------------------------------------------------------------+
+| force_spot_master    | No       | When requesting a spot cluster this setting forces the master node to also be a |
+|                      |          | spot instance (default is for master not to be a spot instance for stability)   |
++----------------------+----------+---------------------------------------------------------------------------------+
+| availability_zone    | No       | Launch all cluster instances in a single availability zone (defaults to any     |
+|                      |          | available zone)                                                                 |
++----------------------+----------+---------------------------------------------------------------------------------+
+| disable_queue        | No       | Disables the setup and configuration of the Open Grid Scheduler (OGS, formerly  |
+|                      |          | SGE)                                                                            |
++----------------------+----------+---------------------------------------------------------------------------------+
+| disable_cloudinit    | No       | Do not use cloudinit for cluster accounting (only required if using non-        |
+|                      |          | cloudinit enabled AMIs)                                                         |
++----------------------+----------+---------------------------------------------------------------------------------+
+
 
 Defining Multiple Cluster Templates
 -----------------------------------

@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 """
 Module for storing static data structures
 """
@@ -38,7 +55,7 @@ def create_sc_config_dirs():
     __makedirs(STARCLUSTER_LOG_DIR)
 
 
-VERSION = "0.9999"
+VERSION = "0.94"
 PID = os.getpid()
 TMP_DIR = tempfile.gettempdir()
 if os.path.exists("/tmp"):
@@ -64,9 +81,9 @@ AWS_DEBUG_FILE = os.path.join(STARCLUSTER_LOG_DIR, 'aws-debug.log')
 CRASH_FILE = os.path.join(STARCLUSTER_LOG_DIR, 'crash-report-%d.txt' % PID)
 
 # StarCluster BASE AMIs (us-east-1)
-BASE_AMI_32 = "ami-899d49e0"
-BASE_AMI_64 = "ami-999d49f0"
-BASE_AMI_HVM = "ami-4583572c"
+BASE_AMI_32 = "ami-7c5c3915"
+BASE_AMI_64 = "ami-765b3e1f"
+BASE_AMI_HVM = "ami-52a0c53b"
 
 SECURITY_GROUP_PREFIX = "@sc"
 SECURITY_GROUP_TEMPLATE = '-'.join([SECURITY_GROUP_PREFIX, "%s"])

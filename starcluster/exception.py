@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 """
 StarCluster Exception Classes
 """
@@ -305,9 +322,11 @@ class NoClusterNodesFound(ValidationError):
         self.msg += "\n\nBelow is a list of terminated instances:\n"
         for tnode in terminated:
             id = tnode.id
-            reason = tnode.reason or 'N/A'
-            state = tnode.state or 'N/A'
-            self.msg += "\n%s (state: %s, reason: %s)" % (id, state, reason)
+            reason = 'N/A'
+            if tnode.state_reason:
+                reason = tnode.state_reason['message']
+            state = tnode.state
+            self.msg += "\n%s (%s) %s" % (id, state, reason)
 
 
 class NoClusterSpotRequests(ValidationError):

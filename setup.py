@@ -1,4 +1,21 @@
 #!/usr/bin/env python
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 import os
 import sys
 
@@ -9,14 +26,12 @@ if sys.version_info < (2, 6):
 
 try:
     from setuptools import setup, find_packages
-    setup
-    find_packages
     console_scripts = ['starcluster = starcluster.cli:main']
     extra = dict(test_suite="starcluster.tests",
                  tests_require="nose",
-                 install_requires=["paramiko>=1.10.1", "boto>=2.9.4",
-                                   "workerpool>=0.9.2", "Jinja2>=2.6",
-                                   "decorator>=3.4.0", "pyasn1>=0.1.6",
+                 install_requires=["paramiko>=1.10.1", "boto>=2.9.8",
+                                   "workerpool>=0.9.2", "Jinja2>=2.7",
+                                   "decorator>=3.4.0", "pyasn1>=0.1.7",
                                    "iptools>=0.6.1", "optcomplete>=1.2-devel"],
                  include_package_data=True,
                  entry_points=dict(console_scripts=console_scripts),
@@ -99,7 +114,6 @@ setup(
         'License (LGPL)',
         'Natural Language :: English',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2.5',
         'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
         'Operating System :: OS Independent',

@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 from starcluster import static
 
 config_template = """\
@@ -119,6 +136,10 @@ NODE_INSTANCE_TYPE = m1.small
 # this template. The following example will place a $0.50 bid for each spot
 # request.
 #SPOT_BID = 0.50
+# Uncomment to specify one or more userdata scripts to use when launching
+# cluster instances. Supports cloudinit. All scripts combined must be less than
+# 16KB
+#USERDATA_SCRIPTS = /path/to/script1, /path/to/script2
 
 ###########################################
 ## Defining Additional Cluster Templates ##
