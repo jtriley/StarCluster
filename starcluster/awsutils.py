@@ -448,36 +448,68 @@ class EasyEC2(EasyAWS):
                                security_groups=None, placement=None,
                                placement_group=None, user_data=None,
                                block_device_map=None):
-        requests = self.conn.request_spot_instances(
+        return self.conn.request_spot_instances(
             price, image_id, instance_type=instance_type, count=count,
             launch_group=launch_group, key_name=key_name,
             security_groups=security_groups,
             availability_zone_group=availability_zone_group,
             placement=placement, placement_group=placement_group,
             user_data=user_data, block_device_map=block_device_map)
-        requests_ids = []
-        for request in requests:
-            requests_ids.append(request.id)
 
-        #Make sure the spot instance request has been ingested by EC2
-        #before proceeding. Wait at most 10 sec.
-        counter = 0
-        while True:
-            all_requests = self.conn.get_all_spot_instance_requests()
-            all_requests.reverse()  # start from the end as our request will
-                                    # usually be the last
-            for request in all_requests:
-                if request.id in requests_ids:
-                    del requests_ids[requests_ids.index(request.id)]
-                    if len(requests_ids) == 0:
-                        #done
-                        return requests
+    def _wait_for_propagation(self, obj_ids, fetch_func, id_filter, obj_name,
+                              max_retries=5, interval=5):
+        """
+        Wait for a list of object ids to appear in the AWS API. Requires a
+        function that fetches the objects and also takes a filters kwarg. The
+        id_filter specifies the id filter to use for the objects and
+        obj_name describes the objects for log messages.
+        """
+        filters = {id_filter: obj_ids}
+        num_objs = len(obj_ids)
+        num_reqs = 0
+        reqs_ids = []
+        max_retries = max(1, max_retries)
+        interval = max(1, interval)
+        s = utils.get_spinner("Waiting for %s to propagate..." % obj_name)
+        try:
+            for i in range(max_retries):
+                reqs = fetch_func(filters=filters)
+                reqs_ids = [req.id for req in reqs]
+                num_reqs = len(reqs)
+                if num_reqs != num_objs:
+                    log.debug("%d: only %d/%d %s have "
+                              "propagated - sleeping..." %
+                              (i, num_reqs, num_objs, obj_name))
+                    time.sleep(interval)
+                else:
+                    return
+        finally:
+            s.stop()
+        log.warn("Only %d/%d %s propagated..." %
+                 (num_reqs, num_objs, obj_name))
+        missing = [oid for oid in obj_ids if oid not in reqs_ids]
+        log.warn("Missing %s: %s" % (obj_name, ', '.join(missing)))
 
-            if counter % 10 == 0:
-                log.info("Still waiting for instances " + str(requests_ids))
-            log.debug(str(counter) + ": Instance not propagated, sleeping")
-            time.sleep(1)
-            counter += 1
+    def wait_for_propagation(self, instances=None, spot_requests=None,
+                             max_retries=5, interval=5):
+        """
+        Wait for newly created instances and/or spot_requests to register in
+        the AWS API by repeatedly calling get_all_{instances, spot_requests}.
+        Calling this method directly after creating new instances or spot
+        requests before operating on them helps to avoid eventual consistency
+        errors about instances or spot requests not existing.
+        """
+        if spot_requests:
+            spot_ids = [getattr(s, 'id', s) for s in spot_requests]
+            self._wait_for_propagation(
+                spot_ids, self.get_all_spot_requests,
+                'spot-instance-request-id', 'spot requests',
+                max_retries=max_retries, interval=interval)
+        if instances:
+            instance_ids = [getattr(i, 'id', i) for i in instances]
+            self._wait_for_propagation(
+                instance_ids, self.get_all_instances, 'instance-id',
+                'instances', max_retries=max_retries, interval=interval)
 
     def run_instances(self, image_id, instance_type='m1.small', min_count=1,
                       max_count=1, key_name=None, security_groups=None,
