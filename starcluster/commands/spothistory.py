@@ -35,7 +35,7 @@ class CmdSpotHistory(CmdBase):
 
         $ starcluster spothistory m1.small
 
-    Do the same but also plot the spot history over time using matplotlib:
+    Do the same but also plot the spot history over time in a web browser:
 
         $ starcluster spothistory -p m1.small
     """
@@ -63,7 +63,7 @@ class CmdSpotHistory(CmdBase):
                           "(e.g. 2010-02-15T22:22:22)")
         parser.add_option("-p", "--plot", dest="plot",
                           action="store_true", default=False,
-                          help="plot spot history using matplotlib")
+                          help="plot spot history in a web browser")
 
     def execute(self, args):
         instance_types = ', '.join(sorted(static.INSTANCE_TYPES.keys()))
