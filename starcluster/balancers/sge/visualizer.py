@@ -21,6 +21,8 @@ StarCluster SunGrinEngine stats visualizer module
 import os
 import numpy as np
 from datetime import datetime
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from starcluster.logger import log
