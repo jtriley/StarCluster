@@ -9,6 +9,8 @@ StarCluster v0.94
 :License: LGPL
 .. image:: https://secure.travis-ci.org/jtriley/StarCluster.png?branch=develop
   :target: https://secure.travis-ci.org/jtriley/StarCluster
+.. image:: https://pypip.in/d/StarCluster/badge.png
+  :target: https://crate.io/packages/StarCluster
 
 Description:
 ============
