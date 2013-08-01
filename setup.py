@@ -94,7 +94,8 @@ setup(
     version=VERSION,
     packages=find_packages(),
     package_data={'starcluster.templates':
-                  ['web/*.*', 'web/css/*', 'web/js/*']},
+                  ['web/*.*', 'web/css/*', 'web/js/*'],
+                  'starcluster.cacerts': ['cacerts.txt']},
     license='LGPL3',
     author='Justin Riley',
     author_email='justin.t.riley@gmail.com',

@@ -48,6 +48,7 @@ __all__ = [
     "completion",
     "progressbar",
     "spinner",
+    "cacerts",
 ]
 
 
