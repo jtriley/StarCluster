@@ -1226,7 +1226,8 @@ class Cluster(object):
             finally:
                 s.stop()
 
-    def wait_for_running_instances(self, nodes=None):
+    def wait_for_running_instances(self, nodes=None,
+                                   kill_pending_after_mins=15):
         """
         Wait until all cluster nodes are in a 'running' state
         """
@@ -1235,16 +1236,20 @@ class Cluster(object):
         pbar = self.progress_bar.reset()
         pbar.maxval = len(nodes)
         pbar.update(0)
-        timeout = datetime.datetime.utcnow() + \
-            datetime.timedelta(minutes=20)
+        now = datetime.datetime.utcnow()
+        timeout = now + datetime.timedelta(minutes=kill_pending_after_mins)
         while not pbar.finished:
-            running_nodes = filter(lambda x: x.state == "running", nodes)
+            running_nodes = [n for n in nodes if n.state == "running"]
             pbar.maxval = len(nodes)
             pbar.update(len(running_nodes))
             if not pbar.finished:
                 if datetime.datetime.utcnow() > timeout:
-                    map(lambda x: x.terminate(),
-                        filter(lambda x: x not in running_nodes, nodes))
+                    pending = [n for n in nodes if n not in running_nodes]
+                    log.warn("%d nodes have been pending for >= %d mins "
+                             "- terminating" % (len(pending),
+                                                kill_pending_after_mins))
+                    for node in pending:
+                        node.terminate()
                 else:
                     time.sleep(self.refresh_interval)
                 nodes = self.get_nodes_or_raise()
