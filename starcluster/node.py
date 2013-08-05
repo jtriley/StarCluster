@@ -944,6 +944,9 @@ class Node(object):
         will also destroy the node's EBS root device. Puts this node
         into a 'terminated' state.
         """
+        if self.spot_id:
+            log.info("Canceling spot request %s" % self.spot_id)
+            self.get_spot_request().cancel()
         log.info("Terminating node: %s (%s)" % (self.alias, self.id))
         return self.instance.terminate()
 
