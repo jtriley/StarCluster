@@ -21,6 +21,7 @@ import time
 import string
 import pprint
 import warnings
+import datetime
 
 import iptools
 
@@ -929,9 +930,6 @@ class Cluster(object):
                              node=node, reverse=True)
             if not terminate:
                 continue
-            if node.spot_id:
-                log.info("Canceling spot request %s" % node.spot_id)
-                node.get_spot_request().cancel()
             node.terminate()
 
     def _get_launch_map(self, reverse=False):
@@ -1248,7 +1246,8 @@ class Cluster(object):
                         instances=[s.instance_id for s in active_spots])
             pbar.reset()
 
-    def wait_for_running_instances(self, nodes=None):
+    def wait_for_running_instances(self, nodes=None,
+                                   kill_pending_after_mins=15):
         """
         Wait until all cluster nodes are in a 'running' state
         """
@@ -1257,12 +1256,22 @@ class Cluster(object):
         pbar = self.progress_bar.reset()
         pbar.maxval = len(nodes)
         pbar.update(0)
+        now = datetime.datetime.utcnow()
+        timeout = now + datetime.timedelta(minutes=kill_pending_after_mins)
         while not pbar.finished:
-            running_nodes = filter(lambda x: x.state == "running", nodes)
+            running_nodes = [n for n in nodes if n.state == "running"]
             pbar.maxval = len(nodes)
             pbar.update(len(running_nodes))
             if not pbar.finished:
-                time.sleep(self.refresh_interval)
+                if datetime.datetime.utcnow() > timeout:
+                    pending = [n for n in nodes if n not in running_nodes]
+                    log.warn("%d nodes have been pending for >= %d mins "
+                             "- terminating" % (len(pending),
+                                                kill_pending_after_mins))
+                    for node in pending:
+                        node.terminate()
+                else:
+                    time.sleep(self.refresh_interval)
                 nodes = self.get_nodes_or_raise()
         pbar.reset()
 
