@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 import os
 import time
 import string
@@ -40,14 +57,18 @@ class ImageCreator(object):
         log.info('Removing private data...')
         conn = self.host_ssh
         conn.execute('find /home -maxdepth 1 -type d -exec rm -rf {}/.ssh \;')
+        log.info("Cleaning up SSH host keys")
         conn.execute('rm -f /etc/ssh/ssh_host*key*')
+        log.info("Cleaning up /var/log")
         conn.execute('rm -f /var/log/secure')
         conn.execute('rm -f /var/log/lastlog')
-        conn.execute('rm -rf /root/*')
-        conn.execute('rm -f ~/.bash_history')
-        conn.execute('rm -rf /tmp/*')
-        conn.execute('rm -rf /root/*.hist*')
         conn.execute('rm -rf /var/log/*.gz')
+        log.info("Cleaning out /root")
+        conn.execute('rm -rf /root/*')
+        conn.execute('rm -f /root/.bash_history')
+        conn.execute('rm -rf /root/*.hist*')
+        log.info("Cleaning up /tmp")
+        conn.execute('rm -rf /tmp/*')
 
 
 class S3ImageCreator(ImageCreator):

@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 """
 Utils module for StarCluster
 """
@@ -21,6 +38,7 @@ from datetime import datetime
 import iptools
 import decorator
 
+from starcluster import spinner
 from starcluster import exception
 from starcluster.logger import log
 
@@ -69,16 +87,16 @@ def print_timing(msg=None, debug=False):
     appear in the sentence "[msg] took XXX mins". If no msg is specified,
     msg will default to the decorated function's name. e.g:
 
-    @print_timing
-    def myfunc():
-        print 'Running myfunc'
+    >>> @print_timing
+    ... def myfunc():
+    ...     print 'Running myfunc'
     >>> myfunc()
     Running myfunc
     myfunc took 0.000 mins
 
-    @print_timing('My function')
-    def myfunc():
-        print 'Running myfunc'
+    >>> @print_timing('My function')
+    ... def myfunc():
+    ...    print 'Running myfunc'
     >>> myfunc()
     Running myfunc
     My function took 0.000 mins
@@ -589,3 +607,20 @@ def get_fq_class_name(obj):
 
 def size_in_kb(obj):
     return sys.getsizeof(obj) / 1024.
+
+
+def get_spinner(msg):
+    """
+    Logs a status msg, starts a spinner, and returns the spinner object.
+    This is useful for long running processes:
+
+    s = get_spinner("Long running process running...")
+    try:
+        (do something)
+    finally:
+        s.stop()
+    """
+    s = spinner.Spinner()
+    log.info(msg, extra=dict(__nonewline__=True))
+    s.start()
+    return s

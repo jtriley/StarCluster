@@ -1,15 +1,14 @@
-===================
-StarCluster v0.9999 vanilla_improvements branch
-===================
+=================
+StarCluster v0.94 vanilla_improvements branch
+=================
 vanilla_improvements notes are at the bottom.
 
 :StarCluster: Cluster Computing Toolkit for the Cloud
-:Version: 0.9999
+:Version: 0.94
 :Author: Justin Riley <justin.t.riley@gmail.com>
 :Team: Software Tools for Academics and Researchers (http://star.mit.edu)
 :Homepage: http://star.mit.edu/cluster
 :License: LGPL
-
 
 Description:
 ============
@@ -65,7 +64,7 @@ configuration file::
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
-    cli.py:87 - ERROR - config file /home/user/.starcluster/config does not exist
+    !!! ERROR - config file /home/user/.starcluster/config does not exist
 
     Options:
     --------
@@ -159,13 +158,14 @@ Dependencies:
 =============
 * Amazon AWS Account
 * Python 2.6+
-* Boto 2.8.0
-* Paramiko 1.9.0
+* Boto 2.9.8
+* Paramiko 1.10.1
 * WorkerPool 0.9.2
-* Jinja2 2.6
+* Jinja2 2.7
 * decorator 3.4.0
-* pyasn1 0.1.6
+* pyasn1 0.1.7
 * iptools 0.6.1
+* optcomplete 1.2-devel
 
 Learn more...
 =============
@@ -181,7 +181,7 @@ See COPYING.LESSER (LGPL) and COPYING (GPL) for LICENSE details
 
 vanilla_improvements branch notes
 =============
-This branch intends to be a mirror of https://github.com/jtriley/StarCluster with more features. 
+This branch intends to be a mirror of https://github.com/jtriley/StarCluster develop with more features.
 
 * Added commands
     - printconfig - To print your existing cluster configuration
@@ -194,13 +194,13 @@ This branch intends to be a mirror of https://github.com/jtriley/StarCluster wit
     - More stable with spot instances with automatic cleaning, required when a spot instance dies. Note that 
       stuck jobs resulting in a dead instance are killed by the clean command. You will need to relaunch your job.
     - loadbalance new flags
+        + --ignore-grp Instances won't have the placement group constraint. When using spot instances, it makes it easier
+          to get instances at a lower price.
         + --reboot-interval - Delay in minutes beyond which a node is rebooted if it's still being unreachable via SSH. 
           Defaults to 10.
         + --num_reboot_restart - Number of reboots after which a node is restarted (stop/start). Helpful in case the 
           issue comes from the hardware. If the node is a spot instance, it will be terminated instead since it cannot 
           be stopped. Defaults to false.
-        + --ignore-grp Instances won't have the placement group constraint. When using spot instances, it makes it easier
-          to get instances at a lower price.
 * Improved node cleanup - Merged `robbyt`_ `pull request`_ which makes node cleanup faster.
 * Improved node addition - Removed some remote read/writes (very slow) and replaced them get/edit/push.
 

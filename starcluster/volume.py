@@ -1,8 +1,25 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 import time
 import string
 
-from starcluster import static
 from starcluster import utils
+from starcluster import static
 from starcluster import exception
 from starcluster import cluster
 from starcluster.utils import print_timing
@@ -81,8 +98,8 @@ class VolumeCreator(cluster.Cluster):
             self.wait_for_cluster(msg="Waiting for volume host to come up...")
             self._instance = self.get_node_by_alias(alias)
         else:
-            s = self.get_spinner("Waiting for instance %s to come up..." %
-                                 self._instance.id)
+            s = utils.get_spinner("Waiting for instance %s to come up..." %
+                                  self._instance.id)
             while not self._instance.is_up():
                 time.sleep(self.refresh_interval)
             s.stop()

@@ -352,7 +352,7 @@ SGE parallel environment by running::
     xuser_lists        NONE
     start_proc_args    /bin/true
     stop_proc_args     /bin/true
-    allocation_rule    $round_robin
+    allocation_rule    $fill_up
     control_slaves     TRUE
     job_is_first_task  FALSE
     urgency_slots      min
@@ -361,40 +361,57 @@ SGE parallel environment by running::
 This is the default configuration for a two-node, c1.xlarge cluster (16 virtual
 cores).
 
-Round Robin vs Fill Up Modes
-----------------------------
+Parallel Environment Allocation Rule
+------------------------------------
 Notice the *allocation_rule* setting in the output of the *qconf* command in
-the previous section. This defines how to assign *slots* to a job. By default
-StarCluster configures *round_robin* allocation.  This means that if a job
-requests 8 *slots* for example, it will go to the first machine, grab a single
-slot if available, move to the next machine and grab a single slot if
-available, and so on wrapping around the cluster again if necessary to allocate
-8 *slots* to the job.
+the previous section. This rule defines how to assign *slots* to a job. By
+default StarCluster uses the *fill_up* allocation rule. This rule causes SGE to
+greedily take all available slots on as many cluster nodes as needed to fulfill
+the slot requirements of a given job. For example, if a user requests 8 *slots*
+and a single node has 8 *slots* available, that job will run entirely on one
+node. If 5 *slots* are available on one node and 3 on another, it will take all
+5 on that node, and all 3 on the other node.
 
-You can also configure the parallel environment to try and localize *slots* as
-much as possible using the *fill_up* allocation rule. With this rule, if a user
-requests 8 *slots* and a single machine has 8 *slots* available, that job will
-run entirely on one machine. If 5 *slots* are available on one host and 3 on
-another, it will take all 5 on that host, and all 3 on the other host. In other
-words, this rule will greedily take all *slots* on a given node until the slot
-requirement for the job is met.
+The allocation rule can also be configured to distribute the slots around the
+cluster as evenly as possible by using the *round_robin* allocation_rule. For
+example, if a job requests 8 *slots*, it will go to the first node, grab a slot
+if available, move to the next node and grab a single slot if available, and so
+on wrapping around the cluster nodes again if necessary to allocate 8 *slots*
+to the job.
 
-You can switch between *round_robin* and *fill_up* modes using the following
-command::
+Finally, setting the *allocation_rule* to an integer number will cause the
+parallel environment to take a fixed number of slots from each host when
+allocating the job by specifying an integer for the *allocation_rule*. For
+example, if the *allocation_rule* is set to 1 then all slots have to reside on
+different hosts. If the special value *$pe_slots* is used then all slots for
+the parallel job must be allocated entirely on a single host in the cluster.
+
+You can change the allocation rule for the *orte* parallel environment at any
+time using::
 
     $ qconf -mp orte
 
-This will open up vi (or any editor defined in *EDITOR* env variable) and let
-you edit the parallel environment settings. To change from *round_robin* to
-*fill_up* in the above example, change the *allocation_rule* line from::
-
-    allocation_rule    $round_robin
-
-to::
+This will open up vi (or any editor defined in the *EDITOR* environment
+variable) and let you edit the parallel environment settings. To change from
+*fill_up* to *round_robin* in the above example, change the *allocation_rule*
+line from::
 
     allocation_rule    $fill_up
 
-After making the change and saving the file you can verify your settings using::
+to::
+
+    allocation_rule    $round_robin
+
+You can also change the rule to the *pe_slots* mode::
+
+    allocation_rule    $pe_slots
+
+or specify a fixed number of slots per host to assign when allocating the job::
+
+    allocation_rule    1
+
+After making the change and saving the file you can verify your settings
+using::
 
     sgeadmin@ip-10-194-13-219:~$ qconf -sp orte
     pe_name            orte
@@ -403,7 +420,7 @@ After making the change and saving the file you can verify your settings using::
     xuser_lists        NONE
     start_proc_args    /bin/true
     stop_proc_args     /bin/true
-    allocation_rule    $fill_up
+    allocation_rule    $round_robin
     control_slaves     TRUE
     job_is_first_task  FALSE
     urgency_slots      min

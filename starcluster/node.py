@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 import re
 import time
 import stat
@@ -558,10 +575,10 @@ class Node(object):
         """
         user = self.getpwnam(username)
         known_hosts_file = posixpath.join(user.pw_dir, '.ssh', 'known_hosts')
-        self.remove_from_known_hosts(username, nodes)
         khosts = []
         if add_self and self not in nodes:
             nodes.append(self)
+        self.remove_from_known_hosts(username, nodes)
         for node in nodes:
             server_pkey = node.ssh.get_server_public_key()
             node_names = {}.fromkeys([node.alias, node.private_dns_name,
