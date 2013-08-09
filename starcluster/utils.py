@@ -42,6 +42,7 @@ from starcluster import spinner
 from starcluster import exception
 from starcluster.logger import log
 
+
 def ipy_shell(local_ns=None):
     try:
         import IPython
