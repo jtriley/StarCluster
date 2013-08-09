@@ -45,7 +45,7 @@ from starcluster.logger import log
 
 
 DEFAULT_CA_CERTS_FILE = os.path.join(
-    os.path.dirname(os.path.abspath(cacerts.__file__ )), "cacerts.txt")
+    os.path.dirname(os.path.abspath(cacerts.__file__)), "cacerts.txt")
 
 
 class EasyAWS(object):
