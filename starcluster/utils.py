@@ -42,27 +42,26 @@ from starcluster import spinner
 from starcluster import exception
 from starcluster.logger import log
 
-try:
-    import IPython
-    if IPython.__version__ < '0.11':
-        from IPython.Shell import IPShellEmbed
-        ipy_shell = IPShellEmbed(argv=[])
-    else:
-        from IPython import embed
-        ipy_shell = lambda local_ns=None: embed(user_ns=local_ns)
-except ImportError, e:
-
-    def ipy_shell(local_ns=None):
+def ipy_shell(local_ns=None):
+    try:
+        import IPython
+        if IPython.__version__ < '0.11':
+            from IPython.Shell import IPShellEmbed
+            return IPShellEmbed(argv=[])(local_ns)
+        else:
+            from IPython import embed
+            return embed(user_ns=local_ns)
+    except ImportError as e:
         log.error("Unable to load IPython:\n\n%s\n" % e)
         log.error("Please check that IPython is installed and working.")
         log.error("If not, you can install it via: easy_install ipython")
 
-try:
-    import pudb
-    set_trace = pudb.set_trace
-except ImportError:
 
-    def set_trace():
+def set_trace():
+    try:
+        import pudb
+        return pudb.set_trace()
+    except ImportError:
         log.error("Unable to load PuDB")
         log.error("Please check that PuDB is installed and working.")
         log.error("If not, you can install it via: easy_install pudb")
