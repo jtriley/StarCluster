@@ -60,8 +60,10 @@ class ClusterManager(managers.Manager):
             cltag = self.get_tag_from_sg(clname)
             if not group:
                 group = self.ec2.get_security_group(clname)
+            kwargs = dict(kv for kv in self.cfg.globals.items()
+                          if kv[0] in ['refresh_interval'])
             cl = Cluster(ec2_conn=self.ec2, cluster_tag=cltag,
-                         cluster_group=group)
+                         cluster_group=group, **kwargs)
             if load_receipt:
                 cl.load_receipt(load_plugins=load_plugins,
                                 load_volumes=load_volumes)
