@@ -57,7 +57,7 @@ or using `pip`::
 
 or manually::
 
-    $ (Download StarCluster from http://star.mit.edu/cluster/download.html)
+    $ (Download StarCluster from http://star.mit.edu/cluster/downloads.html)
     $ tar xvzf starcluster-X.X.X.tar.gz  (where x.x.x is a version number)
     $ cd starcluster-X.X.X
     $ sudo python setup.py install
