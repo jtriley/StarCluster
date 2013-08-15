@@ -4,7 +4,6 @@ include README.rst
 include Changelog
 include requirements.txt
 include *.py
-include starcluster/cacerts/cacerts.txt
 recursive-include docs *
 recursive-include utils *
 recursive-include completion *

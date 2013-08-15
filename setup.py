@@ -29,7 +29,7 @@ try:
     console_scripts = ['starcluster = starcluster.cli:main']
     extra = dict(test_suite="starcluster.tests",
                  tests_require="nose",
-                 install_requires=["paramiko>=1.10.1", "boto>=2.9.8",
+                 install_requires=["paramiko>=1.10.1", "boto>=2.10.0",
                                    "workerpool>=0.9.2", "Jinja2>=2.7",
                                    "decorator>=3.4.0", "pyasn1>=0.1.7",
                                    "iptools>=0.6.1", "optcomplete>=1.2-devel"],
@@ -94,8 +94,7 @@ setup(
     version=VERSION,
     packages=find_packages(),
     package_data={'starcluster.templates':
-                  ['web/*.*', 'web/css/*', 'web/js/*'],
-                  'starcluster.cacerts': ['cacerts.txt']},
+                  ['web/*.*', 'web/css/*', 'web/js/*']},
     license='LGPL3',
     author='Justin Riley',
     author_email='justin.t.riley@gmail.com',
