@@ -176,6 +176,17 @@ Watch an ~8 minute screencast @ http://star.mit.edu/cluster
 To learn more have a look at the documentation:
 http://star.mit.edu/cluster/docs/latest
 
+Community
+=========
+StarCluster has a mailing list for users and developers:
+
+http://star.mit.edu/cluster/mailinglist.html
+
+Join our IRC channel #starcluster on freenode. If you do not have an IRC client
+you can join the #starcluster channel using your web browser:
+
+http://webchat.freenode.net/?channels=starcluster
+
 Licensing
 =========
 StarCluster is licensed under the LGPLv3
