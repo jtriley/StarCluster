@@ -903,7 +903,7 @@ class Cluster(object):
                                      instance_type=instance_type, zone=zone,
                                      placement_group=placement_group,
                                      spot_bid=spot_bid)
-            if spot_bid:
+            if spot_bid or self.spot_bid:
                 self.ec2.wait_for_propagation(spot_requests=resp)
             else:
                 self.ec2.wait_for_propagation(instances=resp[0].instances)
