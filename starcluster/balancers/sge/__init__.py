@@ -20,7 +20,6 @@ import re
 import time
 import datetime
 import xml.dom.minidom
-import re
 import traceback
 
 from starcluster import utils
