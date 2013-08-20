@@ -822,16 +822,21 @@ class Cluster(object):
                          "following regions:\n%s" % cluster_regions)
                 log.warn("Instances will not be launched in a placement group")
                 placement_group = None
-            elif not placement_group:
+            elif placement_group is None:
+                #if placement_group is False -> leave false
                 placement_group = self.placement_group.name
+        availability_zone_group = None if placement_group is False \
+            else cluster_sg
+        #launch_group is related to placement group
+        launch_group = availability_zone_group
         image_id = image_id or self.node_image_id
         count = len(aliases) if not spot_bid else 1
         user_data = self._get_cluster_userdata(aliases)
         kwargs = dict(price=spot_bid, instance_type=instance_type,
                       min_count=count, max_count=count, count=count,
                       key_name=self.keyname, security_groups=[cluster_sg],
-                      availability_zone_group=cluster_sg,
-                      launch_group=cluster_sg,
+                      availability_zone_group=availability_zone_group,
+                      launch_group=launch_group,
                       placement=zone or getattr(self.zone, 'name', None),
                       user_data=user_data,
                       placement_group=placement_group)

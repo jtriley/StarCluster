@@ -17,6 +17,7 @@
 
 from starcluster import exception
 from starcluster.balancers import sge
+from starcluster import static
 
 from completers import ClusterCompleter
 
@@ -103,6 +104,10 @@ class CmdLoadBalance(ClusterCompleter):
         parser.add_option("-K", "--kill-cluster", dest="kill_cluster",
                           action="store_true", default=False,
                           help="Terminate the cluster when the queue is empty")
+        parser.add_option(
+            "--ignore-grp", dest="ignore_grp", action="store_true",
+            default=False, help="if set, instances of type " +
+            str(static.CLUSTER_TYPES) + " will not use the placement group")
 
     def execute(self, args):
         if not self.cfg.globals.enable_experimental:
