@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 from datetime import datetime, timedelta
 
 from starcluster import utils
@@ -18,7 +35,7 @@ class CmdSpotHistory(CmdBase):
 
         $ starcluster spothistory m1.small
 
-    Do the same but also plot the spot history over time using matplotlib:
+    Do the same but also plot the spot history over time in a web browser:
 
         $ starcluster spothistory -p m1.small
     """
@@ -46,10 +63,10 @@ class CmdSpotHistory(CmdBase):
                           "(e.g. 2010-02-15T22:22:22)")
         parser.add_option("-p", "--plot", dest="plot",
                           action="store_true", default=False,
-                          help="plot spot history using matplotlib")
+                          help="plot spot history in a web browser")
 
     def execute(self, args):
-        instance_types = ', '.join(static.INSTANCE_TYPES.keys())
+        instance_types = ', '.join(sorted(static.INSTANCE_TYPES.keys()))
         if len(args) != 1:
             self.parser.error(
                 'please provide an instance type (options: %s)' %
@@ -57,7 +74,7 @@ class CmdSpotHistory(CmdBase):
         instance_type = args[0]
         if not instance_type in static.INSTANCE_TYPES:
             self.parser.error('invalid instance type. possible options: %s' %
-                              ', '.join(static.INSTANCE_TYPES))
+                              instance_types)
         start = self.opts.start_time
         end = self.opts.end_time
         if self.opts.days_ago:

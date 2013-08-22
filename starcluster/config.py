@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 import os
 import urllib
 import StringIO
@@ -80,7 +97,9 @@ class StarClusterConfig(object):
     instance_types = static.INSTANCE_TYPES
 
     def __init__(self, config_file=None, cache=False):
-        self.cfg_file = config_file or static.STARCLUSTER_CFG_FILE
+        self.cfg_file = config_file \
+            or os.environ.get('STARCLUSTER_CONFIG') \
+            or static.STARCLUSTER_CFG_FILE
         self.cfg_file = os.path.expanduser(self.cfg_file)
         self.cfg_file = os.path.expandvars(self.cfg_file)
         self.type_validators = {
@@ -553,11 +572,11 @@ class StarClusterConfig(object):
         try:
             self.aws = self._load_section('aws info', self.aws_settings)
         except exception.ConfigSectionMissing:
-            log.warn("no [aws info] section found in config")
-            log.warn("attempting to load credentials from environment...")
-            self.aws.update(self.get_aws_from_environ())
+            log.warn("No [aws info] section found in the config!")
+        self.aws.update(self.get_settings_from_env(self.aws_settings))
         self.keys = self._load_sections('key', self.key_settings)
         self.vols = self._load_sections('volume', self.volume_settings)
+        self.vols.update(self._load_sections('vol', self.volume_settings))
         self.plugins = self._load_sections('plugin', self.plugin_settings,
                                            filter_settings=False)
         self.permissions = self._load_sections('permission',
@@ -566,28 +585,20 @@ class StarClusterConfig(object):
         self.clusters = self._load_cluster_sections(sections)
         return self
 
-    def get_aws_from_environ(self):
+    def get_settings_from_env(self, settings):
         """
         Returns AWS credentials defined in the user's shell
         environment.
         """
-        awscreds = {}
-        for key in static.AWS_SETTINGS:
+        found = {}
+        for key in settings:
             if key.upper() in os.environ:
-                awscreds[key] = os.environ.get(key.upper())
+                log.warn("Setting '%s' from environment..." % key.upper())
+                found[key] = os.environ.get(key.upper())
             elif key in os.environ:
-                awscreds[key] = os.environ.get(key)
-        return awscreds
-
-    def get_aws_credentials(self):
-        """
-        Returns AWS credentials defined in the configuration
-        file. Defining any of the AWS settings in the environment
-        overrides the configuration file.
-        """
-        # first override with environment settings if they exist
-        self.aws.update(self.get_aws_from_environ())
-        return self.aws
+                log.warn("Setting '%s' from environment..." % key)
+                found[key] = os.environ.get(key)
+        return found
 
     def get_cluster_template(self, template_name, tag_name=None,
                              ec2_conn=None):
@@ -652,9 +663,8 @@ class StarClusterConfig(object):
         the StarCluster config file. Returns an EasyS3 object if
         successful.
         """
-        aws = self.get_aws_credentials()
         try:
-            s3 = awsutils.EasyS3(**aws)
+            s3 = awsutils.EasyS3(**self.aws)
             return s3
         except TypeError:
             raise exception.ConfigError("no aws credentials found")
@@ -665,9 +675,8 @@ class StarClusterConfig(object):
         the StarCluster config file. Returns an EasyEC2 object if
         successful.
         """
-        aws = self.get_aws_credentials()
         try:
-            ec2 = awsutils.EasyEC2(**aws)
+            ec2 = awsutils.EasyEC2(**self.aws)
             return ec2
         except TypeError:
             raise exception.ConfigError("no aws credentials found")

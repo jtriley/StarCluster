@@ -9,6 +9,8 @@ StarCluster v0.9999
 :License: LGPL
 .. image:: https://secure.travis-ci.org/jtriley/StarCluster.png?branch=develop
   :target: https://secure.travis-ci.org/jtriley/StarCluster
+.. image:: https://pypip.in/d/StarCluster/badge.png
+  :target: https://crate.io/packages/StarCluster
 
 Description:
 ============
@@ -45,13 +47,17 @@ Interested? See the `getting started`_ section for more details.
 
 Getting Started:
 ================
-Install StarCluster using easy_install::
+Install StarCluster using `easy_install`::
 
-    $ sudo easy_install StarCluster
+    $ easy_install StarCluster
 
-or to install StarCluster manually::
+or using `pip`::
 
-    $ (Download StarCluster from http://star.mit.edu/cluster)
+    $ pip install StarCluster
+
+or manually::
+
+    $ (Download StarCluster from http://star.mit.edu/cluster/downloads.html)
     $ tar xvzf starcluster-X.X.X.tar.gz  (where x.x.x is a version number)
     $ cd starcluster-X.X.X
     $ sudo python setup.py install
@@ -64,7 +70,7 @@ configuration file::
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
-    cli.py:87 - ERROR - config file /home/user/.starcluster/config does not exist
+    !!! ERROR - config file /home/user/.starcluster/config does not exist
 
     Options:
     --------
@@ -158,12 +164,14 @@ Dependencies:
 =============
 * Amazon AWS Account
 * Python 2.6+
-* Boto 2.8.0
-* Paramiko 1.9.0
+* Boto 2.9.8
+* Paramiko 1.10.1
 * WorkerPool 0.9.2
-* Jinja2 2.6
+* Jinja2 2.7
 * decorator 3.4.0
-* pyasn1 0.1.6
+* pyasn1 0.1.7
+* iptools 0.6.1
+* optcomplete 1.2-devel
 
 Learn more...
 =============
@@ -171,6 +179,17 @@ Watch an ~8 minute screencast @ http://star.mit.edu/cluster
 
 To learn more have a look at the documentation:
 http://star.mit.edu/cluster/docs/latest
+
+Community
+=========
+StarCluster has a mailing list for users and developers:
+
+http://star.mit.edu/cluster/mailinglist.html
+
+Join our IRC channel #starcluster on freenode. If you do not have an IRC client
+you can join the #starcluster channel using your web browser:
+
+http://webchat.freenode.net/?channels=starcluster
 
 Licensing
 =========

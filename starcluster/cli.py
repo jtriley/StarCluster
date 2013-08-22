@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 """
 StarCluster Command Line Interface:
 
@@ -17,7 +34,7 @@ from starcluster import static
 from starcluster import logger
 from starcluster import commands
 from starcluster import exception
-from starcluster import optcomplete
+from starcluster import completion
 from starcluster.logger import log, console
 from starcluster import __version__
 
@@ -232,10 +249,10 @@ class StarClusterCLI(object):
                 sc.gopts = gopts
                 for n in sc.names:
                     scmap[n] = sc
-            listcter = optcomplete.ListCompleter(scmap.keys())
-            subcter = optcomplete.NoneCompleter()
-            optcomplete.autocomplete(gparser, listcter, None, subcter,
-                                     subcommands=scmap)
+            listcter = completion.ListCompleter(scmap.keys())
+            subcter = completion.NoneCompleter()
+            completion.autocomplete(gparser, listcter, None, subcter,
+                                    subcommands=scmap)
             sys.exit(1)
 
     def main(self):
@@ -281,6 +298,7 @@ class StarClusterCLI(object):
             sys.exit(1)
         except exception.BaseException, e:
             log.error(e.msg, extra={'__textwrap__': True})
+            log.debug(e.msg, exc_info=True)
             sys.exit(1)
         except SystemExit:
             # re-raise SystemExit to avoid the bug-catcher below
@@ -307,13 +325,14 @@ def warn_debug_file_moved():
 
 
 def main():
-    static.create_sc_config_dirs()
-    logger.configure_sc_logging()
-    warn_debug_file_moved()
-    StarClusterCLI().main()
-
-if __name__ == '__main__':
     try:
-        main()
+        static.create_sc_config_dirs()
+        logger.configure_sc_logging()
+        warn_debug_file_moved()
+        StarClusterCLI().main()
     except KeyboardInterrupt:
         print "Interrupted, exiting."
+        sys.exit(1)
+
+if __name__ == '__main__':
+    main()
