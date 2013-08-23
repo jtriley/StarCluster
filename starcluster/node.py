@@ -849,6 +849,9 @@ class Node(object):
         for dev in block_devs:
             vol_id = block_devs[dev].volume_id
             vol = self.ec2.get_volume(vol_id)
+            if vol.tags.get('skip_detach', 'f').lower().startswith('t'):
+                log.info("Volume %s on %s is set to skip detach." % (vol.id, self.alias))
+                continue
             log.info("Detaching volume %s from %s" % (vol.id, self.alias))
             if vol.status not in ['available', 'detaching']:
                 vol.detach()
