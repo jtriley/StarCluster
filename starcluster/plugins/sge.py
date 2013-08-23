@@ -18,6 +18,7 @@
 from starcluster import clustersetup
 from starcluster.templates import sge
 from starcluster.logger import log
+from starcluster.exception import RemoteCommandFailed
 import xml.etree.ElementTree as ET
 import time
 
@@ -157,16 +158,25 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         qhosts = master.ssh.execute("qhost", source_profile=True)
         qhosts = qhosts[3:]
         missing = []
-        aliases = []
+        parsed_qhosts = {}
         for line in qhosts:
-            aliases.append(line[0:line.find(" ")])
+            line = filter(lambda x: len(x) > 0, line.split(" "))
+            parsed_qhosts[line[0]] = line[1:]
         for node in nodes:
-            if node.alias not in aliases:
+            #nodes missing from qhost
+            if node.alias not in parsed_qhosts:
                 if node.alias == "master":
                     assert(not self.master_is_exec_host)
                 else:
                     missing.append(node)
-
+            elif parsed_qhosts[node.alias][-1] == "-" \
+                    and node.alias != "master":
+                # nodes present but w/o stats
+                try:
+                    node.ssh.execute("qhost", source_profile=True)
+                except RemoteCommandFailed:
+                    # normal -> means OGS doesn't run on the node
+                    missing.append(node)
         return missing
 
     def run(self, nodes, master, user, user_shell, volumes):
