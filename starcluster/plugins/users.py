@@ -111,11 +111,30 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
     def _get_newusers_batch_file(self, master, usernames, shell,
                                  batch_file=None):
         batch_file = batch_file or self.BATCH_USER_FILE
+
         if master.ssh.isfile(batch_file):
             bfile = master.ssh.remote_file(batch_file, 'r')
+            
+            old_user_list = []
+            for line in bfile:
+                #grab usernames
+                #sam:AIm9Vk5H:1006:1006:Cluster user account sam:/home/sam:/bin/bash
+                old_user_list.append(line.split(':')[0])
+
+            old = set(old_user_list)
+            new = set(usernames)
+            diff = new.difference(old)
+
+            bfile.seek(0)
             bfilecontents = bfile.read()
             bfile.close()
-            return bfilecontents
+
+            log.debug("Creating possible new users %s" % 
+                 (' '.join(list(diff)) ))
+            
+            #check empty set
+            if not diff:
+                return bfilecontents
         bfilecontents = ''
         tmpl = "%(username)s:%(password)s:%(uid)d:%(gid)d:"
         tmpl += "Cluster user account %(username)s:"
