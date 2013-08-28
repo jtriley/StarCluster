@@ -36,16 +36,11 @@ from starcluster import image
 from starcluster import utils
 from starcluster import static
 from starcluster import spinner
-from starcluster import cacerts
 from starcluster import webtools
 from starcluster import exception
 from starcluster import progressbar
 from starcluster.utils import print_timing
 from starcluster.logger import log
-
-
-DEFAULT_CA_CERTS_FILE = os.path.join(
-    os.path.dirname(os.path.abspath(cacerts.__file__)), "cacerts.txt")
 
 
 class EasyAWS(object):
@@ -93,9 +88,6 @@ class EasyAWS(object):
             # if https_validate_certificates is declared in the boto config
             boto_config.setbool('Boto', 'https_validate_certificates',
                                 validate_certs)
-            # Hack to use latest CA certs file until boto/boto#1578 is merged
-            boto_config.set('Boto', 'ca_certificates_file',
-                            DEFAULT_CA_CERTS_FILE)
             self._conn = self.connection_authenticator(
                 self.aws_access_key_id, self.aws_secret_access_key,
                 **self._kwargs)
