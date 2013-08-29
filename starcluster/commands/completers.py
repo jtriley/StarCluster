@@ -138,3 +138,14 @@ class VolumeCompleter(Completer):
             return completion.ListCompleter(completion_list)
         except Exception, e:
             log.error('something went wrong fix me: %s' % e)
+
+class SnapshotCompleter(Completer):
+    """
+    Returns a list of all volume ids as completion options
+    """
+    def _completer(self):
+        try:
+            completion_list = [v.id for v in self.ec2.get_snapshots()]
+            return completion.ListCompleter(completion_list)
+        except Exception, e:
+            log.error('something went wrong fix me: %s' % e)
