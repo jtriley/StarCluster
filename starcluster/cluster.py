@@ -699,6 +699,7 @@ class Cluster(object):
                  master_instance_type=self.master_instance_type,
                  node_image_id=self.node_image_id,
                  node_instance_type=self.node_instance_type,
+                 availability_zone=self.availability_zone,
                  disable_queue=self.disable_queue,
                  disable_cloudinit=self.disable_cloudinit),
             use_json=True)
