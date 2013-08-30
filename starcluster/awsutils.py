@@ -425,6 +425,11 @@ class EasyEC2(EasyAWS):
                     log.debug("Removing %s from runtime block device map" %
                               dev)
                     bdmap.pop(dev)
+            if img.root_device_name in img.block_device_mapping:
+                log.debug("Forcing delete_on_termination for AMI: %s" % img.id)
+                root = img.block_device_mapping[img.root_device_name]
+                root.delete_on_termination = True
+                bdmap[img.root_device_name] = root
             block_device_map = bdmap
         if price:
             return self.request_spot_instances(
