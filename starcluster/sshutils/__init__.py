@@ -61,6 +61,7 @@ class SSHClient(object):
                  password=None,
                  private_key=None,
                  private_key_pass=None,
+                 compress=False,
                  port=22,
                  timeout=30):
         self._host = host
@@ -73,6 +74,7 @@ class SSHClient(object):
         self._scp = None
         self._transport = None
         self._progress_bar = None
+        self._compress = compress
         if private_key:
             self._pkey = self.load_private_key(private_key, private_key_pass)
         elif not password:
@@ -97,10 +99,12 @@ class SSHClient(object):
         return pkey
 
     def connect(self, host=None, username=None, password=None,
-                private_key=None, private_key_pass=None, port=22, timeout=30):
+                private_key=None, private_key_pass=None, port=None, timeout=30,
+                compress=None):
         host = host or self._host
         username = username or self._username
         password = password or self._password
+        compress = compress or self._compress
         pkey = self._pkey
         if private_key:
             pkey = self.load_private_key(private_key, private_key_pass)
@@ -112,6 +116,8 @@ class SSHClient(object):
             transport.banner_timeout = timeout
         except socket.error:
             raise exception.SSHConnectionError(host, port)
+        # Enable/disable compression
+        transport.use_compression(compress)
         # Authenticate the transport.
         try:
             transport.connect(username=username, pkey=pkey, password=password)
@@ -144,7 +150,8 @@ class SSHClient(object):
         """
         if not self._transport or not self._transport.is_active():
             self.connect(self._host, self._username, self._password,
-                         port=self._port, timeout=self._timeout)
+                         port=self._port, timeout=self._timeout,
+                         compress=self._compress)
         return self._transport
 
     def get_server_public_key(self):
