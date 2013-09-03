@@ -151,6 +151,7 @@ class ClusterManager(managers.Manager):
         node = cluster.get_node_by_alias(node_id)
         key_location = self.cfg.get_key(node.key_name).get('key_location')
         cluster.key_location = key_location
+        cluster.keyname = node.key_name
         cluster.validator.validate_keypair()
         return node.shell(user=user, forward_x11=forward_x11,
                           forward_agent=forward_agent, command=command)
