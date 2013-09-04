@@ -622,8 +622,8 @@ class EasyEC2(EasyAWS):
         for res in reservations:
             insts = res.instances
             for i in insts:
-                # set group info
-                i.groups = res.groups
+                # append group info
+                i.groups = list(set(i.groups).union(res.groups))
             instances.extend(insts)
         return instances
 
