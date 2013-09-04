@@ -53,6 +53,9 @@ class CmdSshNode(NodeCompleter):
         parser.add_option("-A", "--forward-agent", dest="forward_agent",
                           action="store_true", default=False,
                           help="enable authentication agent forwarding")
+        parser.add_option("-t", "--pseudo-tty", dest="pseudo_tty",
+                          action="store_true", default=False,
+                          help="enable pseudo-tty allocation (for interactive commands and screens)")
 
     def execute(self, args):
         if len(args) < 2:
@@ -64,7 +67,7 @@ class CmdSshNode(NodeCompleter):
         retval = self.cm.ssh_to_cluster_node(scluster, node,
                                              user=self.opts.user, command=cmd,
                                              forward_x11=self.opts.forward_x11,
-                                             forward_agent=
-                                             self.opts.forward_agent)
+                                             pseudo_tty=self.opts.pseudo_tty,
+                                             forward_agent=self.opts.forward_agent)
         if cmd and retval is not None:
             sys.exit(retval)
