@@ -261,7 +261,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
                 log.warn(c + " is missing from /etc/hosts, creating a dummy "
                          "entry 1.1.1.1")
                 rfile = master.ssh.remote_file("/etc/hosts", 'a')
-                rfile.write("1.1.1.1 " + c)
+                rfile.write("1.1.1.1 " + c + "\n")
                 rfile.close()
             self._remove_from_sge(DeadNode(c), only_clean_master=True)
 
