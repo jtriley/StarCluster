@@ -205,8 +205,8 @@ This branch intends to be a mirror of https://github.com/jtriley/StarCluster dev
       (Useful with spot instances and used by the vanilla_improvements load balancer)
     - recover
         + If sge_qmaster crashed, restarts it.
-        + If a newly created instance failed to initialize (it's booted but not properly configured in OGS)
-      the instance will be added back to the cluster.
+        + If a newly created instance failed to initialize (it's booted but not properly configured in OGS) 
+          the instance will be added back to the cluster.
 * Improved load balancer
     - More stable with spot instances with automatic cleaning, required when a spot instance dies. Note that 
       stuck jobs resulting in a dead instance are killed by the clean command. You will need to relaunch your job.
