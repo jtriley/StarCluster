@@ -1706,6 +1706,8 @@ class Cluster(object):
         except KeyboardInterrupt:
             raise
         except Exception:
+            import traceback
+            log.debug(traceback.format_exc())
             log.error("Error occured while running plugin '%s':" % plugin_name)
             raise
 
@@ -1743,6 +1745,7 @@ class Cluster(object):
             equivalent to setting 0, meaning that it will only try to add
             it back once before terminating.
         """
+        self.run_plugins(method_name="recover", reverse=True)
         self.wait_for_active_spots()
         while 1:
             failures = 0

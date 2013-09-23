@@ -1004,6 +1004,30 @@ class Node(object):
         except exception.SSHError:
             return False
 
+    def is_impaired(self):
+        return bool(self.ec2.conn.get_all_instance_status(
+            instance_ids=[self.id],
+            filters={"instance-status.status" : "impaired"}
+        ))
+
+
+    def handle_irresponsive_node(self):
+        if self.is_spot():
+            log.info(self.alias + " is a spot instance and will "
+                        "be terminated.")
+            self.terminate()
+            return True
+        else:
+            self.stop()
+            time.sleep(10)
+            while self.update() != "stopped":
+                log.info("Waiting for node " + self.alias +
+                            "to be in a stopped state.")
+                time.sleep(10)
+            self.start()
+            return False
+
+
     def wait(self, interval=30, reboot_interval=10, n_reboot_restart=False):
         """
         Wait for the instance to be up and running.
@@ -1026,25 +1050,17 @@ class Node(object):
             log.warn("node.wait: n_reboot_restart is useless if "
                      "reboot_interval is 0.")
         while not self.is_up():
+            if self.is_impaired():
+                log.info(self.alias + " is impaired.")
+                if self.handle_irresponsive_node():
+                    break
             now = datetime.datetime.utcnow()
             if reboot_interval and now > reboot_time:
                 if n_reboot_restart and restart_at == reboots:
-                    log.info("Restart interval reached -> restarting node " +
-                             self.alias)
-                    if self.is_spot():
-                        log.info(self.alias + " is a spot instance and will "
-                                 "be terminated instead.")
-                        self.terminate()
-                        break  # the node has been terminated, get out
-                    else:
-                        self.stop()
-                        time.sleep(10)
-                        while self.update() != "stopped":
-                            log.info("Waiting for node " + self.alias +
-                                     "to be in a stopped state.")
-                            time.sleep(10)
-                        self.start()
-                        restart_at += n_reboot_restart
+                    log.info("Restart interval reached")
+                    if self.handle_irresponsive_node():
+                        break
+                    restart_at += n_reboot_restart
                 else:
                     log.info("Reboot interval reached -> rebooting node " +
                              self.alias)
@@ -1056,8 +1072,10 @@ class Node(object):
 
     def is_up(self):
         if self.update() != 'running':
+            log.info(self.alias + " is not running")
             return False
         if not self.is_ssh_up():
+            log.info(self.alias + " ssh is not up")
             return False
         if self.private_ip_address is None:
             log.debug("instance %s has no private_ip_address" % self.id)
@@ -1073,6 +1091,7 @@ class Node(object):
                 self.instance.private_ip_address = private_ip
             except Exception, e:
                 print e
+                log.info(self.alias + " encountered an exception")
                 return False
         return True
 

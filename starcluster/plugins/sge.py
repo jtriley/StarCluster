@@ -191,11 +191,21 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._volumes = volumes
         self._setup_sge()
 
-    """
-    Run qhost to find nodes that are present in OGS but not in the cluster in
-    order to remove them.
-    """
+    def recover(self, nodes, master, user, user_shell, volumes):
+        cmd = "ps -ef | grep sge_qmaster | grep -v grep | wc -l"
+        rez = int(master.ssh.execute(cmd)[0])
+        log.info(rez)
+        if rez == 0:
+            log.error("sge_qmaster is down")
+            cmd = "cd /opt/sge6/bin/linux-x64/ && ./sge_qmaster"
+            master.ssh.execute(cmd)
+
+
     def clean_cluster(self, nodes, master, user, user_shell, volumes):
+        """
+        Run qhost to find nodes that are present in OGS but not in the cluster
+        in order to remove them.
+        """
         self._master = master
         self._nodes = nodes
         qhosts = self._master.ssh.execute("qhost", source_profile=True)
