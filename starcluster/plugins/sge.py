@@ -194,7 +194,6 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
     def recover(self, nodes, master, user, user_shell, volumes):
         cmd = "ps -ef | grep sge_qmaster | grep -v grep | wc -l"
         rez = int(master.ssh.execute(cmd)[0])
-        log.info(rez)
         if rez == 0:
             log.error("sge_qmaster is down")
             cmd = "cd /opt/sge6/bin/linux-x64/ && ./sge_qmaster"
