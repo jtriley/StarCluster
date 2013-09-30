@@ -124,8 +124,8 @@ class ClusterManager(managers.Manager):
         """
         return self.get_cluster_or_none(tag_name) is not None
 
-    def ssh_to_master(self, cluster_name, user='root', command=None,
-                      forward_x11=False, forward_agent=False):
+    def ssh_to_master(self, cluster_name, dns_prefix, user='root',
+                      command=None, forward_x11=False, forward_agent=False):
         """
         ssh to master node of cluster_name
 
@@ -133,6 +133,8 @@ class ClusterManager(managers.Manager):
         """
         cluster = self.get_cluster(cluster_name, load_receipt=False,
                                    require_keys=True)
+        if dns_prefix:
+            cluster.dns_prefix = cluster_name
         return cluster.ssh_to_master(user=user, command=command,
                                      forward_x11=forward_x11,
                                      forward_agent=forward_agent)
@@ -164,22 +166,27 @@ class ClusterManager(managers.Manager):
             cluster_name = static.SECURITY_GROUP_TEMPLATE % cluster_name
         return cluster_name
 
-    def add_node(self, cluster_name, alias=None, no_create=False,
+    def add_node(self, cluster_name, dns_prefix, alias=None, no_create=False,
                  image_id=None, instance_type=None, zone=None,
                  placement_group=None, spot_bid=None):
         cl = self.get_cluster(cluster_name)
+        if dns_prefix:
+            cl.dns_prefix = cluster_name
         return cl.add_node(alias=alias, image_id=image_id,
                            instance_type=instance_type, zone=zone,
                            placement_group=placement_group, spot_bid=spot_bid,
                            no_create=no_create)
 
-    def add_nodes(self, cluster_name, num_nodes, aliases=None, no_create=False,
+    def add_nodes(self, cluster_name, num_nodes, dns_prefix, aliases=None,
+                  no_create=False,
                   image_id=None, instance_type=None, zone=None,
                   placement_group=None, spot_bid=None):
         """
         Add one or more nodes to cluster
         """
         cl = self.get_cluster(cluster_name)
+        if dns_prefix:
+            cl.dns_prefix = cluster_name
         return cl.add_nodes(num_nodes, aliases=aliases, image_id=image_id,
                             instance_type=instance_type, zone=zone,
                             placement_group=placement_group, spot_bid=spot_bid,
@@ -374,6 +381,7 @@ class Cluster(object):
                  cluster_size=None,
                  cluster_user=None,
                  cluster_shell=None,
+                 dns_prefix=None,
                  master_image_id=None,
                  master_instance_type=None,
                  node_image_id=None,
@@ -425,6 +433,7 @@ class Cluster(object):
         self.disable_threads = disable_threads
         self.force_spot_master = force_spot_master
         self.disable_cloudinit = disable_cloudinit
+        self.dns_prefix = dns_prefix and cluster_tag
 
         self._cluster_group = None
         self._placement_group = None
@@ -756,6 +765,22 @@ class Cluster(object):
     def _nodes_in_states(self, states):
         return filter(lambda x: x.state in states, self.nodes)
 
+    def _make_alias(self, id=None, master=False):
+        if master:
+            if self.dns_prefix:
+                return "%s-master" % self.dns_prefix
+            else:
+                return "master"
+        elif id is not None:
+            if self.dns_prefix:
+                alias = '%s-node%.3d' % (self.dns_prefix, id)
+            else:
+                alias = 'node%.3d' % id
+        else:
+            raise AttributeError("_make_alias(...) must receive either"
+                                 " master=True or a node id number")
+        return alias
+
     @property
     def running_nodes(self):
         return self._nodes_in_states(['running'])
@@ -852,11 +877,13 @@ class Cluster(object):
         nodes = filter(lambda x: not x.is_master(), nodes)
         highest = 0
         for n in nodes:
+            match = re.search('node(\d{3})', n.alias)
             try:
-                highest = max(highest, int(n.alias[4:8]))
-            except ValueError:
-                pass
-        next = highest + 1
+                _possible_highest = match.group(1)
+            except AttributeError:
+                continue
+            highest = max(int(_possible_highest), highest)
+        next = int(highest) + 1
         log.debug("Highest node number is %d. choosing %d." % (highest, next))
         return next
 
@@ -888,10 +915,10 @@ class Cluster(object):
         if not aliases:
             next_node_id = self._get_next_node_num()
             for i in range(next_node_id, next_node_id + num_nodes):
-                alias = 'node%.3d' % i
+                alias = self._make_alias(i)
                 aliases.append(alias)
         assert len(aliases) == num_nodes
-        if "master" in aliases:
+        if self._make_alias(master=True) in aliases:
             raise exception.ClusterValidationError(
                 "worker nodes cannot have master as an alias")
         if not no_create:
@@ -958,7 +985,7 @@ class Cluster(object):
         lmap = {}
         mtype = self.master_instance_type or self.node_instance_type
         mimage = self.master_image_id or self.node_image_id
-        lmap[(mtype, mimage)] = ['master']
+        lmap[(mtype, mimage)] = [self._make_alias(master=True)]
         id_start = 1
         for itype in self.node_instance_types:
             count = itype['size']
@@ -967,7 +994,7 @@ class Cluster(object):
             if not (type, image_id) in lmap:
                 lmap[(type, image_id)] = []
             for id in range(id_start, id_start + count):
-                alias = 'node%.3d' % id
+                alias = self._make_alias(id)
                 log.debug("Launch map: %s (ami: %s, type: %s)..." %
                           (alias, image_id, type))
                 lmap[(type, image_id)].append(alias)
@@ -977,7 +1004,7 @@ class Cluster(object):
         if not (ntype, nimage) in lmap:
             lmap[(ntype, nimage)] = []
         for id in range(id_start, self.cluster_size):
-            alias = 'node%.3d' % id
+            alias = self._make_alias(id)
             log.debug("Launch map: %s (ami: %s, type: %s)..." %
                       (alias, nimage, ntype))
             lmap[(ntype, nimage)].append(alias)
@@ -1029,7 +1056,7 @@ class Cluster(object):
         for (type, image) in lmap:
             # launch all aliases that match master's itype/image_id
             aliases = lmap.get((type, image))
-            if 'master' in aliases:
+            if self._make_alias(master=True) in aliases:
                 master_map = (type, image)
                 for alias in aliases:
                     log.debug("Launching %s (ami: %s, type: %s)" %
@@ -1061,11 +1088,12 @@ class Cluster(object):
         instances *always* have an ami_launch_index of 0. This is needed in
         order to correctly assign aliases to nodes.
         """
-        (mtype, mimage) = self._get_type_and_image_id('master')
+        master_alias = self._make_alias(master=True)
+        (mtype, mimage) = self._get_type_and_image_id(master_alias)
         log.info("Launching master node (ami: %s, type: %s)..." %
                  (mimage, mtype))
         force_flat = not self.force_spot_master
-        master_response = self.create_node('master',
+        master_response = self.create_node(master_alias,
                                            image_id=mimage,
                                            instance_type=mtype,
                                            force_flat=force_flat)
@@ -1083,7 +1111,7 @@ class Cluster(object):
         if self.cluster_size <= 1:
             return
         for id in range(1, self.cluster_size):
-            alias = 'node%.3d' % id
+            alias = self._make_alias(id)
             (ntype, nimage) = self._get_type_and_image_id(alias)
             log.info("Launching %s (ami: %s, type: %s)" %
                      (alias, nimage, ntype))
@@ -1583,7 +1611,8 @@ class Cluster(object):
 
     def ssh_to_master(self, user='root', command=None, forward_x11=False,
                       forward_agent=False):
-        return self.ssh_to_node('master', user=user, command=command,
+        return self.ssh_to_node(self._make_alias(master=True),
+                                user=user, command=command,
                                 forward_x11=forward_x11,
                                 forward_agent=forward_agent)
 
@@ -1660,6 +1689,7 @@ class ClusterValidator(validators.Validator):
         log.info("Validating cluster template settings...")
         try:
             self.validate_required_settings()
+            self.validate_dns_prefix()
             self.validate_spot_bid()
             self.validate_cluster_size()
             self.validate_cluster_user()
@@ -1690,6 +1720,22 @@ class ClusterValidator(validators.Validator):
         except exception.ClusterValidationError, e:
             log.error(e.msg)
             return False
+
+    def validate_dns_prefix(self):
+        if not self.cluster.dns_prefix:
+            return True
+
+        # check that the dns prefix is a valid hostname
+        is_valid = utils.is_valid_hostname(self.cluster.dns_prefix)
+        if not is_valid:
+            raise exception.ClusterValidationError(
+                "The cluster name you chose, {dns_prefix}, is"
+                " not a valid dns name. "
+                " Since you have chosen to prepend the hostnames"
+                " via the dns_prefix option, {dns_prefix} should only have"
+                " alphanumeric characters and a '-' or '.'".format(
+                dns_prefix=self.cluster.dns_prefix))
+        return True
 
     def validate_spot_bid(self):
         cluster = self.cluster
@@ -2054,7 +2100,8 @@ class ClusterValidator(validators.Validator):
             aliases = max(lmap.values(), key=lambda x: len(x))
             ud = self.cluster._get_cluster_userdata(aliases)
         else:
-            ud = self.cluster._get_cluster_userdata(['node001'])
+            ud = self.cluster._get_cluster_userdata(
+                [self._make_alias(id=1)])
         ud_size_kb = utils.size_in_kb(ud)
         if ud_size_kb > 16:
             raise exception.ClusterValidationError(
