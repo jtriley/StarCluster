@@ -211,6 +211,10 @@ class InvalidIsoDate(BaseException):
         self.msg = "Invalid date specified: %s" % date
 
 
+class InvalidHostname(BaseException):
+    pass
+
+
 class ConfigError(BaseException):
     """Base class for all config related errors"""
 

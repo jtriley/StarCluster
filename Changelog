@@ -5,6 +5,27 @@ Version History
 .. contents::
     :local:
 
+0.95
+====
+
+.. _v094-news:
+
+News
+----
+**TODO** Version 0.95 of StarCluster is...
+
+.. _v095-features:
+
+Features
+--------
+* Option to prefix dns names of created nodes with the cluster tag
+
+.. _v094-fixes:
+
+Bug Fixes
+---------
+* 
+
 .. _version-0.94:
 
 0.94
