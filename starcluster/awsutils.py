@@ -473,9 +473,9 @@ class EasyEC2(EasyAWS):
     def request_spot_instances(self, price, image_id, instance_type='m1.small',
                                count=1, launch_group=None, key_name=None,
                                availability_zone_group=None,
-                               security_group_ids=None, subnet_id=None, placement=None,
-                               placement_group=None, user_data=None,
-                               block_device_map=None):
+                               security_group_ids=None, subnet_id=None,
+                               placement=None, placement_group=None,
+                               user_data=None, block_device_map=None):
         kwargs = locals()
         kwargs.pop('self')
         return self.conn.request_spot_instances(**kwargs)
