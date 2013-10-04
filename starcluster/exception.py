@@ -547,7 +547,7 @@ Please terminate the cluster using:
 """
 
     def __init__(self, group):
-        tag = group.name.replace(static.SECURITY_GROUP_PREFIX + '-', '')
+        tag = group.name.replace(static.SECURITY_GROUP_PREFIX, '')
         states = ['pending', 'running', 'stopping', 'stopped']
         insts = group.connection.get_all_instances(
             filters={'instance-state-name': states,

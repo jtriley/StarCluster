@@ -170,7 +170,7 @@ class ClusterManager(managers.Manager):
         """
         Returns human readable cluster name/tag prefixed with '@sc-'
         """
-        if not cluster_name.startswith(static.SECURITY_GROUP_TEMPLATE % ''):
+        if not cluster_name.startswith(static.SECURITY_GROUP_PREFIX):
             cluster_name = static.SECURITY_GROUP_TEMPLATE % cluster_name
         return cluster_name
 
@@ -703,14 +703,14 @@ class Cluster(object):
                  disable_cloudinit=self.disable_cloudinit),
             use_json=True)
         if not static.CORE_TAG in sg.tags:
-            sg.add_tag('@sc-core', core_settings)
+            sg.add_tag(static.CORE_TAG, core_settings)
         user_settings = utils.dump_compress_encode(
             dict(cluster_user=self.cluster_user,
                  cluster_shell=self.cluster_shell,
                  keyname=self.keyname,
                  spot_bid=self.spot_bid), use_json=True)
         if not static.USER_TAG in sg.tags:
-            sg.add_tag('@sc-user', user_settings)
+            sg.add_tag(static.USER_TAG, user_settings)
 
     def _vpc_securitygroup_from_clusterprops(self):
         # use a dummy description
