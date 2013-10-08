@@ -84,9 +84,8 @@ class S3cmdPlugin(clustersetup.ClusterSetup):
         self.config_dict["use_https"] = use_https
 
     def run(self, nodes, master, user, shell, volumes):
-        conn = master.ec2._conn
-        self.config_dict["aws_access_key_id"] = conn.aws_access_key_id
-        self.config_dict["aws_secret_access_key"] = conn.aws_secret_access_key
+        self.config_dict["aws_access_key_id"] = master.ec2.aws_access_key_id
+        self.config_dict["aws_secret_access_key"] = master.ec2.aws_secret_access_key
         mssh = master.ssh
         mssh.switch_user(user)
         s3cmd_cfg = "/home/%s/.s3cfg" % user
