@@ -195,12 +195,12 @@ class ClusterManager(managers.Manager):
             raise exception.InstanceDoesNotExist(alias, label='node')
         cl.remove_node(n, terminate=terminate)
 
-    def restart_cluster(self, cluster_name):
+    def restart_cluster(self, cluster_name, reboot_only=False):
         """
         Reboots and reconfigures cluster_name
         """
         cl = self.get_cluster(cluster_name)
-        cl.restart_cluster()
+        cl.restart_cluster(reboot_only=reboot_only)
 
     def stop_cluster(self, cluster_name, terminate_unstoppable=False,
                      force=False):
@@ -1360,7 +1360,7 @@ class Cluster(object):
             node.detach_external_volumes()
 
     @print_timing('Restarting cluster')
-    def restart_cluster(self):
+    def restart_cluster(self, reboot_only=False):
         """
         Reboot all instances and reconfigure the cluster
         """
@@ -1371,6 +1371,8 @@ class Cluster(object):
         log.info("Rebooting cluster...")
         for node in nodes:
             node.reboot()
+        if reboot_only:
+            return
         sleep = 20
         log.info("Sleeping for %d seconds..." % sleep)
         time.sleep(sleep)
