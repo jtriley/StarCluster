@@ -88,7 +88,7 @@ class S3cmdPlugin(clustersetup.ClusterSetup):
         mssh.switch_user(user)
         s3cmd_cfg = "/home/%s/.s3cfg" % user
         if not mssh.path_exists(s3cmd_cfg):
-            log.info("Installing .s3cfg file for user: %s" % user)
+            log.info("Installing ~/.s3cfg file for user: %s" % user)
             if self.s3cmd_cfg:
                 log.info("Copying %s to %s" % (self.s3cmd_cfg, s3cmd_cfg))
                 mssh.put(self.s3cmd_cfg, s3cmd_cfg)
@@ -99,4 +99,4 @@ class S3cmdPlugin(clustersetup.ClusterSetup):
                 f.close()
             mssh.chmod(0400, s3cmd_cfg)
         else:
-            log.warn("AWS credentials already present - skipping install")
+            log.warn("S3cmd configuration file already present - skipping install")
