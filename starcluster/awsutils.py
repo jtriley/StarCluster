@@ -414,8 +414,10 @@ class EasyEC2(EasyAWS):
         """
         if not block_device_map:
             img = self.get_image(image_id)
+            is_s3 = img.root_device_type == 'instance-store'
             bdmap = self.create_block_device_map(add_ephemeral_drives=True,
-                                                 num_ephemeral_drives=24)
+                                                 num_ephemeral_drives=24,
+                                                 instance_store=is_s3)
             # Prune drives from runtime block device map that may override EBS
             # volumes specified in the AMIs block device map
             for dev in img.block_device_mapping:
@@ -1068,7 +1070,7 @@ class EasyEC2(EasyAWS):
     def create_block_device_map(self, root_snapshot_id=None,
                                 root_device_name='/dev/sda1',
                                 add_ephemeral_drives=False,
-                                num_ephemeral_drives=24):
+                                num_ephemeral_drives=24, instance_store=False):
         """
         Utility method for building a new block_device_map for a given snapshot
         id. This is useful when creating a new image from a volume snapshot.
@@ -1080,14 +1082,22 @@ class EasyEC2(EasyAWS):
             sda1.snapshot_id = root_snapshot_id
             sda1.delete_on_termination = True
             bmap[root_device_name] = sda1
-        drives = ['/dev/xvd%s%%s' % s for s in string.lowercase]
         if add_ephemeral_drives:
-            for i in range(num_ephemeral_drives):
-                j, k = i % 26, i / 26
-                device_fmt = drives[k]
-                eph = boto.ec2.blockdevicemapping.BlockDeviceType()
-                eph.ephemeral_name = 'ephemeral%d' % i
-                bmap[device_fmt % chr(ord('a') + j)] = eph
+            if not instance_store:
+                drives = ['/dev/xvd%s%%s' % s for s in string.lowercase]
+                for i in range(num_ephemeral_drives):
+                    j, k = i % 26, i / 26
+                    device_fmt = drives[k]
+                    eph = boto.ec2.blockdevicemapping.BlockDeviceType()
+                    eph.ephemeral_name = 'ephemeral%d' % i
+                    bmap[device_fmt % chr(ord('a') + j)] = eph
+            else:
+                drives = ['sd%s%d' % (s, i) for i in range(1, 10)
+                          for s in string.lowercase[1:]]
+                for i in range(num_ephemeral_drives):
+                    eph = boto.ec2.blockdevicemapping.BlockDeviceType()
+                    eph.ephemeral_name = 'ephemeral%d' % i
+                    bmap[drives[i]] = eph
         return bmap
 
     @print_timing("Downloading image")
