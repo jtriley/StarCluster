@@ -90,7 +90,7 @@ class S3cmdPlugin(clustersetup.ClusterSetup):
         mssh.switch_user(user)
         s3cmd_cfg = "/home/%s/.s3cfg" % user
         if not mssh.path_exists(s3cmd_cfg):
-            log.info("Installing ~/.s3cfg file for user: %s" % user)
+            log.info("Configuring s3cmd for user: %s" % user)
             if self.s3cmd_cfg:
                 log.info("Copying %s to %s" % (self.s3cmd_cfg, s3cmd_cfg))
                 mssh.put(self.s3cmd_cfg, s3cmd_cfg)
