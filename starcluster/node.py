@@ -81,8 +81,8 @@ class Node(object):
     """
     def __init__(self, instance, key_location, alias=None, user='root'):
         self.instance = instance
-        self.ec2 = awsutils.EasyEC2(None, None)
-        self.ec2._conn = instance.connection
+        self.ec2 = awsutils.EasyEC2(instance.connection.aws_access_key_id,
+                                    instance.connection.aws_secret_access_key)
         self.key_location = key_location
         self.user = user
         self._alias = alias
