@@ -36,8 +36,10 @@ follow_symlinks = False
 force = False
 get_continue = False
 gpg_command = %(gpg_command)s
-gpg_decrypt = %(gpg_command)s -d --verbose --no-use-agent --batch --yes --passphrase-fd %%(passphrase_fd)s -o %%(output_file)s %%(input_file)s
-gpg_encrypt = %(gpg_command)s -c --verbose --no-use-agent --batch --yes --passphrase-fd %%(passphrase_fd)s -o %%(output_file)s %%(input_file)s
+gpg_decrypt = %(gpg_command)s -d --verbose --no-use-agent --batch\
+ --yes --passphrase-fd %%(passphrase_fd)s -o %%(output_file)s %%(input_file)s
+gpg_encrypt = %(gpg_command)s -c --verbose --no-use-agent --batch\
+ --yes --passphrase-fd %%(passphrase_fd)s -o %%(output_file)s %%(input_file)s
 gpg_passphrase = %(gpg_passphrase)s
 guess_mime_type = True
 host_base = s3.amazonaws.com
@@ -45,12 +47,12 @@ host_bucket = %%(bucket)s.s3.amazonaws.com
 human_readable_sizes = False
 invalidate_on_cf = False
 list_md5 = False
-log_target_prefix = 
-mime_type = 
+log_target_prefix =
+mime_type =
 multipart_chunk_size_mb = 15
 preserve_attrs = True
 progress_meter = True
-proxy_host = 
+proxy_host =
 proxy_port = 0
 recursive = False
 recv_chunk = 4096
@@ -64,7 +66,7 @@ urlencoding_mode = normal
 use_https = %(use_https)s
 verbosity = WARNING
 website_endpoint = http://%%(bucket)s.s3-website-%%(location)s.amazonaws.com/
-website_error = 
+website_error =
 website_index = index.html
 """
 
@@ -73,17 +75,18 @@ class S3cmdPlugin(clustersetup.ClusterSetup):
     """
     Plugin that configures a ~/.s3cfg file for CLUSTER_USER
     """
-    def __init__(self, s3cmd_cfg=None, gpg_command='/usr/bin/gpg', gpg_passphrase="", use_https=False):
+    def __init__(self, s3cmd_cfg=None, gpg_command='/usr/bin/gpg',
+                 gpg_passphrase="", use_https=False):
         self.s3cmd_cfg = os.path.expanduser(s3cmd_cfg or '') or None
         self.config_dict = {}
         self.config_dict["gpg_command"] = gpg_command
         self.config_dict["gpg_passphrase"] = gpg_passphrase
         self.config_dict["use_https"] = use_https
-        
 
     def run(self, nodes, master, user, shell, volumes):
-        self.config_dict["aws_access_key_id"] = master.ec2._conn.aws_access_key_id
-        self.config_dict["aws_secret_access_key"] = master.ec2._conn.aws_secret_access_key
+        conn = master.ec2._conn
+        self.config_dict["aws_access_key_id"] = conn.aws_access_key_id
+        self.config_dict["aws_secret_access_key"] = conn.aws_secret_access_key
         mssh = master.ssh
         mssh.switch_user(user)
         s3cmd_cfg = "/home/%s/.s3cfg" % user
@@ -99,4 +102,4 @@ class S3cmdPlugin(clustersetup.ClusterSetup):
                 f.close()
             mssh.chmod(0400, s3cmd_cfg)
         else:
-            log.warn("S3cmd configuration file already present - skipping install")
+            log.warn("~/.s3cfg file already present - skipping install")
