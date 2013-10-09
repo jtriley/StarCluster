@@ -71,7 +71,7 @@ website_index = index.html
 """
 
 
-class S3cmdPlugin(clustersetup.ClusterSetup):
+class S3CmdPlugin(clustersetup.ClusterSetup):
     """
     Plugin that configures a ~/.s3cfg file for CLUSTER_USER
     """
