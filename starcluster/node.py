@@ -814,7 +814,16 @@ class Node(object):
         hostname_file = self.ssh.remote_file("/etc/hostname", "w")
         hostname_file.write(hostname)
         hostname_file.close()
-        self.ssh.execute('hostname -F /etc/hostname')
+        try:
+            self.ssh.execute('hostname -F /etc/hostname')
+        except:
+            if not utils.is_valid_hostname(hostname):
+                raise exception.InvalidHostname(
+                    "Please terminate and recreate this cluster with a name"
+                    " that is also a valid hostname.  This hostname is"
+                    " invalid: %s" % hostname)
+            else:
+                raise
 
     @property
     def network_names(self):
@@ -880,7 +889,8 @@ class Node(object):
             return spot[0]
 
     def is_master(self):
-        return self.alias == "master"
+        return str(self._alias) == 'master' \
+            or str(self._alias).endswith("-master")
 
     def is_instance_store(self):
         return self.instance.root_device_type == "instance-store"
