@@ -70,6 +70,13 @@ class CmdAddNode(ClusterCompleter):
     tag = None
 
     def addopts(self, parser):
+        templates = []
+        if self.cfg:
+            templates = self.cfg.clusters.keys()
+        parser.add_option(
+            "-c", "--cluster-template", action="store",
+            dest="cluster_template", choices=templates, default=None,
+            help="cluster template to use from the config file")
         parser.add_option(
             "-a", "--alias", dest="alias", action="append", type="string",
             default=[], help="alias to give to the new node "
@@ -139,4 +146,5 @@ class CmdAddNode(ClusterCompleter):
                           instance_type=self.opts.instance_type,
                           zone=self.opts.zone, spot_bid=self.opts.spot_bid,
                           no_create=self.opts.no_create,
-                          dns_prefix=self.opts.dns_prefix)
+                          dns_prefix=self.opts.dns_prefix,
+                          template=self.opts.cluster_template)
