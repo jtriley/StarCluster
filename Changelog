@@ -21,6 +21,8 @@ News
 Features
 --------
 * Option to prefix dns names of created nodes with the cluster tag
+* Added --force option to removenode
+* Added -c <cluster_template> option to addnode and removenode
 
 .. _v094-fixes:
 
