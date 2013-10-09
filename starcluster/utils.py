@@ -179,6 +179,20 @@ def is_valid_image_name(image_name):
         return False
 
 
+def is_valid_hostname(hostname):
+    """From StackOverflow on 2013-10-04:
+
+    http://stackoverflow.com
+    /questions/2532053/validate-a-hostname-string#answer-2532344
+    """
+    if len(hostname) > 255:
+        return False
+    if hostname[-1] == ".":
+        hostname = hostname[:-1]  # strip exactly one dot from the right
+    allowed = re.compile("(?!-)[A-Z\d-]{1,63}(?<!-)$", re.IGNORECASE)
+    return all(allowed.match(x) for x in hostname.split("."))
+
+
 def make_one_liner(script):
     """
     Returns command to execute python script as a one-line python program

@@ -318,6 +318,9 @@ template in detail.
 | cluster_shell        | No       | Sets the cluster user's shell (default: bash, options: bash, zsh, csh, ksh,     |
 |                      |          | tcsh)                                                                           |
 +----------------------+----------+---------------------------------------------------------------------------------+
+| dns_prefix           | No       | If True, prefixes the dns name of nodes with the cluster tag.
+|                      |          | For example:  master --> mycluster-master
++----------------------+----------+---------------------------------------------------------------------------------+
 | master_image_id      | No       | The AMI to use for the master node. (defaults to **node_image_id**)             |
 +----------------------+----------+---------------------------------------------------------------------------------+
 | master_instance_type | No       | The instance type for the master node. (defaults to **node_instance_type**)     |

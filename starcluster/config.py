@@ -620,6 +620,7 @@ class StarClusterConfig(object):
                                                        debug=DEBUG_CONFIG)
             if not ec2_conn:
                 ec2_conn = self.get_easy_ec2()
+
             clust = Cluster(ec2_conn, **kwargs)
             return clust
         except KeyError:

@@ -814,7 +814,16 @@ class Node(object):
         hostname_file = self.ssh.remote_file("/etc/hostname", "w")
         hostname_file.write(hostname)
         hostname_file.close()
-        self.ssh.execute('hostname -F /etc/hostname')
+        try:
+            self.ssh.execute('hostname -F /etc/hostname')
+        except:
+            if not utils.is_valid_hostname(hostname):
+                raise exception.InvalidHostname(
+                    "Please terminate and recreate this cluster with a name"
+                    " that is also a valid hostname.  This hostname is"
+                    " invalid: %s" % hostname)
+            else:
+                raise
 
     @property
     def network_names(self):
@@ -880,7 +889,8 @@ class Node(object):
             return spot[0]
 
     def is_master(self):
-        return self.alias == "master"
+        return str(self._alias) == 'master' \
+            or str(self._alias).endswith("-master")
 
     def is_instance_store(self):
         return self.instance.root_device_type == "instance-store"
@@ -1005,9 +1015,20 @@ class Node(object):
         return self.state
 
     @property
+    def addr(self):
+        if self.instance.vpc_id:
+            #if instance has an elastic ip
+            if self.instance.ip_address:
+                return self.instance.ip_adress
+            else:
+                return self.instance.private_ip_address
+        else:
+            return self.instance.dns_name
+
+    @property
     def ssh(self):
         if not self._ssh:
-            self._ssh = sshutils.SSHClient(self.instance.dns_name,
+            self._ssh = sshutils.SSHClient(self.addr,
                                            username=self.user,
                                            private_key=self.key_location)
         return self._ssh
@@ -1041,8 +1062,11 @@ class Node(object):
                 sshopts += ' -Y'
             if forward_agent:
                 sshopts += ' -A'
+            addr = self.dns_name
+            if self.instance.vpc_id:
+                addr = self.private_ip_address
             ssh_cmd = static.SSH_TEMPLATE % dict(opts=sshopts, user=user,
-                                                 host=self.dns_name)
+                                                 host=addr)
             if command:
                 command = "'source /etc/profile && %s'" % command
                 ssh_cmd = ' '.join([ssh_cmd, command])

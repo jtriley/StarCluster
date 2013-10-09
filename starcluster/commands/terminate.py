@@ -50,6 +50,11 @@ class CmdTerminate(ClusterCompleter):
         parser.add_option("-f", "--force", dest="force", action="store_true",
                           default=False,  help="Terminate cluster regardless "
                           "of errors if possible ")
+        parser.add_option("-P", "--dns-prefix", action="store_true",
+                          help=("Let starcluster know that the master's dns"
+                                " name starts with the tag name.  ie: "
+                                " mycluster-master.  This is only necessary if"
+                                " you prefix nodes with the cluster tag"))
 
     def _terminate_cluster(self, cl):
         if not self.opts.confirm:
@@ -81,6 +86,8 @@ class CmdTerminate(ClusterCompleter):
         try:
             cl = self.cm.get_cluster(cluster_name, load_receipt=not force,
                                      require_keys=not force)
+            if self.opts.dns_prefix:
+                cl.dns_prefix = cluster_name
             if force:
                 self._terminate_manually(cl)
             else:

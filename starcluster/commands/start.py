@@ -153,6 +153,9 @@ class CmdStart(ClusterCompleter):
                           action="append", default=None, metavar="FILE",
                           help="Path to userdata script that will run on "
                           "each node on start-up. Can be used multiple times.")
+        parser.add_option("-P", "--dns-prefix", action='store_true',
+                          help=("Prefix dns names of all nodes in the cluster"
+                                "with the cluster tag"))
 
     def execute(self, args):
         if len(args) != 1:
@@ -209,6 +212,8 @@ class CmdStart(ClusterCompleter):
                                        'tag': tag}
             if not validate_only and not create_only:
                 self.warn_experimental(msg, num_secs=5)
+        if self.opts.dns_prefix:
+            scluster.dns_prefix = tag
         try:
             scluster.start(create=create, create_only=create_only,
                            validate=validate, validate_only=validate_only,
