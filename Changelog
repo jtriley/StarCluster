@@ -30,13 +30,14 @@ Features
 * Updated base AMIs to latest 12.04 versions
 * OGS (formerly SGE): set default parallel environment allocation_rule to $fill_up
 * Added authentication agent forwarding to sshmaster, sshnode, and sshinstance
-* Support for loading config based on STARCLUSTER_CONFIG environment variable
+* Support for loading config based on ``$STARCLUSTER_CONFIG`` environment
+  variable
 * New plugin to install python packages with pip (pypkginstaller plugin)
 * New plugin that either copies or autogenerates a boto config for the cluster
   user
-* Added --force option to terminate/stop commands
+* Added ``--force`` option to terminate/stop commands
 * Add tags and virtualization type to listinstance output
-* Add --zone (-z) option to spothistory command
+* Add ``--zone`` (``-z``) option to spothistory command
 
 .. _v094-fixes:
 
@@ -48,20 +49,20 @@ Bug Fixes
 * awsutils: use 3 decimal places in spot history prices
 * cluster: fix thread leak when running plugins
 * cluster: store cluster metadata in userdata/tags
-* cluster: dont launch master as spot when cluster_size=1
+* cluster: dont launch master as spot when ``CLUSTER_SIZE=1``
 * cluster: reraise uncaught exceptions in run_plugins
 * cluster: fix instance filtering for default VPC
 * cluster: only clean-up placement groups in supported regions
 * clustersetup: ebs volume mounting improvements
-* clustersetup: raise exception if user's $HOME is owned by root
+* clustersetup: raise exception if user's ``$HOME`` is owned by root
 * improve ebs volume device and partition detection
 * config: allow inline comments in the config file
-* config: support [vol] shortcut in config
+* config: support ``[vol]`` shortcut in config
 * config: document/warn where/when env overrides cfg
 * threadpool: clear the exceptions queue in wait()
 * node: fix Node.root_device_name for misconfigured AMIs
 * node: fix ~/.ssh ownership in generate_key_for_user
-* sge: Export DRMAA_LIBRARY_PATH for Python DRMAA
+* sge: Export ``$DRMAA_LIBRARY_PATH`` for Python DRMAA
 * cli: use logging module to log/show exceptions
 * cli: write header to sys.stderr
 * logger: move console logs from stderr to stdout
