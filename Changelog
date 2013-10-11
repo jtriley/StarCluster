@@ -5,6 +5,54 @@ Version History
 .. contents::
     :local:
 
+.. _version-0.94.1:
+
+0.94.1
+====
+
+.. _v0941-news:
+
+News
+----
+Version 0.94.1 of StarCluster is a bug fix release. See the "Features" and
+"Bug Fixes" sections below for details. In general it's recommended to
+terminate all clusters before upgrading to new versions of StarCluster
+although this is not always strictly required.
+
+.. _v0941-features:
+
+Features
+--------
+* restart: add ``--reboot-only`` option
+* awsutils: force ``delete_on_termation`` on root volume when launching
+  instances
+* delay using optional imports in starcluster.utils until needed (reduces the
+  time it takes to load StarCluster)
+
+.. _v0941-fixes:
+
+Bug Fixes
+---------
+* cluster: wait for all instance and spot requests to propagate (fixes
+  'instance not found' errors and 'missing' spot requests when waiting for
+  cluster to come up)
+* cluster: terminate any instance that's been pending for more than 15 minutes
+  (fixes infinite wait due to a forever pending node)
+* s3image: fix block device map issue when host instance is EBS-backed
+* awsutils: fix custom block device map for S3 instances/AMIs
+* sshnode: fix keypair validation bug
+* node: fix for duplicate entries in known_hosts file
+* node: fix bug where credentials attributes were missing from node.ec2 object
+* loadbalancer: always pass ``--utc`` when calling date command
+* loadbalancer: set matplotlib backend to Agg - allows ``--plot`` option to
+  work without a display
+* config: convert ``EC2_CERT`` and ``EC2_PRIVATE_KEY`` in ``[aws]`` section to
+  absolute path
+* config: fix typo in config template (``PROTOCOL`` -> ``IP_PROTOCOL``)
+* tmux plugin: fix race condition where ``new-window -t`` is called before
+  ``new-session`` has finished
+* spothistory: update help docs for ``--plot`` option
+
 .. _version-0.94:
 
 0.94
