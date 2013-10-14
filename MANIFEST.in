@@ -2,7 +2,7 @@ include COPYING
 include COPYING.LESSER
 include README.rst
 include Changelog
-include requirements.txt
+exclude requirements.txt
 include *.py
 recursive-include docs *
 recursive-exclude docs/sphinx/_build *
