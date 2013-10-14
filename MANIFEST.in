@@ -5,6 +5,7 @@ include Changelog
 include requirements.txt
 include *.py
 recursive-include docs *
+recursive-exclude docs/sphinx/_build *
 recursive-include utils *
 recursive-include completion *
 recursive-include starcluster/templates/web *
