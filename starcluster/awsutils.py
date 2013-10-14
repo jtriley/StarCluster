@@ -82,11 +82,12 @@ class EasyAWS(object):
                         "the [aws info] section of your config to skip SSL "
                         "certificate verification and suppress this error AT "
                         "YOUR OWN RISK.")
+            if not boto_config.has_section('Boto'):
+                boto_config.add_section('Boto')
             # Hack to get around the fact that boto ignores validate_certs
             # if https_validate_certificates is declared in the boto config
-            if boto_config.has_option('Boto', 'https_validate_certificates'):
-                boto_config.setbool('Boto', 'https_validate_certificates',
-                                    validate_certs)
+            boto_config.setbool('Boto', 'https_validate_certificates',
+                                validate_certs)
             self._conn = self.connection_authenticator(
                 self.aws_access_key_id, self.aws_secret_access_key,
                 **self._kwargs)
@@ -413,8 +414,10 @@ class EasyEC2(EasyAWS):
         """
         if not block_device_map:
             img = self.get_image(image_id)
+            is_s3 = img.root_device_type == 'instance-store'
             bdmap = self.create_block_device_map(add_ephemeral_drives=True,
-                                                 num_ephemeral_drives=24)
+                                                 num_ephemeral_drives=24,
+                                                 instance_store=is_s3)
             # Prune drives from runtime block device map that may override EBS
             # volumes specified in the AMIs block device map
             for dev in img.block_device_mapping:
@@ -424,6 +427,11 @@ class EasyEC2(EasyAWS):
                     log.debug("Removing %s from runtime block device map" %
                               dev)
                     bdmap.pop(dev)
+            if img.root_device_name in img.block_device_mapping:
+                log.debug("Forcing delete_on_termination for AMI: %s" % img.id)
+                root = img.block_device_mapping[img.root_device_name]
+                root.delete_on_termination = True
+                bdmap[img.root_device_name] = root
             block_device_map = bdmap
         if price:
             return self.request_spot_instances(
@@ -455,6 +463,61 @@ class EasyEC2(EasyAWS):
             availability_zone_group=availability_zone_group,
             placement=placement, placement_group=placement_group,
             user_data=user_data, block_device_map=block_device_map)
+
+    def _wait_for_propagation(self, obj_ids, fetch_func, id_filter, obj_name,
+                              max_retries=5, interval=5):
+        """
+        Wait for a list of object ids to appear in the AWS API. Requires a
+        function that fetches the objects and also takes a filters kwarg. The
+        id_filter specifies the id filter to use for the objects and
+        obj_name describes the objects for log messages.
+        """
+        filters = {id_filter: obj_ids}
+        num_objs = len(obj_ids)
+        num_reqs = 0
+        reqs_ids = []
+        max_retries = max(1, max_retries)
+        interval = max(1, interval)
+        s = utils.get_spinner("Waiting for %s to propagate..." % obj_name)
+        try:
+            for i in range(max_retries):
+                reqs = fetch_func(filters=filters)
+                reqs_ids = [req.id for req in reqs]
+                num_reqs = len(reqs)
+                if num_reqs != num_objs:
+                    log.debug("%d: only %d/%d %s have "
+                              "propagated - sleeping..." %
+                              (i, num_reqs, num_objs, obj_name))
+                    time.sleep(interval)
+                else:
+                    return
+        finally:
+            s.stop()
+        log.warn("Only %d/%d %s propagated..." %
+                 (num_reqs, num_objs, obj_name))
+        missing = [oid for oid in obj_ids if oid not in reqs_ids]
+        log.warn("Missing %s: %s" % (obj_name, ', '.join(missing)))
+
+    def wait_for_propagation(self, instances=None, spot_requests=None,
+                             max_retries=5, interval=5):
+        """
+        Wait for newly created instances and/or spot_requests to register in
+        the AWS API by repeatedly calling get_all_{instances, spot_requests}.
+        Calling this method directly after creating new instances or spot
+        requests before operating on them helps to avoid eventual consistency
+        errors about instances or spot requests not existing.
+        """
+        if spot_requests:
+            spot_ids = [getattr(s, 'id', s) for s in spot_requests]
+            self._wait_for_propagation(
+                spot_ids, self.get_all_spot_requests,
+                'spot-instance-request-id', 'spot requests',
+                max_retries=max_retries, interval=interval)
+        if instances:
+            instance_ids = [getattr(i, 'id', i) for i in instances]
+            self._wait_for_propagation(
+                instance_ids, self.get_all_instances, 'instance-id',
+                'instances', max_retries=max_retries, interval=interval)
 
     def run_instances(self, image_id, instance_type='m1.small', min_count=1,
                       max_count=1, key_name=None, security_groups=None,
@@ -1007,7 +1070,7 @@ class EasyEC2(EasyAWS):
     def create_block_device_map(self, root_snapshot_id=None,
                                 root_device_name='/dev/sda1',
                                 add_ephemeral_drives=False,
-                                num_ephemeral_drives=24):
+                                num_ephemeral_drives=24, instance_store=False):
         """
         Utility method for building a new block_device_map for a given snapshot
         id. This is useful when creating a new image from a volume snapshot.
@@ -1019,14 +1082,22 @@ class EasyEC2(EasyAWS):
             sda1.snapshot_id = root_snapshot_id
             sda1.delete_on_termination = True
             bmap[root_device_name] = sda1
-        drives = ['/dev/xvd%s%%s' % s for s in string.lowercase]
         if add_ephemeral_drives:
-            for i in range(num_ephemeral_drives):
-                j, k = i % 26, i / 26
-                device_fmt = drives[k]
-                eph = boto.ec2.blockdevicemapping.BlockDeviceType()
-                eph.ephemeral_name = 'ephemeral%d' % i
-                bmap[device_fmt % chr(ord('a') + j)] = eph
+            if not instance_store:
+                drives = ['/dev/xvd%s%%s' % s for s in string.lowercase]
+                for i in range(num_ephemeral_drives):
+                    j, k = i % 26, i / 26
+                    device_fmt = drives[k]
+                    eph = boto.ec2.blockdevicemapping.BlockDeviceType()
+                    eph.ephemeral_name = 'ephemeral%d' % i
+                    bmap[device_fmt % chr(ord('a') + j)] = eph
+            else:
+                drives = ['sd%s%d' % (s, i) for i in range(1, 10)
+                          for s in string.lowercase[1:]]
+                for i in range(num_ephemeral_drives):
+                    eph = boto.ec2.blockdevicemapping.BlockDeviceType()
+                    eph.ephemeral_name = 'ephemeral%d' % i
+                    bmap[drives[i]] = eph
         return bmap
 
     @print_timing("Downloading image")

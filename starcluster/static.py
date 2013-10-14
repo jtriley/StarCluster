@@ -55,7 +55,7 @@ def create_sc_config_dirs():
     __makedirs(STARCLUSTER_LOG_DIR)
 
 
-VERSION = "0.94"
+VERSION = "0.94.1"
 PID = os.getpid()
 TMP_DIR = tempfile.gettempdir()
 if os.path.exists("/tmp"):
@@ -177,8 +177,8 @@ AWS_SETTINGS = {
     'aws_access_key_id': (str, True, None, None, None),
     'aws_secret_access_key': (str, True, None, None, None),
     'aws_user_id': (str, False, None, None, None),
-    'ec2_cert': (str, False, None, None, None),
-    'ec2_private_key': (str, False, None, None, None),
+    'ec2_cert': (str, False, None, None, __expand_all),
+    'ec2_private_key': (str, False, None, None, __expand_all),
     'aws_port': (int, False, None, None, None),
     'aws_ec2_path': (str, False, '/', None, None),
     'aws_s3_path': (str, False, '/', None, None),

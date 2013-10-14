@@ -205,32 +205,32 @@ NODE_INSTANCE_TYPE = m1.small
 ## Configuring Security Group Permissions ##
 ############################################
 # Sections starting with "permission" define security group rules to
-# automatically apply to newly created clusters. PROTOCOL in the following
+# automatically apply to newly created clusters. IP_PROTOCOL in the following
 # examples can be can be: tcp, udp, or icmp. CIDR_IP defaults to 0.0.0.0/0 or
 # "open to the # world"
 
 # open port 80 on the cluster to the world
 # [permission http]
-# PROTOCOL = tcp
+# IP_PROTOCOL = tcp
 # FROM_PORT = 80
 # TO_PORT = 80
 
 # open https on the cluster to the world
 # [permission https]
-# PROTOCOL = tcp
+# IP_PROTOCOL = tcp
 # FROM_PORT = 443
 # TO_PORT = 443
 
 # open port 80 on the cluster to an ip range using CIDR_IP
 # [permission http]
-# PROTOCOL = tcp
+# IP_PROTOCOL = tcp
 # FROM_PORT = 80
 # TO_PORT = 80
 # CIDR_IP = 18.0.0.0/8
 
 # restrict ssh access to a single ip address (<your_ip>)
 # [permission ssh]
-# PROTOCOL = tcp
+# IP_PROTOCOL = tcp
 # FROM_PORT = 22
 # TO_PORT = 22
 # CIDR_IP = <your_ip>/32

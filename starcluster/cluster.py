@@ -21,6 +21,7 @@ import time
 import string
 import pprint
 import warnings
+import datetime
 
 import iptools
 
@@ -150,6 +151,7 @@ class ClusterManager(managers.Manager):
         node = cluster.get_node_by_alias(node_id)
         key_location = self.cfg.get_key(node.key_name).get('key_location')
         cluster.key_location = key_location
+        cluster.keyname = node.key_name
         cluster.validator.validate_keypair()
         return node.shell(user=user, forward_x11=forward_x11,
                           forward_agent=forward_agent, command=command)
@@ -193,12 +195,12 @@ class ClusterManager(managers.Manager):
             raise exception.InstanceDoesNotExist(alias, label='node')
         cl.remove_node(n, terminate=terminate)
 
-    def restart_cluster(self, cluster_name):
+    def restart_cluster(self, cluster_name, reboot_only=False):
         """
         Reboots and reconfigures cluster_name
         """
         cl = self.get_cluster(cluster_name)
-        cl.restart_cluster()
+        cl.restart_cluster(reboot_only=reboot_only)
 
     def stop_cluster(self, cluster_name, terminate_unstoppable=False,
                      force=False):
@@ -590,7 +592,6 @@ class Cluster(object):
                                      sr.instance_id]
                 if unfulfilled_spots:
                     self.wait_for_active_spots()
-                    self.wait_for_active_instances()
                     master = self.master_node
                 else:
                     raise
@@ -899,10 +900,14 @@ class Cluster(object):
                     raise exception.ClusterValidationError(
                         "node with alias %s already exists" % node.alias)
             log.info("Launching node(s): %s" % ', '.join(aliases))
-            self.create_nodes(aliases, image_id=image_id,
-                              instance_type=instance_type, zone=zone,
-                              placement_group=placement_group,
-                              spot_bid=spot_bid)
+            resp = self.create_nodes(aliases, image_id=image_id,
+                                     instance_type=instance_type, zone=zone,
+                                     placement_group=placement_group,
+                                     spot_bid=spot_bid)
+            if spot_bid or self.spot_bid:
+                self.ec2.wait_for_propagation(spot_requests=resp)
+            else:
+                self.ec2.wait_for_propagation(instances=resp[0].instances)
         self.wait_for_cluster(msg="Waiting for node(s) to come up...")
         log.debug("Adding node(s): %s" % aliases)
         for alias in aliases:
@@ -926,9 +931,6 @@ class Cluster(object):
                              node=node, reverse=True)
             if not terminate:
                 continue
-            if node.spot_id:
-                log.info("Canceling spot request %s" % node.spot_id)
-                node.get_spot_request().cancel()
             node.terminate()
 
     def _get_launch_map(self, reverse=False):
@@ -1023,6 +1025,7 @@ class Cluster(object):
         lmap = self._get_launch_map()
         zone = None
         master_map = None
+        insts = []
         for (type, image) in lmap:
             # launch all aliases that match master's itype/image_id
             aliases = lmap.get((type, image))
@@ -1035,6 +1038,7 @@ class Cluster(object):
                                                     instance_type=type,
                                                     force_flat=True)[0]
                 zone = master_response.instances[0].placement
+                insts.extend(master_response.instances)
         lmap.pop(master_map)
         if self.cluster_size <= 1:
             return
@@ -1043,8 +1047,12 @@ class Cluster(object):
             for alias in aliases:
                 log.debug("Launching %s (ami: %s, type: %s)" %
                           (alias, image, type))
-            self.create_nodes(aliases, image_id=image, instance_type=type,
-                              zone=zone, force_flat=True)
+            resv = self.create_nodes(aliases, image_id=image,
+                                     instance_type=type, zone=zone,
+                                     force_flat=True)
+            insts.extend(resv[0].instances)
+        if insts:
+            self.ec2.wait_for_propagation(instances=insts)
 
     def _create_spot_cluster(self):
         """
@@ -1061,14 +1069,17 @@ class Cluster(object):
                                            image_id=mimage,
                                            instance_type=mtype,
                                            force_flat=force_flat)
+        insts, spot_reqs = [], []
         zone = None
         if not force_flat and self.spot_bid:
             # Make sure nodes are in same zone as master
             launch_spec = master_response.launch_specification
             zone = launch_spec.placement
+            spot_reqs.append(master_response)
         else:
             # Make sure nodes are in same zone as master
             zone = master_response.instances[0].placement
+            insts.extend(master_response.instances)
         if self.cluster_size <= 1:
             return
         for id in range(1, self.cluster_size):
@@ -1076,8 +1087,10 @@ class Cluster(object):
             (ntype, nimage) = self._get_type_and_image_id(alias)
             log.info("Launching %s (ami: %s, type: %s)" %
                      (alias, nimage, ntype))
-            self.create_node(alias, image_id=nimage, instance_type=ntype,
-                             zone=zone)
+            spot_req = self.create_node(alias, image_id=nimage,
+                                        instance_type=ntype, zone=zone)
+            spot_reqs.append(spot_req)
+        self.ec2.wait_for_propagation(instances=insts, spot_requests=spot_reqs)
 
     def is_spot_cluster(self):
         """
@@ -1229,23 +1242,13 @@ class Cluster(object):
                 if not pbar.finished:
                     time.sleep(self.refresh_interval)
                     spots = self.get_spot_requests_or_raise()
+                else:
+                    self.ec2.wait_for_propagation(
+                        instances=[s.instance_id for s in active_spots])
             pbar.reset()
 
-    def wait_for_active_instances(self, nodes=None):
-        """
-        Wait indefinitely for cluster nodes to show up.
-        """
-        nodes = nodes or self.nodes
-        if len(nodes) == 0:
-            s = utils.get_spinner("Waiting for instances to activate...")
-            try:
-                while len(nodes) == 0:
-                    time.sleep(self.refresh_interval)
-                    nodes = self.nodes
-            finally:
-                s.stop()
-
-    def wait_for_running_instances(self, nodes=None):
+    def wait_for_running_instances(self, nodes=None,
+                                   kill_pending_after_mins=15):
         """
         Wait until all cluster nodes are in a 'running' state
         """
@@ -1254,12 +1257,22 @@ class Cluster(object):
         pbar = self.progress_bar.reset()
         pbar.maxval = len(nodes)
         pbar.update(0)
+        now = datetime.datetime.utcnow()
+        timeout = now + datetime.timedelta(minutes=kill_pending_after_mins)
         while not pbar.finished:
-            running_nodes = filter(lambda x: x.state == "running", nodes)
+            running_nodes = [n for n in nodes if n.state == "running"]
             pbar.maxval = len(nodes)
             pbar.update(len(running_nodes))
             if not pbar.finished:
-                time.sleep(self.refresh_interval)
+                if datetime.datetime.utcnow() > timeout:
+                    pending = [n for n in nodes if n not in running_nodes]
+                    log.warn("%d nodes have been pending for >= %d mins "
+                             "- terminating" % (len(pending),
+                                                kill_pending_after_mins))
+                    for node in pending:
+                        node.terminate()
+                else:
+                    time.sleep(self.refresh_interval)
                 nodes = self.get_nodes_or_raise()
         pbar.reset()
 
@@ -1285,7 +1298,6 @@ class Cluster(object):
         log.info("%s %s" % (msg, "(updating every %ds)" % interval))
         try:
             self.wait_for_active_spots()
-            self.wait_for_active_instances()
             self.wait_for_running_instances()
             self.wait_for_ssh()
         except Exception:
@@ -1348,7 +1360,7 @@ class Cluster(object):
             node.detach_external_volumes()
 
     @print_timing('Restarting cluster')
-    def restart_cluster(self):
+    def restart_cluster(self, reboot_only=False):
         """
         Reboot all instances and reconfigure the cluster
         """
@@ -1359,6 +1371,8 @@ class Cluster(object):
         log.info("Rebooting cluster...")
         for node in nodes:
             node.reboot()
+        if reboot_only:
+            return
         sleep = 20
         log.info("Sleeping for %d seconds..." % sleep)
         time.sleep(sleep)

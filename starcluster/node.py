@@ -81,8 +81,8 @@ class Node(object):
     """
     def __init__(self, instance, key_location, alias=None, user='root'):
         self.instance = instance
-        self.ec2 = awsutils.EasyEC2(None, None)
-        self.ec2._conn = instance.connection
+        self.ec2 = awsutils.EasyEC2(instance.connection.aws_access_key_id,
+                                    instance.connection.aws_secret_access_key)
         self.key_location = key_location
         self.user = user
         self._alias = alias
@@ -551,10 +551,10 @@ class Node(object):
         """
         user = self.getpwnam(username)
         known_hosts_file = posixpath.join(user.pw_dir, '.ssh', 'known_hosts')
-        self.remove_from_known_hosts(username, nodes)
         khosts = []
         if add_self and self not in nodes:
             nodes.append(self)
+        self.remove_from_known_hosts(username, nodes)
         for node in nodes:
             server_pkey = node.ssh.get_server_public_key()
             node_names = {}.fromkeys([node.alias, node.private_dns_name,
@@ -944,6 +944,9 @@ class Node(object):
         will also destroy the node's EBS root device. Puts this node
         into a 'terminated' state.
         """
+        if self.spot_id:
+            log.info("Canceling spot request %s" % self.spot_id)
+            self.get_spot_request().cancel()
         log.info("Terminating node: %s (%s)" % (self.alias, self.id))
         return self.instance.terminate()
 
