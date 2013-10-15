@@ -250,7 +250,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
 
         #DEBUGIN stuck qrsh issue (BLUK-63)
         ps_wc = int(self._master.ssh.execute("ps -ef | grep qrsh | wc -l")[0])
-        qstat_wc = int(self._master.ssh.execute("qstat | wc -l")[0])
+        qstat_wc = int(self._master.ssh.execute("qstat -u \"*\" | wc -l")[0])
         if qstat_wc == 0 and ps_wc > 2:
             log.error("LOST QRSH??")
             from datetime import datetime
