@@ -1113,7 +1113,7 @@ class Node(object):
         /usr/bin/apt exists on the node, and use apt if it exists. Otherwise
         test to see if /usr/bin/yum exists and use that.
         """
-        if self.ssh.isfile('/usr/bin/apt'):
+        if self.ssh.isfile('/usr/bin/apt-get'):
             return "apt"
         elif self.ssh.isfile('/usr/bin/yum'):
             return "yum"
