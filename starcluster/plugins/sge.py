@@ -222,7 +222,8 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
                 cleaned.append(nodeAlias)
 
         #find jobs running in dead hosts
-        qstatsXml = self._master.ssh.execute("qstat -xml", source_profile=True)
+        qstatsXml = self._master.ssh.execute("qstat -u \"*\" -xml",
+                                             source_profile=True)
         qstatsXml[1:]  # remove first line
         qstatsET = ET.fromstringlist(qstatsXml)
         toDelete = []
@@ -256,7 +257,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             from datetime import datetime
             now = str(datetime.utcnow()).replace(" ", "_")
             log.error("Dumping qstats")
-            self._master.ssh.execute("qstat -ext > qstats_" + now)
+            self._master.ssh.execute("qstat -u \"*\" -ext > qstats_" + now)
             log.error("Dumping qacct")
             self._master.ssh.execute("qacct -j > qacct_" + now)
             log.error("pkill -9 qrsh")
