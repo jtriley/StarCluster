@@ -1002,8 +1002,8 @@ class Cluster(object):
             if node.is_master():
                 raise exception.InvalidOperation("cannot remove master node")
             try:
-                self.run_plugins(method_name="on_remove_node",
-                                node=node, reverse=True)
+                self.run_plugins(method_name="on_remove_node", node=node,
+                                 reverse=True)
             except:
                 if not force:
                     raise
@@ -1808,7 +1808,7 @@ class ClusterValidator(validators.Validator):
                 " Since you have chosen to prepend the hostnames"
                 " via the dns_prefix option, {dns_prefix} should only have"
                 " alphanumeric characters and a '-' or '.'".format(
-                dns_prefix=self.cluster.dns_prefix))
+                    dns_prefix=self.cluster.dns_prefix))
         return True
 
     def validate_spot_bid(self):
