@@ -14,7 +14,10 @@ Version History
 
 News
 ----
-**TODO** Version 0.95 of StarCluster is...
+Version 0.95 of StarCluster is a feature release with many bug fixes. See the
+"Features" and "Bug Fixes" sections below for details. Please note that this
+version is *not* compatible with clusters started with older versions of
+StarCluster. Please terminate all clusters before upgrading to 0.95.
 
 .. _v095-features:
 
@@ -24,7 +27,7 @@ Features
 * Added --force option to removenode
 * Added -c <cluster_template> option to addnode and removenode
 
-.. _v094-fixes:
+.. _v095-fixes:
 
 Bug Fixes
 ---------
