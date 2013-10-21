@@ -245,7 +245,7 @@ class EasyEC2(EasyAWS):
         group
         """
         log.info("Creating security group %s..." % name)
-        sg = self.conn.create_security_group(name, description, vpc_id)
+        sg = self.conn.create_security_group(name, description, vpc_id=vpc_id)
         while not self.get_group_or_none(name):
             log.info("Waiting for security group %s..." % name)
             time.sleep(3)
@@ -303,8 +303,9 @@ class EasyEC2(EasyAWS):
         """
         sg = self.get_group_or_none(name)
         if not sg:
-            sg = self.create_group(name, description, auth_ssh,
-                                   auth_group_traffic, vpc_id)
+            sg = self.create_group(name, description, auth_ssh=auth_ssh,
+                                   auth_group_traffic=auth_group_traffic,
+                                   vpc_id=vpc_id)
         return sg
 
     def get_security_group(self, groupname):
