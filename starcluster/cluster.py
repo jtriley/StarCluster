@@ -588,9 +588,6 @@ class Cluster(object):
         Cluster object. Settings are loaded from cluster group tags and the
         master node's user data.
         """
-        if self.vpc_id:
-            # can't save things in the description using vpc.
-            return
         if not (load_plugins or load_volumes):
             return True
         try:
