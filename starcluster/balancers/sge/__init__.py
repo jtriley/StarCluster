@@ -425,6 +425,9 @@ class SGELoadBalancer(LoadBalancer):
         self.plot_output_dir = plot_output_dir
         if plot_stats:
             assert self.visualizer is not None
+        if min_nodes > max_nodes:
+            raise exception.BaseException(
+                "min_nodes cannot be higher than max_nodes")
 
     @property
     def visualizer(self):
