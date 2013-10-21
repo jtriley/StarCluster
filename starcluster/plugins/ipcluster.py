@@ -272,7 +272,9 @@ class IPCluster(DefaultClusterSetup):
         if not port_open:
             log.info("Authorizing tcp ports [%s-%s] on %s for: %s" %
                      (port_min, port_max, world_cidr, service_name))
-            group.authorize('tcp', port_min, port_max, world_cidr)
+            node.ec2.conn.authorize_security_group(
+                group_id=group.id, ip_protocol='tcp', from_port=port_min,
+                to_port=port_max, cidr_ip=world_cidr)
 
     @print_timing("IPCluster")
     def run(self, nodes, master, user, user_shell, volumes):

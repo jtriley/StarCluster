@@ -63,6 +63,7 @@ class VolumeCreator(cluster.Cluster):
             key_location=key_location, cluster_tag=static.VOLUME_GROUP_NAME,
             cluster_size=1, cluster_user="sgeadmin", cluster_shell="bash",
             node_image_id=self._image_id,
+            vpc_id=kwargs.get('vpc_id'), subnet_id=kwargs.get('subnet_id'),
             node_instance_type=self._instance_type, force_spot_master=True)
 
     def __repr__(self):
