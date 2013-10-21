@@ -5,6 +5,28 @@ Version History
 .. contents::
     :local:
 
+.. _version-0.94.2:
+
+0.94.2
+======
+
+.. _v0942-news:
+
+News
+----
+Version 0.94.2 of StarCluster is a bug fix release. See the "Bug Fixes"
+sections below for details. In general it's recommended to terminate all
+clusters before upgrading to new versions of StarCluster although this is not
+always strictly required.
+
+.. _v0942-fixes:
+
+Bug Fixes
+---------
+* node: fixed regression where the instance's connection object was not being
+reused which was causing issues for folks using regions other than the default
+us-east-1.
+
 .. _version-0.94.1:
 
 0.94.1
