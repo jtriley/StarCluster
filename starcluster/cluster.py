@@ -656,13 +656,16 @@ class Cluster(object):
     def cluster_group(self):
         if self._cluster_group:
             return self._cluster_group
-
         sg = self.ec2.get_group_or_none(self._security_group)
         if not sg:
+            desc = 'StarCluster-%s' % static.VERSION.replace('.', '_')
             if self.vpc_id:
-                sg = self._vpc_securitygroup_from_clusterprops()
-            else:
-                sg = self._securitygroup_from_clusterprops()
+                desc += ' VPC'
+            sg = self.ec2.create_group(self._security_group,
+                                       description=desc,
+                                       auth_ssh=True,
+                                       auth_group_traffic=True,
+                                       vpc_id=self.vpc_id)
             self._add_tags_to_sg(sg)
         self._add_permissions_to_sg(sg)
         self._cluster_group = sg
@@ -708,24 +711,6 @@ class Cluster(object):
                  spot_bid=self.spot_bid), use_json=True)
         if not static.USER_TAG in sg.tags:
             sg.add_tag(static.USER_TAG, user_settings)
-
-    def _vpc_securitygroup_from_clusterprops(self):
-        desc = 'StarCluster-%s VPC' % static.VERSION.replace('.', '_')
-        sg = self.ec2.get_or_create_group(self._security_group,
-                                          desc,
-                                          vpc_id=self.vpc_id,
-                                          auth_ssh=True,
-                                          auth_group_traffic=True)
-        return sg
-
-    def _securitygroup_from_clusterprops(self):
-        desc = 'StarCluster-%s' % static.VERSION.replace('.', '_')
-        sg = self.ec2.create_group(self._security_group,
-                                   description=desc,
-                                   auth_ssh=True,
-                                   auth_group_traffic=True,
-                                   )
-        return sg
 
     @property
     def placement_group(self):
