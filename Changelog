@@ -24,8 +24,8 @@ always strictly required.
 Bug Fixes
 ---------
 * node: fixed regression where the instance's connection object was not being
-reused which was causing issues for folks using regions other than the default
-us-east-1.
+  reused which was causing issues for folks using regions other than the default
+  us-east-1.
 
 .. _version-0.94.1:
 
