@@ -459,6 +459,9 @@ class SGELoadBalancer(LoadBalancer):
             self._placement_group = None
         self.reboot_interval = reboot_interval
         self.n_reboot_restart = n_reboot_restart
+        if min_nodes > max_nodes:
+            raise exception.BaseException(
+                "min_nodes cannot be higher than max_nodes")
 
     @property
     def visualizer(self):
