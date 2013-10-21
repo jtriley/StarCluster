@@ -106,20 +106,21 @@ class EasyEC2(EasyAWS):
         if aws_region_name and aws_region_host:
             aws_region = boto.ec2.regioninfo.RegionInfo(
                 name=aws_region_name, endpoint=aws_region_host)
-        kwargs = dict(is_secure=aws_is_secure, region=aws_region,
-                      port=aws_port, path=aws_ec2_path, proxy=aws_proxy,
-                      proxy_port=aws_proxy_port, proxy_user=aws_proxy_user,
-                      proxy_pass=aws_proxy_pass,
-                      validate_certs=aws_validate_certs)
+        kwds = dict(is_secure=aws_is_secure, region=aws_region, port=aws_port,
+                    path=aws_ec2_path, proxy=aws_proxy,
+                    proxy_port=aws_proxy_port, proxy_user=aws_proxy_user,
+                    proxy_pass=aws_proxy_pass,
+                    validate_certs=aws_validate_certs)
         super(EasyEC2, self).__init__(aws_access_key_id, aws_secret_access_key,
-                                      boto.connect_ec2, **kwargs)
-        kwargs = dict(aws_s3_host=aws_s3_host, aws_s3_path=aws_s3_path,
-                      aws_port=aws_port, aws_is_secure=aws_is_secure,
-                      aws_proxy=aws_proxy, aws_proxy_port=aws_proxy_port,
-                      aws_proxy_user=aws_proxy_user,
-                      aws_proxy_pass=aws_proxy_pass,
-                      aws_validate_certs=aws_validate_certs)
-        self.s3 = EasyS3(aws_access_key_id, aws_secret_access_key, **kwargs)
+                                      boto.connect_ec2, **kwds)
+        self._conn = kwargs.get('connection')
+        kwds = dict(aws_s3_host=aws_s3_host, aws_s3_path=aws_s3_path,
+                    aws_port=aws_port, aws_is_secure=aws_is_secure,
+                    aws_proxy=aws_proxy, aws_proxy_port=aws_proxy_port,
+                    aws_proxy_user=aws_proxy_user,
+                    aws_proxy_pass=aws_proxy_pass,
+                    aws_validate_certs=aws_validate_certs)
+        self.s3 = EasyS3(aws_access_key_id, aws_secret_access_key, **kwds)
         self._regions = None
         self._platforms = None
         self._default_vpc = None
