@@ -56,6 +56,16 @@ class CmdReloadConfig(NodeCompleter):
             cluster.master_node.get_plugins_full_metadata(
                 cluster.plugins_order))
         new_plugins_conf = config.plugins_config_file_to_json(self.cfg.plugins)
+
+        #filter unused plugins
+        plugins_to_ignore = []
+        for plugin in new_plugins_conf:
+            plugin_name = plugin.split(".")[-1]
+            if plugin_name not in cluster.plugins_order:
+                plugins_to_ignore.append(plugin)
+        for plugin in plugins_to_ignore:
+            del new_plugins_conf[plugin]
+
         diff = config.json_diff(current_plugins_conf, new_plugins_conf)
         if len(diff['+']) or len(diff['-']):
             pprint.pprint(diff)
