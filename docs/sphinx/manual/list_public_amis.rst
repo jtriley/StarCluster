@@ -21,7 +21,7 @@ use the global ``-r`` option::
 At the time of writing this document the output for `us-east-1` looks like::
 
     $ starcluster listpublic
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 

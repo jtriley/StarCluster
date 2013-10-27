@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 import os
 import time
 import string
@@ -40,13 +57,18 @@ class ImageCreator(object):
         log.info('Removing private data...')
         conn = self.host_ssh
         conn.execute('find /home -maxdepth 1 -type d -exec rm -rf {}/.ssh \;')
+        log.info("Cleaning up SSH host keys")
+        conn.execute('rm -f /etc/ssh/ssh_host*key*')
+        log.info("Cleaning up /var/log")
         conn.execute('rm -f /var/log/secure')
         conn.execute('rm -f /var/log/lastlog')
-        conn.execute('rm -rf /root/*')
-        conn.execute('rm -f ~/.bash_history')
-        conn.execute('rm -rf /tmp/*')
-        conn.execute('rm -rf /root/*.hist*')
         conn.execute('rm -rf /var/log/*.gz')
+        log.info("Cleaning out /root")
+        conn.execute('rm -rf /root/*')
+        conn.execute('rm -f /root/.bash_history')
+        conn.execute('rm -rf /root/*.hist*')
+        log.info("Cleaning up /tmp")
+        conn.execute('rm -rf /tmp/*')
 
 
 class S3ImageCreator(ImageCreator):
@@ -97,6 +119,7 @@ class S3ImageCreator(ImageCreator):
             'bucket': self.bucket,
             'prefix': self.prefix,
             'arch': self.host.architecture,
+            'bmap': self._instance_store_bmap_str()
         }
 
     def __repr__(self):
@@ -129,6 +152,13 @@ class S3ImageCreator(ImageCreator):
         conn.put(self.private_key, pkey_dest)
         conn.put(self.cert, cert_dest)
 
+    def _instance_store_bmap_str(self):
+        bmap = self.ec2.create_block_device_map(add_ephemeral_drives=True,
+                                                instance_store=True)
+        bmaps = ','.join(["%s=%s" % (t.ephemeral_name, d)
+                          for d, t in bmap.items()])
+        return ','.join(['ami=sda1', bmaps])
+
     @print_timing
     def _bundle_image(self):
         # run script to prepare the host
@@ -139,7 +169,8 @@ class S3ImageCreator(ImageCreator):
         log.info('Creating the bundled image: (please be patient)')
         conn.execute('ec2-bundle-vol -d /mnt -k /mnt/%(private_key)s '
                      '-c /mnt/%(cert)s -p %(prefix)s -u %(userid)s '
-                     '-r %(arch)s -e /root/.ssh' % config_dict, silent=False)
+                     '-r %(arch)s -e /root/.ssh -B %(bmap)s' % config_dict,
+                     silent=False)
         self._cleanup_pem_files()
 
     @print_timing
@@ -221,20 +252,40 @@ class EBSImageCreator(ImageCreator):
             raise
 
     def _create_image_from_ebs(self, size=15):
-        log.info("Creating EBS image...")
+        log.info("Creating new EBS AMI...")
         imgid = self.ec2.create_image(self.host.id, self.name,
                                       self.description)
-        log.info("Waiting for AMI %s to become available..." % imgid,
-                 extra=dict(__nonewline__=True))
         img = self.ec2.get_image(imgid)
+        log.info("New EBS AMI created: %s" % imgid)
+        root_dev = self.host.root_device_name
+        if root_dev in self.host.block_device_mapping:
+            log.info("Fetching block device mapping for %s" % imgid,
+                     extra=dict(__nonewline__=True))
+            s = Spinner()
+            try:
+                s.start()
+                while root_dev not in img.block_device_mapping:
+                    img = self.ec2.get_image(imgid)
+                    time.sleep(5)
+            finally:
+                s.stop()
+            snapshot_id = img.block_device_mapping[root_dev].snapshot_id
+            snap = self.ec2.get_snapshot(snapshot_id)
+            self.ec2.wait_for_snapshot(snap)
+        else:
+            log.warn("Unable to find root device - cant wait for snapshot")
+        log.info("Waiting for %s to become available..." % imgid,
+                 extra=dict(__nonewline__=True))
         s = Spinner()
-        s.start()
-        while img.state == "pending":
-            time.sleep(15)
-            if img.update() == "failed":
-                raise exception.AWSError(
-                    "EBS image creation failed for AMI %s" % imgid)
-        s.stop()
+        try:
+            s.start()
+            while img.state == "pending":
+                time.sleep(15)
+                if img.update() == "failed":
+                    raise exception.AWSError(
+                        "EBS image creation failed for %s" % imgid)
+        finally:
+            s.stop()
         return imgid
 
     def _create_image_from_instance_store(self, size=15):
@@ -288,8 +339,8 @@ class EBSImageCreator(ImageCreator):
         log.info("Removing generated volume %s" % vol.id)
         vol.delete()
         log.info("Creating root block device map using snapshot %s" % snap.id)
-        bmap = self.ec2.create_root_block_device_map(snap.id,
-                                                     add_ephemeral_drives=True)
+        bmap = self.ec2.create_block_device_map(root_snapshot_id=snap.id,
+                                                add_ephemeral_drives=True)
         log.info("Registering new image...")
         img_id = self.ec2.register_image(name=self.name,
                                          description=self.description,

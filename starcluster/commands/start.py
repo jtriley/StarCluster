@@ -1,8 +1,25 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 import time
 
 from starcluster import static
 from starcluster import exception
-from starcluster import optcomplete
+from starcluster import completion
 from starcluster.templates import user_msgs
 from starcluster.logger import log
 
@@ -32,12 +49,10 @@ class CmdStart(ClusterCompleter):
     """
     names = ['start']
 
-    tag = None
-
     def addopts(self, parser):
         templates = []
         if self.cfg:
-            templates = self.cfg.get_cluster_names().keys()
+            templates = self.cfg.clusters.keys()
         parser.add_option("-x", "--no-create", dest="no_create",
                           action="store_true", default=False,
                           help="do not launch new EC2 instances when "
@@ -70,8 +85,8 @@ class CmdStart(ClusterCompleter):
                                 dest="cluster_template", choices=templates,
                                 default=None, help="cluster template to use "
                                 "from the config file")
-        if optcomplete:
-            opt.completer = optcomplete.ListCompleter(opt.choices)
+        if completion:
+            opt.completer = completion.ListCompleter(opt.choices)
         parser.add_option("-r", "--refresh-interval", dest="refresh_interval",
                           type="int", action="callback", default=None,
                           callback=self._positive_int,
@@ -101,8 +116,8 @@ class CmdStart(ClusterCompleter):
                                 default=None,
                                 help="shell for cluster user "
                                 "(defaults to bash)")
-        if optcomplete:
-            opt.completer = optcomplete.ListCompleter(opt.choices)
+        if completion:
+            opt.completer = completion.ListCompleter(opt.choices)
         parser.add_option("-m", "--master-image-id", dest="master_image_id",
                           action="store", type="string", default=None,
                           help="AMI to use when launching master")
@@ -111,15 +126,16 @@ class CmdStart(ClusterCompleter):
                           help="AMI to use when launching nodes")
         parser.add_option("-I", "--master-instance-type",
                           dest="master_instance_type", action="store",
-                          choices=static.INSTANCE_TYPES.keys(), default=None,
-                          help="instance type for the master instance")
+                          choices=sorted(static.INSTANCE_TYPES.keys()),
+                          default=None, help="instance type for the master "
+                          "instance")
         opt = parser.add_option("-i", "--node-instance-type",
                                 dest="node_instance_type", action="store",
-                                choices=static.INSTANCE_TYPES.keys(),
+                                choices=sorted(static.INSTANCE_TYPES.keys()),
                                 default=None,
                                 help="instance type for the node instances")
-        if optcomplete:
-            opt.completer = optcomplete.ListCompleter(opt.choices)
+        if completion:
+            opt.completer = completion.ListCompleter(opt.choices)
         parser.add_option("-a", "--availability-zone",
                           dest="availability_zone", action="store",
                           type="string", default=None,
@@ -133,30 +149,35 @@ class CmdStart(ClusterCompleter):
                           metavar="FILE",
                           help="path to an ssh private key that matches the "
                           "cluster keypair")
-
-    def cancel_command(self, signum, frame):
-        raise exception.CancelledStartRequest(self.tag)
+        parser.add_option("-U", "--userdata-script", dest="userdata_scripts",
+                          action="append", default=None, metavar="FILE",
+                          help="Path to userdata script that will run on "
+                          "each node on start-up. Can be used multiple times.")
 
     def execute(self, args):
         if len(args) != 1:
             self.parser.error("please specify a <cluster_tag>")
-        tag = self.tag = args[0]
+        tag = args[0]
         create = not self.opts.no_create
-        create_only = self.opts.create_only
-        scluster = self.cm.get_cluster_or_none(tag, require_keys=False)
-        validate = self.opts.validate
-        validate_running = self.opts.no_create
-        validate_only = self.opts.validate_only
+        scluster = self.cm.get_cluster_group_or_none(tag)
         if scluster and create:
+            scluster = self.cm.get_cluster(tag, group=scluster,
+                                           load_receipt=False,
+                                           require_keys=False)
             stopped_ebs = scluster.is_cluster_stopped()
             is_ebs = False
             if not stopped_ebs:
                 is_ebs = scluster.is_ebs_cluster()
             raise exception.ClusterExists(tag, is_ebs=is_ebs,
                                           stopped_ebs=stopped_ebs)
-        if not scluster and not create:
+        if not create and not scluster:
             raise exception.ClusterDoesNotExist(tag)
-        elif scluster:
+        create_only = self.opts.create_only
+        validate = self.opts.validate
+        validate_running = self.opts.no_create
+        validate_only = self.opts.validate_only
+        if scluster:
+            scluster = self.cm.get_cluster(tag, group=scluster)
             validate_running = True
         else:
             template = self.opts.cluster_template
@@ -188,10 +209,15 @@ class CmdStart(ClusterCompleter):
                                        'tag': tag}
             if not validate_only and not create_only:
                 self.warn_experimental(msg, num_secs=5)
-        self.catch_ctrl_c()
-        scluster.start(create=create, create_only=create_only,
-                       validate=validate, validate_only=validate_only,
-                       validate_running=validate_running)
+        try:
+            scluster.start(create=create, create_only=create_only,
+                           validate=validate, validate_only=validate_only,
+                           validate_running=validate_running)
+        except KeyboardInterrupt:
+            if validate_only:
+                raise
+            else:
+                raise exception.CancelledStartRequest(tag)
         if validate_only:
             return
         if not create_only and not self.opts.login_master:

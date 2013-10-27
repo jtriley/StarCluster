@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 """
 EC2/S3 Utility Classes
 """
@@ -12,10 +29,13 @@ import tempfile
 import boto
 import boto.ec2
 import boto.s3.connection
+from boto import config as boto_config
+from boto.connection import HAVE_HTTPS_CONNECTION
 
 from starcluster import image
 from starcluster import utils
 from starcluster import static
+from starcluster import spinner
 from starcluster import webtools
 from starcluster import exception
 from starcluster import progressbar
@@ -52,9 +72,26 @@ class EasyAWS(object):
         if self._conn is None:
             log.debug('creating self._conn w/ connection_authenticator ' +
                       'kwargs = %s' % self._kwargs)
+            validate_certs = self._kwargs.get('validate_certs', True)
+            if validate_certs:
+                if not HAVE_HTTPS_CONNECTION:
+                    raise exception.AWSError(
+                        "Failed to validate AWS SSL certificates. "
+                        "SSL certificate validation is only supported "
+                        "on Python>=2.6.\n\nSet AWS_VALIDATE_CERTS=False in "
+                        "the [aws info] section of your config to skip SSL "
+                        "certificate verification and suppress this error AT "
+                        "YOUR OWN RISK.")
+            if not boto_config.has_section('Boto'):
+                boto_config.add_section('Boto')
+            # Hack to get around the fact that boto ignores validate_certs
+            # if https_validate_certificates is declared in the boto config
+            boto_config.setbool('Boto', 'https_validate_certificates',
+                                validate_certs)
             self._conn = self.connection_authenticator(
                 self.aws_access_key_id, self.aws_secret_access_key,
                 **self._kwargs)
+            self._conn.https_validate_certificates = validate_certs
         return self._conn
 
 
@@ -63,27 +100,51 @@ class EasyEC2(EasyAWS):
                  aws_ec2_path='/', aws_s3_host=None, aws_s3_path='/',
                  aws_port=None, aws_region_name=None, aws_is_secure=True,
                  aws_region_host=None, aws_proxy=None, aws_proxy_port=None,
-                 aws_proxy_user=None, aws_proxy_pass=None, **kwargs):
+                 aws_proxy_user=None, aws_proxy_pass=None,
+                 aws_validate_certs=True, **kwargs):
         aws_region = None
         if aws_region_name and aws_region_host:
             aws_region = boto.ec2.regioninfo.RegionInfo(
                 name=aws_region_name, endpoint=aws_region_host)
-        kwargs = dict(is_secure=aws_is_secure, region=aws_region,
-                      port=aws_port, path=aws_ec2_path, proxy=aws_proxy,
-                      proxy_port=aws_proxy_port, proxy_user=aws_proxy_user,
-                      proxy_pass=aws_proxy_pass)
+        kwds = dict(is_secure=aws_is_secure, region=aws_region, port=aws_port,
+                    path=aws_ec2_path, proxy=aws_proxy,
+                    proxy_port=aws_proxy_port, proxy_user=aws_proxy_user,
+                    proxy_pass=aws_proxy_pass,
+                    validate_certs=aws_validate_certs)
         super(EasyEC2, self).__init__(aws_access_key_id, aws_secret_access_key,
-                                      boto.connect_ec2, **kwargs)
-        kwargs = dict(aws_s3_host=aws_s3_host, aws_s3_path=aws_s3_path,
-                      aws_port=aws_port, aws_is_secure=aws_is_secure,
-                      aws_proxy=aws_proxy, aws_proxy_port=aws_proxy_port,
-                      aws_proxy_user=aws_proxy_user,
-                      aws_proxy_pass=aws_proxy_pass)
-        self.s3 = EasyS3(aws_access_key_id, aws_secret_access_key, **kwargs)
+                                      boto.connect_ec2, **kwds)
+        self._conn = kwargs.get('connection')
+        kwds = dict(aws_s3_host=aws_s3_host, aws_s3_path=aws_s3_path,
+                    aws_port=aws_port, aws_is_secure=aws_is_secure,
+                    aws_proxy=aws_proxy, aws_proxy_port=aws_proxy_port,
+                    aws_proxy_user=aws_proxy_user,
+                    aws_proxy_pass=aws_proxy_pass,
+                    aws_validate_certs=aws_validate_certs)
+        self.s3 = EasyS3(aws_access_key_id, aws_secret_access_key, **kwds)
         self._regions = None
+        self._platforms = None
+        self._default_vpc = None
 
     def __repr__(self):
         return '<EasyEC2: %s (%s)>' % (self.region.name, self.region.endpoint)
+
+    def _fetch_account_attrs(self):
+        resp = self.conn.describe_account_attributes(
+            ['default-vpc', 'supported-platforms'])
+        self._platforms = resp[0].attribute_values
+        self._default_vpc = resp[1].attribute_values[0]
+
+    @property
+    def supported_platforms(self):
+        if not self._platforms:
+            self._fetch_account_attrs()
+        return self._platforms
+
+    @property
+    def default_vpc(self):
+        if not self._default_vpc:
+            self._fetch_account_attrs()
+        return self._default_vpc
 
     def connect_to_region(self, region_name):
         """
@@ -93,6 +154,8 @@ class EasyEC2(EasyAWS):
         """
         region = self.get_region(region_name)
         self._kwargs['region'] = region
+        self._platforms = None
+        self._default_vpc = None
         self.reload()
         return self
 
@@ -131,10 +194,9 @@ class EasyEC2(EasyAWS):
         """
         regions = self.regions.items()
         regions.sort(reverse=True)
-        for region in regions:
-            name, endpoint = region
+        for name, endpoint in regions:
             print 'name: ', name
-            print 'endpoint: ', endpoint
+            print 'endpoint: ', endpoint.endpoint
             print
 
     @property
@@ -152,6 +214,28 @@ class EasyEC2(EasyAWS):
             if img.id == image_id:
                 return img
 
+    def delete_group(self, group):
+        """
+        This method deletes the security group using group.delete() but in the
+        case that group.delete() throws a DependencyViolation error it will
+        keep retrying until it's successful. Waits 5 seconds between each
+        retry.
+        """
+        s = utils.get_spinner("Removing %s security group..." % group.name)
+        try:
+            while True:
+                try:
+                    return group.delete()
+                except boto.exception.EC2ResponseError, e:
+                    if e.error_code == 'DependencyViolation':
+                        log.debug('DependencyViolation error - retrying in 5s',
+                                  exc_info=True)
+                        time.sleep(5)
+                    else:
+                        raise
+        finally:
+            s.stop()
+
     def create_group(self, name, description, auth_ssh=False,
                      auth_group_traffic=False):
         """
@@ -160,20 +244,19 @@ class EasyEC2(EasyAWS):
         will allow all traffic between instances in the same security
         group
         """
-        if not name:
-            return None
         log.info("Creating security group %s..." % name)
         sg = self.conn.create_security_group(name, description)
+        while not self.get_group_or_none(name):
+            log.info("Waiting for security group %s..." % name)
+            time.sleep(3)
         if auth_ssh:
             ssh_port = static.DEFAULT_SSH_PORT
             sg.authorize('tcp', ssh_port, ssh_port, static.WORLD_CIDRIP)
         if auth_group_traffic:
-            sg.authorize('icmp', -1, -1,
-                         src_group=self.get_group_or_none(name))
-            sg.authorize('tcp', 1, 65535,
-                         src_group=self.get_group_or_none(name))
-            sg.authorize('udp', 1, 65535,
-                         src_group=self.get_group_or_none(name))
+            src_group = self.get_group_or_none(name)
+            sg.authorize('icmp', -1, -1, src_group=src_group)
+            sg.authorize('tcp', 1, 65535, src_group=src_group)
+            sg.authorize('udp', 1, 65535, src_group=src_group)
         return sg
 
     def get_all_security_groups(self, groupnames=[]):
@@ -280,7 +363,12 @@ class EasyEC2(EasyAWS):
                 (name, success))
             raise exception.AWSError(
                 "failed to create placement group '%s'" % name)
-        return self.get_placement_group(name)
+        pg = self.get_placement_group_or_none(name)
+        while not pg:
+            log.info("Waiting for placement group %s..." % name)
+            time.sleep(3)
+            pg = self.get_placement_group_or_none(name)
+        return pg
 
     def get_placement_groups(self, filters=None):
         return self.conn.get_all_placement_groups(filters=filters)
@@ -300,12 +388,6 @@ class EasyEC2(EasyAWS):
         """
         Returns placement group with name if it exists otherwise returns None
         """
-        region = self.conn.region.name
-        if not region in static.CLUSTER_REGIONS:
-            region_list = ', '.join(static.CLUSTER_REGIONS)
-            log.debug("region %s not in CLUSTER_REGIONS (%s)" % (region,
-                                                                 region_list))
-            return
         try:
             return self.get_placement_group(name)
         except exception.PlacementGroupDoesNotExist:
@@ -326,40 +408,122 @@ class EasyEC2(EasyAWS):
                           min_count=1, max_count=1, count=1, key_name=None,
                           security_groups=None, launch_group=None,
                           availability_zone_group=None, placement=None,
-                          user_data=None, placement_group=None):
+                          user_data=None, placement_group=None,
+                          block_device_map=None):
         """
         Convenience method for running spot or flat-rate instances
         """
+        if not block_device_map:
+            img = self.get_image(image_id)
+            is_s3 = img.root_device_type == 'instance-store'
+            bdmap = self.create_block_device_map(add_ephemeral_drives=True,
+                                                 num_ephemeral_drives=24,
+                                                 instance_store=is_s3)
+            # Prune drives from runtime block device map that may override EBS
+            # volumes specified in the AMIs block device map
+            for dev in img.block_device_mapping:
+                bdt = img.block_device_mapping.get(dev)
+                if not bdt.ephemeral_name and dev in bdmap:
+                    log.debug("EBS volume already mapped to %s by AMI" % dev)
+                    log.debug("Removing %s from runtime block device map" %
+                              dev)
+                    bdmap.pop(dev)
+            if img.root_device_name in img.block_device_mapping:
+                log.debug("Forcing delete_on_termination for AMI: %s" % img.id)
+                root = img.block_device_mapping[img.root_device_name]
+                root.delete_on_termination = True
+                bdmap[img.root_device_name] = root
+            block_device_map = bdmap
         if price:
             return self.request_spot_instances(
                 price, image_id, instance_type=instance_type,
                 count=count, launch_group=launch_group, key_name=key_name,
                 security_groups=security_groups,
                 availability_zone_group=availability_zone_group,
-                placement=placement, user_data=user_data)
+                placement=placement, placement_group=placement_group,
+                user_data=user_data, block_device_map=block_device_map)
         else:
             return self.run_instances(
                 image_id, instance_type=instance_type,
                 min_count=min_count, max_count=max_count,
                 key_name=key_name, security_groups=security_groups,
                 placement=placement, user_data=user_data,
-                placement_group=placement_group)
+                placement_group=placement_group,
+                block_device_map=block_device_map)
 
     def request_spot_instances(self, price, image_id, instance_type='m1.small',
                                count=1, launch_group=None, key_name=None,
                                availability_zone_group=None,
-                               security_groups=None,
-                               placement=None, user_data=None):
+                               security_groups=None, placement=None,
+                               placement_group=None, user_data=None,
+                               block_device_map=None):
         return self.conn.request_spot_instances(
             price, image_id, instance_type=instance_type, count=count,
             launch_group=launch_group, key_name=key_name,
             security_groups=security_groups,
             availability_zone_group=availability_zone_group,
-            placement=placement, user_data=user_data)
+            placement=placement, placement_group=placement_group,
+            user_data=user_data, block_device_map=block_device_map)
+
+    def _wait_for_propagation(self, obj_ids, fetch_func, id_filter, obj_name,
+                              max_retries=5, interval=5):
+        """
+        Wait for a list of object ids to appear in the AWS API. Requires a
+        function that fetches the objects and also takes a filters kwarg. The
+        id_filter specifies the id filter to use for the objects and
+        obj_name describes the objects for log messages.
+        """
+        filters = {id_filter: obj_ids}
+        num_objs = len(obj_ids)
+        num_reqs = 0
+        reqs_ids = []
+        max_retries = max(1, max_retries)
+        interval = max(1, interval)
+        s = utils.get_spinner("Waiting for %s to propagate..." % obj_name)
+        try:
+            for i in range(max_retries):
+                reqs = fetch_func(filters=filters)
+                reqs_ids = [req.id for req in reqs]
+                num_reqs = len(reqs)
+                if num_reqs != num_objs:
+                    log.debug("%d: only %d/%d %s have "
+                              "propagated - sleeping..." %
+                              (i, num_reqs, num_objs, obj_name))
+                    time.sleep(interval)
+                else:
+                    return
+        finally:
+            s.stop()
+        log.warn("Only %d/%d %s propagated..." %
+                 (num_reqs, num_objs, obj_name))
+        missing = [oid for oid in obj_ids if oid not in reqs_ids]
+        log.warn("Missing %s: %s" % (obj_name, ', '.join(missing)))
+
+    def wait_for_propagation(self, instances=None, spot_requests=None,
+                             max_retries=5, interval=5):
+        """
+        Wait for newly created instances and/or spot_requests to register in
+        the AWS API by repeatedly calling get_all_{instances, spot_requests}.
+        Calling this method directly after creating new instances or spot
+        requests before operating on them helps to avoid eventual consistency
+        errors about instances or spot requests not existing.
+        """
+        if spot_requests:
+            spot_ids = [getattr(s, 'id', s) for s in spot_requests]
+            self._wait_for_propagation(
+                spot_ids, self.get_all_spot_requests,
+                'spot-instance-request-id', 'spot requests',
+                max_retries=max_retries, interval=interval)
+        if instances:
+            instance_ids = [getattr(i, 'id', i) for i in instances]
+            self._wait_for_propagation(
+                instance_ids, self.get_all_instances, 'instance-id',
+                'instances', max_retries=max_retries, interval=interval)
 
     def run_instances(self, image_id, instance_type='m1.small', min_count=1,
                       max_count=1, key_name=None, security_groups=None,
-                      placement=None, user_data=None, placement_group=None):
+                      placement=None, user_data=None, placement_group=None,
+                      block_device_map=None):
         return self.conn.run_instances(image_id, instance_type=instance_type,
                                        min_count=min_count,
                                        max_count=max_count,
@@ -367,7 +531,8 @@ class EasyEC2(EasyAWS):
                                        security_groups=security_groups,
                                        placement=placement,
                                        user_data=user_data,
-                                       placement_group=placement_group)
+                                       placement_group=placement_group,
+                                       block_device_map=block_device_map)
 
     def create_image(self, instance_id, name, description=None,
                      no_reboot=False):
@@ -446,7 +611,7 @@ class EasyEC2(EasyAWS):
     def get_instance_user_data(self, instance_id):
         try:
             attrs = self.conn.get_instance_attribute(instance_id, 'userData')
-            user_data = attrs.get('userData', '')
+            user_data = attrs.get('userData', '') or ''
             return base64.b64decode(user_data)
         except boto.exception.EC2ResponseError, e:
             if e.error_code == "InvalidInstanceID.NotFound":
@@ -529,9 +694,11 @@ class EasyEC2(EasyAWS):
             print
         if not spots:
             log.info("No spot instance requests found...")
+        else:
+            print 'Total: %s' % len(spots)
 
     def show_instance(self, instance):
-        id = instance.id or 'N/A'
+        instance_id = instance.id or 'N/A'
         groups = ', '.join([g.name for g in instance.groups])
         dns_name = instance.dns_name or 'N/A'
         private_dns_name = instance.private_dns_name or 'N/A'
@@ -540,12 +707,15 @@ class EasyEC2(EasyAWS):
         public_ip = instance.ip_address or 'N/A'
         zone = instance.placement or 'N/A'
         ami = instance.image_id or 'N/A'
+        virt_type = instance.virtualization_type or 'N/A'
         instance_type = instance.instance_type or 'N/A'
         keypair = instance.key_name or 'N/A'
         uptime = utils.get_elapsed_time(instance.launch_time) or 'N/A'
+        tags = ', '.join(['%s=%s' % (k, v) for k, v in
+                          instance.tags.iteritems()]) or 'N/A'
         if state == 'stopped':
             uptime = 'N/A'
-        print "id: %s" % id
+        print "id: %s" % instance_id
         print "dns_name: %s" % dns_name
         print "private_dns_name: %s" % private_dns_name
         if instance.reason:
@@ -556,10 +726,12 @@ class EasyEC2(EasyAWS):
         print "private_ip: %s" % private_ip
         print "zone: %s" % zone
         print "ami: %s" % ami
+        print "virtualization: %s" % virt_type
         print "type: %s" % instance_type
         print "groups: %s" % groups
         print "keypair: %s" % keypair
         print "uptime: %s" % uptime
+        print "tags: %s" % tags
         print
 
     def list_all_instances(self, show_terminated=False):
@@ -572,6 +744,7 @@ class EasyEC2(EasyAWS):
             return
         for instance in insts:
             self.show_instance(instance)
+        print 'Total: %s' % len(insts)
 
     def list_images(self, images, sort_key=None, reverse=False):
         def get_key(obj):
@@ -667,6 +840,10 @@ class EasyEC2(EasyAWS):
         self.list_images(imgs, sort_key=sc_public_sort, reverse=True)
 
     def create_volume(self, size, zone, snapshot_id=None):
+        msg = "Creating %sGB volume in zone %s" % (size, zone)
+        if snapshot_id:
+            msg += " from snapshot %s" % snapshot_id
+        log.info(msg)
         return self.conn.create_volume(size, zone, snapshot_id)
 
     def remove_volume(self, volume_id):
@@ -891,36 +1068,37 @@ class EasyEC2(EasyAWS):
             log.info("Manifest migrated successfully. You can now run:\n" +
                      register_cmd + "\nto register your migrated image.")
 
-    def create_root_block_device_map(self, snapshot_id,
-                                     root_device_name='/dev/sda1',
-                                     add_ephemeral_drives=False,
-                                     ephemeral_drive_0='/dev/sdb1',
-                                     ephemeral_drive_1='/dev/sdc1',
-                                     ephemeral_drive_2='/dev/sdd1',
-                                     ephemeral_drive_3='/dev/sde1'):
+    def create_block_device_map(self, root_snapshot_id=None,
+                                root_device_name='/dev/sda1',
+                                add_ephemeral_drives=False,
+                                num_ephemeral_drives=24, instance_store=False):
         """
         Utility method for building a new block_device_map for a given snapshot
         id. This is useful when creating a new image from a volume snapshot.
         The returned block device map can be used with self.register_image
         """
         bmap = boto.ec2.blockdevicemapping.BlockDeviceMapping()
-        sda1 = boto.ec2.blockdevicemapping.BlockDeviceType()
-        sda1.snapshot_id = snapshot_id
-        sda1.delete_on_termination = True
-        bmap[root_device_name] = sda1
+        if root_snapshot_id:
+            sda1 = boto.ec2.blockdevicemapping.BlockDeviceType()
+            sda1.snapshot_id = root_snapshot_id
+            sda1.delete_on_termination = True
+            bmap[root_device_name] = sda1
         if add_ephemeral_drives:
-            sdb1 = boto.ec2.blockdevicemapping.BlockDeviceType()
-            sdb1.ephemeral_name = 'ephemeral0'
-            bmap[ephemeral_drive_0] = sdb1
-            sdc1 = boto.ec2.blockdevicemapping.BlockDeviceType()
-            sdc1.ephemeral_name = 'ephemeral1'
-            bmap[ephemeral_drive_1] = sdc1
-            sdd1 = boto.ec2.blockdevicemapping.BlockDeviceType()
-            sdd1.ephemeral_name = 'ephemeral2'
-            bmap[ephemeral_drive_2] = sdd1
-            sde1 = boto.ec2.blockdevicemapping.BlockDeviceType()
-            sde1.ephemeral_name = 'ephemeral3'
-            bmap[ephemeral_drive_3] = sde1
+            if not instance_store:
+                drives = ['/dev/xvd%s%%s' % s for s in string.lowercase]
+                for i in range(num_ephemeral_drives):
+                    j, k = i % 26, i / 26
+                    device_fmt = drives[k]
+                    eph = boto.ec2.blockdevicemapping.BlockDeviceType()
+                    eph.ephemeral_name = 'ephemeral%d' % i
+                    bmap[device_fmt % chr(ord('a') + j)] = eph
+            else:
+                drives = ['sd%s%d' % (s, i) for i in range(1, 10)
+                          for s in string.lowercase[1:]]
+                for i in range(num_ephemeral_drives):
+                    eph = boto.ec2.blockdevicemapping.BlockDeviceType()
+                    eph.ephemeral_name = 'ephemeral%d' % i
+                    bmap[drives[i]] = eph
         return bmap
 
     @print_timing("Downloading image")
@@ -997,6 +1175,28 @@ class EasyEC2(EasyAWS):
         except exception.VolumeDoesNotExist:
             pass
 
+    def wait_for_volume(self, volume, status=None, state=None,
+                        refresh_interval=5, log_func=log.info):
+        if status:
+            log_func("Waiting for %s to become '%s'..." % (volume.id, status),
+                     extra=dict(__nonewline__=True))
+            s = spinner.Spinner()
+            s.start()
+            while volume.update() != status:
+                time.sleep(refresh_interval)
+            s.stop()
+        if state:
+            log_func("Waiting for %s to transition to: %s... " %
+                     (volume.id, state), extra=dict(__nonewline__=True))
+            if not status:
+                volume.update()
+            s = spinner.Spinner()
+            s.start()
+            while volume.attachment_state() != state:
+                time.sleep(refresh_interval)
+                volume.update()
+            s.stop()
+
     def wait_for_snapshot(self, snapshot, refresh_interval=30):
         snap = snapshot
         log.info("Waiting for snapshot to complete: %s" % snap.id)
@@ -1007,12 +1207,15 @@ class EasyEC2(EasyAWS):
         while snap.status != 'completed':
             try:
                 progress = int(snap.update().replace('%', ''))
-                pbar.update(progress)
+                if not pbar.finished:
+                    pbar.update(progress)
             except ValueError:
                 time.sleep(5)
                 continue
-            time.sleep(refresh_interval)
-        pbar.finish()
+            if snap.status != 'completed':
+                time.sleep(refresh_interval)
+        if not pbar.finished:
+            pbar.finish()
 
     def create_snapshot(self, vol, description=None, wait_for_snapshot=False,
                         refresh_interval=30):
@@ -1113,8 +1316,8 @@ class EasyEC2(EasyAWS):
                 print
         print 'Total: %s' % len(vols)
 
-    def get_spot_history(self, instance_type, start=None, end=None, plot=False,
-                         plot_server_interface="localhost",
+    def get_spot_history(self, instance_type, start=None, end=None, zone=None,
+                         plot=False, plot_server_interface="localhost",
                          plot_launch_browser=True, plot_web_browser=None,
                          plot_shutdown_server=True):
         if start and not utils.is_iso_time(start):
@@ -1123,6 +1326,7 @@ class EasyEC2(EasyAWS):
             raise exception.InvalidIsoDate(end)
         pdesc = "Linux/UNIX"
         hist = self.conn.get_spot_price_history(start_time=start, end_time=end,
+                                                availability_zone=zone,
                                                 instance_type=instance_type,
                                                 product_description=pdesc)
         if not hist:
@@ -1138,9 +1342,9 @@ class EasyEC2(EasyAWS):
             data.append([timestamp, price])
         maximum = max(prices)
         avg = sum(prices) / float(len(prices))
-        log.info("Current price: $%.2f" % prices[-1])
-        log.info("Max price: $%.2f" % maximum)
-        log.info("Average price: $%.2f" % avg)
+        log.info("Current price: $%.4f" % prices[0])
+        log.info("Max price: $%.4f" % maximum)
+        log.info("Average price: $%.4f" % avg)
         if plot:
             xaxisrange = dates[-1] - dates[0]
             xpanrange = [dates[0] - xaxisrange / 2.,
@@ -1176,8 +1380,13 @@ class EasyEC2(EasyAWS):
 
     def show_console_output(self, instance_id):
         instance = self.get_instance(instance_id)
-        console_output = instance.get_console_output().output
-        print ''.join([c for c in console_output if c in string.printable])
+        console_output = instance.get_console_output().output or ''
+        console_output = ''.join([c for c in console_output if c in
+                                  string.printable])
+        if console_output:
+            print console_output
+        else:
+            log.info("No console output available...")
 
 
 class EasyS3(EasyAWS):
@@ -1187,11 +1396,13 @@ class EasyS3(EasyAWS):
     def __init__(self, aws_access_key_id, aws_secret_access_key,
                  aws_s3_path='/', aws_port=None, aws_is_secure=True,
                  aws_s3_host=DefaultHost, aws_proxy=None, aws_proxy_port=None,
-                 aws_proxy_user=None, aws_proxy_pass=None, **kwargs):
+                 aws_proxy_user=None, aws_proxy_pass=None,
+                 aws_validate_certs=True, **kwargs):
         kwargs = dict(is_secure=aws_is_secure, host=aws_s3_host or
                       self.DefaultHost, port=aws_port, path=aws_s3_path,
                       proxy=aws_proxy, proxy_port=aws_proxy_port,
-                      proxy_user=aws_proxy_user, proxy_pass=aws_proxy_pass)
+                      proxy_user=aws_proxy_user, proxy_pass=aws_proxy_pass,
+                      validate_certs=aws_validate_certs)
         if aws_s3_host:
             kwargs.update(dict(calling_format=self._calling_format))
         super(EasyS3, self).__init__(aws_access_key_id, aws_secret_access_key,

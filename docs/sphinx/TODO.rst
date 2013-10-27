@@ -26,17 +26,6 @@ for Eucalyptus to handle the lack of the following API features in ECC:
 .. _DescribeInstanceAttribute: http://docs.amazonwebservices.com/AWSEC2/latest/APIReference/index.html?ApiReference-query-DescribeInstanceAttribute.html
 .. _Filters API: http://aws.amazon.com/releasenotes/Amazon-EC2/4174
 
-Add More Options to "addnode" command
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-The following options need to be added to the addnode command:
-
-* --image-id (-i)
-* --instance-type (-I)
-* --availability-zone (-z)
-* --bid (-b)
-
-Dan Yamins has a `pull request`_ for this that needs to be merged.
-
 Add Support for Load Balancing a Given SGE Queue
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Load balancer should support balancing Sun Grid Engine queues other than just

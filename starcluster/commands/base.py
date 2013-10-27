@@ -1,14 +1,31 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 import os
 import sys
 import time
-import signal
+
 from starcluster import node
 from starcluster import cluster
-from starcluster import optcomplete
+from starcluster import completion
 from starcluster.logger import log
 
 
-class CmdBase(optcomplete.CmdComplete):
+class CmdBase(completion.CmdComplete):
     """
     Base class for StarCluster commands
 
@@ -43,14 +60,14 @@ class CmdBase(optcomplete.CmdComplete):
         """
         Returns global options dictionary
         """
-        return dict(self.gopts.__dict__)
+        return dict(getattr(self.gopts, '__dict__', {}))
 
     @property
     def options_dict(self):
         """
         Returns dictionary of options for this command
         """
-        return dict(self.opts.__dict__)
+        return dict(getattr(self.opts, '__dict__', {}))
 
     @property
     def specified_options_dict(self):
@@ -130,13 +147,6 @@ class CmdBase(optcomplete.CmdComplete):
         print
         log.info("Exiting...")
         sys.exit(1)
-
-    def catch_ctrl_c(self, handler=None):
-        """
-        Catch ctrl-c interrupt
-        """
-        handler = handler or self.cancel_command
-        signal.signal(signal.SIGINT, handler)
 
     def warn_experimental(self, msg, num_secs=10):
         """

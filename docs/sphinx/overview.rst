@@ -35,7 +35,7 @@ hostnames instead of the random *ec2-123-123-123.compute-aws.com* EC2 dns names
 making it easier for you to manage the nodes::
 
     $ starcluster listclusters
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
@@ -261,7 +261,7 @@ You can determine a decent spot bid to use by investigating the current,
 maximum, and average spot price using the *spothistory* command::
 
     % starcluster spothistory -p m1.large
-    StarCluster - (http://web.mit.edu/starcluster) (v. 0.92)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 

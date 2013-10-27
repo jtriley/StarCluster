@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 import os
 
 from starcluster import node
@@ -55,17 +72,14 @@ class CmdCreateVolume(CmdBase):
             help="The AMI to use when launching volume host instance")
         parser.add_option(
             "-I", "--instance-type", dest="instance_type",
-            action="store", type="choice", default="m1.small",
-            choices=static.INSTANCE_TYPES.keys(),
+            action="store", type="choice", default="t1.micro",
+            choices=sorted(static.INSTANCE_TYPES.keys()),
             help="The instance type to use when launching volume "
-            "host instance")
+            "host instance (default: t1.micro)")
         parser.add_option(
             "-t", "--tag", dest="tags", action="callback", type="string",
             default={}, callback=self._build_dict,
             help="One or more tags to apply to the new volume (key=value)")
-
-    def cancel_command(self, signum, frame):
-        raise exception.CancelledCreateVolume()
 
     def _load_keypair(self, keypair=None):
         key_location = None
@@ -130,5 +144,7 @@ class CmdCreateVolume(CmdBase):
         vc = volume.VolumeCreator(self.ec2, **kwargs)
         if host_instance:
             vc._validate_host_instance(host_instance, zone)
-        self.catch_ctrl_c()
-        vc.create(size, zone, name=self.opts.name, tags=self.opts.tags)
+        try:
+            vc.create(size, zone, name=self.opts.name, tags=self.opts.tags)
+        except KeyboardInterrupt:
+            raise exception.CancelledCreateVolume()

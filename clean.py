@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import os
-import sys
 import glob
 
 
@@ -15,8 +14,11 @@ def find_cruft(path, extensions=['.pyc', '.pyo']):
 
 
 def main():
-    sc_src = os.path.join(os.path.dirname(sys.argv[0]), 'starcluster')
+    repo_root = os.path.dirname(__file__)
+    sc_src = os.path.join(repo_root, 'starcluster')
     for i in find_cruft(sc_src):
+        os.unlink(i)
+    for i in glob.glob('*.pyc'):
         os.unlink(i)
 
 if __name__ == '__main__':

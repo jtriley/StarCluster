@@ -1,0 +1,10 @@
+#!/usr/bin/env python
+import os
+import sys
+
+hook_dir = os.path.abspath(os.path.dirname(__file__) or '.')
+repo_root = os.path.abspath(os.path.join(hook_dir, '..', '..'))
+sys.path.append(repo_root)
+
+import check
+check.main(git_index=True)

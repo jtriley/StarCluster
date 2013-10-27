@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 import logging
 import tempfile
 logging.disable(logging.WARN)
@@ -82,7 +99,7 @@ class TestThreadPool(tests.StarClusterTest):
         except exception.ThreadPoolException, e:
             raise Exception(e.format_excs())
 
-    def test_threadpool_map(self):
+    def test_map(self):
         try:
             r = 20
             ref = map(lambda x: x ** 2, range(r))
@@ -97,3 +114,26 @@ class TestThreadPool(tests.StarClusterTest):
             assert ref == calc
         except exception.ThreadPoolException, e:
             raise Exception(e.format_excs())
+
+    def test_map_with_jobid(self):
+        try:
+            r = 20
+            ref = map(lambda x: x ** 2, range(r))
+            calc = self.pool.map(lambda x: x ** 2, range(r),
+                                 jobid_fn=lambda x: x)
+            calc.sort()
+            assert ref == calc
+            self.pool.map(lambda x: x ** 2, range(r) + ['21'],
+                          jobid_fn=lambda x: x)
+        except exception.ThreadPoolException, e:
+            exc, tb_msg, jobid = e.exceptions[0]
+            assert jobid == '21'
+
+    def test_exception_queue(self):
+        assert self.pool._exception_queue.qsize() == 0
+        r = 10
+        try:
+            self.pool.map(lambda x: x ** 2, [str(i) for i in range(r)])
+        except exception.ThreadPoolException, e:
+            assert len(e.exceptions) == r
+            assert self.pool._exception_queue.qsize() == 0

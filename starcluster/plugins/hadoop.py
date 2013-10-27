@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 import posixpath
 
 from starcluster import threadpool
@@ -273,11 +290,8 @@ class Hadoop(clustersetup.ClusterSetup):
                     group.authorize('tcp', port, port, '0.0.0.0/0')
 
     def run(self, nodes, master, user, user_shell, volumes):
-        try:
-            self._configure_hadoop(master, nodes, user)
-            self._start_hadoop(master, nodes)
-            self._open_ports(master)
-            log.info("Job tracker status: http://%s:50030" % master.dns_name)
-            log.info("Namenode status: http://%s:50070" % master.dns_name)
-        finally:
-            self.pool.shutdown()
+        self._configure_hadoop(master, nodes, user)
+        self._start_hadoop(master, nodes)
+        self._open_ports(master)
+        log.info("Job tracker status: http://%s:50030" % master.dns_name)
+        log.info("Namenode status: http://%s:50070" % master.dns_name)

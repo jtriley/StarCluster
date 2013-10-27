@@ -35,7 +35,7 @@ If you already have a cluster running that didn't originally include the
 the cluster using::
 
     $ starcluster runplugin pkginstaller mycluster
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 

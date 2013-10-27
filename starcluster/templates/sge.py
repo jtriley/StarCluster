@@ -1,3 +1,20 @@
+# Copyright 2009-2013 Justin Riley
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 sgeinstall_template = """
 SGE_CLUSTER_NAME="starcluster"
 SGE_ROOT="/opt/sge6"
@@ -49,7 +66,7 @@ user_lists        NONE
 xuser_lists       NONE
 start_proc_args   /bin/true
 stop_proc_args    /bin/true
-allocation_rule   $round_robin
+allocation_rule   $fill_up
 control_slaves    TRUE
 job_is_first_task FALSE
 urgency_slots     min
@@ -67,4 +84,5 @@ export MANPATH="$MANPATH:$SGE_ROOT/man"
 export PATH="$PATH:$SGE_ROOT/bin/%(arch)s"
 export ROOTPATH="$ROOTPATH:$SGE_ROOT/bin/%(arch)s"
 export LDPATH="$LDPATH:$SGE_ROOT/lib/%(arch)s"
+export DRMAA_LIBRARY_PATH="$SGE_ROOT/lib/%(arch)s/libdrmaa.so"
 """

@@ -87,7 +87,7 @@ a cluster running that didn't originally have the plugin in its plugin list at
 creation time you will need to manually run the plugin::
 
     % starcluster runplugin createusers mycluster
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
@@ -156,7 +156,7 @@ users. You can use the **listclusters** command to list the public DNS names
 of all nodes in your cluster::
 
     $ starcluster listclusters mycluster
-    StarCluster - (http://web.mit.edu/starcluster)
+    StarCluster - (http://star.mit.edu/cluster)
     Software Tools for Academics and Researchers (STAR)
     Please submit bug reports to starcluster@mit.edu
 
