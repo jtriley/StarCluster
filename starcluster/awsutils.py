@@ -606,7 +606,12 @@ class EasyEC2(EasyAWS):
                 raise exception.BaseException(
                     "cannot save keypair %s: file already exists" %
                     output_file)
-        kp = self.conn.create_key_pair(name)
+        try:
+            kp = self.conn.create_key_pair(name)
+        except boto.exception.EC2ResponseError, e:
+            if e.error_code == "InvalidKeyPair.Duplicate":
+                raise exception.KeyPairAlreadyExists(name)
+            raise
         if output_file:
             try:
                 kfile = open(output_file, 'wb')
