@@ -36,6 +36,7 @@ from starcluster import image
 from starcluster import utils
 from starcluster import static
 from starcluster import spinner
+from starcluster import sshutils
 from starcluster import webtools
 from starcluster import exception
 from starcluster import progressbar
@@ -579,6 +580,16 @@ class EasyEC2(EasyAWS):
 
     def delete_keypair(self, name):
         return self.conn.delete_key_pair(name)
+
+    def import_keypair(self, name, rsa_key_file):
+        """
+        Import an existing RSA key file to EC2
+
+        Returns boto.ec2.keypair.KeyPair
+        """
+        k = sshutils.get_rsa_key(rsa_key_file)
+        pub_material = sshutils.get_public_key(k)
+        return self.conn.import_key_pair(name, pub_material)
 
     def create_keypair(self, name, output_file=None):
         """
