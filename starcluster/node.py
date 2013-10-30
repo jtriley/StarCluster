@@ -826,6 +826,25 @@ class Node(object):
             else:
                 raise
 
+    def setup_dns(self, nameserver_ip):
+        """
+        1. Add new "prepend domain-name-servers" directive to 
+            /etc/dhcp/dhclient.conf
+        2. Restart network interface to make changes apply. A nameserver
+            entry is added to /etc/resolv.conf (Warning: /etc/resolv.conf is 
+            updated dynamically-- changes to it will NOT hold).
+        2. Add entry for current node to /etc/hosts. This is required for SGE 
+            compatibility
+        """
+        self.ssh.execute(
+            "echo \"prepend domain-name-servers %s;\" >> "
+            "/etc/dhcp/dhclient.conf"
+            " && service network-interface restart INTERFACE=eth0" % nameserver_ip)
+
+        # required for SGE compatibility
+        self.add_to_etc_hosts([self])
+
+
     @property
     def network_names(self):
         """ Returns all network names for this node in a dictionary"""

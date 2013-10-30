@@ -367,6 +367,32 @@ class DefaultClusterSetup(ClusterSetup):
             master.export_fs_to_nodes(nodes, export_paths)
             self._mount_nfs_shares(nodes, export_paths=export_paths)
 
+    def _setup_dns(self, nodes=None, start_server=False):
+        """
+        0. Install dnsmasq on master if start_server == True
+        1. Add host to master's /etc/hosts (so dnsmasq can resolve it)
+        2. Add a new 'prepend domain-name-servers' entry to
+           /etc/dhcp/dhclient.conf with IP address of master node
+        3. Restart eth0 network interface to make changes propagate to 
+           /etc/resolv.conf
+        """
+        log.info("Setting up DNS-based hostname resolving")
+        if start_server:
+            log.debug("Installing/starting DNS server (dnsmasq) on master")
+            self._master.apt_install("dnsmasq")
+        
+        log.debug("Adding nodes to /etc/hosts on master")
+        nodes = nodes or self._nodes
+        self._master.add_to_etc_hosts(nodes)
+
+        log.debug("Setting up DNS nameserver on each node")
+        
+        for node in nodes:
+            self.pool.simple_job(node.setup_dns,
+                                 (self._master.private_ip_address, ),
+                                 jobid=node.alias)
+
+
     def run(self, nodes, master, user, user_shell, volumes):
         """Start cluster configuration"""
         self._nodes = nodes
@@ -378,7 +404,7 @@ class DefaultClusterSetup(ClusterSetup):
         self._setup_ebs_volumes()
         self._setup_cluster_user()
         self._setup_scratch()
-        self._setup_etc_hosts()
+        self._setup_dns(start_server=True)
         self._setup_nfs()
         self._setup_passwordless_ssh()
 
@@ -405,8 +431,8 @@ class DefaultClusterSetup(ClusterSetup):
         log.info("Removing node %s (%s)..." % (node.alias, node.id))
         log.info("Removing %s from known_hosts files" % node.alias)
         self._remove_from_known_hosts(node)
-        log.info("Removing %s from /etc/hosts" % node.alias)
-        self._remove_from_etc_hosts(node)
+        log.info("Removing %s from DNS (/etc/hosts on master)" % node.alias)
+        self._master.remove_from_etc_hosts([node])
         log.info("Removing %s from NFS" % node.alias)
         self._remove_nfs_exports(node)
 
@@ -422,7 +448,7 @@ class DefaultClusterSetup(ClusterSetup):
         self._user_shell = user_shell
         self._volumes = volumes
         self._setup_hostnames(nodes=[node])
-        self._setup_etc_hosts(nodes)
+        self._setup_dns(nodes=[node], start_server=False)
         self._setup_nfs(nodes=[node], start_server=False)
         self._create_user(node)
         self._setup_scratch(nodes=[node])
