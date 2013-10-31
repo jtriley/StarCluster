@@ -2130,17 +2130,16 @@ class ClusterValidator(validators.Validator):
                 "Please check that the file is readable" % (key_location, e))
         if len(fingerprint) == 59:
             keyfingerprint = sshutils.get_private_rsa_fingerprint(key_location)
-            if keyfingerprint != fingerprint:
-                raise exception.ClusterValidationError(
-                    "Incorrect fingerprint for key_location '%s'\n\n"
-                    "local fingerprint: %s\n\nkeypair fingerprint: %s"
-                    % (key_location, keyfingerprint, fingerprint))
+        elif len(fingerprint) == 47:
+            keyfingerprint = sshutils.get_public_rsa_fingerprint(key_location)
         else:
-            # Skip fingerprint validation for keys created using EC2 import
-            # keys until I can figure out the mystery behind the import keys
-            # fingerprint. I'm able to match ssh-keygen's public key
-            # fingerprint, however, Amazon doesn't for some reason...
-            log.warn("Unable to validate imported keypair fingerprint...")
+            raise exception.ClusterValidationError(
+                "Unrecognized fingerprint for %s: %s" % (keyname, fingerprint))
+        if keyfingerprint != fingerprint:
+            raise exception.ClusterValidationError(
+                "Incorrect fingerprint for key_location '%s'\n\n"
+                "local fingerprint: %s\n\nkeypair fingerprint: %s"
+                % (key_location, keyfingerprint, fingerprint))
         return True
 
     def validate_userdata(self):

@@ -36,6 +36,7 @@ from starcluster import image
 from starcluster import utils
 from starcluster import static
 from starcluster import spinner
+from starcluster import sshutils
 from starcluster import webtools
 from starcluster import exception
 from starcluster import progressbar
@@ -226,7 +227,7 @@ class EasyEC2(EasyAWS):
             while True:
                 try:
                     return group.delete()
-                except boto.exception.EC2ResponseError, e:
+                except boto.exception.EC2ResponseError as e:
                     if e.error_code == 'DependencyViolation':
                         log.debug('DependencyViolation error - retrying in 5s',
                                   exc_info=True)
@@ -312,7 +313,7 @@ class EasyEC2(EasyAWS):
         try:
             return self.get_security_groups(
                 filters={'group-name': groupname})[0]
-        except boto.exception.EC2ResponseError, e:
+        except boto.exception.EC2ResponseError as e:
             if e.error_code == "InvalidGroup.NotFound":
                 raise exception.SecurityGroupDoesNotExist(groupname)
             raise
@@ -390,7 +391,7 @@ class EasyEC2(EasyAWS):
         try:
             return self.get_placement_groups(filters={'group-name':
                                                       groupname})[0]
-        except boto.exception.EC2ResponseError, e:
+        except boto.exception.EC2ResponseError as e:
             if e.error_code == "InvalidPlacementGroup.Unknown":
                 raise exception.PlacementGroupDoesNotExist(groupname)
             raise
@@ -580,6 +581,16 @@ class EasyEC2(EasyAWS):
     def delete_keypair(self, name):
         return self.conn.delete_key_pair(name)
 
+    def import_keypair(self, name, rsa_key_file):
+        """
+        Import an existing RSA key file to EC2
+
+        Returns boto.ec2.keypair.KeyPair
+        """
+        k = sshutils.get_rsa_key(rsa_key_file)
+        pub_material = sshutils.get_public_key(k)
+        return self.conn.import_key_pair(name, pub_material)
+
     def create_keypair(self, name, output_file=None):
         """
         Create a new EC2 keypair and optionally save to output_file
@@ -595,14 +606,19 @@ class EasyEC2(EasyAWS):
                 raise exception.BaseException(
                     "cannot save keypair %s: file already exists" %
                     output_file)
-        kp = self.conn.create_key_pair(name)
+        try:
+            kp = self.conn.create_key_pair(name)
+        except boto.exception.EC2ResponseError as e:
+            if e.error_code == "InvalidKeyPair.Duplicate":
+                raise exception.KeyPairAlreadyExists(name)
+            raise
         if output_file:
             try:
                 kfile = open(output_file, 'wb')
                 kfile.write(kp.material)
                 kfile.close()
                 os.chmod(output_file, 0400)
-            except IOError, e:
+            except IOError as e:
                 raise exception.BaseException(str(e))
         return kp
 
@@ -612,7 +628,7 @@ class EasyEC2(EasyAWS):
     def get_keypair(self, keypair):
         try:
             return self.get_keypairs(filters={'key-name': keypair})[0]
-        except boto.exception.EC2ResponseError, e:
+        except boto.exception.EC2ResponseError as e:
             if e.error_code == "InvalidKeyPair.NotFound":
                 raise exception.KeyPairDoesNotExist(keypair)
             raise
@@ -639,7 +655,7 @@ class EasyEC2(EasyAWS):
             attrs = self.conn.get_instance_attribute(instance_id, 'userData')
             user_data = attrs.get('userData', '') or ''
             return base64.b64decode(user_data)
-        except boto.exception.EC2ResponseError, e:
+        except boto.exception.EC2ResponseError as e:
             if e.error_code == "InvalidInstanceID.NotFound":
                 raise exception.InstanceDoesNotExist(instance_id)
             raise e
@@ -675,7 +691,7 @@ class EasyEC2(EasyAWS):
         try:
             return self.get_all_instances(
                 filters={'instance-id': instance_id})[0]
-        except boto.exception.EC2ResponseError, e:
+        except boto.exception.EC2ResponseError as e:
             if e.error_code == "InvalidInstanceID.NotFound":
                 raise exception.InstanceDoesNotExist(instance_id)
             raise
@@ -686,7 +702,7 @@ class EasyEC2(EasyAWS):
         try:
             self.get_all_instances()
             return True
-        except boto.exception.EC2ResponseError, e:
+        except boto.exception.EC2ResponseError as e:
             cred_errs = ['AuthFailure', 'SignatureDoesNotMatch']
             if e.error_code in cred_errs:
                 return False
@@ -933,7 +949,7 @@ class EasyEC2(EasyAWS):
         """
         try:
             return self.get_zones(filters={'zone-name': zone})[0]
-        except boto.exception.EC2ResponseError, e:
+        except boto.exception.EC2ResponseError as e:
             if e.error_code == "InvalidZone.NotFound":
                 raise exception.ZoneDoesNotExist(zone, self.region.name)
         except IndexError:
@@ -992,7 +1008,7 @@ class EasyEC2(EasyAWS):
         """
         try:
             return self.get_images(filters={'image-id': image_id})[0]
-        except boto.exception.EC2ResponseError, e:
+        except boto.exception.EC2ResponseError as e:
             if e.error_code == "InvalidAMIID.NotFound":
                 raise exception.AMIDoesNotExist(image_id)
             raise
@@ -1199,7 +1215,7 @@ class EasyEC2(EasyAWS):
         """
         try:
             return self.get_volumes(filters={'volume-id': volume_id})[0]
-        except boto.exception.EC2ResponseError, e:
+        except boto.exception.EC2ResponseError as e:
             if e.error_code == "InvalidVolume.NotFound":
                 raise exception.VolumeDoesNotExist(volume_id)
             raise
@@ -1284,7 +1300,7 @@ class EasyEC2(EasyAWS):
         try:
             return self.get_snapshots(filters={'snapshot-id': snapshot_id},
                                       owner=owner)[0]
-        except boto.exception.EC2ResponseError, e:
+        except boto.exception.EC2ResponseError as e:
             if e.error_code == "InvalidSnapshot.NotFound":
                 raise exception.SnapshotDoesNotExist(snapshot_id)
             raise
@@ -1460,7 +1476,7 @@ class EasyS3(EasyAWS):
         bucket_name = bucket_name.split('/')[0]
         try:
             return self.conn.create_bucket(bucket_name)
-        except boto.exception.S3CreateError, e:
+        except boto.exception.S3CreateError as e:
             if e.error_code == "BucketAlreadyExists":
                 raise exception.BucketAlreadyExists(bucket_name)
             raise
@@ -1497,7 +1513,7 @@ class EasyS3(EasyAWS):
         """
         try:
             return self.conn.get_bucket(bucketname)
-        except boto.exception.S3ResponseError, e:
+        except boto.exception.S3ResponseError as e:
             if e.error_code == "NoSuchBucket":
                 raise exception.BucketDoesNotExist(bucketname)
             raise

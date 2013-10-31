@@ -129,6 +129,11 @@ class PlacementGroupDoesNotExist(AWSError):
         self.msg = "placement group %s does not exist" % pg_name
 
 
+class KeyPairAlreadyExists(AWSError):
+    def __init__(self, keyname):
+        self.msg = "keypair %s already exists" % keyname
+
+
 class KeyPairDoesNotExist(AWSError):
     def __init__(self, keyname):
         self.msg = "keypair %s does not exist" % keyname

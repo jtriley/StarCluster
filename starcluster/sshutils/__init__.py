@@ -25,13 +25,12 @@ import string
 import socket
 import fnmatch
 import hashlib
+import warnings
 import posixpath
 
 import paramiko
-from paramiko import util
-from paramiko import RSAKey
-from pyasn1.codec.der import encoder
-from pyasn1.type import univ
+from Crypto.PublicKey import RSA
+from Crypto.PublicKey import DSA
 
 # windows does not have termios...
 try:
@@ -173,21 +172,21 @@ class SSHClient(object):
     def _load_rsa_key(self, private_key, private_key_pass=None):
         private_key_file = os.path.expanduser(private_key)
         try:
-            rsa_key = paramiko.RSAKey.from_private_key_file(private_key_file,
-                                                            private_key_pass)
-            log.debug("Using private key %s (rsa)" % private_key)
+            rsa_key = get_rsa_key(key_location=private_key_file,
+                                  passphrase=private_key_pass)
+            log.debug("Using private key %s (RSA)" % private_key)
             return rsa_key
-        except paramiko.SSHException:
+        except (paramiko.SSHException, exception.SSHError):
             log.error('invalid rsa key or passphrase specified')
 
     def _load_dsa_key(self, private_key, private_key_pass=None):
         private_key_file = os.path.expanduser(private_key)
         try:
-            dsa_key = paramiko.DSSKey.from_private_key_file(private_key_file,
-                                                            private_key_pass)
-            log.info("Using private key %s (dsa)" % private_key)
+            dsa_key = get_dsa_key(key_location=private_key_file,
+                                  passphrase=private_key_pass)
+            log.info("Using private key %s (DSA)" % private_key)
             return dsa_key
-        except paramiko.SSHException:
+        except (paramiko.SSHException, exception.SSHError):
             log.error('invalid dsa key or passphrase specified')
 
     @property
@@ -208,10 +207,14 @@ class SSHClient(object):
         return self._scp
 
     def generate_rsa_key(self):
-        return paramiko.RSAKey.generate(2048)
+        warnings.warn("This method is deprecated: please use "
+                      "starcluster.sshutils.generate_rsa_key instead")
+        return generate_rsa_key()
 
     def get_public_key(self, key):
-        return ' '.join([key.get_name(), key.get_base64()])
+        warnings.warn("This method is deprecated: please use "
+                      "starcluster.sshutils.get_public_key instead")
+        return get_public_key(key)
 
     def load_remote_rsa_key(self, remote_filename):
         """
@@ -219,7 +222,7 @@ class SSHClient(object):
         machine
         """
         rfile = self.remote_file(remote_filename, 'r')
-        key = paramiko.RSAKey(file_obj=rfile)
+        key = get_rsa_key(key_file_obj=rfile)
         rfile.close()
         return key
 
@@ -776,60 +779,83 @@ class SSHGlob(object):
         return fnmatch.filter(names, pattern)
 
 
-RSA_OID = univ.ObjectIdentifier('1.2.840.113549.1.1.1')
-RSA_PARAMS = ['n', 'e', 'd', 'p', 'q', 'dp', 'dq', 'invq']
-
-
 def insert_char_every_n_chars(string, char='\n', every=64):
     return char.join(
         string[i:i + every] for i in xrange(0, len(string), every))
 
 
-def ASN1Sequence(*vals):
-    seq = univ.Sequence()
-    for i in range(len(vals)):
-        seq.setComponentByPosition(i, vals[i])
-    return seq
+def get_rsa_key(key_location=None, key_file_obj=None, passphrase=None,
+                use_pycrypto=False):
+    key_fobj = key_file_obj or open(key_location)
+    try:
+        if use_pycrypto:
+            key = RSA.importKey(key_fobj, passphrase=passphrase)
+        else:
+            key = paramiko.RSAKey.from_private_key(key_fobj,
+                                                   password=passphrase)
+        return key
+    except (paramiko.SSHException, ValueError):
+        raise exception.SSHError(
+            "Invalid RSA private key file or missing passphrase: %s" %
+            key_location)
 
 
-def export_rsa_to_pkcs8(params):
-    oid = ASN1Sequence(RSA_OID, univ.Null())
-    key = univ.Sequence().setComponentByPosition(0, univ.Integer(0))  # version
-    for i in range(len(RSA_PARAMS)):
-        key.setComponentByPosition(i + 1, univ.Integer(params[RSA_PARAMS[i]]))
-    octkey = encoder.encode(key)
-    seq = ASN1Sequence(univ.Integer(0), oid, univ.OctetString(octkey))
-    return encoder.encode(seq)
+def get_dsa_key(key_location=None, key_file_obj=None, passphrase=None,
+                use_pycrypto=False):
+    key_fobj = key_file_obj or open(key_location)
+    try:
+        key = paramiko.DSSKey.from_private_key(key_fobj,
+                                               password=passphrase)
+        if use_pycrypto:
+            key = DSA.construct((key.y, key.g, key.p, key.q, key.x))
+        return key
+    except (paramiko.SSHException, ValueError):
+        raise exception.SSHError(
+            "Invalid DSA private key file or missing passphrase: %s" %
+            key_location)
 
 
-def get_private_rsa_fingerprint(key_location):
+def get_public_key(key):
+    return ' '.join([key.get_name(), key.get_base64()])
+
+
+def generate_rsa_key():
+    return paramiko.RSAKey.generate(2048)
+
+
+def get_private_rsa_fingerprint(key_location=None, key_file_obj=None,
+                                passphrase=None):
     """
     Returns the fingerprint of a private RSA key as a 59-character string (40
     characters separated every 2 characters by a ':'). The fingerprint is
-    computed using a SHA1 digest of the DER encoded RSA private key.
+    computed using the SHA1 (hex) digest of the DER-encoded (pkcs8) RSA private
+    key.
     """
-    try:
-        k = RSAKey.from_private_key_file(key_location)
-    except paramiko.SSHException:
-        raise exception.SSHError("Invalid RSA private key file: %s" %
-                                 key_location)
-    params = dict(invq=util.mod_inverse(k.q, k.p), dp=k.d % (k.p - 1),
-                  dq=k.d % (k.q - 1), d=k.d, n=k.n, p=k.p, q=k.q, e=k.e)
-    assert len(params) == 8
-    # must convert from pkcs1 to pkcs8 and then DER encode
-    pkcs8der = export_rsa_to_pkcs8(params)
-    sha1digest = hashlib.sha1(pkcs8der).hexdigest()
-    return insert_char_every_n_chars(sha1digest, ':', 2)
+    k = get_rsa_key(key_location=key_location, key_file_obj=key_file_obj,
+                    passphrase=passphrase, use_pycrypto=True)
+    sha1digest = hashlib.sha1(k.exportKey('DER', pkcs=8)).hexdigest()
+    fingerprint = insert_char_every_n_chars(sha1digest, ':', 2)
+    key = key_location or key_file_obj
+    log.debug("rsa private key fingerprint (%s): %s" % (key, fingerprint))
+    return fingerprint
 
 
-def get_public_rsa_fingerprint(pubkey_location):
-    try:
-        k = RSAKey.from_private_key_file(pubkey_location)
-    except paramiko.SSHException:
-        raise exception.SSHError("Invalid RSA private key file: %s" %
-                                 pubkey_location)
-    md5digest = hashlib.md5(str(k)).hexdigest()
-    return insert_char_every_n_chars(md5digest, ':', 2)
+def get_public_rsa_fingerprint(key_location=None, key_file_obj=None,
+                               passphrase=None):
+    """
+    Returns the fingerprint of the public portion of an RSA key as a
+    47-character string (32 characters separated every 2 characters by a ':').
+    The fingerprint is computed using the MD5 (hex) digest of the DER-encoded
+    RSA public key.
+    """
+    privkey = get_rsa_key(key_location=key_location, key_file_obj=key_file_obj,
+                          passphrase=passphrase, use_pycrypto=True)
+    pubkey = privkey.publickey()
+    md5digest = hashlib.md5(pubkey.exportKey('DER')).hexdigest()
+    fingerprint = insert_char_every_n_chars(md5digest, ':', 2)
+    key = key_location or key_file_obj
+    log.debug("rsa public key fingerprint (%s): %s" % (key, fingerprint))
+    return fingerprint
 
 
 def test_create_keypair_fingerprint(keypair=None):
