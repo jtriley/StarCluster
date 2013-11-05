@@ -5,6 +5,104 @@ Version History
 .. contents::
     :local:
 
+.. _version-0.95:
+
+0.95
+====
+
+.. _v095-news:
+
+News
+----
+Version 0.95 of StarCluster is a feature release with many bug fixes. See the
+"Features" and "Bug Fixes" sections below for details. Please note that this
+version is *not* compatible with clusters started with older versions of
+StarCluster. Please terminate all clusters before upgrading to 0.95.
+
+.. _v095-features:
+
+Features
+--------
+* Option to prefix dns names of created nodes with the cluster tag
+* Added --force option to removenode
+* Added -c <cluster_template> option to addnode and removenode
+
+.. _v095-fixes:
+
+Bug Fixes
+---------
+*
+
+.. _version-0.94.2:
+
+0.94.2
+======
+
+.. _v0942-news:
+
+News
+----
+Version 0.94.2 of StarCluster is a bug fix release. See the "Bug Fixes"
+sections below for details. In general it's recommended to terminate all
+clusters before upgrading to new versions of StarCluster although this is not
+always strictly required.
+
+.. _v0942-fixes:
+
+Bug Fixes
+---------
+* node: fixed regression where the instance's connection object was not being
+  reused which was causing issues for folks using regions other than the default
+  us-east-1.
+
+.. _version-0.94.1:
+
+0.94.1
+======
+
+.. _v0941-news:
+
+News
+----
+Version 0.94.1 of StarCluster is a bug fix release. See the "Features" and
+"Bug Fixes" sections below for details. In general it's recommended to
+terminate all clusters before upgrading to new versions of StarCluster
+although this is not always strictly required.
+
+.. _v0941-features:
+
+Features
+--------
+* restart: add ``--reboot-only`` option
+* awsutils: force ``delete_on_termation`` on root volume when launching
+  instances
+* delay using optional imports in starcluster.utils until needed (reduces the
+  time it takes to load StarCluster)
+
+.. _v0941-fixes:
+
+Bug Fixes
+---------
+* cluster: wait for all instance and spot requests to propagate (fixes
+  'instance not found' errors and 'missing' spot requests when waiting for
+  cluster to come up)
+* cluster: terminate any instance that's been pending for more than 15 minutes
+  (fixes infinite wait due to a forever pending node)
+* s3image: fix block device map issue when host instance is EBS-backed
+* awsutils: fix custom block device map for S3 instances/AMIs
+* sshnode: fix keypair validation bug
+* node: fix for duplicate entries in known_hosts file
+* node: fix bug where credentials attributes were missing from node.ec2 object
+* loadbalancer: always pass ``--utc`` when calling date command
+* loadbalancer: set matplotlib backend to Agg - allows ``--plot`` option to
+  work without a display
+* config: convert ``EC2_CERT`` and ``EC2_PRIVATE_KEY`` in ``[aws]`` section to
+  absolute path
+* config: fix typo in config template (``PROTOCOL`` -> ``IP_PROTOCOL``)
+* tmux plugin: fix race condition where ``new-window -t`` is called before
+  ``new-session`` has finished
+* spothistory: update help docs for ``--plot`` option
+
 .. _version-0.94:
 
 0.94
@@ -30,13 +128,14 @@ Features
 * Updated base AMIs to latest 12.04 versions
 * OGS (formerly SGE): set default parallel environment allocation_rule to $fill_up
 * Added authentication agent forwarding to sshmaster, sshnode, and sshinstance
-* Support for loading config based on STARCLUSTER_CONFIG environment variable
+* Support for loading config based on ``$STARCLUSTER_CONFIG`` environment
+  variable
 * New plugin to install python packages with pip (pypkginstaller plugin)
 * New plugin that either copies or autogenerates a boto config for the cluster
   user
-* Added --force option to terminate/stop commands
+* Added ``--force`` option to terminate/stop commands
 * Add tags and virtualization type to listinstance output
-* Add --zone (-z) option to spothistory command
+* Add ``--zone`` (``-z``) option to spothistory command
 
 .. _v094-fixes:
 
@@ -48,20 +147,20 @@ Bug Fixes
 * awsutils: use 3 decimal places in spot history prices
 * cluster: fix thread leak when running plugins
 * cluster: store cluster metadata in userdata/tags
-* cluster: dont launch master as spot when cluster_size=1
+* cluster: dont launch master as spot when ``CLUSTER_SIZE=1``
 * cluster: reraise uncaught exceptions in run_plugins
 * cluster: fix instance filtering for default VPC
 * cluster: only clean-up placement groups in supported regions
 * clustersetup: ebs volume mounting improvements
-* clustersetup: raise exception if user's $HOME is owned by root
+* clustersetup: raise exception if user's ``$HOME`` is owned by root
 * improve ebs volume device and partition detection
 * config: allow inline comments in the config file
-* config: support [vol] shortcut in config
+* config: support ``[vol]`` shortcut in config
 * config: document/warn where/when env overrides cfg
 * threadpool: clear the exceptions queue in wait()
 * node: fix Node.root_device_name for misconfigured AMIs
 * node: fix ~/.ssh ownership in generate_key_for_user
-* sge: Export DRMAA_LIBRARY_PATH for Python DRMAA
+* sge: Export ``$DRMAA_LIBRARY_PATH`` for Python DRMAA
 * cli: use logging module to log/show exceptions
 * cli: write header to sys.stderr
 * logger: move console logs from stderr to stdout

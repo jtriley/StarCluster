@@ -425,6 +425,9 @@ class SGELoadBalancer(LoadBalancer):
         self.plot_output_dir = plot_output_dir
         if plot_stats:
             assert self.visualizer is not None
+        if min_nodes > max_nodes:
+            raise exception.BaseException(
+                "min_nodes cannot be higher than max_nodes")
 
     @property
     def visualizer(self):
@@ -645,13 +648,15 @@ class SGELoadBalancer(LoadBalancer):
         whether or not to add nodes to the cluster. Returns the number of nodes
         to add.
         """
-        if len(self._cluster.running_nodes) >= self.max_nodes:
+        num_nodes = len(self._cluster.nodes)
+        if num_nodes >= self.max_nodes:
             log.info("Not adding nodes: already at or above maximum (%d)" %
                      self.max_nodes)
             return
         queued_jobs = self.stat.get_queued_jobs()
-        if not queued_jobs:
-            log.info("Not adding nodes: no queued jobs...")
+        if not queued_jobs and num_nodes >= self.min_nodes:
+            log.info("Not adding nodes: at or above minimum nodes "
+                     "and no queued jobs...")
             return
         total_slots = self.stat.count_total_slots()
         if not self.has_cluster_stabilized() and total_slots > 0:
@@ -662,7 +667,10 @@ class SGELoadBalancer(LoadBalancer):
         slots_per_host = self.stat.slots_per_host()
         avail_slots = total_slots - used_slots
         need_to_add = 0
-        if total_slots == 0:
+        if num_nodes < self.min_nodes:
+            log.info("Adding node: below minimum ({:})".format(self.min_nodes))
+            need_to_add = self.min_nodes - num_nodes
+        elif total_slots == 0:
             #no slots, add one now
             need_to_add = 1
         elif qw_slots > avail_slots:

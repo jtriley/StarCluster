@@ -36,6 +36,7 @@ from starcluster import image
 from starcluster import utils
 from starcluster import static
 from starcluster import spinner
+from starcluster import sshutils
 from starcluster import webtools
 from starcluster import exception
 from starcluster import progressbar
@@ -100,26 +101,27 @@ class EasyEC2(EasyAWS):
                  aws_ec2_path='/', aws_s3_host=None, aws_s3_path='/',
                  aws_port=None, aws_region_name=None, aws_is_secure=True,
                  aws_region_host=None, aws_proxy=None, aws_proxy_port=None,
-                 aws_proxy_user=None, aws_proxy_pass=None,
+                 aws_proxy_user=None, aws_proxy_pass=None, vpc_id=None,
                  aws_validate_certs=True, **kwargs):
         aws_region = None
         if aws_region_name and aws_region_host:
             aws_region = boto.ec2.regioninfo.RegionInfo(
                 name=aws_region_name, endpoint=aws_region_host)
-        kwargs = dict(is_secure=aws_is_secure, region=aws_region,
-                      port=aws_port, path=aws_ec2_path, proxy=aws_proxy,
-                      proxy_port=aws_proxy_port, proxy_user=aws_proxy_user,
-                      proxy_pass=aws_proxy_pass,
-                      validate_certs=aws_validate_certs)
+        kwds = dict(is_secure=aws_is_secure, region=aws_region, port=aws_port,
+                    path=aws_ec2_path, proxy=aws_proxy,
+                    proxy_port=aws_proxy_port, proxy_user=aws_proxy_user,
+                    proxy_pass=aws_proxy_pass,
+                    validate_certs=aws_validate_certs)
         super(EasyEC2, self).__init__(aws_access_key_id, aws_secret_access_key,
-                                      boto.connect_ec2, **kwargs)
-        kwargs = dict(aws_s3_host=aws_s3_host, aws_s3_path=aws_s3_path,
-                      aws_port=aws_port, aws_is_secure=aws_is_secure,
-                      aws_proxy=aws_proxy, aws_proxy_port=aws_proxy_port,
-                      aws_proxy_user=aws_proxy_user,
-                      aws_proxy_pass=aws_proxy_pass,
-                      aws_validate_certs=aws_validate_certs)
-        self.s3 = EasyS3(aws_access_key_id, aws_secret_access_key, **kwargs)
+                                      boto.connect_ec2, **kwds)
+        self._conn = kwargs.get('connection')
+        kwds = dict(aws_s3_host=aws_s3_host, aws_s3_path=aws_s3_path,
+                    aws_port=aws_port, aws_is_secure=aws_is_secure,
+                    aws_proxy=aws_proxy, aws_proxy_port=aws_proxy_port,
+                    aws_proxy_user=aws_proxy_user,
+                    aws_proxy_pass=aws_proxy_pass,
+                    aws_validate_certs=aws_validate_certs)
+        self.s3 = EasyS3(aws_access_key_id, aws_secret_access_key, **kwds)
         self._regions = None
         self._platforms = None
         self._default_vpc = None
@@ -225,7 +227,7 @@ class EasyEC2(EasyAWS):
             while True:
                 try:
                     return group.delete()
-                except boto.exception.EC2ResponseError, e:
+                except boto.exception.EC2ResponseError as e:
                     if e.error_code == 'DependencyViolation':
                         log.debug('DependencyViolation error - retrying in 5s',
                                   exc_info=True)
@@ -236,7 +238,7 @@ class EasyEC2(EasyAWS):
             s.stop()
 
     def create_group(self, name, description, auth_ssh=False,
-                     auth_group_traffic=False):
+                     auth_group_traffic=False, vpc_id=None):
         """
         Create security group with name/description. auth_ssh=True
         will open port 22 to world (0.0.0.0/0). auth_group_traffic
@@ -244,18 +246,30 @@ class EasyEC2(EasyAWS):
         group
         """
         log.info("Creating security group %s..." % name)
-        sg = self.conn.create_security_group(name, description)
+        sg = self.conn.create_security_group(name, description, vpc_id=vpc_id)
         while not self.get_group_or_none(name):
             log.info("Waiting for security group %s..." % name)
             time.sleep(3)
         if auth_ssh:
             ssh_port = static.DEFAULT_SSH_PORT
-            sg.authorize('tcp', ssh_port, ssh_port, static.WORLD_CIDRIP)
+            self.conn.authorize_security_group(group_id=sg.id,
+                                               ip_protocol='tcp',
+                                               from_port=ssh_port,
+                                               to_port=ssh_port,
+                                               cidr_ip=static.WORLD_CIDRIP)
         if auth_group_traffic:
-            src_group = self.get_group_or_none(name)
-            sg.authorize('icmp', -1, -1, src_group=src_group)
-            sg.authorize('tcp', 1, 65535, src_group=src_group)
-            sg.authorize('udp', 1, 65535, src_group=src_group)
+            self.conn.authorize_security_group(group_id=sg.id,
+                                               ip_protocol='icmp',
+                                               from_port=-1, to_port=-1,
+                                               cidr_ip=static.WORLD_CIDRIP)
+            self.conn.authorize_security_group(group_id=sg.id,
+                                               ip_protocol='tcp',
+                                               from_port=1, to_port=65535,
+                                               cidr_ip=static.WORLD_CIDRIP)
+            self.conn.authorize_security_group(group_id=sg.id,
+                                               ip_protocol='udp',
+                                               from_port=1, to_port=65535,
+                                               cidr_ip=static.WORLD_CIDRIP)
         return sg
 
     def get_all_security_groups(self, groupnames=[]):
@@ -279,7 +293,7 @@ class EasyEC2(EasyAWS):
             pass
 
     def get_or_create_group(self, name, description, auth_ssh=True,
-                            auth_group_traffic=False):
+                            auth_group_traffic=False, vpc_id=None):
         """
         Try to return a security group by name. If the group is not found,
         attempt to create it.  Description only applies to creation.
@@ -290,15 +304,16 @@ class EasyEC2(EasyAWS):
         """
         sg = self.get_group_or_none(name)
         if not sg:
-            sg = self.create_group(name, description, auth_ssh,
-                                   auth_group_traffic)
+            sg = self.create_group(name, description, auth_ssh=auth_ssh,
+                                   auth_group_traffic=auth_group_traffic,
+                                   vpc_id=vpc_id)
         return sg
 
     def get_security_group(self, groupname):
         try:
             return self.get_security_groups(
                 filters={'group-name': groupname})[0]
-        except boto.exception.EC2ResponseError, e:
+        except boto.exception.EC2ResponseError as e:
             if e.error_code == "InvalidGroup.NotFound":
                 raise exception.SecurityGroupDoesNotExist(groupname)
             raise
@@ -376,7 +391,7 @@ class EasyEC2(EasyAWS):
         try:
             return self.get_placement_groups(filters={'group-name':
                                                       groupname})[0]
-        except boto.exception.EC2ResponseError, e:
+        except boto.exception.EC2ResponseError as e:
             if e.error_code == "InvalidPlacementGroup.Unknown":
                 raise exception.PlacementGroupDoesNotExist(groupname)
             raise
@@ -405,10 +420,11 @@ class EasyEC2(EasyAWS):
 
     def request_instances(self, image_id, price=None, instance_type='m1.small',
                           min_count=1, max_count=1, count=1, key_name=None,
-                          security_groups=None, launch_group=None,
+                          security_groups=None, security_group_ids=None,
+                          launch_group=None,
                           availability_zone_group=None, placement=None,
                           user_data=None, placement_group=None,
-                          block_device_map=None):
+                          block_device_map=None, subnet_id=None):
         """
         Convenience method for running spot or flat-rate instances
         """
@@ -433,36 +449,38 @@ class EasyEC2(EasyAWS):
                 root.delete_on_termination = True
                 bdmap[img.root_device_name] = root
             block_device_map = bdmap
+
+        shared_kwargs = dict(instance_type=instance_type,
+                             key_name=key_name,
+                             subnet_id=subnet_id,
+                             placement=placement,
+                             placement_group=placement_group,
+                             user_data=user_data,
+                             block_device_map=block_device_map)
+
         if price:
             return self.request_spot_instances(
-                price, image_id, instance_type=instance_type,
-                count=count, launch_group=launch_group, key_name=key_name,
-                security_groups=security_groups,
+                price, image_id,
+                count=count, launch_group=launch_group,
+                security_group_ids=security_group_ids,
                 availability_zone_group=availability_zone_group,
-                placement=placement, placement_group=placement_group,
-                user_data=user_data, block_device_map=block_device_map)
+                **shared_kwargs)
         else:
             return self.run_instances(
-                image_id, instance_type=instance_type,
+                image_id,
                 min_count=min_count, max_count=max_count,
-                key_name=key_name, security_groups=security_groups,
-                placement=placement, user_data=user_data,
-                placement_group=placement_group,
-                block_device_map=block_device_map)
+                security_groups=security_groups,
+                **shared_kwargs)
 
     def request_spot_instances(self, price, image_id, instance_type='m1.small',
                                count=1, launch_group=None, key_name=None,
                                availability_zone_group=None,
-                               security_groups=None, placement=None,
-                               placement_group=None, user_data=None,
-                               block_device_map=None):
-        return self.conn.request_spot_instances(
-            price, image_id, instance_type=instance_type, count=count,
-            launch_group=launch_group, key_name=key_name,
-            security_groups=security_groups,
-            availability_zone_group=availability_zone_group,
-            placement=placement, placement_group=placement_group,
-            user_data=user_data, block_device_map=block_device_map)
+                               security_group_ids=None, subnet_id=None,
+                               placement=None, placement_group=None,
+                               user_data=None, block_device_map=None):
+        kwargs = locals()
+        kwargs.pop('self')
+        return self.conn.request_spot_instances(**kwargs)
 
     def _wait_for_propagation(self, obj_ids, fetch_func, id_filter, obj_name,
                               max_retries=5, interval=5):
@@ -522,16 +540,26 @@ class EasyEC2(EasyAWS):
     def run_instances(self, image_id, instance_type='m1.small', min_count=1,
                       max_count=1, key_name=None, security_groups=None,
                       placement=None, user_data=None, placement_group=None,
-                      block_device_map=None):
-        return self.conn.run_instances(image_id, instance_type=instance_type,
-                                       min_count=min_count,
-                                       max_count=max_count,
-                                       key_name=key_name,
-                                       security_groups=security_groups,
-                                       placement=placement,
-                                       user_data=user_data,
-                                       placement_group=placement_group,
-                                       block_device_map=block_device_map)
+                      block_device_map=None, subnet_id=None):
+        kwargs = dict(
+            instance_type=instance_type,
+            min_count=min_count,
+            max_count=max_count,
+            key_name=key_name,
+            subnet_id=subnet_id,
+            placement=placement,
+            user_data=user_data,
+            placement_group=placement_group,
+            block_device_map=block_device_map
+        )
+        if subnet_id:
+            kwargs.update(
+                security_group_ids=self.get_securityids_from_names(
+                    security_groups))
+            return self.conn.run_instances(image_id, **kwargs)
+        else:
+            kwargs.update(security_groups=security_groups)
+            return self.conn.run_instances(image_id, **kwargs)
 
     def create_image(self, instance_id, name, description=None,
                      no_reboot=False):
@@ -553,6 +581,16 @@ class EasyEC2(EasyAWS):
     def delete_keypair(self, name):
         return self.conn.delete_key_pair(name)
 
+    def import_keypair(self, name, rsa_key_file):
+        """
+        Import an existing RSA key file to EC2
+
+        Returns boto.ec2.keypair.KeyPair
+        """
+        k = sshutils.get_rsa_key(rsa_key_file)
+        pub_material = sshutils.get_public_key(k)
+        return self.conn.import_key_pair(name, pub_material)
+
     def create_keypair(self, name, output_file=None):
         """
         Create a new EC2 keypair and optionally save to output_file
@@ -568,14 +606,19 @@ class EasyEC2(EasyAWS):
                 raise exception.BaseException(
                     "cannot save keypair %s: file already exists" %
                     output_file)
-        kp = self.conn.create_key_pair(name)
+        try:
+            kp = self.conn.create_key_pair(name)
+        except boto.exception.EC2ResponseError as e:
+            if e.error_code == "InvalidKeyPair.Duplicate":
+                raise exception.KeyPairAlreadyExists(name)
+            raise
         if output_file:
             try:
                 kfile = open(output_file, 'wb')
                 kfile.write(kp.material)
                 kfile.close()
                 os.chmod(output_file, 0400)
-            except IOError, e:
+            except IOError as e:
                 raise exception.BaseException(str(e))
         return kp
 
@@ -585,7 +628,7 @@ class EasyEC2(EasyAWS):
     def get_keypair(self, keypair):
         try:
             return self.get_keypairs(filters={'key-name': keypair})[0]
-        except boto.exception.EC2ResponseError, e:
+        except boto.exception.EC2ResponseError as e:
             if e.error_code == "InvalidKeyPair.NotFound":
                 raise exception.KeyPairDoesNotExist(keypair)
             raise
@@ -612,20 +655,35 @@ class EasyEC2(EasyAWS):
             attrs = self.conn.get_instance_attribute(instance_id, 'userData')
             user_data = attrs.get('userData', '') or ''
             return base64.b64decode(user_data)
-        except boto.exception.EC2ResponseError, e:
+        except boto.exception.EC2ResponseError as e:
             if e.error_code == "InvalidInstanceID.NotFound":
                 raise exception.InstanceDoesNotExist(instance_id)
             raise e
 
-    def get_all_instances(self, instance_ids=[], filters=None):
+    def get_securityids_from_names(self, groupnames):
+        name_id = dict([(sec.name, sec.id) for sec in
+                        self.conn.get_all_security_groups()])
+        return [name_id[gname] for gname in groupnames if gname in name_id]
+
+    def get_all_instances(self, instance_ids=[], filters={}):
+
+        #little path to since vpc can't hadle filters with group-name
+        #TODO : dev Tue Apr 24 18:25:58 2012
+        #should move all code to instance.group-id
+        if 'group-name' in filters:
+            groupname = filters['group-name']
+            try:
+                secid = self.get_securityids_from_names([groupname])[0]
+                filters['instance.group-id'] = secid
+            except IndexError:
+                return []  # Haven't created the security group in aws yet
+            del filters['group-name']
+
         reservations = self.conn.get_all_instances(instance_ids,
                                                    filters=filters)
         instances = []
         for res in reservations:
             insts = res.instances
-            for i in insts:
-                # set group info
-                i.groups = res.groups
             instances.extend(insts)
         return instances
 
@@ -633,7 +691,7 @@ class EasyEC2(EasyAWS):
         try:
             return self.get_all_instances(
                 filters={'instance-id': instance_id})[0]
-        except boto.exception.EC2ResponseError, e:
+        except boto.exception.EC2ResponseError as e:
             if e.error_code == "InvalidInstanceID.NotFound":
                 raise exception.InstanceDoesNotExist(instance_id)
             raise
@@ -644,7 +702,7 @@ class EasyEC2(EasyAWS):
         try:
             self.get_all_instances()
             return True
-        except boto.exception.EC2ResponseError, e:
+        except boto.exception.EC2ResponseError as e:
             cred_errs = ['AuthFailure', 'SignatureDoesNotMatch']
             if e.error_code in cred_errs:
                 return False
@@ -891,7 +949,7 @@ class EasyEC2(EasyAWS):
         """
         try:
             return self.get_zones(filters={'zone-name': zone})[0]
-        except boto.exception.EC2ResponseError, e:
+        except boto.exception.EC2ResponseError as e:
             if e.error_code == "InvalidZone.NotFound":
                 raise exception.ZoneDoesNotExist(zone, self.region.name)
         except IndexError:
@@ -950,7 +1008,7 @@ class EasyEC2(EasyAWS):
         """
         try:
             return self.get_images(filters={'image-id': image_id})[0]
-        except boto.exception.EC2ResponseError, e:
+        except boto.exception.EC2ResponseError as e:
             if e.error_code == "InvalidAMIID.NotFound":
                 raise exception.AMIDoesNotExist(image_id)
             raise
@@ -1157,7 +1215,7 @@ class EasyEC2(EasyAWS):
         """
         try:
             return self.get_volumes(filters={'volume-id': volume_id})[0]
-        except boto.exception.EC2ResponseError, e:
+        except boto.exception.EC2ResponseError as e:
             if e.error_code == "InvalidVolume.NotFound":
                 raise exception.VolumeDoesNotExist(volume_id)
             raise
@@ -1242,7 +1300,7 @@ class EasyEC2(EasyAWS):
         try:
             return self.get_snapshots(filters={'snapshot-id': snapshot_id},
                                       owner=owner)[0]
-        except boto.exception.EC2ResponseError, e:
+        except boto.exception.EC2ResponseError as e:
             if e.error_code == "InvalidSnapshot.NotFound":
                 raise exception.SnapshotDoesNotExist(snapshot_id)
             raise
@@ -1418,7 +1476,7 @@ class EasyS3(EasyAWS):
         bucket_name = bucket_name.split('/')[0]
         try:
             return self.conn.create_bucket(bucket_name)
-        except boto.exception.S3CreateError, e:
+        except boto.exception.S3CreateError as e:
             if e.error_code == "BucketAlreadyExists":
                 raise exception.BucketAlreadyExists(bucket_name)
             raise
@@ -1455,7 +1513,7 @@ class EasyS3(EasyAWS):
         """
         try:
             return self.conn.get_bucket(bucketname)
-        except boto.exception.S3ResponseError, e:
+        except boto.exception.S3ResponseError as e:
             if e.error_code == "NoSuchBucket":
                 raise exception.BucketDoesNotExist(bucketname)
             raise
@@ -1482,6 +1540,7 @@ class EasyS3(EasyAWS):
         bucket = self.get_bucket(bucketname)
         files = [file for file in bucket.list()]
         return files
+
 
 if __name__ == "__main__":
     from starcluster.config import get_easy_ec2

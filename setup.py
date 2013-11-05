@@ -31,8 +31,9 @@ try:
                  tests_require="nose",
                  install_requires=["paramiko>=1.11.0", "boto>=2.10.0",
                                    "workerpool>=0.9.2", "Jinja2>=2.7",
-                                   "decorator>=3.4.0", "pyasn1>=0.1.7",
-                                   "iptools>=0.6.1", "optcomplete>=1.2-devel"],
+                                   "decorator>=3.4.0", "iptools>=0.6.1",
+                                   "optcomplete>=1.2-devel",
+                                   "pycrypto >= 2.1, != 2.4"],
                  include_package_data=True,
                  entry_points=dict(console_scripts=console_scripts),
                  zip_safe=False)
