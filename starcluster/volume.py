@@ -234,7 +234,7 @@ class VolumeCreator(cluster.Cluster):
                                sg.instances())
         if self._instance:
             vol_hosts.append(self._instance)
-        vol_hosts = map(lambda x: x.id, vol_hosts)
+        vol_hosts = list(set([h.id for h in vol_hosts]))
         if vol_hosts:
             log.warn("There are still volume hosts running: %s" %
                      ', '.join(vol_hosts))
