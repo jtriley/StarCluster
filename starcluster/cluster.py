@@ -2071,6 +2071,9 @@ class ClusterValidator(validators.Validator):
             if not mount_path.startswith('/'):
                 raise exception.ClusterValidationError(
                     "MOUNT_PATH for volume %s should start with /" % vol_name)
+            if mount_path == "/":
+                raise exception.ClusterValidationError(
+                    "MOUNT_PATH for volume %s cannot be /" % vol_name)
         for path in mount_paths:
             if mount_paths.count(path) > 1:
                 raise exception.ClusterValidationError(

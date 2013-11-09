@@ -501,8 +501,8 @@ class Node(object):
             log.debug("Using existing key: %s" % private_key)
             key = self.ssh.load_remote_rsa_key(private_key)
         else:
-            key = self.ssh.generate_rsa_key()
-        pubkey_contents = self.ssh.get_public_key(key)
+            key = sshutils.generate_rsa_key()
+        pubkey_contents = sshutils.get_public_key(key)
         if not key_exists or ignore_existing:
             # copy public key to remote machine
             pub_key = self.ssh.remote_file(public_key, 'w')
@@ -533,7 +533,7 @@ class Node(object):
             # add public key used to create the connection to user's
             # authorized_keys
             conn_key = self.ssh._pkey
-            conn_pubkey_contents = self.ssh.get_public_key(conn_key)
+            conn_pubkey_contents = sshutils.get_public_key(conn_key)
             if conn_pubkey_contents not in auth_keys_contents:
                 log.debug("adding conn_pubkey_contents")
                 auth_keys.write('%s\n' % conn_pubkey_contents)
