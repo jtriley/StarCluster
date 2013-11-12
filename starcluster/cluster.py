@@ -60,16 +60,8 @@ class ClusterManager(managers.Manager):
             cltag = self.get_tag_from_sg(clname)
             if not group:
                 group = self.ec2.get_security_group(clname)
-
-            default_template = self.cfg.get_default_cluster_template()
-            cl = self.cfg.get_cluster_template(default_template, cltag,
-                                               self.ec2)
-            if not isinstance(cl, Cluster):
-                raise NotImplementedError(
-                    "This ClusterManager and its config are incompatible: "
-                    " config.get_cluster_template returned an instance that"
-                    " wasn't a Cluster object.  This is a bug!")
-
+            cl = Cluster(ec2_conn=self.ec2, cluster_tag=cltag,
+                         cluster_group=group)
             if load_receipt:
                 cl.load_receipt(load_plugins=load_plugins,
                                 load_volumes=load_volumes)
@@ -174,12 +166,10 @@ class ClusterManager(managers.Manager):
             cluster_name = static.SECURITY_GROUP_TEMPLATE % cluster_name
         return cluster_name
 
-    def add_node(self, cluster_name, dns_prefix, alias=None, no_create=False,
-                 image_id=None, instance_type=None, zone=None,
-                 placement_group=None, spot_bid=None, template=None):
-        if not template:
-            template = self.get_default_cluster_template()
-        cl = self.get_cluster_template(template, cluster_name)
+    def add_node(self, cluster_name, dns_prefix, alias=None,
+                 no_create=False, image_id=None, instance_type=None, zone=None,
+                 placement_group=None, spot_bid=None):
+        cl = self.get_cluster(cluster_name)
         if dns_prefix:
             cl.dns_prefix = cluster_name
         return cl.add_node(alias=alias, image_id=image_id,
@@ -188,15 +178,12 @@ class ClusterManager(managers.Manager):
                            no_create=no_create)
 
     def add_nodes(self, cluster_name, num_nodes, dns_prefix, aliases=None,
-                  no_create=False,
-                  image_id=None, instance_type=None, zone=None,
-                  placement_group=None, spot_bid=None, template=None):
+                  no_create=False, image_id=None, instance_type=None,
+                  zone=None, placement_group=None, spot_bid=None):
         """
         Add one or more nodes to cluster
         """
-        if not template:
-            template = self.get_default_cluster_template()
-        cl = self.get_cluster_template(template, cluster_name)
+        cl = self.get_cluster(cluster_name)
         if dns_prefix:
             cl.dns_prefix = cluster_name
         return cl.add_nodes(num_nodes, aliases=aliases, image_id=image_id,
@@ -204,14 +191,11 @@ class ClusterManager(managers.Manager):
                             placement_group=placement_group, spot_bid=spot_bid,
                             no_create=no_create)
 
-    def remove_node(self, cluster_name, alias, terminate=True, template=None,
-                    force=False):
+    def remove_node(self, cluster_name, alias, terminate=True, force=False):
         """
         Remove a single node from a cluster
         """
-        if not template:
-            template = self.get_default_cluster_template()
-        cl = self.get_cluster_template(template, cluster_name)
+        cl = self.get_cluster(cluster_name)
         n = cl.get_node_by_alias(alias)
         if not n:
             raise exception.InstanceDoesNotExist(alias, label='node')
