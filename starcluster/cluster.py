@@ -891,9 +891,9 @@ class Cluster(object):
                       subnet_id=getattr(self, 'subnet_id', None))
         resvs = []
         if spot_bid:
+            security_group_id = self.cluster_group.id
             for alias in aliases:
-                sg = self.ec2.get_security_group(self._security_group)
-                kwargs['security_group_ids'] = [sg.id]
+                kwargs['security_group_ids'] = [security_group_id]
                 kwargs['user_data'] = self._get_cluster_userdata([alias])
                 resvs.extend(self.ec2.request_instances(image_id, **kwargs))
         else:
