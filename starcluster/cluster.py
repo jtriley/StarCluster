@@ -164,26 +164,22 @@ class ClusterManager(managers.Manager):
             cluster_name = static.SECURITY_GROUP_TEMPLATE % cluster_name
         return cluster_name
 
-    def add_node(self, cluster_name, dns_prefix, alias=None,
-                 no_create=False, image_id=None, instance_type=None, zone=None,
+    def add_node(self, cluster_name, alias=None, no_create=False,
+                 image_id=None, instance_type=None, zone=None,
                  placement_group=None, spot_bid=None):
         cl = self.get_cluster(cluster_name)
-        if dns_prefix:
-            cl.dns_prefix = cluster_name
         return cl.add_node(alias=alias, image_id=image_id,
                            instance_type=instance_type, zone=zone,
                            placement_group=placement_group, spot_bid=spot_bid,
                            no_create=no_create)
 
-    def add_nodes(self, cluster_name, num_nodes, dns_prefix, aliases=None,
-                  no_create=False, image_id=None, instance_type=None,
-                  zone=None, placement_group=None, spot_bid=None):
+    def add_nodes(self, cluster_name, num_nodes, aliases=None, no_create=False,
+                  image_id=None, instance_type=None, zone=None,
+                  placement_group=None, spot_bid=None):
         """
         Add one or more nodes to cluster
         """
         cl = self.get_cluster(cluster_name)
-        if dns_prefix:
-            cl.dns_prefix = cluster_name
         return cl.add_nodes(num_nodes, aliases=aliases, image_id=image_id,
                             instance_type=instance_type, zone=zone,
                             placement_group=placement_group, spot_bid=spot_bid,

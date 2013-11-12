@@ -75,9 +75,6 @@ class CmdAddNode(ClusterCompleter):
             default=[], help="alias to give to the new node "
             "(e.g. node007, mynode, etc.)")
         parser.add_option(
-            "-P", "--dns-prefix", action='store_true', dest="dns_prefix",
-            help="Prefix dns names of all added nodes with the cluster tag")
-        parser.add_option(
             "-n", "--num-nodes", dest="num_nodes", action="store", type="int",
             default=1, help="number of new nodes to launch")
         parser.add_option(
@@ -137,5 +134,4 @@ class CmdAddNode(ClusterCompleter):
                           image_id=self.opts.image_id,
                           instance_type=self.opts.instance_type,
                           zone=self.opts.zone, spot_bid=self.opts.spot_bid,
-                          no_create=self.opts.no_create,
-                          dns_prefix=self.opts.dns_prefix)
+                          no_create=self.opts.no_create)
