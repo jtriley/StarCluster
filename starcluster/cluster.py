@@ -124,8 +124,8 @@ class ClusterManager(managers.Manager):
         """
         return self.get_cluster_or_none(tag_name) is not None
 
-    def ssh_to_master(self, cluster_name, dns_prefix, user='root',
-                      command=None, forward_x11=False, forward_agent=False):
+    def ssh_to_master(self, cluster_name, user='root', command=None,
+                      forward_x11=False, forward_agent=False):
         """
         ssh to master node of cluster_name
 
@@ -133,8 +133,6 @@ class ClusterManager(managers.Manager):
         """
         cluster = self.get_cluster(cluster_name, load_receipt=False,
                                    require_keys=True)
-        if dns_prefix:
-            cluster.dns_prefix = cluster_name
         return cluster.ssh_to_master(user=user, command=command,
                                      forward_x11=forward_x11,
                                      forward_agent=forward_agent)
