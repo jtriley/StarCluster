@@ -2160,7 +2160,7 @@ class ClusterValidator(validators.Validator):
             ud = self.cluster._get_cluster_userdata(aliases)
         else:
             ud = self.cluster._get_cluster_userdata(
-                [self._make_alias(id=1)])
+                [self.cluster._make_alias(id=1)])
         ud_size_kb = utils.size_in_kb(ud)
         if ud_size_kb > 16:
             raise exception.ClusterValidationError(
