@@ -154,7 +154,7 @@ class CmdStart(ClusterCompleter):
                           help="Path to userdata script that will run on "
                           "each node on start-up. Can be used multiple times.")
         parser.add_option("-P", "--dns-prefix", action='store_true',
-                          help=("Prefix dns names of all nodes in the cluster"
+                          help=("Prefix dns names of all nodes in the cluster "
                                 "with the cluster tag"))
 
     def execute(self, args):
