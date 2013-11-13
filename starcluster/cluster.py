@@ -1489,29 +1489,7 @@ class Cluster(object):
                 pg.delete()
         sg = self.ec2.get_group_or_none(self._security_group)
         if sg:
-            log.info("Removing %s security group" % sg.name)
-            if self.cluster_group.vpc_id:
-                log.info(
-                    "In VPC, AWS is slow to unregister dependencies to"
-                    " security groups.  Let's wait up to a few mins..."
-                    " If this fails, you may need to delete rules that link"
-                    " this security group and some other security group you"
-                    " have.")
-                pbar = self.progress_bar.reset()
-                pbar.maxval = 50
-                for nth_try in range(50):
-                    pbar.update(nth_try)
-                    try:
-                        self.ec2.conn.delete_security_group(group_id=sg.id)
-                        break
-                    except:
-                        if nth_try == 49:
-                            raise
-                        time.sleep(5)
-                        continue
-                pbar.finish()
-            else:
-                self.ec2.conn.delete_security_group(group_id=sg.id)
+            self.ec2.delete_group(sg)
 
     def start(self, create=True, create_only=False, validate=True,
               validate_only=False, validate_running=False):
