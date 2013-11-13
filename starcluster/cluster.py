@@ -1624,10 +1624,9 @@ class Cluster(object):
 
     def ssh_to_master(self, user='root', command=None, forward_x11=False,
                       forward_agent=False):
-        return self.ssh_to_node(self._make_alias(master=True),
-                                user=user, command=command,
-                                forward_x11=forward_x11,
-                                forward_agent=forward_agent)
+        return self.master_node.shell(user=user, command=command,
+                                      forward_x11=forward_x11,
+                                      forward_agent=forward_agent)
 
     def ssh_to_node(self, alias, user='root', command=None, forward_x11=False,
                     forward_agent=False):
