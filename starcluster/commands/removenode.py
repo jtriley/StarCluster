@@ -49,13 +49,6 @@ class CmdRemoveNode(ClusterCompleter):
     tag = None
 
     def addopts(self, parser):
-        templates = []
-        if self.cfg:
-            templates = self.cfg.clusters.keys()
-        parser.add_option(
-            "-c", "--cluster-template", action="store",
-            dest="cluster_template", choices=templates, default=None,
-            help="cluster template to use from the config file")
         parser.add_option("-f", "--force", dest="force", action="store_true",
                           default=False,  help="Terminate node regardless "
                           "of errors if possible ")
@@ -71,5 +64,4 @@ class CmdRemoveNode(ClusterCompleter):
         aliases = args[1:]
         for alias in aliases:
             self.cm.remove_node(tag, alias, terminate=self.opts.terminate,
-                                template=self.opts.cluster_template,
                                 force=self.opts.force)

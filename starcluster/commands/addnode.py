@@ -70,20 +70,10 @@ class CmdAddNode(ClusterCompleter):
     tag = None
 
     def addopts(self, parser):
-        templates = []
-        if self.cfg:
-            templates = self.cfg.clusters.keys()
-        parser.add_option(
-            "-c", "--cluster-template", action="store",
-            dest="cluster_template", choices=templates, default=None,
-            help="cluster template to use from the config file")
         parser.add_option(
             "-a", "--alias", dest="alias", action="append", type="string",
             default=[], help="alias to give to the new node "
             "(e.g. node007, mynode, etc.)")
-        parser.add_option("-P", "--dns-prefix", action='store_true',
-                          help=("Prefix dns names of all added nodes"
-                                " with the cluster tag"))
         parser.add_option(
             "-n", "--num-nodes", dest="num_nodes", action="store", type="int",
             default=1, help="number of new nodes to launch")
@@ -121,7 +111,6 @@ class CmdAddNode(ClusterCompleter):
         if len(args) != 1:
             self.parser.error("please specify a cluster <cluster_tag>")
         tag = self.tag = args[0]
-
         aliases = []
         for alias in self.opts.alias:
             aliases.extend(alias.split(','))
@@ -145,6 +134,4 @@ class CmdAddNode(ClusterCompleter):
                           image_id=self.opts.image_id,
                           instance_type=self.opts.instance_type,
                           zone=self.opts.zone, spot_bid=self.opts.spot_bid,
-                          no_create=self.opts.no_create,
-                          dns_prefix=self.opts.dns_prefix,
-                          template=self.opts.cluster_template)
+                          no_create=self.opts.no_create)

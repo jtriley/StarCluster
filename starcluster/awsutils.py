@@ -215,7 +215,7 @@ class EasyEC2(EasyAWS):
             if img.id == image_id:
                 return img
 
-    def delete_group(self, group):
+    def delete_group(self, group, max_retries=60, retry_delay=5):
         """
         This method deletes the security group using group.delete() but in the
         case that group.delete() throws a DependencyViolation error it will
@@ -224,14 +224,16 @@ class EasyEC2(EasyAWS):
         """
         s = utils.get_spinner("Removing %s security group..." % group.name)
         try:
-            while True:
+            for i in range(max_retries):
                 try:
                     return group.delete()
                 except boto.exception.EC2ResponseError as e:
+                    if i == max_retries - 1:
+                        raise
                     if e.error_code == 'DependencyViolation':
                         log.debug('DependencyViolation error - retrying in 5s',
                                   exc_info=True)
-                        time.sleep(5)
+                        time.sleep(retry_delay)
                     else:
                         raise
         finally:
