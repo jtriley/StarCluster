@@ -443,7 +443,7 @@ class Cluster(object):
 
     @property
     def zone(self):
-        if not self._zone and self.availability_zone or self.volumes:
+        if not self._zone:
             self._zone = self._get_cluster_zone()
         return self._zone
 
@@ -474,6 +474,11 @@ class Cluster(object):
             raise exception.InvalidZone(zone.name, common_zone)
         if not zone and common_zone:
             zone = self.ec2.get_zone(common_zone)
+        if not zone:
+            try:
+                zone = self.ec2.get_zone(self.master_node.placement)
+            except exception.MasterDoesNotExist:
+                pass
         return zone
 
     @property
