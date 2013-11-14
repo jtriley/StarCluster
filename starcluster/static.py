@@ -127,6 +127,11 @@ INSTANCE_TYPES = {
     'cr1.8xlarge': ['x86_64'],
     'hi1.4xlarge': ['x86_64'],
     'hs1.8xlarge': ['x86_64'],
+    'c3.large': ['x86_64'],
+    'c3.xlarge': ['x86_64'],
+    'c3.2xlarge': ['x86_64'],
+    'c3.4xlarge': ['x86_64'],
+    'c3.8xlarge': ['x86_64'],
 }
 
 MICRO_INSTANCE_TYPES = ['t1.micro']
@@ -143,9 +148,11 @@ HI_IO_TYPES = ['hi1.4xlarge']
 
 HI_STORAGE_TYPES = ['hs1.8xlarge']
 
+M3_COMPUTE_TYPES = ['c3.large', 'c3.xlarge', 'c3.2xlarge', 'c3.4xlarge', 'c3.8xlarge']
+
 CLUSTER_TYPES = CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES + CLUSTER_HIMEM_TYPES
 
-HVM_TYPES = CLUSTER_TYPES + HI_IO_TYPES + HI_STORAGE_TYPES + SEC_GEN_TYPES
+HVM_TYPES = CLUSTER_TYPES + HI_IO_TYPES + HI_STORAGE_TYPES + SEC_GEN_TYPES + M3_COMPUTE_TYPES
 
 PLACEMENT_GROUP_TYPES = CLUSTER_TYPES + HI_IO_TYPES + HI_STORAGE_TYPES
 
