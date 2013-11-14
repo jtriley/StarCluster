@@ -33,7 +33,7 @@ try:
                                    "workerpool>=0.9.2", "Jinja2>=2.7",
                                    "decorator>=3.4.0", "iptools>=0.6.1",
                                    "optcomplete>=1.2-devel",
-                                   "pycrypto >= 2.5"],
+                                   "pycrypto>=2.5"],
                  include_package_data=True,
                  entry_points=dict(console_scripts=console_scripts),
                  zip_safe=False)
