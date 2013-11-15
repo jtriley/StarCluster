@@ -656,7 +656,8 @@ class Node(object):
         $ node.export_fs_to_nodes(nodes=[node1,node2],
                                   export_paths=['/home', '/opt/sge6'])
         """
-        # setup /etc/exports
+        log.debug("Removing potentially stale NFS entries")
+        self.stop_exporting_fs_to_nodes(nodes)
         log.info("Configuring NFS exports path(s):\n%s" %
                  ' '.join(export_paths))
         nfs_export_settings = "(async,no_root_squash,no_subtree_check,rw)"
