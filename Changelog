@@ -23,6 +23,8 @@ StarCluster. Please terminate all clusters before upgrading to 0.95.
 
 Features
 --------
+* Add experimental VPC support
+* Add --pseudo-tty option (-t) to sshmaster and sshnode commands
 * Option to prefix dns names of created nodes with the cluster tag
 * Added --force option to removenode
 * Added -c <cluster_template> option to addnode and removenode
