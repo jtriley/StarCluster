@@ -47,7 +47,8 @@ class CmdSshMaster(ClusterCompleter):
                           help="enable authentication agent forwarding")
         parser.add_option("-t", "--pseudo-tty", dest="pseudo_tty",
                           action="store_true", default=False,
-                          help="enable pseudo-tty allocation (for interactive commands and screens)")
+                          help="enable pseudo-tty allocation (for interactive "
+                          "commands and screens)")
 
     def execute(self, args):
         if not args:
