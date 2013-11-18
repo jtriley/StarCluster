@@ -1035,7 +1035,7 @@ class Node(object):
         return self._ssh
 
     def shell(self, user=None, forward_x11=False, forward_agent=False,
-              command=None):
+              pseudo_tty=False, command=None):
         """
         Attempts to launch an interactive shell by first trying the system's
         ssh client. If the system does not have the ssh command it falls back
@@ -1063,6 +1063,8 @@ class Node(object):
                 sshopts += ' -Y'
             if forward_agent:
                 sshopts += ' -A'
+            if pseudo_tty:
+                sshopts += ' -t'
             addr = self.dns_name
             if self.instance.vpc_id:
                 addr = self.private_ip_address
@@ -1079,6 +1081,9 @@ class Node(object):
                 log.warn("X11 Forwarding not available in Python SSH client")
             if forward_agent:
                 log.warn("Authentication agent forwarding not available in " +
+                         "Python SSH client")
+            if pseudo_tty:
+                log.warn("Pseudo-tty allocation is not available in " +
                          "Python SSH client")
             if command:
                 orig_user = self.ssh.get_current_user()
