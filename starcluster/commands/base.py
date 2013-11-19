@@ -184,6 +184,9 @@ class CmdBase(completion.CmdComplete):
         tags = value.split(',')
         for tag in tags:
             tagparts = tag.split('=')
+            if len(tagparts) != 2:
+                parser.error("invalid tag: '%s' (correct example: key=value)" %
+                             tag)
             key = tagparts[0]
             if not key:
                 continue
