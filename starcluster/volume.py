@@ -304,7 +304,7 @@ class VolumeCreator(cluster.Cluster):
                      (volume_size, vol.id))
             return vol
         except Exception:
-            log.error("Failed to create new volume")
+            log.error("Failed to create new volume", exc_info=True)
             self._delete_new_volume()
             raise
         finally:
