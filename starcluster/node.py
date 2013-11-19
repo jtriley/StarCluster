@@ -656,8 +656,8 @@ class Node(object):
         $ node.export_fs_to_nodes(nodes=[node1,node2],
                                   export_paths=['/home', '/opt/sge6'])
         """
-        log.debug("Removing potentially stale NFS entries")
-        self.stop_exporting_fs_to_nodes(nodes)
+        log.debug("Cleaning up potentially stale NFS entries")
+        self.stop_exporting_fs_to_nodes(nodes, paths=export_paths)
         log.info("Configuring NFS exports path(s):\n%s" %
                  ' '.join(export_paths))
         nfs_export_settings = "(async,no_root_squash,no_subtree_check,rw)"
@@ -674,7 +674,7 @@ class Node(object):
         etc_exports.close()
         self.ssh.execute('exportfs -fra')
 
-    def stop_exporting_fs_to_nodes(self, nodes):
+    def stop_exporting_fs_to_nodes(self, nodes, paths=None):
         """
         Removes nodes from this node's /etc/exportfs
 
@@ -683,7 +683,11 @@ class Node(object):
         Example:
         $ node.remove_export_fs_to_nodes(nodes=[node1,node2])
         """
-        regex = '|'.join(map(lambda x: x.alias, nodes))
+        if paths:
+            regex = '|'.join([' '.join([path, node.alias]) for path in paths
+                              for node in nodes])
+        else:
+            regex = '|'.join([n.alias for n in nodes])
         self.ssh.remove_lines_from_file('/etc/exports', regex)
         self.ssh.execute('exportfs -fra')
 
