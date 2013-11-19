@@ -136,7 +136,7 @@ class Node(object):
         if not self._alias:
             alias = self.tags.get('alias')
             if not alias:
-                aliasestxt = self.user_data.get(static.UD_ALIASES_FNAME)
+                aliasestxt = self.user_data.get(static.UD_ALIASES_FNAME, '')
                 aliases = aliasestxt.splitlines()[2:]
                 index = self.ami_launch_index
                 try:
