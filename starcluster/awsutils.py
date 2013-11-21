@@ -431,6 +431,9 @@ class EasyEC2(EasyAWS):
             if img.root_device_name in img.block_device_mapping:
                 log.debug("Forcing delete_on_termination for AMI: %s" % img.id)
                 root = img.block_device_mapping[img.root_device_name]
+                # specifying the AMI's snapshot in the custom block device
+                # mapping when you dont own the AMI causes an error on launch
+                root.snapshot_id = None
                 root.delete_on_termination = True
                 bdmap[img.root_device_name] = root
             block_device_map = bdmap
