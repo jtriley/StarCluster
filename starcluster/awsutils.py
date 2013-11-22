@@ -415,10 +415,13 @@ class EasyEC2(EasyAWS):
         """
         if not block_device_map:
             img = self.get_image(image_id)
-            is_s3 = img.root_device_type == 'instance-store'
+            instance_store = img.root_device_type == 'instance-store'
+            if instance_type == 'm1.small' and img.architecture == "i386":
+                # Needed for m1.small + 32bit AMI (see gh-329)
+                instance_store = True
             bdmap = self.create_block_device_map(add_ephemeral_drives=True,
                                                  num_ephemeral_drives=24,
-                                                 instance_store=is_s3)
+                                                 instance_store=instance_store)
             # Prune drives from runtime block device map that may override EBS
             # volumes specified in the AMIs block device map
             for dev in img.block_device_mapping:
@@ -431,6 +434,9 @@ class EasyEC2(EasyAWS):
             if img.root_device_name in img.block_device_mapping:
                 log.debug("Forcing delete_on_termination for AMI: %s" % img.id)
                 root = img.block_device_mapping[img.root_device_name]
+                # specifying the AMI's snapshot in the custom block device
+                # mapping when you dont own the AMI causes an error on launch
+                root.snapshot_id = None
                 root.delete_on_termination = True
                 bdmap[img.root_device_name] = root
             block_device_map = bdmap

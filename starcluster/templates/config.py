@@ -105,7 +105,7 @@ CLUSTER_SHELL = bash
 # The base i386 StarCluster AMI is %(x86_ami)s
 # The base x86_64 StarCluster AMI is %(x86_64_ami)s
 # The base HVM StarCluster AMI is %(hvm_ami)s
-NODE_IMAGE_ID = %(x86_ami)s
+NODE_IMAGE_ID = %(x86_64_ami)s
 # instance type for all cluster nodes
 # (options: %(instance_types)s)
 NODE_INSTANCE_TYPE = m1.small
@@ -117,7 +117,7 @@ NODE_INSTANCE_TYPE = m1.small
 #MASTER_INSTANCE_TYPE = m1.small
 # Uncomment to specify a separate AMI to use for the master node. (OPTIONAL)
 # (defaults to NODE_IMAGE_ID if not specified)
-#MASTER_IMAGE_ID = %(x86_ami)s (OPTIONAL)
+#MASTER_IMAGE_ID = %(x86_64_ami)s (OPTIONAL)
 # availability zone to launch the cluster in (OPTIONAL)
 # (automatically determined based on volumes (if any) or
 # selected by Amazon if not specified)
