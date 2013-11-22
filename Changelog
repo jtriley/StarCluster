@@ -35,6 +35,29 @@ Bug Fixes
 ---------
 *
 
+.. _version-0.94.3:
+
+0.94.3
+======
+
+.. _v0943-news:
+
+News
+----
+Version 0.94.3 of StarCluster is a bug fix release. See the "Bug Fixes"
+sections below for details. In general it's recommended to terminate all
+clusters before upgrading to new versions of StarCluster although this is not
+always strictly required.
+
+.. _v0943-fixes:
+
+Bug Fixes
+---------
+* Fixed 'InvalidSnapshot.NotFound' errors on cluster launch
+* Fixed issue with Server.InternalError: Internal error on launch when using
+  m1.small instance type with a 32bit AMI.
+* Updated default AMIs in config template to 64bit AMIs
+
 .. _version-0.94.2:
 
 0.94.2
