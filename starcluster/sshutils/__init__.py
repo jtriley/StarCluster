@@ -65,7 +65,7 @@ class SSHClient(object):
                  port=22,
                  timeout=30):
         self._host = host
-        self._port = 22
+        self._port = port
         self._pkey = None
         self._username = username or os.environ['LOGNAME']
         self._password = password
@@ -105,6 +105,7 @@ class SSHClient(object):
         username = username or self._username
         password = password or self._password
         compress = compress or self._compress
+        port = port if port is not None else self._port
         pkey = self._pkey
         if private_key:
             pkey = self.load_private_key(private_key, private_key_pass)
