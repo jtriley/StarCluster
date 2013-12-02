@@ -28,6 +28,7 @@ import hashlib
 import warnings
 import posixpath
 
+import scp
 import paramiko
 from Crypto.PublicKey import RSA
 from Crypto.PublicKey import DSA
@@ -40,7 +41,6 @@ try:
 except ImportError:
     HAS_TERMIOS = False
 
-from starcluster.sshutils import scp
 from starcluster import exception
 from starcluster import progressbar
 from starcluster.logger import log
@@ -447,7 +447,13 @@ class SSHClient(object):
             if self.isdir(rpath):
                 recursive = True
                 break
-        self.scp.get(remotepaths, localpath, recursive=recursive)
+        try:
+            self.scp.get(remotepaths, local_path=localpath,
+                         recursive=recursive)
+        except Exception, e:
+            log.debug("get failed: remotepaths=%s, localpath=%s",
+                      str(remotepaths), localpath)
+            raise exception.SCPException(str(e))
 
     def put(self, localpaths, remotepath='.'):
         """
@@ -459,7 +465,13 @@ class SSHClient(object):
             if os.path.isdir(lpath):
                 recursive = True
                 break
-        self.scp.put(localpaths, remote_path=remotepath, recursive=recursive)
+        try:
+            self.scp.put(localpaths, remote_path=remotepath,
+                         recursive=recursive)
+        except Exception, e:
+            log.debug("put failed: localpaths=%s, remotepath=%s",
+                      str(localpaths), remotepath)
+            raise exception.SCPException(str(e))
 
     def execute_async(self, command, source_profile=True):
         """
