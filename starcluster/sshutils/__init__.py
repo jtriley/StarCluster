@@ -60,10 +60,11 @@ class SSHClient(object):
                  password=None,
                  private_key=None,
                  private_key_pass=None,
+                 compress=False,
                  port=22,
                  timeout=30):
         self._host = host
-        self._port = 22
+        self._port = port
         self._pkey = None
         self._username = username or os.environ['LOGNAME']
         self._password = password
@@ -72,6 +73,7 @@ class SSHClient(object):
         self._scp = None
         self._transport = None
         self._progress_bar = None
+        self._compress = compress
         if private_key:
             self._pkey = self.load_private_key(private_key, private_key_pass)
         elif not password:
@@ -96,10 +98,13 @@ class SSHClient(object):
         return pkey
 
     def connect(self, host=None, username=None, password=None,
-                private_key=None, private_key_pass=None, port=22, timeout=30):
+                private_key=None, private_key_pass=None, port=None,
+                compress=None, timeout=30):
         host = host or self._host
         username = username or self._username
         password = password or self._password
+        compress = compress if compress is not None else self._compress
+        port = port or self._port
         pkey = self._pkey
         if private_key:
             pkey = self.load_private_key(private_key, private_key_pass)
@@ -111,9 +116,15 @@ class SSHClient(object):
             transport.banner_timeout = timeout
         except socket.error:
             raise exception.SSHConnectionError(host, port)
+
+        # Enable compression if requested
+        if compress:
+            transport.use_compression()
+
         # Authenticate the transport.
         try:
-            transport.connect(username=username, pkey=pkey, password=password)
+            transport.connect(
+                username=username, pkey=pkey, password=password)
         except paramiko.AuthenticationException:
             raise exception.SSHAuthException(username, host)
         except paramiko.SSHException, e:
@@ -143,7 +154,8 @@ class SSHClient(object):
         """
         if not self._transport or not self._transport.is_active():
             self.connect(self._host, self._username, self._password,
-                         port=self._port, timeout=self._timeout)
+                         port=self._port, timeout=self._timeout,
+                         compress=self._compress)
         return self._transport
 
     def get_server_public_key(self):
@@ -419,6 +431,7 @@ class SSHClient(object):
         """
         remotepaths = self._make_list(remotepaths)
         localpath = localpath or os.getcwd()
+        compress = self._compress
         globs = []
         noglobs = []
         for rpath in remotepaths:
@@ -439,19 +452,22 @@ class SSHClient(object):
             if self.isdir(rpath):
                 recursive = True
                 break
-        self.scp.get(remotepaths, localpath, recursive=recursive)
+        self.scp.get(
+            remotepaths, localpath, recursive=recursive, compress=compress)
 
-    def put(self, localpaths, remotepath='.'):
+    def put(self, localpaths, remotepath='.', compress=None):
         """
         Copies one or more files from the local host to the remote host.
         """
         localpaths = self._make_list(localpaths)
         recursive = False
+        compress = self._compress
         for lpath in localpaths:
             if os.path.isdir(lpath):
                 recursive = True
                 break
-        self.scp.put(localpaths, remote_path=remotepath, recursive=recursive)
+        self.scp.put(
+            localpaths, remote_path=remotepath, recursive=recursive, compress=compress)
 
     def execute_async(self, command, source_profile=True):
         """

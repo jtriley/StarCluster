@@ -68,7 +68,7 @@ class SCPClient(object):
         self._dirtimes = {}
 
     def put(self, files, remote_path='.',
-            recursive=False, preserve_times=False):
+            recursive=False, preserve_times=False, compress=False):
         """
         Transfer files to remote host.
 
@@ -83,12 +83,22 @@ class SCPClient(object):
         @param preserve_times: preserve mtime and atime of transferred files
             and directories.
         @type preserve_times: bool
+        @param compress: compress data during transfer
+        @type compress: bool
         """
         self.preserve_times = preserve_times
         self.channel = self.transport.open_session()
         self.channel.settimeout(self.socket_timeout)
-        scp_command = ('scp -t %s', 'scp -r -t %s')[recursive]
-        self.channel.exec_command(scp_command % remote_path)
+
+        opts = []
+        if recursive:
+            opts.append('-r')
+        if compress:
+            opts.append('-C')
+
+        scp_command = 'scp %s -t %s'
+
+        self.channel.exec_command(scp_command % (' '.join(opts), remote_path))
         self._recv_confirm()
 
         if not isinstance(files, (list, tuple)):
@@ -103,7 +113,7 @@ class SCPClient(object):
             self.channel.close()
 
     def get(self, remote_path, local_path='',
-            recursive=False, preserve_times=False):
+            recursive=False, preserve_times=False, compress=False):
         """
         Transfer files from remote host to localhost
 
@@ -118,6 +128,8 @@ class SCPClient(object):
         @param preserve_times: preserve mtime and atime of transferred files
             and directories.
         @type preserve_times: bool
+        @param compress: compress data during transfer
+        @type compress: bool
         """
         self._recv_dir = local_path or os.getcwd()
         if len(remote_path) == 1 and local_path != os.curdir:
@@ -131,13 +143,20 @@ class SCPClient(object):
             elif not os.path.isdir(self._recv_dir):
                 msg = "Local path '%s' is not a directory" % self._recv_dir
                 raise exception.SCPException(msg)
-        rcsv = ('', ' -r')[recursive]
-        prsv = ('', ' -p')[preserve_times]
+
+        opts = []
+        if recursive:
+            opts.append('-r')
+        if preserve_times:
+            opts.append('-p')
+        if compress:
+            opts.append('-C')
+
         self.channel = self.transport.open_session()
         self.channel.settimeout(self.socket_timeout)
         if isinstance(remote_path, (list, tuple)):
             remote_path = ' '.join(remote_path)
-        self.channel.exec_command('scp%s%s -f %s' % (rcsv, prsv, remote_path))
+        self.channel.exec_command('scp %s -f %s' % (' '.join(opts), remote_path))
         self._recv_all()
 
         if self.channel:
