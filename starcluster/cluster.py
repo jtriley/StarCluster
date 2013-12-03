@@ -687,6 +687,7 @@ class Cluster(object):
                  node_instance_type=self.node_instance_type,
                  availability_zone=self.availability_zone,
                  dns_prefix=self.dns_prefix,
+                 subnet_id=self.subnet_id,
                  disable_queue=self.disable_queue,
                  disable_cloudinit=self.disable_cloudinit),
             use_json=True)
@@ -875,7 +876,7 @@ class Cluster(object):
                       placement=zone or getattr(self.zone, 'name', None),
                       user_data=user_data,
                       placement_group=placement_group,
-                      subnet_id=getattr(self, 'subnet_id', None))
+                      subnet_id=self.subnet_id)
         resvs = []
         if spot_bid:
             security_group_id = self.cluster_group.id
