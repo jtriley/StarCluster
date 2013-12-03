@@ -778,6 +778,8 @@ class EasyEC2(EasyAWS):
         uptime = utils.get_elapsed_time(instance.launch_time) or 'N/A'
         tags = ', '.join(['%s=%s' % (k, v) for k, v in
                           instance.tags.iteritems()]) or 'N/A'
+        vpc_id = instance.vpc_id or 'N/A'
+        subnet_id = instance.subnet_id or 'N/A'
         if state == 'stopped':
             uptime = 'N/A'
         print "id: %s" % instance_id
@@ -789,6 +791,8 @@ class EasyEC2(EasyAWS):
             print "state: %s" % state
         print "public_ip: %s" % public_ip
         print "private_ip: %s" % private_ip
+        print "vpc: %s" % vpc_id
+        print "subnet: %s" % subnet_id
         print "zone: %s" % zone
         print "ami: %s" % ami
         print "virtualization: %s" % virt_type
