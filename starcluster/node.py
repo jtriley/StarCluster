@@ -1069,11 +1069,8 @@ class Node(object):
                 sshopts += ' -A'
             if pseudo_tty:
                 sshopts += ' -t'
-            addr = self.dns_name
-            if self.instance.vpc_id:
-                addr = self.private_ip_address
             ssh_cmd = static.SSH_TEMPLATE % dict(opts=sshopts, user=user,
-                                                 host=addr)
+                                                 host=self.addr)
             if command:
                 command = "'source /etc/profile && %s'" % command
                 ssh_cmd = ' '.join([ssh_cmd, command])
