@@ -326,7 +326,7 @@ class EBSImageCreator(ImageCreator):
         fstab.close()
         log.info("Syncing root filesystem to new volume (%s)" % vol.id)
         host_ssh.execute(
-            'rsync -avx --exclude %(mpt)s --exclude /root/.ssh / %(mpt)s' %
+            'rsync -aqx --exclude %(mpt)s --exclude /root/.ssh / %(mpt)s' %
             {'mpt': mount_point}, silent=False)
         log.info("Unmounting %s from %s" % (dev, mount_point))
         host_ssh.execute('umount %s' % mount_point)
