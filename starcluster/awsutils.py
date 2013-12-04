@@ -1400,12 +1400,25 @@ class EasyEC2(EasyAWS):
     def get_spot_history(self, instance_type, start=None, end=None, zone=None,
                          plot=False, plot_server_interface="localhost",
                          plot_launch_browser=True, plot_web_browser=None,
-                         plot_shutdown_server=True):
+                         plot_shutdown_server=True, classic=False, vpc=False):
         if start and not utils.is_iso_time(start):
             raise exception.InvalidIsoDate(start)
         if end and not utils.is_iso_time(end):
             raise exception.InvalidIsoDate(end)
-        pdesc = "Linux/UNIX"
+        if classic and vpc:
+            raise exception.BaseException(
+                "classic and vpc kwargs are mutually exclusive")
+        if not classic and not vpc:
+            vpc = self.default_vpc is not None
+            classic = not vpc
+        if classic:
+            pdesc = "Linux/UNIX"
+            short_pdesc = "EC2-Classic"
+        else:
+            pdesc = "Linux/UNIX (Amazon VPC)"
+            short_pdesc = "VPC"
+        log.info("Fetching spot history for %s (%s)" %
+                 (instance_type, short_pdesc))
         hist = self.conn.get_spot_price_history(start_time=start, end_time=end,
                                                 availability_zone=zone,
                                                 instance_type=instance_type,
