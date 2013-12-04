@@ -311,7 +311,8 @@ class EBSImageCreator(ImageCreator):
             time.sleep(5)
         while not host_ssh.path_exists(dev):
             time.sleep(5)
-        host_ssh.execute('mkfs.ext3 -F %s' % dev)
+        log.info("Formatting %s..." % vol.id)
+        host_ssh.execute('mkfs.ext3 -F %s' % dev, silent=False)
         mount_point = '/ebs'
         while host_ssh.path_exists(mount_point):
             mount_point += '1'
@@ -326,7 +327,7 @@ class EBSImageCreator(ImageCreator):
         log.info("Syncing root filesystem to new volume (%s)" % vol.id)
         host_ssh.execute(
             'rsync -avx --exclude %(mpt)s --exclude /root/.ssh / %(mpt)s' %
-            {'mpt': mount_point})
+            {'mpt': mount_point}, silent=False)
         log.info("Unmounting %s from %s" % (dev, mount_point))
         host_ssh.execute('umount %s' % mount_point)
         log.info("Detaching volume %s from %s" % (dev, mount_point))
