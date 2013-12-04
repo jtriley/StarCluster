@@ -313,6 +313,8 @@ class EBSImageCreator(ImageCreator):
             time.sleep(5)
         log.info("Formatting %s..." % vol.id)
         host_ssh.execute('mkfs.ext3 -F %s' % dev, silent=False)
+        log.info("Setting filesystem label on %s" % dev)
+        host_ssh.execute('e2label %s /' % dev)
         mount_point = '/ebs'
         while host_ssh.path_exists(mount_point):
             mount_point += '1'
