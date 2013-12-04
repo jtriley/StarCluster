@@ -442,9 +442,11 @@ class EasyEC2(EasyAWS):
             if instance_type == 'm1.small' and img.architecture == "i386":
                 # Needed for m1.small + 32bit AMI (see gh-329)
                 instance_store = True
-            bdmap = self.create_block_device_map(add_ephemeral_drives=True,
-                                                 num_ephemeral_drives=24,
-                                                 instance_store=instance_store)
+            use_ephemeral = instance_type != 't1.micro'
+            bdmap = self.create_block_device_map(
+                add_ephemeral_drives=use_ephemeral,
+                num_ephemeral_drives=24,
+                instance_store=instance_store)
             # Prune drives from runtime block device map that may override EBS
             # volumes specified in the AMIs block device map
             for dev in img.block_device_mapping:
