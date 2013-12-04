@@ -343,6 +343,7 @@ class EBSImageCreator(ImageCreator):
         vol.delete()
         log.info("Creating root block device map using snapshot %s" % snap.id)
         bmap = self.ec2.create_block_device_map(root_snapshot_id=snap.id,
+                                                instance_store=True,
                                                 add_ephemeral_drives=True)
         log.info("Registering new image...")
         img_id = self.ec2.register_image(name=self.name,
