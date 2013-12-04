@@ -64,6 +64,12 @@ class CmdSpotHistory(CmdBase):
         parser.add_option("-p", "--plot", dest="plot",
                           action="store_true", default=False,
                           help="plot spot history in a web browser")
+        parser.add_option("-v", "--vpc", dest="vpc",
+                          action="store_true", default=False,
+                          help="show spot prices for VPC")
+        parser.add_option("-c", "--classic", dest="classic",
+                          action="store_true", default=False,
+                          help="show spot prices for EC2-Classic")
 
     def execute(self, args):
         instance_types = ', '.join(sorted(static.INSTANCE_TYPES.keys()))
@@ -71,6 +77,9 @@ class CmdSpotHistory(CmdBase):
             self.parser.error(
                 'please provide an instance type (options: %s)' %
                 instance_types)
+        if self.opts.classic and self.opts.vpc:
+            self.parser.error("options -c and -v cannot be specified at "
+                              "the same time")
         instance_type = args[0]
         if not instance_type in static.INSTANCE_TYPES:
             self.parser.error('invalid instance type. possible options: %s' %
@@ -85,4 +94,6 @@ class CmdSpotHistory(CmdBase):
         browser_cmd = self.cfg.globals.get("web_browser")
         self.ec2.get_spot_history(instance_type, start, end,
                                   zone=self.opts.zone, plot=self.opts.plot,
-                                  plot_web_browser=browser_cmd)
+                                  plot_web_browser=browser_cmd,
+                                  vpc=self.opts.vpc,
+                                  classic=self.opts.classic)

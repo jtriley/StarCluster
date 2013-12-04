@@ -123,29 +123,33 @@ class EasyEC2(EasyAWS):
                     aws_validate_certs=aws_validate_certs)
         self.s3 = EasyS3(aws_access_key_id, aws_secret_access_key, **kwds)
         self._regions = None
-        self._platforms = None
-        self._default_vpc = None
+        self._account_attrs = None
+        self._account_attrs_region = None
 
     def __repr__(self):
         return '<EasyEC2: %s (%s)>' % (self.region.name, self.region.endpoint)
 
     def _fetch_account_attrs(self):
-        resp = self.conn.describe_account_attributes(
-            ['default-vpc', 'supported-platforms'])
-        self._platforms = resp[0].attribute_values
-        self._default_vpc = resp[1].attribute_values[0]
+        acct_attrs = self._account_attrs
+        if not acct_attrs or self._account_attrs_region != self.region.name:
+            resp = self.conn.describe_account_attributes(
+                ['default-vpc', 'supported-platforms'])
+            self._account_attrs = acct_attrs = {}
+            for attr in resp:
+                acct_attrs[attr.attribute_name] = attr.attribute_values
+            self._account_attrs_region = self.region.name
+        return self._account_attrs
 
     @property
     def supported_platforms(self):
-        if not self._platforms:
-            self._fetch_account_attrs()
-        return self._platforms
+        return self._fetch_account_attrs()['supported-platforms']
 
     @property
     def default_vpc(self):
-        if not self._default_vpc:
-            self._fetch_account_attrs()
-        return self._default_vpc
+        default_vpc = self._fetch_account_attrs()['default-vpc'][0]
+        if default_vpc == 'none':
+            default_vpc = None
+        return default_vpc
 
     def connect_to_region(self, region_name):
         """
@@ -1396,12 +1400,25 @@ class EasyEC2(EasyAWS):
     def get_spot_history(self, instance_type, start=None, end=None, zone=None,
                          plot=False, plot_server_interface="localhost",
                          plot_launch_browser=True, plot_web_browser=None,
-                         plot_shutdown_server=True):
+                         plot_shutdown_server=True, classic=False, vpc=False):
         if start and not utils.is_iso_time(start):
             raise exception.InvalidIsoDate(start)
         if end and not utils.is_iso_time(end):
             raise exception.InvalidIsoDate(end)
-        pdesc = "Linux/UNIX"
+        if classic and vpc:
+            raise exception.BaseException(
+                "classic and vpc kwargs are mutually exclusive")
+        if not classic and not vpc:
+            vpc = self.default_vpc is not None
+            classic = not vpc
+        if classic:
+            pdesc = "Linux/UNIX"
+            short_pdesc = "EC2-Classic"
+        else:
+            pdesc = "Linux/UNIX (Amazon VPC)"
+            short_pdesc = "VPC"
+        log.info("Fetching spot history for %s (%s)" %
+                 (instance_type, short_pdesc))
         hist = self.conn.get_spot_price_history(start_time=start, end_time=end,
                                                 availability_zone=zone,
                                                 instance_type=instance_type,
