@@ -1029,14 +1029,14 @@ class Node(object):
 
     @property
     def addr(self):
-        if self.instance.vpc_id:
+        if not self.dns_name and self.vpc_id:
             #if instance has an elastic ip
-            if self.instance.ip_address:
-                return self.instance.ip_address
+            if self.ip_address:
+                return self.ip_address
             else:
-                return self.instance.private_ip_address
+                return self.private_ip_address
         else:
-            return self.instance.dns_name
+            return self.dns_name
 
     @property
     def ssh(self):
