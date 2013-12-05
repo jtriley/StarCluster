@@ -341,7 +341,7 @@ class ClusterManager(managers.Manager):
                 print 'Cluster nodes:'
                 for node in nodes:
                     nodeline = "    %7s %s %s %s" % (node.alias, node.state,
-                                                     node.id, node.addr)
+                                                     node.id, node.addr or '')
                     if node.spot_id:
                         nodeline += ' (spot %s)' % node.spot_id
                     if show_ssh_status:
