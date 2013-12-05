@@ -407,7 +407,7 @@ class SGELoadBalancer(LoadBalancer):
 
     def __init__(self, interval=60, max_nodes=None, wait_time=900,
                  add_pi=1, kill_after=45, stab=180, lookback_win=3,
-                 min_nodes=1, kill_cluster=False, plot_stats=False,
+                 min_nodes=None, kill_cluster=False, plot_stats=False,
                  plot_output_dir=None, dump_stats=False, stats_file=None):
         self._cluster = None
         self._keep_polling = True
@@ -416,22 +416,19 @@ class SGELoadBalancer(LoadBalancer):
         self.stat = SGEStats()
         self.polling_interval = interval
         self.kill_after = kill_after
-        self.max_nodes = max_nodes
         self.longest_allowed_queue_time = wait_time
         self.add_nodes_per_iteration = add_pi
         self.stabilization_time = stab
         self.lookback_window = lookback_win
         self.kill_cluster = kill_cluster
-        self.min_nodes = min_nodes if not kill_cluster else 0
+        self.max_nodes = max_nodes
+        self.min_nodes = min_nodes
         self.dump_stats = dump_stats
         self.stats_file = stats_file
         self.plot_stats = plot_stats
         self.plot_output_dir = plot_output_dir
         if plot_stats:
             assert self.visualizer is not None
-        if min_nodes > max_nodes:
-            raise exception.BaseException(
-                "min_nodes cannot be higher than max_nodes")
 
     @property
     def visualizer(self):
@@ -560,6 +557,13 @@ class SGELoadBalancer(LoadBalancer):
         self._cluster = cluster
         if self.max_nodes is None:
             self.max_nodes = cluster.cluster_size
+        if self.min_nodes is None:
+            self.min_nodes = 1
+        if self.kill_cluster:
+            self.min_nodes = 0
+        if self.min_nodes > self.max_nodes:
+            raise exception.BaseException(
+                "min_nodes cannot be greater than max_nodes")
         use_default_stats_file = self.dump_stats and not self.stats_file
         use_default_plots_dir = self.plot_stats and not self.plot_output_dir
         if use_default_stats_file or use_default_plots_dir:
