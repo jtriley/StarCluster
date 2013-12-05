@@ -705,7 +705,7 @@ class Node(object):
         self.ssh.execute('mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs/',
                          ignore_exit_status=True)
         self.ssh.execute('/etc/init.d/nfs start')
-        self.ssh.execute('/usr/sbin/exportfs -fra')
+        self.ssh.execute('exportfs -fra')
 
     def mount_nfs_shares(self, server_node, remote_paths):
         """
