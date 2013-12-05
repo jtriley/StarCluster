@@ -328,6 +328,14 @@ class Node(object):
         return self.instance.region
 
     @property
+    def vpc_id(self):
+        return self.instance.vpc_id
+
+    @property
+    def subnet_id(self):
+        return self.instance.subnet_id
+
+    @property
     def root_device_name(self):
         root_dev = self.instance.root_device_name
         bmap = self.block_device_mapping
