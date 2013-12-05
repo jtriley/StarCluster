@@ -1029,14 +1029,19 @@ class Node(object):
 
     @property
     def addr(self):
-        if not self.dns_name and self.vpc_id:
-            #if instance has an elastic ip
+        """
+        Returns the most widely accessible address for the instance. This
+        property first checks if dns_name is available, then the public ip, and
+        finally the private ip. If none of these addresses are available it
+        returns None.
+        """
+        if not self.dns_name:
             if self.ip_address:
                 return self.ip_address
             else:
                 return self.private_ip_address
         else:
-            return self.dns_name
+            return self.dns_name or None
 
     @property
     def ssh(self):
