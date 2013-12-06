@@ -1494,8 +1494,7 @@ class Cluster(object):
         if region in static.CLUSTER_REGIONS:
             pg = self.ec2.get_placement_group_or_none(self._security_group)
             if pg:
-                log.info("Removing %s placement group" % pg.name)
-                pg.delete()
+                self.ec2.delete_group(pg)
         sg = self.ec2.get_group_or_none(self._security_group)
         if sg:
             self.ec2.delete_group(sg)

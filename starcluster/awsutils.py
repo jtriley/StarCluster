@@ -221,12 +221,15 @@ class EasyEC2(EasyAWS):
 
     def delete_group(self, group, max_retries=60, retry_delay=5):
         """
-        This method deletes the security group using group.delete() but in the
-        case that group.delete() throws a DependencyViolation error it will
-        keep retrying until it's successful. Waits 5 seconds between each
-        retry.
+        This method deletes a security or placement group using group.delete()
+        but in the case that group.delete() throws a DependencyViolation error
+        or InvalidPlacementGroup.InUse error it will keep retrying until it's
+        successful. Waits 5 seconds between each retry.
         """
-        s = utils.get_spinner("Removing %s security group..." % group.name)
+        label = 'security'
+        if hasattr(group, 'strategy') and group.strategy == 'cluster':
+            label = 'placement'
+        s = utils.get_spinner("Removing %s group: %s" % (label, group.name))
         try:
             for i in range(max_retries):
                 try:
@@ -236,6 +239,10 @@ class EasyEC2(EasyAWS):
                         raise
                     if e.error_code == 'DependencyViolation':
                         log.debug('DependencyViolation error - retrying in 5s',
+                                  exc_info=True)
+                        time.sleep(retry_delay)
+                    elif e.error_code == 'InvalidPlacementGroup.InUse':
+                        log.debug('Placement group in use - retrying in 5s',
                                   exc_info=True)
                         time.sleep(retry_delay)
                     else:
