@@ -87,6 +87,14 @@ mapred_site_templ = """\
   and reduce task.
   </description>
 </property>
+<property>
+  <name>mapred.tasktracker.map.tasks.maximum</name>
+  <value>%(map_tasks_max)s</value>
+</property>
+<property>
+  <name>mapred.tasktracker.reduce.tasks.maximum</name>
+  <value>%(reduce_tasks_max)s</value>
+</property>
 </configuration>
 """
 
@@ -96,7 +104,8 @@ class Hadoop(clustersetup.ClusterSetup):
     Configures Hadoop using Cloudera packages on StarCluster
     """
 
-    def __init__(self, hadoop_tmpdir='/mnt/hadoop'):
+    def __init__(self, hadoop_tmpdir='/mnt/hadoop', map_to_proc_ratio='1.0',
+                 reduce_to_proc_ratio='0.3'):
         self.hadoop_tmpdir = hadoop_tmpdir
         self.hadoop_home = '/usr/lib/hadoop'
         self.hadoop_conf = '/etc/hadoop-0.20/conf.starcluster'
@@ -106,6 +115,8 @@ class Hadoop(clustersetup.ClusterSetup):
         self.ubuntu_javas = ['/usr/lib/jvm/java-6-sun/jre',
                              '/usr/lib/jvm/java-6-openjdk/jre']
         self.ubuntu_alt_cmd = 'update-alternatives'
+        self.map_to_proc_ratio = float(map_to_proc_ratio)
+        self.reduce_to_proc_ratio = float(reduce_to_proc_ratio)
         self._pool = None
 
     @property
@@ -149,6 +160,11 @@ class Hadoop(clustersetup.ClusterSetup):
     def _configure_mapreduce_site(self, node, cfg):
         mapred_site_xml = posixpath.join(self.hadoop_conf, 'mapred-site.xml')
         mapred_site = node.ssh.remote_file(mapred_site_xml)
+        # Hadoop default: 2 maps, 1 reduce
+        # AWS EMR uses approx 1 map per proc and .3 reduce per proc
+        map_tasks_max = max(2, int(self.map_to_proc_ratio * node.num_processors()))
+        reduce_tasks_max = max(1, int(self.reduce_to_proc_ratio * node.num_processors()))
+        cfg.update({'map_tasks_max': map_tasks_max, 'reduce_tasks_max': reduce_tasks_max})
         mapred_site.write(mapred_site_templ % cfg)
         mapred_site.close()
 
