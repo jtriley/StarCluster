@@ -164,10 +164,10 @@ class Hadoop(clustersetup.ClusterSetup):
         # AWS EMR uses approx 1 map per proc and .3 reduce per proc
         map_tasks_max = max(
             2,
-            int(self.map_to_proc_ratio * node.num_processors()))
+            int(self.map_to_proc_ratio * node.num_processors))
         reduce_tasks_max = max(
             1,
-            int(self.reduce_to_proc_ratio * node.num_processors()))
+            int(self.reduce_to_proc_ratio * node.num_processors))
         cfg.update({
             'map_tasks_max': map_tasks_max,
             'reduce_tasks_max': reduce_tasks_max})
