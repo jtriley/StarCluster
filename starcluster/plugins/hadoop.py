@@ -89,11 +89,11 @@ mapred_site_templ = """\
 </property>
 <property>
   <name>mapred.tasktracker.map.tasks.maximum</name>
-  <value>%(map_tasks_max)s</value>
+  <value>%(map_tasks_max)d</value>
 </property>
 <property>
   <name>mapred.tasktracker.reduce.tasks.maximum</name>
-  <value>%(reduce_tasks_max)s</value>
+  <value>%(reduce_tasks_max)d</value>
 </property>
 </configuration>
 """
