@@ -510,7 +510,7 @@ class EasyEC2(EasyAWS):
         return self.conn.request_spot_instances(**kwargs)
 
     def _wait_for_propagation(self, obj_ids, fetch_func, id_filter, obj_name,
-                              max_retries=5, interval=5):
+                              max_retries=60, interval=5):
         """
         Wait for a list of object ids to appear in the AWS API. Requires a
         function that fetches the objects and also takes a filters kwarg. The
@@ -525,7 +525,7 @@ class EasyEC2(EasyAWS):
         interval = max(1, interval)
         s = utils.get_spinner("Waiting for %s to propagate..." % obj_name)
         try:
-            for i in range(max_retries):
+            for i in range(max_retries + 1):
                 reqs = fetch_func(filters=filters)
                 reqs_ids = [req.id for req in reqs]
                 num_reqs = len(reqs)
@@ -533,18 +533,20 @@ class EasyEC2(EasyAWS):
                     log.debug("%d: only %d/%d %s have "
                               "propagated - sleeping..." %
                               (i, num_reqs, num_objs, obj_name))
-                    time.sleep(interval)
+                    if i != max_retries:
+                        time.sleep(interval)
                 else:
                     return
         finally:
             s.stop()
-        log.warn("Only %d/%d %s propagated..." %
-                 (num_reqs, num_objs, obj_name))
         missing = [oid for oid in obj_ids if oid not in reqs_ids]
-        log.warn("Missing %s: %s" % (obj_name, ', '.join(missing)))
+        raise exception.PropagationException(
+            "Failed to fetch %d/%d %s after %d seconds: %s" %
+            (num_reqs, num_objs, obj_name, max_retries * interval,
+             ', '.join(missing)))
 
     def wait_for_propagation(self, instances=None, spot_requests=None,
-                             max_retries=5, interval=5):
+                             max_retries=60, interval=5):
         """
         Wait for newly created instances and/or spot_requests to register in
         the AWS API by repeatedly calling get_all_{instances, spot_requests}.

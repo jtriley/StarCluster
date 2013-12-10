@@ -211,6 +211,10 @@ class SpotHistoryError(AWSError):
         self.msg += "%s - %s" % (start, end)
 
 
+class PropagationException(AWSError):
+    pass
+
+
 class InvalidIsoDate(BaseException):
     def __init__(self, date):
         self.msg = "Invalid date specified: %s" % date
