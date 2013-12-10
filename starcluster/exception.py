@@ -129,6 +129,11 @@ class PlacementGroupDoesNotExist(AWSError):
         self.msg = "placement group %s does not exist" % pg_name
 
 
+class KeyPairAlreadyExists(AWSError):
+    def __init__(self, keyname):
+        self.msg = "keypair %s already exists" % keyname
+
+
 class KeyPairDoesNotExist(AWSError):
     def __init__(self, keyname):
         self.msg = "keypair %s does not exist" % keyname
@@ -206,9 +211,17 @@ class SpotHistoryError(AWSError):
         self.msg += "%s - %s" % (start, end)
 
 
+class PropagationException(AWSError):
+    pass
+
+
 class InvalidIsoDate(BaseException):
     def __init__(self, date):
         self.msg = "Invalid date specified: %s" % date
+
+
+class InvalidHostname(BaseException):
+    pass
 
 
 class ConfigError(BaseException):
@@ -543,7 +556,7 @@ Please terminate the cluster using:
 """
 
     def __init__(self, group):
-        tag = group.name.replace(static.SECURITY_GROUP_PREFIX + '-', '')
+        tag = group.name.replace(static.SECURITY_GROUP_PREFIX, '')
         states = ['pending', 'running', 'stopping', 'stopped']
         insts = group.connection.get_all_instances(
             filters={'instance-state-name': states,

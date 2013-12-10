@@ -63,6 +63,7 @@ class VolumeCreator(cluster.Cluster):
             key_location=key_location, cluster_tag=static.VOLUME_GROUP_NAME,
             cluster_size=1, cluster_user="sgeadmin", cluster_shell="bash",
             node_image_id=self._image_id,
+            vpc_id=kwargs.get('vpc_id'), subnet_id=kwargs.get('subnet_id'),
             node_instance_type=self._instance_type, force_spot_master=True)
 
     def __repr__(self):
@@ -233,7 +234,7 @@ class VolumeCreator(cluster.Cluster):
                                sg.instances())
         if self._instance:
             vol_hosts.append(self._instance)
-        vol_hosts = map(lambda x: x.id, vol_hosts)
+        vol_hosts = list(set([h.id for h in vol_hosts]))
         if vol_hosts:
             log.warn("There are still volume hosts running: %s" %
                      ', '.join(vol_hosts))
@@ -271,8 +272,9 @@ class VolumeCreator(cluster.Cluster):
         newvol = self._volume
         if newvol:
             log.error("Detaching and deleting *new* volume: %s" % newvol.id)
-            newvol.detach(force=True)
-            self.ec2.wait_for_volume(newvol, status='available')
+            if newvol.update() != 'available':
+                newvol.detach(force=True)
+                self.ec2.wait_for_volume(newvol, status='available')
             newvol.delete()
             self._volume = None
 
@@ -303,7 +305,7 @@ class VolumeCreator(cluster.Cluster):
                      (volume_size, vol.id))
             return vol
         except Exception:
-            log.error("Failed to create new volume")
+            log.error("Failed to create new volume", exc_info=True)
             self._delete_new_volume()
             raise
         finally:

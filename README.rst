@@ -144,11 +144,11 @@ You can also copy files to/from the cluster using the **put** and **get**
 commands.  To copy a file or entire directory from your local computer to the
 cluster::
 
-    $ starcluster put /path/to/local/file/or/dir /remote/path/
+    $ starcluster put mycluster /path/to/local/file/or/dir /remote/path/
 
 To copy a file or an entire directory from the cluster to your local computer::
 
-    $ starcluster get /path/to/remote/file/or/dir /local/path/
+    $ starcluster get mycluster /path/to/remote/file/or/dir /local/path/
 
 Once you've finished using the cluster and wish to stop paying for it::
 

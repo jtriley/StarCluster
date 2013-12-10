@@ -45,10 +45,12 @@ class ImageCreator(object):
         self.ec2 = easy_ec2
         self.host = self.ec2.get_instance(instance_id)
         if self.host.state != 'running':
-            raise exception.InstanceNotRunning(self.host.id, self.host.state,
-                                               self.host.dns_name)
-        self.host_ssh = sshutils.SSHClient(self.host.dns_name, username='root',
-                                           private_key=key_location)
+            raise exception.InstanceNotRunning(
+                self.host.id, self.host.state,
+                self.host.dns_name or self.host.private_ip_address)
+        self.host_ssh = sshutils.SSHClient(
+            self.host.dns_name or self.host.private_ip_address,
+            username='root', private_key=key_location)
         self.description = description
         self.kernel_id = kernel_id or self.host.kernel
         self.ramdisk_id = ramdisk_id or self.host.ramdisk
@@ -119,6 +121,7 @@ class S3ImageCreator(ImageCreator):
             'bucket': self.bucket,
             'prefix': self.prefix,
             'arch': self.host.architecture,
+            'bmap': self._instance_store_bmap_str()
         }
 
     def __repr__(self):
@@ -151,6 +154,13 @@ class S3ImageCreator(ImageCreator):
         conn.put(self.private_key, pkey_dest)
         conn.put(self.cert, cert_dest)
 
+    def _instance_store_bmap_str(self):
+        bmap = self.ec2.create_block_device_map(add_ephemeral_drives=True,
+                                                instance_store=True)
+        bmaps = ','.join(["%s=%s" % (t.ephemeral_name, d)
+                          for d, t in bmap.items()])
+        return ','.join(['ami=sda1', bmaps])
+
     @print_timing
     def _bundle_image(self):
         # run script to prepare the host
@@ -161,7 +171,8 @@ class S3ImageCreator(ImageCreator):
         log.info('Creating the bundled image: (please be patient)')
         conn.execute('ec2-bundle-vol -d /mnt -k /mnt/%(private_key)s '
                      '-c /mnt/%(cert)s -p %(prefix)s -u %(userid)s '
-                     '-r %(arch)s -e /root/.ssh' % config_dict, silent=False)
+                     '-r %(arch)s -e /root/.ssh -B %(bmap)s' % config_dict,
+                     silent=False)
         self._cleanup_pem_files()
 
     @print_timing
@@ -300,7 +311,10 @@ class EBSImageCreator(ImageCreator):
             time.sleep(5)
         while not host_ssh.path_exists(dev):
             time.sleep(5)
-        host_ssh.execute('mkfs.ext3 -F %s' % dev)
+        log.info("Formatting %s..." % vol.id)
+        host_ssh.execute('mkfs.ext3 -F %s' % dev, silent=False)
+        log.info("Setting filesystem label on %s" % dev)
+        host_ssh.execute('e2label %s /' % dev)
         mount_point = '/ebs'
         while host_ssh.path_exists(mount_point):
             mount_point += '1'
@@ -314,8 +328,8 @@ class EBSImageCreator(ImageCreator):
         fstab.close()
         log.info("Syncing root filesystem to new volume (%s)" % vol.id)
         host_ssh.execute(
-            'rsync -avx --exclude %(mpt)s --exclude /root/.ssh / %(mpt)s' %
-            {'mpt': mount_point})
+            'rsync -aqx --exclude %(mpt)s --exclude /root/.ssh / %(mpt)s' %
+            {'mpt': mount_point}, silent=False)
         log.info("Unmounting %s from %s" % (dev, mount_point))
         host_ssh.execute('umount %s' % mount_point)
         log.info("Detaching volume %s from %s" % (dev, mount_point))
@@ -331,6 +345,8 @@ class EBSImageCreator(ImageCreator):
         vol.delete()
         log.info("Creating root block device map using snapshot %s" % snap.id)
         bmap = self.ec2.create_block_device_map(root_snapshot_id=snap.id,
+                                                instance_store=True,
+                                                num_ephemeral_drives=1,
                                                 add_ephemeral_drives=True)
         log.info("Registering new image...")
         img_id = self.ec2.register_image(name=self.name,

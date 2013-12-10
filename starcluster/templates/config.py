@@ -100,15 +100,25 @@ CLUSTER_USER = sgeadmin
 # optionally specify shell (defaults to bash)
 # (options: %(shells)s)
 CLUSTER_SHELL = bash
+# Uncomment to prepent the cluster tag to the dns name of all nodes created
+# using this cluster config.  ie: mycluster-master and mycluster-node001
+# If you choose to enable this option, it's recommended that you enable it in
+# the DEFAULT_TEMPLATE so all nodes will automatically have the prefix
+# DNS_PREFIX = True
 # AMI to use for cluster nodes. These AMIs are for the us-east-1 region.
 # Use the 'listpublic' command to list StarCluster AMIs in other regions
 # The base i386 StarCluster AMI is %(x86_ami)s
 # The base x86_64 StarCluster AMI is %(x86_64_ami)s
 # The base HVM StarCluster AMI is %(hvm_ami)s
-NODE_IMAGE_ID = %(x86_ami)s
+NODE_IMAGE_ID = %(x86_64_ami)s
 # instance type for all cluster nodes
 # (options: %(instance_types)s)
 NODE_INSTANCE_TYPE = m1.small
+
+# Launch cluster in a VPC (OPTIONAL)
+#VPC_ID=vpc-6b1fe402
+# The subnet to use for the VPC (required if VPC_ID is set)
+#SUBNET_ID=subnet-6a1fe403
 # Uncomment to disable installing/configuring a queueing system on the
 # cluster (SGE)
 #DISABLE_QUEUE=True
@@ -117,7 +127,7 @@ NODE_INSTANCE_TYPE = m1.small
 #MASTER_INSTANCE_TYPE = m1.small
 # Uncomment to specify a separate AMI to use for the master node. (OPTIONAL)
 # (defaults to NODE_IMAGE_ID if not specified)
-#MASTER_IMAGE_ID = %(x86_ami)s (OPTIONAL)
+#MASTER_IMAGE_ID = %(x86_64_ami)s (OPTIONAL)
 # availability zone to launch the cluster in (OPTIONAL)
 # (automatically determined based on volumes (if any) or
 # selected by Amazon if not specified)

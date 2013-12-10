@@ -358,12 +358,13 @@ class SGEStats(object):
         bits.append(self.avg_wait_time())
         #last field is array of loads for hosts
         arr = self.get_loads()
+        # arr may be empty if there are no exec hosts
         if arr:
             load_sum = float(reduce(self._add, arr))
             avg_load = load_sum / len(arr)
-            bits.append(avg_load)
         else:
-            bits.append(0)
+            avg_load = 0.0
+        bits.append(avg_load)
         return bits
 
     def write_stats_to_csv(self, filename):
@@ -429,7 +430,7 @@ class SGELoadBalancer(LoadBalancer):
 
     def __init__(self, interval=60, max_nodes=None, wait_time=900,
                  add_pi=1, kill_after=45, stab=180, lookback_win=3,
-                 min_nodes=1, kill_cluster=False, plot_stats=False,
+                 min_nodes=None, kill_cluster=False, plot_stats=False,
                  plot_output_dir=None, dump_stats=False, stats_file=None,
                  reboot_interval=10, n_reboot_restart=False,
                  ignore_grp=False):
@@ -440,13 +441,13 @@ class SGELoadBalancer(LoadBalancer):
         self.stat = SGEStats()
         self.polling_interval = interval
         self.kill_after = kill_after
-        self.max_nodes = max_nodes
         self.longest_allowed_queue_time = wait_time
         self.add_nodes_per_iteration = add_pi
         self.stabilization_time = stab
         self.lookback_window = lookback_win
         self.kill_cluster = kill_cluster
-        self.min_nodes = min_nodes if not kill_cluster else 0
+        self.max_nodes = max_nodes
+        self.min_nodes = min_nodes
         self.dump_stats = dump_stats
         self.stats_file = stats_file
         self.plot_stats = plot_stats
@@ -459,9 +460,6 @@ class SGELoadBalancer(LoadBalancer):
             self._placement_group = None
         self.reboot_interval = reboot_interval
         self.n_reboot_restart = n_reboot_restart
-        if min_nodes > max_nodes:
-            raise exception.BaseException(
-                "min_nodes cannot be higher than max_nodes")
 
     @property
     def visualizer(self):
@@ -590,6 +588,13 @@ class SGELoadBalancer(LoadBalancer):
         self._cluster = cluster
         if self.max_nodes is None:
             self.max_nodes = cluster.cluster_size
+        if self.min_nodes is None:
+            self.min_nodes = 1
+        if self.kill_cluster:
+            self.min_nodes = 0
+        if self.min_nodes > self.max_nodes:
+            raise exception.BaseException(
+                "min_nodes cannot be greater than max_nodes")
         use_default_stats_file = self.dump_stats and not self.stats_file
         use_default_plots_dir = self.plot_stats and not self.plot_output_dir
         if use_default_stats_file or use_default_plots_dir:
@@ -688,12 +693,12 @@ class SGELoadBalancer(LoadBalancer):
         whether or not to add nodes to the cluster. Returns the number of nodes
         to add.
         """
-        if len(self._cluster.running_nodes) >= self.max_nodes:
+        num_nodes = len(self._cluster.nodes)
+        if num_nodes >= self.max_nodes:
             log.info("Not adding nodes: already at or above maximum (%d)" %
                      self.max_nodes)
             return
         queued_jobs = self.stat.get_queued_jobs()
-        num_nodes = len(self._cluster.nodes)
         if not queued_jobs and num_nodes >= self.min_nodes:
             log.info("Not adding nodes: at or above minimum nodes "
                      "and no queued jobs...")
@@ -708,7 +713,7 @@ class SGELoadBalancer(LoadBalancer):
         avail_slots = total_slots - used_slots
         need_to_add = 0
         if num_nodes < self.min_nodes:
-            log.info("Adding node: below minimum ({:})".format(self.min_nodes))
+            log.info("Adding node: below minimum (%d)" % self.min_nodes)
             need_to_add = self.min_nodes - num_nodes
         elif total_slots == 0:
             #no slots, add one now

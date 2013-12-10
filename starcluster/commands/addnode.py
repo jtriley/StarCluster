@@ -129,12 +129,12 @@ class CmdAddNode(ClusterCompleter):
         if len(args) != 1:
             self.parser.error("please specify a cluster <cluster_tag>")
         tag = self.tag = args[0]
-
         aliases = []
         for alias in self.opts.alias:
             aliases.extend(alias.split(','))
-        if 'master' in aliases:
-            self.parser.error("'master' is a reserved alias")
+        if ('master' in aliases) or ('%s-master' % tag in aliases):
+            self.parser.error(
+                "'master' and '%s-master' are reserved aliases" % tag)
         num_nodes = self.opts.num_nodes
         if num_nodes == 1 and aliases:
             num_nodes = len(aliases)

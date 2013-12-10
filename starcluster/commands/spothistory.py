@@ -72,6 +72,12 @@ class CmdSpotHistory(CmdBase):
                           default=None,
                           help="limit results to the clusters master node "
                           "availability zone")
+        parser.add_option("-v", "--vpc", dest="vpc",
+                          action="store_true", default=False,
+                          help="show spot prices for VPC")
+        parser.add_option("-c", "--classic", dest="classic",
+                          action="store_true", default=False,
+                          help="show spot prices for EC2-Classic")
 
     def execute(self, args):
         instance_types = ', '.join(static.INSTANCE_TYPES.keys())
@@ -92,7 +98,6 @@ class CmdSpotHistory(CmdBase):
             else:
                 zone = self.opts.zone
                 self.log.info("Specified zone: " + zone)
-        instance_types_list = ', '.join(sorted(static.INSTANCE_TYPES.keys()))
         if instance_type:
             if len(args) == 1:
                 self.log.info("You provided an instance type and a cluster to "
@@ -102,7 +107,7 @@ class CmdSpotHistory(CmdBase):
         elif len(args) != 1:
             self.parser.error(
                 'please provide an instance type (options: %s)' %
-                instance_types_list)
+                instance_types)
         else:
             instance_type = args[0]
             self.log.info("Specified instance type: " + instance_type)
@@ -110,6 +115,13 @@ class CmdSpotHistory(CmdBase):
                 self.parser.error(
                     'invalid instance type. possible options: %s' %
                     instance_types)
+        if self.opts.classic and self.opts.vpc:
+            self.parser.error("options -c and -v cannot be specified at "
+                              "the same time")
+        instance_type = args[0]
+        if not instance_type in static.INSTANCE_TYPES:
+            self.parser.error('invalid instance type. possible options: %s' %
+                              instance_types)
         start = self.opts.start_time
         end = self.opts.end_time
         if self.opts.days_ago:
@@ -118,6 +130,8 @@ class CmdSpotHistory(CmdBase):
             start = utils.datetime_tuple_to_iso(
                 now - timedelta(days=self.opts.days_ago))
         browser_cmd = self.cfg.globals.get("web_browser")
-
-        self.ec2.get_spot_history(instance_type, start, end, zone,
-                                  self.opts.plot, plot_web_browser=browser_cmd)
+        self.ec2.get_spot_history(instance_type, start, end,
+                                  zone=self.opts.zone, plot=self.opts.plot,
+                                  plot_web_browser=browser_cmd,
+                                  vpc=self.opts.vpc,
+                                  classic=self.opts.classic)

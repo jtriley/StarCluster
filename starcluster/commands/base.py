@@ -171,11 +171,22 @@ class CmdBase(completion.CmdComplete):
             parser.error("option %s must be a positive integer" % opt_str)
         setattr(parser.values, option.dest, value)
 
+    def _file_exists(self, option, opt_str, value, parser):
+        path = os.path.abspath(os.path.expanduser(os.path.expandvars(value)))
+        if not os.path.exists(path):
+            parser.error("(%s) file does not exist: %s" % (opt_str, path))
+        if not os.path.isfile(path):
+            parser.error("(%s) path is not a file: %s" % (opt_str, path))
+        setattr(parser.values, option.dest, path)
+
     def _build_dict(self, option, opt_str, value, parser):
         tagdict = getattr(parser.values, option.dest)
         tags = value.split(',')
         for tag in tags:
             tagparts = tag.split('=')
+            if len(tagparts) != 2:
+                parser.error("invalid tag: '%s' (correct example: key=value)" %
+                             tag)
             key = tagparts[0]
             if not key:
                 continue
