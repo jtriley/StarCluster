@@ -937,6 +937,9 @@ class Cluster(object):
                 placement_group = self.placement_group.name
         availability_zone_group = None if placement_group is False \
             else cluster_sg
+        if zone is None and placement_group is not False:
+            zone = getattr(self.zone, 'name', None)
+
         #launch_group is related to placement group
         launch_group = availability_zone_group
         image_id = image_id or self.node_image_id
@@ -947,7 +950,7 @@ class Cluster(object):
                       key_name=self.keyname, security_groups=[cluster_sg],
                       availability_zone_group=availability_zone_group,
                       launch_group=launch_group,
-                      placement=zone or getattr(self.zone, 'name', None),
+                      placement=zone,
                       user_data=user_data,
                       placement_group=placement_group,
                       subnet_id=self.subnet_id)
