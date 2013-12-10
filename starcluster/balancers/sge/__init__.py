@@ -676,7 +676,7 @@ class SGELoadBalancer(LoadBalancer):
         avail_slots = total_slots - used_slots
         need_to_add = 0
         if num_nodes < self.min_nodes:
-            log.info("Adding node: below minimum ({:})".format(self.min_nodes))
+            log.info("Adding node: below minimum (%d)" % self.min_nodes)
             need_to_add = self.min_nodes - num_nodes
         elif total_slots == 0:
             #no slots, add one now
