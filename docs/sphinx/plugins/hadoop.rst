@@ -94,6 +94,28 @@ Once the plugin has completed successfully you should be able to login and
 begin using HDFS and the Hadoop framework tools. Hadoop's home directory, where
 all of the Hadoop jars live, is ``/usr/lib/hadoop``.
 
+Advanced Configuration
+======================
+If you'd like to change the hadoop temporary directory (ie ``hadoop.tmp.dir``)
+from the default ``/mnt/hadoop`` update the ``[plugin]`` section above with::
+
+    [plugin hadoop]
+    setup_class = starcluster.plugins.hadoop.Hadoop
+    hadoop_tmpdir = /path/to/hadoop/temp
+
+This plugin creates a custom ``mapred-site.xml`` file for each node that, among
+other things, configures the ``mapred.tasktracker.{map,reduce}.tasks.maximum``
+parameters based upon the node's CPU count. The plugin uses a simple heuristic
+(similar to the one used in Amazon's Elastic Map Reduce hadoop configs) that
+assigns 1 map per CPU and ~1/3 reduce per CPU by default in order to use all
+CPUs available on each node. You can tune these ratios by updating the
+``[plugin]`` section above with the following settings::
+
+    [plugin hadoop]
+    setup_class = starcluster.plugins.hadoop.Hadoop
+    map_to_proc_ratio = 1.0
+    reduce_to_proc_ratio = 0.3
+
 *********************
 Hadoop Web Interfaces
 *********************
