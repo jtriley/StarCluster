@@ -36,6 +36,7 @@ import urlparse
 from datetime import datetime
 
 import iptools
+import iso8601
 import decorator
 
 from starcluster import spinner
@@ -238,7 +239,7 @@ def is_iso_time(iso):
     try:
         iso_to_datetime_tuple(iso)
         return True
-    except ValueError:
+    except iso8601.ParseError:
         return False
 
 
@@ -246,20 +247,15 @@ def iso_to_datetime_tuple(iso):
     """
     Converts an iso time string to a datetime tuple
     """
-    #remove timezone
-    iso = iso.split('.')[0]
-    try:
-        return datetime.strptime(iso, "%Y-%m-%dT%H:%M:%S")
-    except AttributeError:
-        # python2.4 datetime module doesnt have strptime
-        return datetime(*time.strptime(iso, "%Y-%m-%dT%H:%M:%S")[:6])
+    return iso8601.parse_date(iso)
 
 
 def datetime_tuple_to_iso(tup):
     """
-    Converts a datetime tuple to iso time string
+    Converts a datetime tuple to a UTC iso time string
     """
-    iso = datetime.strftime(tup, "%Y-%m-%dT%H:%M:%S")
+    iso = datetime.strftime(tup.astimezone(iso8601.iso8601.UTC),
+                                           "%Y-%m-%dT%H:%M:%S.%fZ")
     return iso
 
 
