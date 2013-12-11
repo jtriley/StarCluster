@@ -199,7 +199,6 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             cmd = "cd /opt/sge6/bin/linux-x64/ && ./sge_qmaster"
             master.ssh.execute(cmd)
 
-
     def clean_cluster(self, nodes, master, user, user_shell, volumes):
         """
         Run qhost to find nodes that are present in OGS but not in the cluster
@@ -207,8 +206,9 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         """
         self._master = master
         self._nodes = nodes
-        qhosts = self._master.ssh.execute('qhost | tail -n +4 | cut -d " " -f 1 | sed s/^[\\ ]*//g')
-        qhosts = self._master.ssh.execute("qhost", source_profile=True)
+        qhosts = self._master.ssh.execute(
+            'qhost | tail -n +4 | cut -d " " -f 1 | sed s/^[\\ ]*//g',
+            source_profile=True)
         if len(qhosts) == 0:
             log.info("Nothing to clean")
 

@@ -1810,8 +1810,8 @@ class Cluster(object):
                     #the plugin does not implement get_nodes_to_recover
                     pass
             if len(to_recover) > 1:
-                log.error("Cannot support more than one list of nodes "
-                          "to recover")
+                log.error("Support for more than one list of nodes "
+                          "to recover is not implemented")
             elif len(to_recover) == 1:
                 errors = []
                 for node in to_recover[0]:

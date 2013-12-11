@@ -1030,14 +1030,13 @@ class Node(object):
     def is_impaired(self):
         return bool(self.ec2.conn.get_all_instance_status(
             instance_ids=[self.id],
-            filters={"instance-status.status" : "impaired"}
+            filters={"instance-status.status": "impaired"}
         ))
-
 
     def handle_irresponsive_node(self):
         if self.is_spot():
             log.info(self.alias + " is a spot instance and will "
-                        "be terminated.")
+                     "be terminated.")
             self.terminate()
             return True
         else:
@@ -1045,11 +1044,10 @@ class Node(object):
             time.sleep(10)
             while self.update() != "stopped":
                 log.info("Waiting for node " + self.alias +
-                            "to be in a stopped state.")
+                         "to be in a stopped state.")
                 time.sleep(10)
             self.start()
             return False
-
 
     def wait(self, interval=30, reboot_interval=10, n_reboot_restart=False):
         """
