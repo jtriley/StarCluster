@@ -266,7 +266,7 @@ def datetime_tuple_to_iso(tup):
     Converts a datetime tuple to a UTC iso time string
     """
     iso = datetime.strftime(tup.astimezone(iso8601.iso8601.UTC),
-                                           "%Y-%m-%dT%H:%M:%S.%fZ")
+                            "%Y-%m-%dT%H:%M:%S.%fZ")
     return iso
 
 
