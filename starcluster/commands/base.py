@@ -20,6 +20,7 @@ import sys
 import time
 
 from starcluster import node
+from starcluster import utils
 from starcluster import cluster
 from starcluster import completion
 from starcluster.logger import log
@@ -169,6 +170,12 @@ class CmdBase(completion.CmdComplete):
     def _positive_int(self, option, opt_str, value, parser):
         if value <= 0:
             parser.error("option %s must be a positive integer" % opt_str)
+        setattr(parser.values, option.dest, value)
+
+    def _iso_timestamp(self, option, opt_str, value, parser):
+        if not utils.is_iso_time(value):
+            parser.error("option %s must be an iso8601 formatted timestamp" %
+                         opt_str)
         setattr(parser.values, option.dest, value)
 
     def _file_exists(self, option, opt_str, value, parser):

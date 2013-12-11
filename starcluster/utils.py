@@ -250,6 +250,17 @@ def iso_to_datetime_tuple(iso):
     return iso8601.parse_date(iso)
 
 
+def get_utc_now(iso=False):
+    """
+    Returns datetime.utcnow with UTC timezone info
+    """
+    now = datetime.utcnow().replace(tzinfo=iso8601.iso8601.UTC)
+    if iso:
+        return datetime_tuple_to_iso(now)
+    else:
+        return now
+
+
 def datetime_tuple_to_iso(tup):
     """
     Converts a datetime tuple to a UTC iso time string

@@ -42,25 +42,22 @@ class CmdSpotHistory(CmdBase):
     names = ['spothistory', 'shi']
 
     def addopts(self, parser):
-        now_tup = datetime.now()
-        now = utils.datetime_tuple_to_iso(now_tup)
-        delta = now_tup - timedelta(days=30)
-        thirty_days_ago = utils.datetime_tuple_to_iso(delta)
         parser.add_option("-z", "--zone", dest="zone", default=None,
                           help="limit results to specific availability zone")
         parser.add_option("-d", "--days", dest="days_ago",
-                          action="store", type="float",
+                          action="store", type="float", default=None,
                           help="provide history in the last DAYS_AGO days "
                           "(overrides -s and -e options)")
         parser.add_option("-s", "--start-time", dest="start_time",
-                          action="store", type="string",
-                          default=thirty_days_ago,
-                          help="show price history after START_TIME "
-                          "(e.g. 2010-01-15T22:22:22)")
+                          action="callback", type="string", default=None,
+                          callback=self._iso_timestamp,
+                          help="show price history after START_TIME (UTC)"
+                          "(e.g. 2010-01-15T22:22:22Z)")
         parser.add_option("-e", "--end-time", dest="end_time",
-                          action="store", type="string", default=now,
-                          help="show price history up until END_TIME "
-                          "(e.g. 2010-02-15T22:22:22)")
+                          action="callback", type="string", default=None,
+                          callback=self._iso_timestamp,
+                          help="show price history up until END_TIME (UTC)"
+                          "(e.g. 2010-02-15T22:22:22Z)")
         parser.add_option("-p", "--plot", dest="plot",
                           action="store_true", default=False,
                           help="plot spot history in a web browser")
@@ -87,10 +84,15 @@ class CmdSpotHistory(CmdBase):
         start = self.opts.start_time
         end = self.opts.end_time
         if self.opts.days_ago:
-            now = datetime.now()
-            end = utils.datetime_tuple_to_iso(now)
+            if self.opts.start_time:
+                self.parser.error("options -d and -s cannot be specified at "
+                                  "the same time")
+            if self.opts.end_time:
+                end_tup = utils.iso_to_datetime_tuple(self.opts.end_time)
+            else:
+                end_tup = utils.get_utc_now()
             start = utils.datetime_tuple_to_iso(
-                now - timedelta(days=self.opts.days_ago))
+                end_tup - timedelta(days=self.opts.days_ago))
         browser_cmd = self.cfg.globals.get("web_browser")
         self.ec2.get_spot_history(instance_type, start, end,
                                   zone=self.opts.zone, plot=self.opts.plot,
