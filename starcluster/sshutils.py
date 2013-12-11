@@ -27,6 +27,7 @@ import fnmatch
 import hashlib
 import warnings
 import posixpath
+import tempfile
 
 import scp
 import paramiko
@@ -280,9 +281,10 @@ class SSHClient(object):
         If matching is set to False then only lines *not* containing a pattern
         that matches regex will be returned
         """
-        f = self.remote_file(remote_file, 'r')
-        flines = f.readlines()
-        f.close()
+        with tempfile.NamedTemporaryFile(
+                prefix=os.path.basename(remote_file) + "_") as f:
+            self.get(remote_file, f.name)
+            flines = f.readlines()
         if regex is None:
             return flines
         r = re.compile(regex)
@@ -305,9 +307,7 @@ class SSHClient(object):
         lines = self.get_remote_file_lines(remote_file, regex, matching=False)
         log.debug("new %s after removing regex (%s) matches:\n%s" %
                   (remote_file, regex, ''.join(lines)))
-        f = self.remote_file(remote_file)
-        f.writelines(lines)
-        f.close()
+        self.write_to_remote_file(remote_file, lines)
 
     def unlink(self, remote_file):
         return self.sftp.unlink(remote_file)
@@ -319,6 +319,16 @@ class SSHClient(object):
         rfile = self.sftp.open(file, mode)
         rfile.name = file
         return rfile
+
+    def write_to_remote_file(self, filename, lines):
+        """
+        Overwrites the remote file with the provided lines
+        """
+        with tempfile.NamedTemporaryFile(
+                prefix=os.path.basename(filename) + "_") as f:
+            f.writelines(lines)
+            f.flush()
+            self.put(f.name, filename)
 
     def path_exists(self, path):
         """
