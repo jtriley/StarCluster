@@ -220,12 +220,12 @@ class EasyEC2(EasyAWS):
                 return img
 
     def _wait_for_group_deletion_propagation(self, group):
-        if type(group) is boto.ec2.placementgroup.PlacementGroup:
+        if isinstance(group, boto.ec2.placementgroup.PlacementGroup):
             while self.get_placement_group_or_none(group.name):
                 log.info("Waiting for deletion of placement group {:}..."
                          .format(group.name))
         else:
-            assert type(group) is boto.ec2.securitygroup.SecurityGroup
+            assert isinstance(group, boto.ec2.securitygroup.SecurityGroup)
             while self.get_group_or_none(group.name):
                 log.info("Waiting for deletion of security group {:}..."
                          .format(group.name))
