@@ -207,59 +207,52 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         """
         self._master = master
         self._nodes = nodes
+        qhosts = self._master.ssh.execute('qhost | tail -n +4 | cut -d " " -f 1 | sed s/^[\\ ]*//g')
         qhosts = self._master.ssh.execute("qhost", source_profile=True)
-        if len(qhosts) <= 3:
+        if len(qhosts) == 0:
             log.info("Nothing to clean")
 
-        qhosts = qhosts[3:]
-        aliveNodes = [node.alias for node in nodes]
+        alive_nodes = [node.alias for node in nodes]
 
         cleaned = []
         #find dead hosts
-        for qhost in qhosts:
-            nodeAlias = qhost[0:qhost.find(" ")]
-            if nodeAlias not in aliveNodes:
-                cleaned.append(nodeAlias)
+        for node_alias in qhosts:
+            if node_alias not in alive_nodes:
+                cleaned.append(node_alias)
 
         #find jobs running in dead hosts
-        qstatsXml = self._master.ssh.execute("qstat -u \"*\" -xml",
-                                             source_profile=True)
-        qstatsXml[1:]  # remove first line
-        qstatsET = ET.fromstringlist(qstatsXml)
-        toDelete = []
-        toRepair = []
-        cleanedQueue = []  # not a lambda function to allow pickling
+        qstats_xml = self._master.ssh.execute("qstat -u \"*\" -xml",
+                                              source_profile=True)
+        qstats_xml[1:]  # remove first line
+        qstats_et = ET.fromstringlist(qstats_xml)
+        to_delete = []
+        to_repair = []
+        cleaned_queue = []  # not a lambda function to allow pickling
         for c in cleaned:
-            cleanedQueue.append("all.q@" + c)
-        for jobList in qstatsET.find("queue_info").findall("job_list"):
-            if jobList.find("queue_name").text in cleanedQueue:
-                jobNumber = jobList.find("JB_job_number").text
-                toDelete.append(jobNumber)
-        for jobList in qstatsET.find("job_info").findall("job_list"):
-            if jobList.find("state").text == "Eqw":
-                jobNumber = jobList.find("JB_job_number").text
-                toRepair.append(jobNumber)
+            cleaned_queue.append("all.q@" + c)
+        for job_list in qstats_et.find("queue_info").findall("job_list"):
+            if job_list.find("queue_name").text in cleaned_queue:
+                job_number = job_list.find("JB_job_number").text
+                to_delete.append(job_number)
+        for job_list in qstats_et.find("job_info").findall("job_list"):
+            if job_list.find("state").text == "Eqw":
+                job_number = job_list.find("JB_job_number").text
+                to_repair.append(job_number)
         #delete the jobs
-        if toDelete:
-            log.info("Stopping jobs: " + str(toDelete))
-            self._master.ssh.execute("qdel -f " + " ".join(toDelete))
+        if to_delete:
+            log.info("Stopping jobs: " + str(to_delete))
+            self._master.ssh.execute("qdel -f " + " ".join(to_delete))
             time.sleep(3)  # otherwise might provoke LOST QRSH if on last job
-        if toRepair:
-            log.error("Reseting jobs: " + str(toRepair))
-            self._master.ssh.execute("qmod -cj " + " ".join(toRepair),
+        if to_repair:
+            log.error("Reseting jobs: " + str(to_repair))
+            self._master.ssh.execute("qmod -cj " + " ".join(to_repair),
                                      ignore_exit_status=True)
 
-        #DEBUGIN stuck qrsh issue (BLUK-63)
+        # stuck qrsh issue
         ps_wc = int(self._master.ssh.execute("ps -ef | grep qrsh | wc -l")[0])
         qstat_wc = int(self._master.ssh.execute("qstat -u \"*\" | wc -l")[0])
         if qstat_wc == 0 and ps_wc > 2:
             log.error("LOST QRSH??")
-            from datetime import datetime
-            now = str(datetime.utcnow()).replace(" ", "_")
-            log.error("Dumping qstats")
-            self._master.ssh.execute("qstat -u \"*\" -ext > qstats_" + now)
-            log.error("Dumping qacct")
-            self._master.ssh.execute("qacct -j > qacct_" + now)
             log.error("pkill -9 qrsh")
             self._master.ssh.execute("pkill -9 qrsh", ignore_exit_status=True)
         #----------------------------------
