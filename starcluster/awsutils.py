@@ -219,6 +219,15 @@ class EasyEC2(EasyAWS):
             if img.id == image_id:
                 return img
 
+    def _wait_for_group_deletion_propagation(self, group):
+        if isinstance(group, boto.ec2.placementgroup.PlacementGroup):
+            while self.get_placement_group_or_none(group.name):
+                time.sleep(5)
+        else:
+            assert isinstance(group, boto.ec2.securitygroup.SecurityGroup)
+            while self.get_group_or_none(group.name):
+                time.sleep(5)
+
     def delete_group(self, group, max_retries=60, retry_delay=5):
         """
         This method deletes a security or placement group using group.delete()
@@ -233,7 +242,9 @@ class EasyEC2(EasyAWS):
         try:
             for i in range(max_retries):
                 try:
-                    return group.delete()
+                    ret_val = group.delete()
+                    self._wait_for_group_deletion_propagation(group)
+                    return ret_val
                 except boto.exception.EC2ResponseError as e:
                     if i == max_retries - 1:
                         raise
