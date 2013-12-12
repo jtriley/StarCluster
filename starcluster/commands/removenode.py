@@ -36,14 +36,14 @@ class CmdRemoveNode(ClusterCompleter):
 
         $ starcluster removenode mycluster node001 node002 node003
 
-    If you'd rather not terminate the node(s) after removing from the cluster,
+    If you'd rather not terminate the node(s) after detaching from the cluster,
     use the -k option:
 
         $ starcluster removenode -k mycluster node001 node002 node003
 
     This will remove the nodes from the cluster but leave the instances
-    running. This can be useful, for example, when testing on_add_node methods
-    in a StarCluster plugin.
+    running. This can be useful, for example, when testing on_add_node and
+    on_remove_node methods in a StarCluster plugin.
     """
     names = ['removenode', 'rn']
 
