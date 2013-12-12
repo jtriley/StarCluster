@@ -224,6 +224,28 @@ to be committed for errors, e.g.::
     ERROR: pyflakes failed on some source files
     ERROR: please fix the errors and re-run this script
 
+Running the Tests
+-----------------
+Before submitting a pull request please make sure that your changes pass
+StarCluster's current tests. All of the tests run locally and do not require an
+AWS/EC2 account. To run the tests simply install `nose` and then run
+`nosetests`:
+
+.. code-block:: ini
+
+    $ pip install nose
+    $ cd $STARCLUSTER_REPO
+    $ nosetests
+    % nosetests
+    ..................................................
+    ----------------------------------------------------------------------
+    Ran 50 tests in 18.222s
+
+     OK
+
+If you get an `OK` at the end all is well. Otherwise your changes have
+introduced errors that need to be fixed before submitting a PR.
+
 Submit your changes upstream
 ----------------------------
 Once you've finished fixing bugs or adding features you're now ready to `submit
