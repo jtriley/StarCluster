@@ -207,6 +207,23 @@ variables, etc. Please fix any errors reported before committing.
     >>> Running pep8...
     >>> Clean!
 
+You can and should also set up a git hook to do this automatically prior to
+every commit:
+
+.. code-block:: ini
+
+    $ cd $STARCLUSTER_REPO
+    $ ln -s $PWD/git-hooks/pre-commit $PWD/.git/hooks/pre-commit
+
+Now whenever you run ``git commit`` the `check.py` script will check the files
+to be committed for errors, e.g.::
+
+    $ git commit
+    >>> Running pyflakes...
+    starcluster/awsutils.py:333: undefined name 'blah'
+    ERROR: pyflakes failed on some source files
+    ERROR: please fix the errors and re-run this script
+
 Submit your changes upstream
 ----------------------------
 Once you've finished fixing bugs or adding features you're now ready to `submit
