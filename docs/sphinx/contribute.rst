@@ -236,7 +236,6 @@ AWS/EC2 account. To run the tests simply install `nose` and then run
     $ pip install nose
     $ cd $STARCLUSTER_REPO
     $ nosetests
-    % nosetests
     ..................................................
     ----------------------------------------------------------------------
     Ran 50 tests in 18.222s
