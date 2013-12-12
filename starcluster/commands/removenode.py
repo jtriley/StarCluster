@@ -15,7 +15,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
 
-from completers import ClusterCompleter
+from starcluster.logger import log
+from starcluster.commands.completers import ClusterCompleter
 
 
 class CmdRemoveNode(ClusterCompleter):
@@ -54,14 +55,24 @@ class CmdRemoveNode(ClusterCompleter):
                           "of errors if possible ")
         parser.add_option("-k", "--keep-instance", dest="terminate",
                           action="store_false", default=True,
-                          help="do not terminate instances "
-                          "after removing nodes")
+                          help="do not terminate nodes "
+                          "after detaching them from the cluster")
+        parser.add_option("-c", "--confirm", dest="confirm",
+                          action="store_true", default=False,
+                          help="Do not prompt for confirmation, "
+                          "just remove the node(s)")
 
     def execute(self, args):
         if not len(args) >= 2:
             self.parser.error("please specify a <cluster_tag> and <node>")
         tag = self.tag = args[0]
         aliases = args[1:]
+        if not self.opts.confirm:
+            resp = raw_input("Remove %s from %s (y/n)? " %
+                             (', '.join(aliases), tag))
+            if resp not in ['y', 'Y', 'yes']:
+                log.info("Aborting...")
+                return
         for alias in aliases:
             self.cm.remove_node(tag, alias, terminate=self.opts.terminate,
                                 force=self.opts.force)
