@@ -81,12 +81,6 @@ class SGEStats(object):
                 self.hosts.append(hash)
         return self.hosts
 
-    def qstat_to_datetime(self, qstat_datetime):
-        """
-        Input format is: 2012-11-07T18:50:44
-        """
-        return datetime.datetime.strptime(qstat_datetime, "%Y-%m-%dT%H:%M:%S")
-
     def parse_qstat(self, qstat_out):
         """
         This method parses qstat -xml output and makes a neat array
@@ -309,7 +303,7 @@ class SGEStats(object):
     def avg_wait_time(self):
         count = 0
         total_seconds = 0
-        for i, job in enumerate(self.jobstats):
+        for job in self.jobstats:
             if job is not None:
                 if job['start'] and job['queued']:
                     delta = job['start'] - job['queued']
@@ -319,7 +313,6 @@ class SGEStats(object):
                     continue
                 total_seconds += delta.seconds
                 count += 1
-
         if count == 0:
             return count
         else:
