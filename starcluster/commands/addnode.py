@@ -99,14 +99,6 @@ class CmdAddNode(ClusterCompleter):
             default=False, help="do not launch new EC2 instances when "
             "adding nodes (use existing instances instead)")
 
-    def _get_duplicate(self, lst):
-        d = {}
-        for item in lst:
-            if item in d:
-                return item
-            else:
-                d[item] = 0
-
     def execute(self, args):
         if len(args) != 1:
             self.parser.error("please specify a cluster <cluster_tag>")
