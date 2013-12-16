@@ -427,3 +427,6 @@ class DefaultClusterSetup(ClusterSetup):
         self._create_user(node)
         self._setup_scratch(nodes=[node])
         self._setup_passwordless_ssh(nodes=[node])
+
+    def clean_cluster(self, nodes, master, user, user_shell, volumes):
+        pass
