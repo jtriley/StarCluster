@@ -98,6 +98,18 @@ class CmdAddNode(ClusterCompleter):
             "-x", "--no-create", dest="no_create", action="store_true",
             default=False, help="do not launch new EC2 instances when "
             "adding nodes (use existing instances instead)")
+        parser.add_option(
+            "--reboot-interval", dest="reboot_interval", type="int",
+            default=10, help="Delay in minutes beyond which a node is "
+            "rebooted if it's still being unreachable via SSH. Defaults "
+            "to 10.")
+        parser.add_option(
+            "--num_reboot_restart", dest="n_reboot_restart", type="int",
+            default=False, help="Numbere of reboots after which a node "
+            "is restarted (stop/start). Helpfull in case the issue comes from "
+            "the hardware. If the node is a spot instance, it "
+            "will be terminated instead since it cannot be stopped. Defaults "
+            "to false.")
 
     def _get_duplicate(self, lst):
         d = {}
@@ -134,4 +146,6 @@ class CmdAddNode(ClusterCompleter):
                           image_id=self.opts.image_id,
                           instance_type=self.opts.instance_type,
                           zone=self.opts.zone, spot_bid=self.opts.spot_bid,
-                          no_create=self.opts.no_create)
+                          no_create=self.opts.no_create,
+                          reboot_interval=self.reboot_interval,
+                          n_reboot_restart=self.n_reboot_restart)

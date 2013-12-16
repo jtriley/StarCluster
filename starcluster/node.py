@@ -21,6 +21,7 @@ import stat
 import base64
 import posixpath
 import subprocess
+import datetime
 
 from starcluster import utils
 from starcluster import static
@@ -58,6 +59,13 @@ class NodeManager(managers.Manager):
         key = self.cfg.get_key(node.key_name)
         node = Node(node, key.key_location, user=user)
         return node
+
+
+class DeadNode(object):
+    alias = None
+
+    def __init__(self, alias):
+        self.alias = alias
 
 
 class Node(object):
@@ -996,8 +1004,68 @@ class Node(object):
         except exception.SSHError:
             return False
 
-    def wait(self, interval=30):
+    def is_impaired(self):
+        return bool(self.ec2.conn.get_all_instance_status(
+            instance_ids=[self.id],
+            filters={"instance-status.status": "impaired"}
+        ))
+
+    def handle_irresponsive_node(self):
+        if self.is_spot():
+            log.info(self.alias + " is a spot instance and will "
+                     "be terminated.")
+            self.terminate()
+            return True
+        else:
+            self.stop()
+            time.sleep(10)
+            while self.update() != "stopped":
+                log.info("Waiting for node " + self.alias +
+                         "to be in a stopped state.")
+                time.sleep(10)
+            self.start()
+            return False
+
+    def wait(self, interval=30, reboot_interval=10, n_reboot_restart=False):
+        """
+        Wait for the instance to be up and running.
+        interval           The polling interval in seconds.
+        reboot_interval    The interval between reboots in minutes.
+        n_reboot_restart   The number of reboots before restarting the node
+                           instead of rebooting. Restart means stop/start,
+                           which will possibly make the instance run on
+                           different hardware, but it counts as a new billing
+                           hour. Spot instances cannot be stopped so they will
+                           be terminated instead. Defaults to False.
+        """
+        now = datetime.datetime.utcnow()
+        reboots = 0
+        if reboot_interval:
+            reboot_time = now + datetime.timedelta(minutes=reboot_interval)
+            if n_reboot_restart:
+                restart_at = n_reboot_restart
+        elif n_reboot_restart:
+            log.warn("node.wait: n_reboot_restart is useless if "
+                     "reboot_interval is 0.")
         while not self.is_up():
+            if self.is_impaired():
+                log.info(self.alias + " is impaired.")
+                if self.handle_irresponsive_node():
+                    break
+            now = datetime.datetime.utcnow()
+            if reboot_interval and now > reboot_time:
+                if n_reboot_restart and restart_at == reboots:
+                    log.info("Restart interval reached")
+                    if self.handle_irresponsive_node():
+                        break
+                    restart_at += n_reboot_restart
+                else:
+                    log.info("Reboot interval reached -> rebooting node " +
+                             self.alias)
+                    self.reboot()
+                    reboots += 1
+                reboot_time = datetime.datetime.utcnow() + \
+                    datetime.timedelta(minutes=reboot_interval)
             time.sleep(interval)
 
     def is_up(self):
