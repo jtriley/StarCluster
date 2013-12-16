@@ -194,8 +194,6 @@ class ClusterManager(managers.Manager):
         """
         cl = self.get_cluster(cluster_name)
         n = cl.get_node_by_alias(alias)
-        if not n:
-            raise exception.InstanceDoesNotExist(alias, label='node')
         cl.remove_node(n, terminate=terminate, force=force)
 
     def restart_cluster(self, cluster_name, reboot_only=False):
