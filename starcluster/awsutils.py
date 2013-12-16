@@ -220,15 +220,13 @@ class EasyEC2(EasyAWS):
                 return img
 
     def _wait_for_group_deletion_propagation(self, group):
-        if type(group) is boto.ec2.placementgroup.PlacementGroup:
+        if isinstance(group, boto.ec2.placementgroup.PlacementGroup):
             while self.get_placement_group_or_none(group.name):
-                log.info("Waiting for deletion of placement group {:}..."
-                         .format(group.name))
+                time.sleep(5)
         else:
-            assert type(group) is boto.ec2.securitygroup.SecurityGroup
+            assert isinstance(group, boto.ec2.securitygroup.SecurityGroup)
             while self.get_group_or_none(group.name):
-                log.info("Waiting for deletion of security group {:}..."
-                         .format(group.name))
+                time.sleep(5)
 
     def delete_group(self, group, max_retries=60, retry_delay=5):
         """
@@ -1494,7 +1492,7 @@ class EasyEC2(EasyAWS):
             ypanrange = [minimum - yaxisrange / 2., maximum + yaxisrange / 2.]
             yzoomrange = [0.1, ypanrange[-1] - ypanrange[0]]
             context = dict(instance_type=instance_type,
-                           start=start, end=end,
+                           start=hist[-1].timestamp, end=hist[0].timestamp,
                            time_series_data=str(data).replace('L', ''),
                            shutdown=plot_shutdown_server,
                            xpanrange=xpanrange, ypanrange=ypanrange,
