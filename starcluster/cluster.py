@@ -757,23 +757,61 @@ class Cluster(object):
             raise exception.NoClusterNodesFound(terminated_nodes)
         return nodes
 
-    def get_node_by_dns_name(self, dns_name):
+    def get_node(self, identifier, nodes=None):
+        """
+        Returns a node if the identifier specified matches any unique instance
+        attribute (e.g. instance id, alias, spot id, dns name, private ip,
+        public ip, etc.)
+        """
+        nodes = nodes or self.nodes
         for node in self.nodes:
-            if node.dns_name == dns_name:
+            if node.alias == identifier:
                 return node
-        raise exception.InstanceDoesNotExist(dns_name, label='node')
+            if node.id == identifier:
+                return node
+            if node.spot_id == identifier:
+                return node
+            if node.dns_name == identifier:
+                return node
+            if node.ip_address == identifier:
+                return node
+            if node.private_ip_address == identifier:
+                return node
+            if node.public_dns_name == identifier:
+                return node
+            if node.private_dns_name == identifier:
+                return node
+        raise exception.InstanceDoesNotExist(identifier, label='node')
 
-    def get_node_by_id(self, instance_id):
-        for node in self.nodes:
-            if node.id == instance_id:
-                return node
-        raise exception.InstanceDoesNotExist(instance_id, label='node')
+    def get_nodes(self, identifiers, nodes=None):
+        """
+        Same as get_node but takes a list of identifiers and returns a list of
+        nodes.
+        """
+        nodes = nodes or self.nodes
+        node_list = []
+        for i in identifiers:
+            n = self.get_node(i, nodes=nodes)
+            if n in node_list:
+                continue
+            else:
+                node_list.append(n)
+        return node_list
 
-    def get_node_by_alias(self, alias):
-        for node in self.nodes:
-            if node.alias == alias:
-                return node
-        raise exception.InstanceDoesNotExist(alias, label='node')
+    def get_node_by_dns_name(self, dns_name, nodes=None):
+        warnings.warn("Please update your code to use Cluster.get_node()",
+                      DeprecationWarning)
+        return self.get_node(dns_name, nodes=nodes)
+
+    def get_node_by_id(self, instance_id, nodes=None):
+        warnings.warn("Please update your code to use Cluster.get_node()",
+                      DeprecationWarning)
+        return self.get_node(instance_id, nodes=nodes)
+
+    def get_node_by_alias(self, alias, nodes=None):
+        warnings.warn("Please update your code to use Cluster.get_node()",
+                      DeprecationWarning)
+        return self.get_node(alias, nodes=nodes)
 
     def _nodes_in_states(self, states):
         return filter(lambda x: x.state in states, self.nodes)
