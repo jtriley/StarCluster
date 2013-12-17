@@ -150,7 +150,7 @@ class ClusterManager(managers.Manager):
         """
         cluster = self.get_cluster(cluster_name, load_receipt=False,
                                    require_keys=False)
-        node = cluster.get_node_by_alias(node_id)
+        node = cluster.get_node(node_id)
         key_location = self.cfg.get_key(node.key_name).get('key_location')
         cluster.key_location = key_location
         cluster.keyname = node.key_name
@@ -193,7 +193,7 @@ class ClusterManager(managers.Manager):
         Remove a single node from a cluster
         """
         cl = self.get_cluster(cluster_name)
-        n = cl.get_node_by_alias(alias)
+        n = cl.get_node(alias)
         cl.remove_node(n, terminate=terminate, force=force)
 
     def restart_cluster(self, cluster_name, reboot_only=False):
@@ -992,7 +992,7 @@ class Cluster(object):
         self.wait_for_cluster(msg="Waiting for node(s) to come up...")
         log.debug("Adding node(s): %s" % aliases)
         for alias in aliases:
-            node = self.get_node_by_alias(alias)
+            node = self.get_node(alias)
             self.run_plugins(method_name="on_add_node", node=node)
 
     def remove_node(self, node, terminate=True, force=False):
@@ -1675,11 +1675,7 @@ class Cluster(object):
 
     def ssh_to_node(self, alias, user='root', command=None, forward_x11=False,
                     forward_agent=False, pseudo_tty=False):
-        node = self.get_node_by_alias(alias)
-        node = node or self.get_node_by_dns_name(alias)
-        node = node or self.get_node_by_id(alias)
-        if not node:
-            raise exception.InstanceDoesNotExist(alias, label='node')
+        node = self.get_node(alias)
         return node.shell(user=user, forward_x11=forward_x11,
                           forward_agent=forward_agent,
                           pseudo_tty=pseudo_tty,
@@ -2173,15 +2169,11 @@ class ClusterValidator(validators.Validator):
                 "to store internal metadata" % ud_size_kb)
 
     def ssh_to_master(self, user='root', command=None, forward_x11=False):
-        return self.ssh_to_node('master', user=user, command=command,
-                                forward_x11=forward_x11)
+        node = self.master_node
+        return node.shell(user=user, forward_x11=forward_x11, command=command)
 
     def ssh_to_node(self, alias, user='root', command=None, forward_x11=False):
-        node = self.get_node_by_alias(alias)
-        node = node or self.get_node_by_dns_name(alias)
-        node = node or self.get_node_by_id(alias)
-        if not node:
-            raise exception.InstanceDoesNotExist(alias, label='node')
+        node = self.get_node(alias)
         return node.shell(user=user, forward_x11=forward_x11, command=command)
 
 

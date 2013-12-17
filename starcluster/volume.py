@@ -97,7 +97,7 @@ class VolumeCreator(cluster.Cluster):
                                           instance_type=self._instance_type,
                                           zone=zone)
             self.wait_for_cluster(msg="Waiting for volume host to come up...")
-            self._instance = self.get_node_by_alias(alias)
+            self._instance = self.get_node(alias)
         else:
             s = utils.get_spinner("Waiting for instance %s to come up..." %
                                   self._instance.id)
