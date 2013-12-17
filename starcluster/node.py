@@ -1041,7 +1041,7 @@ class Node(object):
             else:
                 return self.private_ip_address
         else:
-            return self.dns_name or None
+            return self.dns_name
 
     @property
     def ssh(self):
