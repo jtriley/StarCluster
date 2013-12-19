@@ -197,6 +197,16 @@ class ClusterManager(managers.Manager):
         n = cl.get_node(alias) if alias else None
         return cl.remove_node(node=n, terminate=terminate, force=force)
 
+    def remove_nodes(self, cluster_name, num_nodes=None, aliases=None,
+                     terminate=True, force=False):
+        """
+        Remove one or more nodes from cluster
+        """
+        cl = self.get_cluster(cluster_name)
+        nodes = cl.get_nodes(aliases) if aliases else None
+        return cl.remove_nodes(nodes=nodes, num_nodes=num_nodes,
+                               terminate=terminate, force=force)
+
     def restart_cluster(self, cluster_name, reboot_only=False):
         """
         Reboots and reconfigures cluster_name
