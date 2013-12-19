@@ -995,16 +995,30 @@ class Cluster(object):
             node = self.get_node(alias)
             self.run_plugins(method_name="on_add_node", node=node)
 
-    def remove_node(self, node, terminate=True, force=False):
+    def remove_node(self, node=None, terminate=True, force=False):
         """
         Remove a single node from this cluster
         """
-        return self.remove_nodes([node], terminate=terminate, force=force)
+        nodes = [node] if node else None
+        return self.remove_nodes(nodes=nodes, num_nodes=1, terminate=terminate,
+                                 force=force)
 
-    def remove_nodes(self, nodes, terminate=True, force=False):
+    def remove_nodes(self, nodes=None, num_nodes=None, terminate=True,
+                     force=False):
         """
         Remove a list of nodes from this cluster
         """
+        if nodes is None and num_nodes is None:
+            raise exception.BaseException(
+                "please specify either nodes or num_nodes kwargs")
+        if not nodes:
+            worker_nodes = self.nodes[1:]
+            nodes = worker_nodes[-num_nodes:]
+            nodes.reverse()
+            if len(nodes) != num_nodes:
+                raise exception.BaseException(
+                    "cant remove %d nodes - only %d nodes exist" %
+                    (num_nodes, len(worker_nodes)))
         for node in nodes:
             if node.is_master():
                 raise exception.InvalidOperation("cannot remove master node")
