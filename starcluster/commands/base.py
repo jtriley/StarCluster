@@ -209,3 +209,11 @@ class CmdBase(completion.CmdComplete):
                 tagstore = value
             tagdict[key] = tagstore
         setattr(parser.values, option.dest, tagdict)
+
+    def _get_duplicate(self, lst):
+        d = {}
+        for item in lst:
+            if item in d:
+                return item
+            else:
+                d[item] = 0
