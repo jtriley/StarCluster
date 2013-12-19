@@ -958,9 +958,7 @@ class Cluster(object):
         """
         Add a single node to this cluster
         """
-        aliases = None
-        if alias:
-            aliases = [alias]
+        aliases = [alias] if alias else None
         return self.add_nodes(1, aliases=aliases, image_id=image_id,
                               instance_type=instance_type, zone=zone,
                               placement_group=placement_group,
