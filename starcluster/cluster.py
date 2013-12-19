@@ -1019,9 +1019,12 @@ class Cluster(object):
                 raise exception.BaseException(
                     "cant remove %d nodes - only %d nodes exist" %
                     (num_nodes, len(worker_nodes)))
+        else:
+            for node in nodes:
+                if node.is_master():
+                    raise exception.InvalidOperation(
+                        "cannot remove master node")
         for node in nodes:
-            if node.is_master():
-                raise exception.InvalidOperation("cannot remove master node")
             try:
                 self.run_plugins(method_name="on_remove_node", node=node,
                                  reverse=True)
