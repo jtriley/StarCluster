@@ -188,13 +188,14 @@ class ClusterManager(managers.Manager):
                             placement_group=placement_group, spot_bid=spot_bid,
                             no_create=no_create)
 
-    def remove_node(self, cluster_name, alias, terminate=True, force=False):
+    def remove_node(self, cluster_name, alias=None, terminate=True,
+                    force=False):
         """
         Remove a single node from a cluster
         """
         cl = self.get_cluster(cluster_name)
-        n = cl.get_node(alias)
-        cl.remove_node(n, terminate=terminate, force=force)
+        n = cl.get_node(alias) if alias else None
+        return cl.remove_node(node=n, terminate=terminate, force=force)
 
     def restart_cluster(self, cluster_name, reboot_only=False):
         """
