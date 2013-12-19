@@ -94,9 +94,6 @@ class CmdRemoveNode(ClusterCompleter):
         aliases = []
         for alias in self.opts.aliases:
             aliases.extend(alias.split(','))
-        if ('master' in aliases) or ('%s-master' % tag in aliases):
-            self.parser.error(
-                "'master' and '%s-master' are reserved aliases" % tag)
         old_form_aliases = args[1:]
         if old_form_aliases:
             if aliases:
@@ -105,6 +102,9 @@ class CmdRemoveNode(ClusterCompleter):
                     "use the -a option - not both")
             else:
                 aliases = old_form_aliases
+        if ('master' in aliases) or ('%s-master' % tag in aliases):
+            self.parser.error(
+                "'master' and '%s-master' are reserved aliases" % tag)
         num_nodes = self.opts.num_nodes
         if num_nodes == 1 and aliases:
             num_nodes = len(aliases)
