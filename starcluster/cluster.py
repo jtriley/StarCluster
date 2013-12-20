@@ -1916,7 +1916,7 @@ class ClusterValidator(validators.Validator):
                 "cannot be used with instance type '%s'.\n\nHVM images "
                 "require one of the following HVM instance types:\n%s" %
                 (image_id, instance_type, cctypes_list))
-        if instance_type in static.CLUSTER_TYPES and not image_is_hvm:
+        if instance_type in static.HVM_ONLY_TYPES and not image_is_hvm:
             raise exception.ClusterValidationError(
                 "The '%s' instance type can only be used with hardware "
                 "virtual machine (HVM) images. Image '%s' is not an HVM "

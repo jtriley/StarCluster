@@ -918,7 +918,7 @@ class Node(object):
         return self.instance.instance_type in static.CLUSTER_GPU_TYPES
 
     def is_cluster_type(self):
-        return self.instance.instance_type in static.CLUSTER_TYPES
+        return self.instance.instance_type in static.HVM_ONLY_TYPES
 
     def is_spot(self):
         return self.spot_id is not None
