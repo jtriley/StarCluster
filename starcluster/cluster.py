@@ -1784,7 +1784,6 @@ class ClusterValidator(validators.Validator):
             self.validate_ebs_aws_settings()
             self.validate_image_settings()
             self.validate_instance_types()
-            self.validate_cluster_compute()
             self.validate_userdata()
             log.info('Cluster template settings are valid')
             return True
@@ -2000,18 +1999,6 @@ class ClusterValidator(validators.Validator):
                     "Invalid settings for node_instance_type %s: %s" %
                     (type, e.msg))
         return True
-
-    def validate_cluster_compute(self):
-        cluster = self.cluster
-        lmap = cluster._get_launch_map()
-        for (type, image) in lmap:
-            if type in static.CLUSTER_TYPES:
-                img = cluster.ec2.get_image(image)
-                if img.virtualization_type != 'hvm':
-                    raise exception.ClusterValidationError(
-                        'Cluster Compute/GPU instance type %s '
-                        'can only be used with HVM images.\n'
-                        'Image %s is NOT an HVM image.' % (type, image))
 
     def validate_permission_settings(self):
         permissions = self.cluster.permissions
