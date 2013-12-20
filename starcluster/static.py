@@ -170,7 +170,10 @@ HVM_TYPES = (CLUSTER_TYPES + HI_IO_TYPES + HI_STORAGE_TYPES + SEC_GEN_TYPES +
 PLACEMENT_GROUP_TYPES = (M3_COMPUTE_TYPES + CLUSTER_TYPES + HI_IO_TYPES +
                          HI_STORAGE_TYPES + I2_STORAGE_TYPES)
 
-CLUSTER_REGIONS = ['us-east-1', 'us-west-2', 'eu-west-1']
+# Only add a region to this list after testing that you can create and delete a
+# placement group there.
+CLUSTER_REGIONS = ['us-east-1', 'us-west-2', 'eu-west-1', 'ap-northeast-1',
+                   'ap-southeast-1', 'ap-southeast-2']
 
 PROTOCOLS = ['tcp', 'udp', 'icmp']
 
