@@ -904,8 +904,8 @@ class Cluster(object):
         instance_type = instance_type or self.node_instance_type
         if placement_group or instance_type in static.PLACEMENT_GROUP_TYPES:
             region = self.ec2.region.name
-            if not region in static.CLUSTER_REGIONS:
-                cluster_regions = ', '.join(static.CLUSTER_REGIONS)
+            if not region in static.PLACEMENT_GROUP_REGIONS:
+                cluster_regions = ', '.join(static.PLACEMENT_GROUP_REGIONS)
                 log.warn("Placement groups are only supported in the "
                          "following regions:\n%s" % cluster_regions)
                 log.warn("Instances will not be launched in a placement group")
@@ -1553,7 +1553,7 @@ class Cluster(object):
         finally:
             s.stop()
         region = self.ec2.region.name
-        if region in static.CLUSTER_REGIONS:
+        if region in static.PLACEMENT_GROUP_REGIONS:
             pg = self.ec2.get_placement_group_or_none(self._security_group)
             if pg:
                 self.ec2.delete_group(pg)
