@@ -162,6 +162,11 @@ CLUSTER_TYPES = CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES + CLUSTER_HIMEM_TYPES
 HVM_TYPES = (CLUSTER_TYPES + HI_IO_TYPES + HI_STORAGE_TYPES + SEC_GEN_TYPES +
              M3_COMPUTE_TYPES + I2_STORAGE_TYPES)
 
+# Always make sure these match instances listed here:
+# http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html
+# StarCluster additionally adds cc1.4xlarge to the list - EC2 is slowly
+# migrating folks away from this type in favor of cc2.8xlarge but the type
+# still works for some older accounts.
 PLACEMENT_GROUP_TYPES = (M3_COMPUTE_TYPES + CLUSTER_TYPES + HI_IO_TYPES +
                          HI_STORAGE_TYPES + I2_STORAGE_TYPES)
 
