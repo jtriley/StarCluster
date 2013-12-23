@@ -817,7 +817,18 @@ class Cluster(object):
         log.debug('returning self._nodes = %s' % self._nodes)
         aliases = [n.alias for n in self._nodes]
         if len(aliases) != len(set(aliases)):
-            raise Exception("Nodes with same name detected!")
+            log.error("Nodes with same name detected!")
+            if not any([n.reset_alias() for n in self._nodes]):
+                raise exception.BaseException("Failed to fix nodes with same "
+                                              "name issue")
+
+            aliases = [n.alias for n in self._nodes]
+            if len(aliases) != len(set(aliases)):
+                raise exception.BaseException("Failed to fix nodes with same "
+                                              "name issue")
+
+            self.recover()
+
         return self._nodes
 
     def get_nodes_or_raise(self):

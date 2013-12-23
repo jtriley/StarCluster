@@ -133,6 +133,10 @@ class Node(object):
                         "Error occurred unbundling userdata: %s" % e)
         return self._user_data
 
+    def get_aliases(self):
+        aliasestxt = self.user_data.get(static.UD_ALIASES_FNAME, '')
+        return aliasestxt.splitlines()[2:]
+
     @property
     def alias(self):
         """
@@ -143,8 +147,7 @@ class Node(object):
         if not self._alias:
             alias = self.tags.get('alias')
             if not alias:
-                aliasestxt = self.user_data.get(static.UD_ALIASES_FNAME, '')
-                aliases = aliasestxt.splitlines()[2:]
+                aliases = self.get_aliases()
                 index = self.ami_launch_index
                 try:
                     alias = aliases[index]
@@ -160,6 +163,31 @@ class Node(object):
                 self.add_tag('Name', alias)
             self._alias = alias
         return self._alias
+
+    def reset_alias(self):
+        """
+        Used to reset the name and alias when there is a conflict
+        """
+        index = self.ami_launch_index
+        try:
+            aliases = self.get_aliases()
+            indexed_alias = aliases[index]
+        except IndexError:
+            log.debug("invalid aliases file in user_data:\n%s" %
+                      aliasestxt)
+            raise exception.BaseException(
+                "instance %s ami_launch_index is out of range" % self.id)
+        if self.alias != indexed_alias:
+            log.info("Node %s will be renamed %s" %
+                     (self.alias, indexed_alias))
+            old_alias = self.alias
+            self._alias = None
+            self.remove_tag("alias")
+            self.remove_tag("Name")
+            self.alias
+            assert self.alias != old_alias
+            return True
+        return False
 
     def get_plugins_org_metadata(self):
         plugstxt = self.user_data.get(static.UD_PLUGINS_FNAME)
