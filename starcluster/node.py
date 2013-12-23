@@ -126,6 +126,17 @@ class Node(object):
                         "Error occurred unbundling userdata: %s" % e)
         return self._user_data
 
+    def get_aliases(self, index):
+        aliasestxt = self.user_data.get(static.UD_ALIASES_FNAME, '')
+        aliases = aliasestxt.splitlines()[2:]
+        try:
+            alias = aliases[index]
+        except IndexError:
+            alias = None
+            log.debug("invalid aliases file in user_data:\n%s" %
+                      aliasestxt)
+        return alias
+
     @property
     def alias(self):
         """
@@ -136,15 +147,7 @@ class Node(object):
         if not self._alias:
             alias = self.tags.get('alias')
             if not alias:
-                aliasestxt = self.user_data.get(static.UD_ALIASES_FNAME, '')
-                aliases = aliasestxt.splitlines()[2:]
-                index = self.ami_launch_index
-                try:
-                    alias = aliases[index]
-                except IndexError:
-                    alias = None
-                    log.debug("invalid aliases file in user_data:\n%s" %
-                              aliasestxt)
+                alias = self.get_aliases(self.ami_launch_index)
                 if not alias:
                     raise exception.BaseException(
                         "instance %s has no alias" % self.id)
@@ -153,6 +156,26 @@ class Node(object):
                 self.add_tag('Name', alias)
             self._alias = alias
         return self._alias
+
+    def reset_alias(self):
+        """
+        Used to reset the name and alias when there is a conflict
+        """
+        new_alias = self.get_aliases(self.ami_launch_index)
+        if new_alias is None:
+            raise exception.BaseException(
+                "No new alias could be defined for %s" % self.id)
+        if self.alias != new_alias:
+            log.info("Node %s will be renamed %s" %
+                     (self.alias, new_alias))
+            old_alias = self.alias
+            self._alias = None
+            self.remove_tag("alias")
+            self.remove_tag("Name")
+            self.alias
+            assert self.alias != old_alias
+            return True
+        return False
 
     def get_plugins(self):
         plugstxt = self.user_data.get(static.UD_PLUGINS_FNAME)
