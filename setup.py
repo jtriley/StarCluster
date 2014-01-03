@@ -28,7 +28,7 @@ try:
     from setuptools import setup, find_packages
     console_scripts = ['starcluster = starcluster.cli:main']
     extra = dict(test_suite="starcluster.tests",
-                 tests_require="nose",
+                 tests_require="pytest",
                  install_requires=["paramiko>=1.11.0", "boto>=2.10.0",
                                    "workerpool>=0.9.2", "Jinja2>=2.7",
                                    "decorator>=3.4.0", "iptools>=0.6.1",
