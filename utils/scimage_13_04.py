@@ -63,7 +63,8 @@ CLOUD_CFG_FILE = '/etc/cloud/cloud.cfg'
 GRID_SCHEDULER_GIT = 'git://github.com/jtriley/gridscheduler.git'
 CLOUDERA_ARCHIVE_KEY = 'http://archive.cloudera.com/debian/archive.key'
 CLOUDERA_APT = 'http://archive.cloudera.com/debian squeeze-cdh3u5 contrib'
-PPAS = ["ppa:staticfloat/julia-deps", "ppa:justin-t-riley/starcluster"]
+PPAS = ["ppa:staticfloat/julia-deps", "ppa:justin-t-riley/starcluster",
+        "ppa:staticfloat/julianightlies"]
 STARCLUSTER_MOTD = """\
 #!/bin/sh
 cat<<"EOF"
@@ -89,7 +90,7 @@ This AMI Contains:
   * NumPy/SciPy linked against OpenBlas
   * Pandas - Data Analysis Library
   * IPython 1.1.0 with parallel and notebook support
-  * Julia 0.2prerelease with IJulia
+  * Julia 0.3pre
   * and more! (use 'dpkg -l' to show all installed packages)
 
 Open Grid Scheduler/Condor cheat sheet:
@@ -412,19 +413,20 @@ def install_ipython():
 
 
 def install_julia():
-    chdir(SRC_DIR)
-    apt_install('zlib1g-dev patchelf llvm-3.3-dev libsuitesparse-dev '
-                'libncurses5-dev libopenblas-dev liblapack-dev '
-                'libarpack2-dev libfftw3-dev libgmp-dev libpcre3-dev '
-                'libunwind8-dev libreadline-dev libdouble-conversion-dev '
-                'libopenlibm-dev librmath-dev libmpfr-dev')
-    run_command('git clone git://github.com/JuliaLang/julia.git')
-    buildopts = 'LLVM_CONFIG=llvm-config-3.3 VERBOSE=1 USE_BLAS64=0 '
-    libs = ['LLVM', 'ZLIB', 'SUITESPARSE', 'ARPACK', 'BLAS', 'FFTW', 'LAPACK',
-            'GMP', 'MPFR', 'PCRE', 'LIBUNWIND', 'READLINE', 'GRISU',
-            'OPENLIBM', 'RMATH']
-    buildopts += ' '.join(['USE_SYSTEM_%s=1' % lib for lib in libs])
-    run_command('cd julia && make %s PREFIX=/usr install' % buildopts)
+    #chdir(SRC_DIR)
+    #apt_install('zlib1g-dev patchelf llvm-3.3-dev libsuitesparse-dev '
+    #            'libncurses5-dev libopenblas-dev liblapack-dev '
+    #            'libarpack2-dev libfftw3-dev libgmp-dev libpcre3-dev '
+    #            'libunwind8-dev libreadline-dev libdouble-conversion-dev '
+    #            'libopenlibm-dev librmath-dev libmpfr-dev')
+    #run_command('git clone git://github.com/JuliaLang/julia.git')
+    #buildopts = 'LLVM_CONFIG=llvm-config-3.3 VERBOSE=1 USE_BLAS64=0 '
+    #libs = ['LLVM', 'ZLIB', 'SUITESPARSE', 'ARPACK', 'BLAS', 'FFTW', 'LAPACK',
+    #        'GMP', 'MPFR', 'PCRE', 'LIBUNWIND', 'READLINE', 'GRISU',
+    #        'OPENLIBM', 'RMATH']
+    #buildopts += ' '.join(['USE_SYSTEM_%s=1' % lib for lib in libs])
+    #run_command('cd julia && make %s PREFIX=/usr install' % buildopts)
+    apt_install("julia")
 
 
 def configure_motd():
@@ -493,7 +495,7 @@ mysql-server mysql-server/root_password_again seen true
     pkgs += "ksh csh tcsh ec2-api-tools ec2-ami-tools mysql-server "
     pkgs += "mysql-client apache2 libapache2-mod-wsgi nginx sysv-rc-conf "
     pkgs += "pssh emacs irssi htop vim-scripts mosh default-jdk mpich2 xvfb "
-    pkgs += "openmpi-bin libopenmpi-dev libopenblas-dev liblapack-dev"
+    pkgs += "openmpi-bin libopenmpi-dev libopenblas-dev liblapack-dev julia"
     apt_install(pkgs)
 
 
@@ -541,10 +543,10 @@ def main():
     install_default_packages()
     install_python_packages()
     # Only use these to build the packages locally
-    # These should normally be installed from the StarCluster PPA
+    # These should normally be installed from the PPAs
     #install_openblas()
     #install_openmpi()
-    install_julia()
+    #install_julia()
     install_gridscheduler()
     install_condor()
     install_hadoop()
