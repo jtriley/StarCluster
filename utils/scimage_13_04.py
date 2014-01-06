@@ -258,7 +258,7 @@ def install_gridscheduler():
     run_command('%s ./aimk -only-depend' % env)
     run_command('%s scripts/zerodepend' % env)
     run_command('%s ./aimk depend' % env)
-    run_command('%s ./aimk -no-secure -no-gui-inst' % env)
+    run_command('%s ./aimk -no-secure -no-gui-inst -man' % env)
     sge_root = '/opt/sge6-fresh'
     os.mkdir(sge_root)
     env += ' SGE_ROOT=%s' % sge_root
