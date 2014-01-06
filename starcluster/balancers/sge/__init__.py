@@ -21,6 +21,8 @@ import time
 import datetime
 import xml.dom.minidom
 
+import iso8601
+
 from starcluster import utils
 from starcluster import static
 from starcluster import exception
@@ -133,7 +135,8 @@ class SGEStats(object):
         format is:
         Tue Jul 13 16:24:03 2010
         """
-        return datetime.datetime.strptime(qacct, "%a %b %d %H:%M:%S %Y")
+        dt = datetime.datetime.strptime(qacct, "%a %b %d %H:%M:%S %Y")
+        return dt.replace(tzinfo=iso8601.iso8601.UTC)
 
     def parse_qacct(self, string, dtnow):
         """
@@ -317,7 +320,7 @@ class SGEStats(object):
         return float(x) + float(y)
 
     def get_all_stats(self):
-        now = datetime.datetime.utcnow()
+        now = utils.get_utc_now()
         bits = []
         #first field is the time
         bits.append(now)
@@ -412,7 +415,7 @@ class SGELoadBalancer(LoadBalancer):
         self._cluster = None
         self._keep_polling = True
         self._visualizer = None
-        self.__last_cluster_mod_time = datetime.datetime.utcnow()
+        self.__last_cluster_mod_time = utils.get_utc_now()
         self.stat = SGEStats()
         self.polling_interval = interval
         self.kill_after = kill_after
@@ -481,8 +484,9 @@ class SGELoadBalancer(LoadBalancer):
         and returns a datetime object with the master's time
         instead of fetching it from local machine, maybe inaccurate.
         """
-        str = '\n'.join(self._cluster.master_node.ssh.execute('date --utc'))
-        return datetime.datetime.strptime(str, "%a %b %d %H:%M:%S UTC %Y")
+        utc = '\n'.join(self._cluster.master_node.ssh.execute('date --utc'))
+        dt = datetime.datetime.strptime(utc, "%a %b %d %H:%M:%S UTC %Y")
+        return dt.replace(tzinfo=iso8601.iso8601.UTC)
 
     def get_qatime(self, now):
         """
@@ -498,8 +502,7 @@ class SGELoadBalancer(LoadBalancer):
         log.debug("getting past %d seconds worth of job history" %
                   temp_lookback_window)
         now = now - datetime.timedelta(seconds=temp_lookback_window + 1)
-        str = now.strftime("%Y%m%d%H%M")
-        return str
+        return now.strftime("%Y%m%d%H%M")
 
     def _get_stats(self):
         master = self._cluster.master_node
@@ -641,7 +644,7 @@ class SGELoadBalancer(LoadBalancer):
             time.sleep(self.polling_interval)
 
     def has_cluster_stabilized(self):
-        now = datetime.datetime.utcnow()
+        now = utils.get_utc_now()
         elapsed = (now - self.__last_cluster_mod_time).seconds
         is_stabilized = not (elapsed < self.stabilization_time)
         if not is_stabilized:
@@ -702,12 +705,12 @@ class SGELoadBalancer(LoadBalancer):
         need_to_add = min(self.add_nodes_per_iteration, need_to_add, max_add)
         if need_to_add > 0:
             log.warn("Adding %d nodes at %s" %
-                     (need_to_add, str(datetime.datetime.utcnow())))
+                     (need_to_add, str(utils.get_utc_now())))
             try:
                 self._cluster.add_nodes(need_to_add)
-                self.__last_cluster_mod_time = datetime.datetime.utcnow()
+                self.__last_cluster_mod_time = utils.get_utc_now()
                 log.info("Done adding nodes at %s" %
-                         str(datetime.datetime.utcnow()))
+                         str(self.__last_cluster_mod_time))
             except Exception:
                 log.error("Failed to add new host", exc_info=True)
 
@@ -740,7 +743,7 @@ class SGELoadBalancer(LoadBalancer):
                      (node.alias, node.id, node.dns_name))
             try:
                 self._cluster.remove_node(node)
-                self.__last_cluster_mod_time = datetime.datetime.utcnow()
+                self.__last_cluster_mod_time = utils.get_utc_now()
             except Exception:
                 log.error("Failed to remove node %s" % node.alias,
                           exc_info=True)
