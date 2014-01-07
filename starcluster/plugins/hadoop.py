@@ -113,7 +113,8 @@ class Hadoop(clustersetup.ClusterSetup):
         self.centos_java_home = '/usr/lib/jvm/java'
         self.centos_alt_cmd = 'alternatives'
         self.ubuntu_javas = ['/usr/lib/jvm/java-6-sun/jre',
-                             '/usr/lib/jvm/java-6-openjdk/jre']
+                             '/usr/lib/jvm/java-6-openjdk/jre',
+                             '/usr/lib/jvm/default-java/jre']
         self.ubuntu_alt_cmd = 'update-alternatives'
         self.map_to_proc_ratio = float(map_to_proc_ratio)
         self.reduce_to_proc_ratio = float(reduce_to_proc_ratio)
