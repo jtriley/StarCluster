@@ -656,9 +656,11 @@ class Cluster(object):
             desc = 'StarCluster-%s' % static.VERSION.replace('.', '_')
             if self.vpc_id:
                 desc += ' VPC'
+            # Don't open SSH if we'll only re-define permissions for it later
+            perms_has_ssh = 'ssh' in self.permissions
             sg = self.ec2.create_group(self._security_group,
                                        description=desc,
-                                       auth_ssh=True,
+                                       auth_ssh=perms_has_ssh,
                                        auth_group_traffic=True,
                                        vpc_id=self.vpc_id)
             self._add_tags_to_sg(sg)
