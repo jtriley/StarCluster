@@ -457,8 +457,7 @@ def configure_init():
 
 
 def cleanup():
-    run_command('rm -f /etc/resolv.conf')
-    run_command('rm -rf /var/run/resolvconf')
+    run_command('rm -rf /run/resolvconf')
     run_command('rm -f /etc/mtab')
     run_command('rm -rf /root/*')
     exclude = ['/root/.bashrc', '/root/.profile', '/root/.bash_aliases']
