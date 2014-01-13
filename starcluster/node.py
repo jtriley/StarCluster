@@ -704,7 +704,20 @@ class Node(object):
         self.ssh.execute('/etc/init.d/portmap start', ignore_exit_status=True)
         self.ssh.execute('mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs/',
                          ignore_exit_status=True)
+        EXPORTSD = '/etc/exports.d'
+        DUMMY_EXPORT_DIR = '/dummy_export_for_broken_init_script'
+        DUMMY_EXPORT_LINE = ' '.join([DUMMY_EXPORT_DIR,
+                                      '127.0.0.1(ro,no_subtree_check)'])
+        DUMMY_EXPORT_FILE = posixpath.join(EXPORTSD, 'dummy.exports')
+        # Hack to get around broken debian nfs-kernel-server script
+        # http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=679274
+        self.ssh.execute("mkdir -p %s" % EXPORTSD)
+        self.ssh.execute("mkdir -p %s" % DUMMY_EXPORT_DIR)
+        with self.ssh.remote_file(DUMMY_EXPORT_FILE, 'w') as dummyf:
+            dummyf.write(DUMMY_EXPORT_LINE)
         self.ssh.execute('/etc/init.d/nfs start')
+        self.ssh.execute('rm -f %s' % DUMMY_EXPORT_FILE)
+        self.ssh.execute('rm -rf %s' % DUMMY_EXPORT_DIR)
         self.ssh.execute('exportfs -fra')
 
     def mount_nfs_shares(self, server_node, remote_paths):
