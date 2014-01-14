@@ -59,7 +59,6 @@ APT_SOURCES_FILE = "/etc/apt/sources.list"
 BUILD_UTILS_PKGS = "build-essential devscripts debconf debconf-utils dpkg-dev "
 BUILD_UTILS_PKGS += "python-dev python-setuptools python-pip python-nose rar "
 BUILD_UTILS_PKGS += "python-distutils-extra gfortran unzip unace cdbs patch "
-CLOUD_CFG_FILE = '/etc/cloud/cloud.cfg'
 GRID_SCHEDULER_GIT = 'git://github.com/jtriley/gridscheduler.git'
 CLOUDERA_ARCHIVE_KEY = 'http://archive.cloudera.com/debian/archive.key'
 CLOUDERA_APT = 'http://archive.cloudera.com/debian squeeze-cdh3u5 contrib'
@@ -107,48 +106,6 @@ EOF
 
 landscape-sysinfo | grep -iv 'graph this data'
 """
-CLOUD_INIT_CFG = """\
-user: ubuntu
-disable_root: 0
-preserve_hostname: False
-# datasource_list: [ "NoCloud", "OVF", "Ec2" ]
-
-cloud_init_modules:
- - bootcmd
- - resizefs
- - set_hostname
- - update_hostname
- - update_etc_hosts
- - rsyslog
- - ssh
-
-cloud_config_modules:
- - mounts
- - ssh-import-id
- - locale
- - set-passwords
- - grub-dpkg
- - timezone
- - puppet
- - chef
- - mcollective
- - disable-ec2-metadata
- - runcmd
-
-cloud_final_modules:
- - rightscale_userdata
- - scripts-per-once
- - scripts-per-boot
- - scripts-per-instance
- - scripts-user
- - keys-to-console
- - final-message
-
-apt_sources:
- - source: deb $MIRROR $RELEASE multiverse
- - source: deb %(CLOUDERA_APT)s
- - source: deb-src %(CLOUDERA_APT)s
-""" % dict(CLOUDERA_APT=CLOUDERA_APT)
 
 
 def run_command(cmd, ignore_failure=False, failure_callback=None,
@@ -438,13 +395,6 @@ def configure_motd():
     os.chmod(motd.name, 0755)
 
 
-def configure_cloud_init():
-    """docstring for configure_cloud_init"""
-    cloudcfg = open('/etc/cloud/cloud.cfg', 'w')
-    cloudcfg.write(CLOUD_INIT_CFG)
-    cloudcfg.close()
-
-
 def configure_bash():
     completion_line_found = False
     for line in fileinput.input('/etc/bash.bashrc', inplace=1):
@@ -507,8 +457,7 @@ def configure_init():
 
 
 def cleanup():
-    run_command('rm -f /etc/resolv.conf')
-    run_command('rm -rf /var/run/resolvconf')
+    run_command('rm -rf /run/resolvconf')
     run_command('rm -f /etc/mtab')
     run_command('rm -rf /root/*')
     exclude = ['/root/.bashrc', '/root/.profile', '/root/.bash_aliases']
@@ -534,7 +483,6 @@ def main():
         return
     setup_environ()
     configure_motd()
-    configure_cloud_init()
     configure_bash()
     configure_apt_sources()
     upgrade_packages()
