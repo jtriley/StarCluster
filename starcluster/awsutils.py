@@ -609,14 +609,12 @@ class EasyEC2(EasyAWS):
 
     def register_image(self, name, description=None, image_location=None,
                        architecture=None, kernel_id=None, ramdisk_id=None,
-                       root_device_name=None, block_device_map=None):
-        return self.conn.register_image(name=name, description=description,
-                                        image_location=image_location,
-                                        architecture=architecture,
-                                        kernel_id=kernel_id,
-                                        ramdisk_id=ramdisk_id,
-                                        root_device_name=root_device_name,
-                                        block_device_map=block_device_map)
+                       root_device_name=None, block_device_map=None,
+                       virtualization_type=None, sriov_net_support=None,
+                       snapshot_id=None):
+        kwargs = locals()
+        kwargs.pop('self')
+        return self.conn.register_image(**kwargs)
 
     def delete_keypair(self, name):
         return self.conn.delete_key_pair(name)
