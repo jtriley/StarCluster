@@ -114,11 +114,10 @@ NODE_IMAGE_ID = %(x86_64_ami)s
 # instance type for all cluster nodes
 # (options: %(instance_types)s)
 NODE_INSTANCE_TYPE = m1.small
-
 # Launch cluster in a VPC (OPTIONAL)
-#VPC_ID=vpc-6b1fe402
+#VPC_ID=vpc-99999999
 # The subnet to use for the VPC (required if VPC_ID is set)
-#SUBNET_ID=subnet-6a1fe403
+#SUBNET_ID=subnet-99999999
 # Uncomment to disable installing/configuring a queueing system on the
 # cluster (SGE)
 #DISABLE_QUEUE=True
