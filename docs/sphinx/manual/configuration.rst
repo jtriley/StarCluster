@@ -318,8 +318,8 @@ template in detail.
 | cluster_shell        | No       | Sets the cluster user's shell (default: bash, options: bash, zsh, csh, ksh,     |
 |                      |          | tcsh)                                                                           |
 +----------------------+----------+---------------------------------------------------------------------------------+
-| dns_prefix           | No       | If True, prefixes the dns name of nodes with the cluster tag.                   |
-|                      |          | For example:  master --> mycluster-master                                       |
+| dns_prefix           | No       | If True, prefixes the dns name of nodes with the cluster tag. For example:      |
+|                      |          | master --> mycluster-master                                                     |
 +----------------------+----------+---------------------------------------------------------------------------------+
 | master_image_id      | No       | The AMI to use for the master node. (defaults to **node_image_id**)             |
 +----------------------+----------+---------------------------------------------------------------------------------+
@@ -351,6 +351,11 @@ template in detail.
 +----------------------+----------+---------------------------------------------------------------------------------+
 | disable_cloudinit    | No       | Do not use cloudinit for cluster accounting (only required if using non-        |
 |                      |          | cloudinit enabled AMIs)                                                         |
++----------------------+----------+---------------------------------------------------------------------------------+
+| vpc_id               | No       | Launch all cluster instances in a virtual private cloud (VPC)                   |
++----------------------+----------+---------------------------------------------------------------------------------+
+| subnet_id            | No       | The subnet within the VPC specified by vpc_id to use when launching cluster     |
+|                      |          | instances **(required if vpc_id is specified)**                                 |
 +----------------------+----------+---------------------------------------------------------------------------------+
 
 
