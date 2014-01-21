@@ -118,6 +118,8 @@ INSTANCE_TYPES = {
     'm2.xlarge': ['x86_64'],
     'm2.2xlarge': ['x86_64'],
     'm2.4xlarge': ['x86_64'],
+    'm3.medium': ['x86_64'],
+    'm3.large': ['x86_64'],
     'm3.xlarge': ['x86_64'],
     'm3.2xlarge': ['x86_64'],
     'cc1.4xlarge': ['x86_64'],
@@ -140,7 +142,7 @@ INSTANCE_TYPES = {
 
 MICRO_INSTANCE_TYPES = ['t1.micro']
 
-SEC_GEN_TYPES = ['m3.xlarge', 'm3.2xlarge']
+SEC_GEN_TYPES = ['m3.medium', 'm3.large', 'm3.xlarge', 'm3.2xlarge']
 
 CLUSTER_COMPUTE_TYPES = ['cc1.4xlarge', 'cc2.8xlarge']
 
@@ -162,6 +164,8 @@ HVM_ONLY_TYPES = (CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES +
 
 HVM_TYPES = (HVM_ONLY_TYPES + HI_IO_TYPES + HI_STORAGE_TYPES + SEC_GEN_TYPES +
              M3_COMPUTE_TYPES)
+
+EBS_ONLY_TYPES = MICRO_INSTANCE_TYPES
 
 # Always make sure these match instances listed here:
 # http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html

@@ -1932,8 +1932,7 @@ class ClusterValidator(validators.Validator):
                           'image_platform': image_platform}
             raise exception.ClusterValidationError(error_msg % error_dict)
         image_is_ebs = (image.root_device_type == 'ebs')
-        ebs_only_types = static.MICRO_INSTANCE_TYPES + static.SEC_GEN_TYPES
-        if instance_type in ebs_only_types and not image_is_ebs:
+        if instance_type in static.EBS_ONLY_TYPES and not image_is_ebs:
             error_msg = ("Instance type %s can only be used with an "
                          "EBS-backed AMI and '%s' is not EBS-backed " %
                          (instance_type, image.id))
