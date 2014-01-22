@@ -1197,6 +1197,36 @@ class EasyEC2(EasyAWS):
         finally:
             s.stop()
 
+    def copy_image_to_all_regions(self, source_region, source_image_id,
+                                  name=None, description=None,
+                                  client_token=None, add_region_to_desc=False,
+                                  wait_for_copies=False):
+        current_region = self.region
+        self.connect_to_region(source_region)
+        src_img = self.get_image(source_image_id)
+        regions = self.regions.copy()
+        regions.pop(source_region)
+        log.info("Copying %s to regions:\n%s" %
+                 (src_img.id, ', '.join(regions.keys())))
+        name = name or src_img.name
+        resps = {}
+        for r in regions:
+            self.connect_to_region(r)
+            desc = description or ''
+            if add_region_to_desc:
+                desc += ' (%s)' % r.upper()
+            resp = self.copy_image(src_img.region.name, src_img.id, name=name,
+                                   description=desc,
+                                   client_token=client_token)
+            resps[r] = resp
+        if wait_for_copies:
+            for r in resps:
+                self.connect_to_region(r)
+                img = self.get_image(resps[r].image_id)
+                self.wait_for_ami(img)
+        self.connect_to_region(current_region.name)
+        return resps
+
     def create_block_device_map(self, root_snapshot_id=None,
                                 root_device_name='/dev/sda1',
                                 add_ephemeral_drives=False,
