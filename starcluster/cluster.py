@@ -2180,14 +2180,6 @@ class ClusterValidator(validators.Validator):
                 "NOTE: StarCluster uses anywhere from 0.5-2KB "
                 "to store internal metadata" % ud_size_kb)
 
-    def ssh_to_master(self, user='root', command=None, forward_x11=False):
-        node = self.master_node
-        return node.shell(user=user, forward_x11=forward_x11, command=command)
-
-    def ssh_to_node(self, alias, user='root', command=None, forward_x11=False):
-        node = self.get_node(alias)
-        return node.shell(user=user, forward_x11=forward_x11, command=command)
-
 
 if __name__ == "__main__":
     from starcluster.config import StarClusterConfig
