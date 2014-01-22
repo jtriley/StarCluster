@@ -747,9 +747,10 @@ class Node(object):
                                           remote_paths))
         self.ssh.remove_lines_from_file('/etc/fstab', remote_paths_regex)
         fstab = self.ssh.remote_file('/etc/fstab', 'a')
+        mount_opts = 'rw,exec,noauto'
         for path in remote_paths:
-            fstab.write('%s:%s %s nfs vers=3,rw,exec,noauto 0 0\n' %
-                        (server_node.alias, path, path))
+            fstab.write('%s:%s %s nfs %s 0 0\n' %
+                        (server_node.alias, path, path, mount_opts))
         fstab.close()
         for path in remote_paths:
             if not self.ssh.path_exists(path):
