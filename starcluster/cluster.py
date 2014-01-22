@@ -407,19 +407,8 @@ class Cluster(object):
                  cluster_group=None,
                  force_spot_master=False,
                  disable_cloudinit=False,
-                 vpc_id=None,
                  subnet_id=None,
                  **kwargs):
-        # validation
-        if vpc_id or subnet_id:
-            try:
-                assert vpc_id
-                assert subnet_id
-            except AssertionError:
-                raise ValueError(
-                    "You can't supply just a vpc_id or subnet_id.  You must"
-                    " supply both or neither.")
-
         # update class vars with given vars
         _vars = locals().copy()
         del _vars['cluster_group']
@@ -441,6 +430,7 @@ class Cluster(object):
 
         self._cluster_group = None
         self._placement_group = None
+        self._subnet = None
         self._zone = None
         self._master = None
         self._nodes = []
@@ -648,19 +638,26 @@ class Cluster(object):
         return static.SECURITY_GROUP_TEMPLATE % self.cluster_tag
 
     @property
+    def subnet(self):
+        if not self._subnet and self.subnet_id:
+            self._subnet = self.ec2.get_subnet(self.subnet_id)
+        return self._subnet
+
+    @property
     def cluster_group(self):
         if self._cluster_group:
             return self._cluster_group
         sg = self.ec2.get_group_or_none(self._security_group)
         if not sg:
             desc = 'StarCluster-%s' % static.VERSION.replace('.', '_')
-            if self.vpc_id:
-                desc += ' VPC'
+            if self.subnet:
+                desc += ' (VPC)'
+            vpc_id = getattr(self.subnet, 'vpc_id', None)
             sg = self.ec2.create_group(self._security_group,
                                        description=desc,
                                        auth_ssh=True,
                                        auth_group_traffic=True,
-                                       vpc_id=self.vpc_id)
+                                       vpc_id=vpc_id)
             self._add_tags_to_sg(sg)
         self._add_permissions_to_sg(sg)
         self._cluster_group = sg
@@ -1771,6 +1768,7 @@ class ClusterValidator(validators.Validator):
         log.info("Validating cluster template settings...")
         try:
             self.validate_required_settings()
+            self.validate_vpc()
             self.validate_dns_prefix()
             self.validate_spot_bid()
             self.validate_cluster_size()
@@ -2179,6 +2177,13 @@ class ClusterValidator(validators.Validator):
                 "User data scripts combined and compressed must be <= 16KB\n"
                 "NOTE: StarCluster uses anywhere from 0.5-2KB "
                 "to store internal metadata" % ud_size_kb)
+
+    def validate_vpc(self):
+        if self.cluster.subnet_id:
+            try:
+                assert self.cluster.subnet is not None
+            except exception.SubnetDoesNotExist as e:
+                raise exception.ClusterValidationError(e)
 
 
 if __name__ == "__main__":

@@ -349,13 +349,10 @@ template in detail.
 | disable_queue        | No       | Disables the setup and configuration of the Open Grid Scheduler (OGS, formerly  |
 |                      |          | SGE)                                                                            |
 +----------------------+----------+---------------------------------------------------------------------------------+
-| disable_cloudinit    | No       | Do not use cloudinit for cluster accounting (only required if using non-        |
-|                      |          | cloudinit enabled AMIs)                                                         |
+| disable_cloudinit    | No       | Do not use cloudinit for cluster accounting (only required if using             |
+|                      |          | non-cloudinit enabled AMIs)                                                     |
 +----------------------+----------+---------------------------------------------------------------------------------+
-| vpc_id               | No       | Launch all cluster instances in a virtual private cloud (VPC)                   |
-+----------------------+----------+---------------------------------------------------------------------------------+
-| subnet_id            | No       | The subnet within the VPC specified by vpc_id to use when launching cluster     |
-|                      |          | instances **(required if vpc_id is specified)**                                 |
+| subnet_id            | No       | The VPC subnet to use when launching cluster instances                          |
 +----------------------+----------+---------------------------------------------------------------------------------+
 
 

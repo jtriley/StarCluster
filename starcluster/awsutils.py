@@ -101,7 +101,7 @@ class EasyEC2(EasyAWS):
                  aws_ec2_path='/', aws_s3_host=None, aws_s3_path='/',
                  aws_port=None, aws_region_name=None, aws_is_secure=True,
                  aws_region_host=None, aws_proxy=None, aws_proxy_port=None,
-                 aws_proxy_user=None, aws_proxy_pass=None, vpc_id=None,
+                 aws_proxy_user=None, aws_proxy_pass=None,
                  aws_validate_certs=True, **kwargs):
         aws_region = None
         if aws_region_name and aws_region_host:
