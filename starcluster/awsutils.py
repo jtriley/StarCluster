@@ -1167,6 +1167,36 @@ class EasyEC2(EasyAWS):
             log.info("Manifest migrated successfully. You can now run:\n" +
                      register_cmd + "\nto register your migrated image.")
 
+    def copy_image(self, source_region, source_image_id, name=None,
+                   description=None, client_token=None, wait_for_copy=False):
+        kwargs = locals()
+        kwargs.pop('self')
+        kwargs.pop('wait_for_copy')
+        log.info("Copying %s from %s to %s" % (source_image_id, source_region,
+                                               self.region.name))
+        resp = self.conn.copy_image(**kwargs)
+        log.info("New AMI in region %s: %s" %
+                 (self.region.name, resp.image_id))
+        if wait_for_copy:
+            img = self.get_image(resp.image_id)
+            self.wait_for_ami(img)
+        return resp
+
+    def wait_for_ami(self, ami):
+        if ami.root_device_type == 'ebs':
+            root = ami.block_device_mapping.get(ami.root_device_name)
+            if root.snapshot_id:
+                self.wait_for_snapshot(self.get_snapshot(root.snapshot_id))
+            else:
+                log.warn("The root device snapshot id is not yet available")
+        s = utils.get_spinner("Waiting for '%s' to become available" % ami.id)
+        try:
+            while ami.state != 'available':
+                ami.update()
+                time.sleep(10)
+        finally:
+            s.stop()
+
     def create_block_device_map(self, root_snapshot_id=None,
                                 root_device_name='/dev/sda1',
                                 add_ephemeral_drives=False,
