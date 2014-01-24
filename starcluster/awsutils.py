@@ -237,6 +237,14 @@ class EasyEC2(EasyAWS):
     def get_subnets(self, filters=None):
         return self.conn.get_all_subnets(filters=filters)
 
+    def get_network_spec(self, *args, **kwargs):
+        return boto.ec2.networkinterface.NetworkInterfaceSpecification(
+            *args, **kwargs)
+
+    def get_network_collection(self, *args, **kwargs):
+        return boto.ec2.networkinterface.NetworkInterfaceCollection(
+            *args, **kwargs)
+
     def delete_group(self, group, max_retries=60, retry_delay=5):
         """
         This method deletes a security or placement group using group.delete()
