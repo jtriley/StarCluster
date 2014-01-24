@@ -119,6 +119,11 @@ class InstanceNotRunning(AWSError):
         self.msg = "%s %s is not running (%s)" % (label, instance_id, state)
 
 
+class SubnetDoesNotExist(AWSError):
+    def __init__(self, subnet_id):
+        self.msg = "subnet does not exist: %s" % subnet_id
+
+
 class SecurityGroupDoesNotExist(AWSError):
     def __init__(self, sg_name):
         self.msg = "security group %s does not exist" % sg_name

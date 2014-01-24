@@ -228,6 +228,15 @@ class EasyEC2(EasyAWS):
             while self.get_group_or_none(group.name):
                 time.sleep(5)
 
+    def get_subnet(self, subnet_id):
+        try:
+            return self.get_subnets(filters={'subnet_id': subnet_id})[0]
+        except IndexError:
+            raise exception.SubnetDoesNotExist(subnet_id)
+
+    def get_subnets(self, filters=None):
+        return self.conn.get_all_subnets(filters=filters)
+
     def delete_group(self, group, max_retries=60, retry_delay=5):
         """
         This method deletes a security or placement group using group.delete()
