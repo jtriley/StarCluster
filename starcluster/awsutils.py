@@ -113,7 +113,7 @@ class EasyEC2(EasyAWS):
                     proxy_pass=aws_proxy_pass,
                     validate_certs=aws_validate_certs)
         super(EasyEC2, self).__init__(aws_access_key_id, aws_secret_access_key,
-                                      boto.connect_ec2, **kwds)
+                                      boto.connect_vpc, **kwds)
         self._conn = kwargs.get('connection')
         kwds = dict(aws_s3_host=aws_s3_host, aws_s3_path=aws_s3_path,
                     aws_port=aws_port, aws_is_secure=aws_is_secure,
