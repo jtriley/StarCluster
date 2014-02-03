@@ -2187,6 +2187,12 @@ class ClusterValidator(validators.Validator):
                 assert self.cluster.subnet is not None
             except exception.SubnetDoesNotExist as e:
                 raise exception.ClusterValidationError(e)
+            azone = self.cluster.availability_zone
+            szone = self.cluster.subnet.availability_zone
+            if azone and szone != azone:
+                raise exception.ClusterValidationError(
+                    "The cluster availability_zone (%s) does not match the "
+                    "subnet zone (%s)" % (azone, szone))
 
 
 if __name__ == "__main__":
