@@ -288,9 +288,13 @@ class EasyEC2(EasyAWS):
         """
         log.info("Creating security group %s..." % name)
         sg = self.conn.create_security_group(name, description, vpc_id=vpc_id)
-        while not self.get_group_or_none(name):
-            log.info("Waiting for security group %s..." % name)
-            time.sleep(3)
+        if not self.get_group_or_none(name):
+            s = utils.get_spinner("Waiting for security group %s..." % name)
+            try:
+                while not self.get_group_or_none(name):
+                    time.sleep(3)
+            finally:
+                s.stop()
         if auth_ssh:
             ssh_port = static.DEFAULT_SSH_PORT
             self.conn.authorize_security_group(group_id=sg.id,
