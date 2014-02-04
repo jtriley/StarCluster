@@ -18,12 +18,14 @@
 from starcluster import static
 from completers import ClusterCompleter
 
+##changes
+#   added image_id, instance_type, availability zone, and spot_bid options
 
 class CmdAddNode(ClusterCompleter):
     """
     addnode [options] <cluster_tag>
 
-    Add a node to a running cluster
+    Add node(s) to a running cluster
 
     Examples:
 
@@ -133,5 +135,7 @@ class CmdAddNode(ClusterCompleter):
         self.cm.add_nodes(tag, num_nodes, aliases=aliases,
                           image_id=self.opts.image_id,
                           instance_type=self.opts.instance_type,
-                          zone=self.opts.zone, spot_bid=self.opts.spot_bid,
+                          zone=self.opts.zone, 
+                          spot_bid=self.opts.spot_bid,
                           no_create=self.opts.no_create)
+

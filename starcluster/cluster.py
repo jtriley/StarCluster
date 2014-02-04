@@ -42,6 +42,10 @@ from starcluster.utils import print_timing
 from starcluster.templates import user_msgs
 from starcluster.logger import log
 
+##changes:
+#   added spot_bid option to Cluster.create_nodes
+#   added various options available on Cluster.create_nodes to Cluster.add_node(s)
+#         and ClusterManager.add_node(s) methods
 
 class ClusterManager(managers.Manager):
     """
@@ -164,26 +168,41 @@ class ClusterManager(managers.Manager):
             cluster_name = static.SECURITY_GROUP_TEMPLATE % cluster_name
         return cluster_name
 
-    def add_node(self, cluster_name, alias=None, no_create=False,
-                 image_id=None, instance_type=None, zone=None,
-                 placement_group=None, spot_bid=None):
+    def add_node(self, cluster_name, 
+                       alias=None,
+                       image_id=None,
+                       instance_type=None,
+                       zone=None,
+                       placement_group=None,
+                       spot_bid=None,
+                       no_create=False):
         cl = self.get_cluster(cluster_name)
-        return cl.add_node(alias=alias, image_id=image_id,
-                           instance_type=instance_type, zone=zone,
-                           placement_group=placement_group, spot_bid=spot_bid,
-                           no_create=no_create)
+        return cl.add_node(alias=alias,
+                    image_id=image_id,
+                    instance_type=instance_type,
+                    zone=zone,
+                    placement_group=placement_group,
+                    spot_bid=spot_bid,
+                    no_create=no_create)
 
-    def add_nodes(self, cluster_name, num_nodes, aliases=None, no_create=False,
-                  image_id=None, instance_type=None, zone=None,
-                  placement_group=None, spot_bid=None):
+    def add_nodes(self, cluster_name, num_nodes, aliases=None,
+                                                 image_id=None,
+                                                 instance_type=None,
+                                                 zone=None,
+                                                 placement_group=None,
+                                                 spot_bid=None,
+                                                 no_create=False):
         """
         Add one or more nodes to cluster
         """
         cl = self.get_cluster(cluster_name)
-        return cl.add_nodes(num_nodes, aliases=aliases, image_id=image_id,
-                            instance_type=instance_type, zone=zone,
-                            placement_group=placement_group, spot_bid=spot_bid,
-                            no_create=no_create)
+        return cl.add_nodes(num_nodes, aliases=aliases,
+                                image_id=image_id,
+                                instance_type=instance_type,
+                                zone=zone,
+                                placement_group=placement_group,
+                                spot_bid=spot_bid,
+                                no_create=no_create)
 
     def remove_node(self, cluster_name, alias, terminate=True):
         """
@@ -860,23 +879,39 @@ class Cluster(object):
         log.debug("Highest node number is %d. choosing %d." % (highest, next))
         return next
 
-    def add_node(self, alias=None, no_create=False, image_id=None,
-                 instance_type=None, zone=None, placement_group=None,
-                 spot_bid=None):
+    def add_node(self, 
+                 alias=None,
+                 image_id=None, 
+                 instance_type=None,
+                 zone=None,
+                 placement_group=None,
+                 spot_bid=None,
+                 no_create=False):
+
         """
         Add a single node to this cluster
         """
         aliases = None
         if alias:
             aliases = [alias]
-        return self.add_nodes(1, aliases=aliases, image_id=image_id,
-                              instance_type=instance_type, zone=zone,
-                              placement_group=placement_group,
-                              spot_bid=spot_bid, no_create=no_create)
 
-    def add_nodes(self, num_nodes, aliases=None, image_id=None,
-                  instance_type=None, zone=None, placement_group=None,
-                  spot_bid=None, no_create=False):
+        return self.add_nodes(1, aliases=aliases,
+                          image_id=image_id,
+                          instance_type=instance_type,
+                          zone=zone,
+                          placement_group=placement_group,
+                          spot_bid=spot_bid,
+                          no_create=no_create)
+
+    def add_nodes(self, 
+                num_nodes, 
+                aliases=None, 
+                image_id = None,
+                instance_type=None,
+                zone=None,
+                placement_group=None,
+                spot_bid=None,
+                no_create=False):
         """
         Add new nodes to this cluster
 
@@ -913,6 +948,8 @@ class Cluster(object):
         for alias in aliases:
             node = self.get_node_by_alias(alias)
             self.run_plugins(method_name="on_add_node", node=node)
+        
+        return aliases
 
     def remove_node(self, node, terminate=True):
         """

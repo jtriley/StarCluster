@@ -24,8 +24,11 @@ from starcluster import utils
 from starcluster import threadpool
 from starcluster.utils import print_timing
 from starcluster.logger import log
+from starcluster import sge_utils
 from starcluster import exception
 
+##changes
+#    replaced _remove_node_from_sge contents with more general sge_utils function
 
 class ClusterSetup(object):
     """
