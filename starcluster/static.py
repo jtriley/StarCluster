@@ -259,6 +259,7 @@ CLUSTER_SETTINGS = {
     'cluster_user': (str, False, 'sgeadmin', None, None),
     'cluster_shell': (str, False, 'bash', AVAILABLE_SHELLS.keys(), None),
     'subnet_id': (str, False, None, None, None),
+    'public_ips': (str, False, True, None, None),
     'master_image_id': (str, False, None, None, None),
     'master_instance_type': (str, False, None, INSTANCE_TYPES.keys(), None),
     'node_image_id': (str, True, None, None, None),

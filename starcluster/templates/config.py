@@ -116,6 +116,10 @@ NODE_IMAGE_ID = %(x86_64_ami)s
 NODE_INSTANCE_TYPE = m1.small
 # Launch cluster in a VPC subnet (OPTIONAL)
 #SUBNET_ID=subnet-99999999
+# Do not assign public IPs to cluster nodes (VPC-ONLY) (OPTIONAL)
+# WARNING: You must be on a machine within the VPC in order for StarCluster to
+# connect to the cluster if PUBLIC_IPS is set to False
+#PUBLIC_IPS=False
 # Uncomment to disable installing/configuring a queueing system on the
 # cluster (SGE)
 #DISABLE_QUEUE=True
