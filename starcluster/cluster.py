@@ -985,6 +985,12 @@ class Cluster(object):
             raise exception.ClusterValidationError(
                 "worker nodes cannot have master as an alias")
         if not no_create:
+            if self.subnet:
+                ip_count = self.subnet.available_ip_address_count
+                if ip_count < len(aliases):
+                    raise exception.ClusterValidationError(
+                        "Not enough IP addresses available in %s (%d)" %
+                        (self.subnet.id, ip_count))
             for node in running_pending:
                 if node.alias in aliases:
                     raise exception.ClusterValidationError(
@@ -2193,6 +2199,12 @@ class ClusterValidator(validators.Validator):
                 raise exception.ClusterValidationError(
                     "The cluster availability_zone (%s) does not match the "
                     "subnet zone (%s)" % (azone, szone))
+            ip_count = self.cluster.subnet.available_ip_address_count
+            nodes = self.cluster.nodes
+            if not nodes and ip_count < self.cluster.cluster_size:
+                raise exception.ClusterValidationError(
+                    "Not enough IP addresses available in %s (%d)" %
+                    (self.cluster.subnet.id, ip_count))
 
 
 if __name__ == "__main__":
