@@ -81,6 +81,10 @@ class CmdStart(ClusterCompleter):
                           "a flat-rate instance for stability. this option "
                           "forces launching the master node as a spot "
                           "instance when a spot cluster is requested.")
+        parser.add_option("--no-public-ips", dest="public_ips",
+                          default=True, action='store_false',
+                          help=("Do not automatically assign a public ip to "
+                                "all nodes (VPC clusters only)"))
         opt = parser.add_option("-c", "--cluster-template", action="store",
                                 dest="cluster_template", choices=templates,
                                 default=None, help="cluster template to use "

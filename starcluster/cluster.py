@@ -411,6 +411,7 @@ class Cluster(object):
                  force_spot_master=False,
                  disable_cloudinit=False,
                  subnet_id=None,
+                 public_ips=True,
                  **kwargs):
         # update class vars with given vars
         _vars = locals().copy()
@@ -697,6 +698,7 @@ class Cluster(object):
                  availability_zone=self.availability_zone,
                  dns_prefix=self.dns_prefix,
                  subnet_id=self.subnet_id,
+                 public_ips=self.public_ips,
                  disable_queue=self.disable_queue,
                  disable_cloudinit=self.disable_cloudinit),
             use_json=True)
@@ -853,8 +855,15 @@ class Cluster(object):
 
     @property
     def spot_requests(self):
-        filters = {'launch.group-id': self.cluster_group.id,
-                   'state': ['active', 'open']}
+        group_id = self.cluster_group.id
+        states = ['active', 'open']
+        filters = {'state': states}
+        if self.cluster_group.vpc_id:
+            # According to the EC2 API docs this *should* be
+            # launch.network-interface.group-id but it doesn't work
+            filters['network-interface.group-id'] = group_id
+        else:
+            filters['launch.group-id'] = group_id
         return self.ec2.get_all_spot_requests(filters=filters)
 
     def get_spot_requests_or_raise(self):
@@ -917,18 +926,29 @@ class Cluster(object):
         user_data = self._get_cluster_userdata(aliases)
         kwargs = dict(price=spot_bid, instance_type=instance_type,
                       min_count=count, max_count=count, count=count,
-                      key_name=self.keyname, security_groups=[cluster_sg],
+                      key_name=self.keyname,
                       availability_zone_group=cluster_sg,
                       launch_group=cluster_sg,
                       placement=zone or getattr(self.zone, 'name', None),
                       user_data=user_data,
-                      placement_group=placement_group,
-                      subnet_id=self.subnet_id)
+                      placement_group=placement_group)
+        if self.subnet_id:
+            if not self.public_ips:
+                log.warn(user_msgs.public_ips_disabled %
+                         dict(vpc_id=self.subnet.vpc_id))
+            netif = self.ec2.get_network_spec(
+                device_index=0, associate_public_ip_address=self.public_ips,
+                subnet_id=self.subnet_id, groups=[self.cluster_group.id])
+            kwargs.update(
+                network_interfaces=self.ec2.get_network_collection(netif))
+        else:
+            kwargs.update(security_groups=[cluster_sg])
         resvs = []
         if spot_bid:
             security_group_id = self.cluster_group.id
             for alias in aliases:
-                kwargs['security_group_ids'] = [security_group_id]
+                if not self.subnet_id:
+                    kwargs['security_group_ids'] = [security_group_id]
                 kwargs['user_data'] = self._get_cluster_userdata([alias])
                 resvs.extend(self.ec2.request_instances(image_id, **kwargs))
         else:
@@ -2205,6 +2225,9 @@ class ClusterValidator(validators.Validator):
                 raise exception.ClusterValidationError(
                     "Not enough IP addresses available in %s (%d)" %
                     (self.cluster.subnet.id, ip_count))
+        elif not self.cluster.public_ips:
+            raise exception.ClusterValidationError(
+                "Only VPC clusters can disable public IP addresses")
 
 
 if __name__ == "__main__":
