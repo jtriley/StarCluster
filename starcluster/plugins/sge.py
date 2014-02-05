@@ -93,6 +93,9 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         master = self._master
         if not master.ssh.isdir('/opt/sge6'):
             # copy fresh sge installation files to /opt/sge6
+            if not master.ssh.isdir("/opt/sge6-fresh"):
+                log.error("SGE is not installed on this AMI, skipping...")
+                return
             master.ssh.execute('cp -r /opt/sge6-fresh /opt/sge6')
             master.ssh.execute('chown -R %(user)s:%(user)s /opt/sge6' %
                                {'user': self._user})
@@ -137,9 +140,6 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._create_sge_pe(nodes=nodes)
 
     def run(self, nodes, master, user, user_shell, volumes):
-        if not master.ssh.isdir("/opt/sge6-fresh"):
-            log.error("SGE is not installed on this AMI, skipping...")
-            return
         log.info("Configuring SGE...")
         self._nodes = nodes
         self._master = master
