@@ -314,6 +314,9 @@ class ClusterManager(managers.Manager):
                 uptime = getattr(n, 'uptime', 'N/A')
             print 'Launch time: %s' % ltime
             print 'Uptime: %s' % uptime
+            if scg.vpc_id:
+                print 'VPC: %s' % scg.vpc_id
+                print 'Subnet: %s' % getattr(n, 'subnet_id', 'N/A')
             print 'Zone: %s' % getattr(n, 'placement', 'N/A')
             print 'Keypair: %s' % getattr(n, 'key_name', 'N/A')
             ebs_vols = []
@@ -407,19 +410,9 @@ class Cluster(object):
                  cluster_group=None,
                  force_spot_master=False,
                  disable_cloudinit=False,
-                 vpc_id=None,
                  subnet_id=None,
+                 public_ips=True,
                  **kwargs):
-        # validation
-        if vpc_id or subnet_id:
-            try:
-                assert vpc_id
-                assert subnet_id
-            except AssertionError:
-                raise ValueError(
-                    "You can't supply just a vpc_id or subnet_id.  You must"
-                    " supply both or neither.")
-
         # update class vars with given vars
         _vars = locals().copy()
         del _vars['cluster_group']
@@ -441,6 +434,7 @@ class Cluster(object):
 
         self._cluster_group = None
         self._placement_group = None
+        self._subnet = None
         self._zone = None
         self._master = None
         self._nodes = []
@@ -648,19 +642,26 @@ class Cluster(object):
         return static.SECURITY_GROUP_TEMPLATE % self.cluster_tag
 
     @property
+    def subnet(self):
+        if not self._subnet and self.subnet_id:
+            self._subnet = self.ec2.get_subnet(self.subnet_id)
+        return self._subnet
+
+    @property
     def cluster_group(self):
         if self._cluster_group:
             return self._cluster_group
         sg = self.ec2.get_group_or_none(self._security_group)
         if not sg:
             desc = 'StarCluster-%s' % static.VERSION.replace('.', '_')
-            if self.vpc_id:
-                desc += ' VPC'
+            if self.subnet:
+                desc += ' (VPC)'
+            vpc_id = getattr(self.subnet, 'vpc_id', None)
             sg = self.ec2.create_group(self._security_group,
                                        description=desc,
                                        auth_ssh=True,
                                        auth_group_traffic=True,
-                                       vpc_id=self.vpc_id)
+                                       vpc_id=vpc_id)
             self._add_tags_to_sg(sg)
         self._add_permissions_to_sg(sg)
         self._cluster_group = sg
@@ -697,6 +698,7 @@ class Cluster(object):
                  availability_zone=self.availability_zone,
                  dns_prefix=self.dns_prefix,
                  subnet_id=self.subnet_id,
+                 public_ips=self.public_ips,
                  disable_queue=self.disable_queue,
                  disable_cloudinit=self.disable_cloudinit),
             use_json=True)
@@ -853,8 +855,15 @@ class Cluster(object):
 
     @property
     def spot_requests(self):
-        filters = {'launch.group-id': self.cluster_group.id,
-                   'state': ['active', 'open']}
+        group_id = self.cluster_group.id
+        states = ['active', 'open']
+        filters = {'state': states}
+        if self.cluster_group.vpc_id:
+            # According to the EC2 API docs this *should* be
+            # launch.network-interface.group-id but it doesn't work
+            filters['network-interface.group-id'] = group_id
+        else:
+            filters['launch.group-id'] = group_id
         return self.ec2.get_all_spot_requests(filters=filters)
 
     def get_spot_requests_or_raise(self):
@@ -917,18 +926,29 @@ class Cluster(object):
         user_data = self._get_cluster_userdata(aliases)
         kwargs = dict(price=spot_bid, instance_type=instance_type,
                       min_count=count, max_count=count, count=count,
-                      key_name=self.keyname, security_groups=[cluster_sg],
+                      key_name=self.keyname,
                       availability_zone_group=cluster_sg,
                       launch_group=cluster_sg,
                       placement=zone or getattr(self.zone, 'name', None),
                       user_data=user_data,
-                      placement_group=placement_group,
-                      subnet_id=self.subnet_id)
+                      placement_group=placement_group)
+        if self.subnet_id:
+            if not self.public_ips:
+                log.warn(user_msgs.public_ips_disabled %
+                         dict(vpc_id=self.subnet.vpc_id))
+            netif = self.ec2.get_network_spec(
+                device_index=0, associate_public_ip_address=self.public_ips,
+                subnet_id=self.subnet_id, groups=[self.cluster_group.id])
+            kwargs.update(
+                network_interfaces=self.ec2.get_network_collection(netif))
+        else:
+            kwargs.update(security_groups=[cluster_sg])
         resvs = []
         if spot_bid:
             security_group_id = self.cluster_group.id
             for alias in aliases:
-                kwargs['security_group_ids'] = [security_group_id]
+                if not self.subnet_id:
+                    kwargs['security_group_ids'] = [security_group_id]
                 kwargs['user_data'] = self._get_cluster_userdata([alias])
                 resvs.extend(self.ec2.request_instances(image_id, **kwargs))
         else:
@@ -985,6 +1005,12 @@ class Cluster(object):
             raise exception.ClusterValidationError(
                 "worker nodes cannot have master as an alias")
         if not no_create:
+            if self.subnet:
+                ip_count = self.subnet.available_ip_address_count
+                if ip_count < len(aliases):
+                    raise exception.ClusterValidationError(
+                        "Not enough IP addresses available in %s (%d)" %
+                        (self.subnet.id, ip_count))
             for node in running_pending:
                 if node.alias in aliases:
                     raise exception.ClusterValidationError(
@@ -1771,6 +1797,7 @@ class ClusterValidator(validators.Validator):
         log.info("Validating cluster template settings...")
         try:
             self.validate_required_settings()
+            self.validate_vpc()
             self.validate_dns_prefix()
             self.validate_spot_bid()
             self.validate_cluster_size()
@@ -2179,6 +2206,28 @@ class ClusterValidator(validators.Validator):
                 "User data scripts combined and compressed must be <= 16KB\n"
                 "NOTE: StarCluster uses anywhere from 0.5-2KB "
                 "to store internal metadata" % ud_size_kb)
+
+    def validate_vpc(self):
+        if self.cluster.subnet_id:
+            try:
+                assert self.cluster.subnet is not None
+            except exception.SubnetDoesNotExist as e:
+                raise exception.ClusterValidationError(e)
+            azone = self.cluster.availability_zone
+            szone = self.cluster.subnet.availability_zone
+            if azone and szone != azone:
+                raise exception.ClusterValidationError(
+                    "The cluster availability_zone (%s) does not match the "
+                    "subnet zone (%s)" % (azone, szone))
+            ip_count = self.cluster.subnet.available_ip_address_count
+            nodes = self.cluster.nodes
+            if not nodes and ip_count < self.cluster.cluster_size:
+                raise exception.ClusterValidationError(
+                    "Not enough IP addresses available in %s (%d)" %
+                    (self.cluster.subnet.id, ip_count))
+        elif not self.cluster.public_ips:
+            raise exception.ClusterValidationError(
+                "Only VPC clusters can disable public IP addresses")
 
 
 if __name__ == "__main__":

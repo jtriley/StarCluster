@@ -101,7 +101,7 @@ class EasyEC2(EasyAWS):
                  aws_ec2_path='/', aws_s3_host=None, aws_s3_path='/',
                  aws_port=None, aws_region_name=None, aws_is_secure=True,
                  aws_region_host=None, aws_proxy=None, aws_proxy_port=None,
-                 aws_proxy_user=None, aws_proxy_pass=None, vpc_id=None,
+                 aws_proxy_user=None, aws_proxy_pass=None,
                  aws_validate_certs=True, **kwargs):
         aws_region = None
         if aws_region_name and aws_region_host:
@@ -113,7 +113,7 @@ class EasyEC2(EasyAWS):
                     proxy_pass=aws_proxy_pass,
                     validate_certs=aws_validate_certs)
         super(EasyEC2, self).__init__(aws_access_key_id, aws_secret_access_key,
-                                      boto.connect_ec2, **kwds)
+                                      boto.connect_vpc, **kwds)
         self._conn = kwargs.get('connection')
         kwds = dict(aws_s3_host=aws_s3_host, aws_s3_path=aws_s3_path,
                     aws_port=aws_port, aws_is_secure=aws_is_secure,
@@ -228,6 +228,23 @@ class EasyEC2(EasyAWS):
             while self.get_group_or_none(group.name):
                 time.sleep(5)
 
+    def get_subnet(self, subnet_id):
+        try:
+            return self.get_subnets(filters={'subnet_id': subnet_id})[0]
+        except IndexError:
+            raise exception.SubnetDoesNotExist(subnet_id)
+
+    def get_subnets(self, filters=None):
+        return self.conn.get_all_subnets(filters=filters)
+
+    def get_network_spec(self, *args, **kwargs):
+        return boto.ec2.networkinterface.NetworkInterfaceSpecification(
+            *args, **kwargs)
+
+    def get_network_collection(self, *args, **kwargs):
+        return boto.ec2.networkinterface.NetworkInterfaceCollection(
+            *args, **kwargs)
+
     def delete_group(self, group, max_retries=60, retry_delay=5):
         """
         This method deletes a security or placement group using group.delete()
@@ -271,9 +288,13 @@ class EasyEC2(EasyAWS):
         """
         log.info("Creating security group %s..." % name)
         sg = self.conn.create_security_group(name, description, vpc_id=vpc_id)
-        while not self.get_group_or_none(name):
-            log.info("Waiting for security group %s..." % name)
-            time.sleep(3)
+        if not self.get_group_or_none(name):
+            s = utils.get_spinner("Waiting for security group %s..." % name)
+            try:
+                while not self.get_group_or_none(name):
+                    time.sleep(3)
+            finally:
+                s.stop()
         if auth_ssh:
             ssh_port = static.DEFAULT_SSH_PORT
             self.conn.authorize_security_group(group_id=sg.id,
@@ -454,7 +475,8 @@ class EasyEC2(EasyAWS):
                           launch_group=None,
                           availability_zone_group=None, placement=None,
                           user_data=None, placement_group=None,
-                          block_device_map=None, subnet_id=None):
+                          block_device_map=None, subnet_id=None,
+                          network_interfaces=None):
         """
         Convenience method for running spot or flat-rate instances
         """
@@ -487,15 +509,14 @@ class EasyEC2(EasyAWS):
                 root.delete_on_termination = True
                 bdmap[img.root_device_name] = root
             block_device_map = bdmap
-
         shared_kwargs = dict(instance_type=instance_type,
                              key_name=key_name,
                              subnet_id=subnet_id,
                              placement=placement,
                              placement_group=placement_group,
                              user_data=user_data,
-                             block_device_map=block_device_map)
-
+                             block_device_map=block_device_map,
+                             network_interfaces=network_interfaces)
         if price:
             return self.request_spot_instances(
                 price, image_id,
@@ -515,7 +536,8 @@ class EasyEC2(EasyAWS):
                                availability_zone_group=None,
                                security_group_ids=None, subnet_id=None,
                                placement=None, placement_group=None,
-                               user_data=None, block_device_map=None):
+                               user_data=None, block_device_map=None,
+                               network_interfaces=None):
         kwargs = locals()
         kwargs.pop('self')
         return self.conn.request_spot_instances(**kwargs)
@@ -580,7 +602,8 @@ class EasyEC2(EasyAWS):
     def run_instances(self, image_id, instance_type='m1.small', min_count=1,
                       max_count=1, key_name=None, security_groups=None,
                       placement=None, user_data=None, placement_group=None,
-                      block_device_map=None, subnet_id=None):
+                      block_device_map=None, subnet_id=None,
+                      network_interfaces=None):
         kwargs = dict(
             instance_type=instance_type,
             min_count=min_count,
@@ -590,7 +613,8 @@ class EasyEC2(EasyAWS):
             placement=placement,
             user_data=user_data,
             placement_group=placement_group,
-            block_device_map=block_device_map
+            block_device_map=block_device_map,
+            network_interfaces=network_interfaces
         )
         if subnet_id:
             kwargs.update(
