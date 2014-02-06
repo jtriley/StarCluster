@@ -47,7 +47,7 @@ class CmdSpotHistory(CmdBase):
         parser.add_option("-d", "--days", dest="days_ago",
                           action="store", type="float", default=None,
                           help="provide history in the last DAYS_AGO days "
-                          "(overrides -s and -e options)")
+                          "(overrides -s option)")
         parser.add_option("-s", "--start-time", dest="start_time",
                           action="callback", type="string", default=None,
                           callback=self._iso_timestamp,
