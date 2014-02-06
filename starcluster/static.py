@@ -55,7 +55,7 @@ def create_sc_config_dirs():
     __makedirs(STARCLUSTER_LOG_DIR)
 
 
-VERSION = "0.9999"
+VERSION = "0.95"
 PID = os.getpid()
 TMP_DIR = tempfile.gettempdir()
 if os.path.exists("/tmp"):
@@ -81,9 +81,9 @@ AWS_DEBUG_FILE = os.path.join(STARCLUSTER_LOG_DIR, 'aws-debug.log')
 CRASH_FILE = os.path.join(STARCLUSTER_LOG_DIR, 'crash-report-%d.txt' % PID)
 
 # StarCluster BASE AMIs (us-east-1)
-BASE_AMI_32 = "ami-7c5c3915"
-BASE_AMI_64 = "ami-765b3e1f"
-BASE_AMI_HVM = "ami-52a0c53b"
+BASE_AMI_32 = "ami-9bf9c9f2"
+BASE_AMI_64 = "ami-3393a45a"
+BASE_AMI_HVM = "ami-6b211202"
 
 SECURITY_GROUP_PREFIX = "@sc-"
 SECURITY_GROUP_TEMPLATE = SECURITY_GROUP_PREFIX + "%s"

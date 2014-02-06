@@ -1,8 +1,8 @@
-===================
-StarCluster v0.9999
-===================
+=================
+StarCluster v0.95
+=================
 :StarCluster: Cluster Computing Toolkit for the Cloud
-:Version: 0.9999
+:Version: 0.95
 :Author: Justin Riley <justin.t.riley@gmail.com>
 :Team: Software Tools for Academics and Researchers (http://star.mit.edu)
 :Homepage: http://star.mit.edu/cluster
@@ -164,14 +164,16 @@ Dependencies:
 =============
 * Amazon AWS Account
 * Python 2.6+
-* Boto 2.9.8
-* Paramiko 1.10.1
+* Boto 2.23.0+
+* Paramiko 1.12.1+
 * WorkerPool 0.9.2
 * Jinja2 2.7
-* decorator 3.4.0
-* pyasn1 0.1.7
-* iptools 0.6.1
-* optcomplete 1.2-devel
+* decorator 3.4.0+
+* iptools 0.6.1+
+* optcomplete 1.2-devel+
+* PyCrypto 2.5+
+* scp 0.7.1+
+* iso8601 0.1.8+
 
 Learn more...
 =============

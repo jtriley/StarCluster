@@ -360,6 +360,8 @@ template in detail.
 |                      |          | within the VPC in order to connect to the cluster. Default is `True`.           |
 +----------------------+----------+---------------------------------------------------------------------------------+
 
+.. _using-vpc:
+
 Using the Virtual Private Cloud (VPC)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 From Amazon's `VPC page <http://aws.amazon.com/vpc/>`_:
