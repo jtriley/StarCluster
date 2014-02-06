@@ -81,6 +81,10 @@ class CmdStart(ClusterCompleter):
                           "a flat-rate instance for stability. this option "
                           "forces launching the master node as a spot "
                           "instance when a spot cluster is requested.")
+        parser.add_option("--no-public-ips", dest="public_ips",
+                          default=True, action='store_false',
+                          help=("Do not automatically assign a public ip to "
+                                "all nodes (VPC clusters only)"))
         opt = parser.add_option("-c", "--cluster-template", action="store",
                                 dest="cluster_template", choices=templates,
                                 default=None, help="cluster template to use "
@@ -153,6 +157,13 @@ class CmdStart(ClusterCompleter):
                           action="append", default=None, metavar="FILE",
                           help="Path to userdata script that will run on "
                           "each node on start-up. Can be used multiple times.")
+        parser.add_option("-P", "--dns-prefix", dest="dns_prefix",
+                          action='store_true',
+                          help=("Prefix dns names of all nodes in the cluster "
+                                "with the cluster tag"))
+        parser.add_option("-N", "--subnet-id", dest="subnet_id",
+                          action="store", type="string",
+                          help=("Launch cluster into a VPC subnet"))
 
     def execute(self, args):
         if len(args) != 1:
@@ -209,6 +220,8 @@ class CmdStart(ClusterCompleter):
                                        'tag': tag}
             if not validate_only and not create_only:
                 self.warn_experimental(msg, num_secs=5)
+        if self.opts.dns_prefix:
+            scluster.dns_prefix = tag
         try:
             scluster.start(create=create, create_only=create_only,
                            validate=validate, validate_only=validate_only,

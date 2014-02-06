@@ -21,6 +21,8 @@ import time
 import datetime
 import xml.dom.minidom
 
+import iso8601
+
 from starcluster import utils
 from starcluster import static
 from starcluster import exception
@@ -133,7 +135,8 @@ class SGEStats(object):
         format is:
         Tue Jul 13 16:24:03 2010
         """
-        return datetime.datetime.strptime(qacct, "%a %b %d %H:%M:%S %Y")
+        dt = datetime.datetime.strptime(qacct, "%a %b %d %H:%M:%S %Y")
+        return dt.replace(tzinfo=iso8601.iso8601.UTC)
 
     def parse_qacct(self, string, dtnow):
         """
@@ -317,7 +320,7 @@ class SGEStats(object):
         return float(x) + float(y)
 
     def get_all_stats(self):
-        now = datetime.datetime.utcnow()
+        now = utils.get_utc_now()
         bits = []
         #first field is the time
         bits.append(now)
@@ -335,8 +338,12 @@ class SGEStats(object):
         bits.append(self.avg_wait_time())
         #last field is array of loads for hosts
         arr = self.get_loads()
-        load_sum = float(reduce(self._add, arr))
-        avg_load = load_sum / len(arr)
+        # arr may be empty if there are no exec hosts
+        if arr:
+            load_sum = float(reduce(self._add, arr))
+            avg_load = load_sum / len(arr)
+        else:
+            avg_load = 0.0
         bits.append(avg_load)
         return bits
 
@@ -403,22 +410,22 @@ class SGELoadBalancer(LoadBalancer):
 
     def __init__(self, interval=60, max_nodes=None, wait_time=900,
                  add_pi=1, kill_after=45, stab=180, lookback_win=3,
-                 min_nodes=1, kill_cluster=False, plot_stats=False,
+                 min_nodes=None, kill_cluster=False, plot_stats=False,
                  plot_output_dir=None, dump_stats=False, stats_file=None):
         self._cluster = None
         self._keep_polling = True
         self._visualizer = None
-        self.__last_cluster_mod_time = datetime.datetime.utcnow()
+        self.__last_cluster_mod_time = utils.get_utc_now()
         self.stat = SGEStats()
         self.polling_interval = interval
         self.kill_after = kill_after
-        self.max_nodes = max_nodes
         self.longest_allowed_queue_time = wait_time
         self.add_nodes_per_iteration = add_pi
         self.stabilization_time = stab
         self.lookback_window = lookback_win
         self.kill_cluster = kill_cluster
-        self.min_nodes = min_nodes if not kill_cluster else 0
+        self.max_nodes = max_nodes
+        self.min_nodes = min_nodes
         self.dump_stats = dump_stats
         self.stats_file = stats_file
         self.plot_stats = plot_stats
@@ -477,8 +484,9 @@ class SGELoadBalancer(LoadBalancer):
         and returns a datetime object with the master's time
         instead of fetching it from local machine, maybe inaccurate.
         """
-        str = '\n'.join(self._cluster.master_node.ssh.execute('date --utc'))
-        return datetime.datetime.strptime(str, "%a %b %d %H:%M:%S UTC %Y")
+        utc = '\n'.join(self._cluster.master_node.ssh.execute('date --utc'))
+        dt = datetime.datetime.strptime(utc, "%a %b %d %H:%M:%S UTC %Y")
+        return dt.replace(tzinfo=iso8601.iso8601.UTC)
 
     def get_qatime(self, now):
         """
@@ -494,8 +502,7 @@ class SGELoadBalancer(LoadBalancer):
         log.debug("getting past %d seconds worth of job history" %
                   temp_lookback_window)
         now = now - datetime.timedelta(seconds=temp_lookback_window + 1)
-        str = now.strftime("%Y%m%d%H%M")
-        return str
+        return now.strftime("%Y%m%d%H%M")
 
     def _get_stats(self):
         master = self._cluster.master_node
@@ -553,6 +560,13 @@ class SGELoadBalancer(LoadBalancer):
         self._cluster = cluster
         if self.max_nodes is None:
             self.max_nodes = cluster.cluster_size
+        if self.min_nodes is None:
+            self.min_nodes = 1
+        if self.kill_cluster:
+            self.min_nodes = 0
+        if self.min_nodes > self.max_nodes:
+            raise exception.BaseException(
+                "min_nodes cannot be greater than max_nodes")
         use_default_stats_file = self.dump_stats and not self.stats_file
         use_default_plots_dir = self.plot_stats and not self.plot_output_dir
         if use_default_stats_file or use_default_plots_dir:
@@ -630,7 +644,7 @@ class SGELoadBalancer(LoadBalancer):
             time.sleep(self.polling_interval)
 
     def has_cluster_stabilized(self):
-        now = datetime.datetime.utcnow()
+        now = utils.get_utc_now()
         elapsed = (now - self.__last_cluster_mod_time).seconds
         is_stabilized = not (elapsed < self.stabilization_time)
         if not is_stabilized:
@@ -645,13 +659,15 @@ class SGELoadBalancer(LoadBalancer):
         whether or not to add nodes to the cluster. Returns the number of nodes
         to add.
         """
-        if len(self._cluster.running_nodes) >= self.max_nodes:
+        num_nodes = len(self._cluster.nodes)
+        if num_nodes >= self.max_nodes:
             log.info("Not adding nodes: already at or above maximum (%d)" %
                      self.max_nodes)
             return
         queued_jobs = self.stat.get_queued_jobs()
-        if not queued_jobs:
-            log.info("Not adding nodes: no queued jobs...")
+        if not queued_jobs and num_nodes >= self.min_nodes:
+            log.info("Not adding nodes: at or above minimum nodes "
+                     "and no queued jobs...")
             return
         total_slots = self.stat.count_total_slots()
         if not self.has_cluster_stabilized() and total_slots > 0:
@@ -662,7 +678,10 @@ class SGELoadBalancer(LoadBalancer):
         slots_per_host = self.stat.slots_per_host()
         avail_slots = total_slots - used_slots
         need_to_add = 0
-        if total_slots == 0:
+        if num_nodes < self.min_nodes:
+            log.info("Adding node: below minimum (%d)" % self.min_nodes)
+            need_to_add = self.min_nodes - num_nodes
+        elif total_slots == 0:
             #no slots, add one now
             need_to_add = 1
         elif qw_slots > avail_slots:
@@ -686,12 +705,12 @@ class SGELoadBalancer(LoadBalancer):
         need_to_add = min(self.add_nodes_per_iteration, need_to_add, max_add)
         if need_to_add > 0:
             log.warn("Adding %d nodes at %s" %
-                     (need_to_add, str(datetime.datetime.utcnow())))
+                     (need_to_add, str(utils.get_utc_now())))
             try:
                 self._cluster.add_nodes(need_to_add)
-                self.__last_cluster_mod_time = datetime.datetime.utcnow()
+                self.__last_cluster_mod_time = utils.get_utc_now()
                 log.info("Done adding nodes at %s" %
-                         str(datetime.datetime.utcnow()))
+                         str(self.__last_cluster_mod_time))
             except Exception:
                 log.error("Failed to add new host", exc_info=True)
 
@@ -724,7 +743,7 @@ class SGELoadBalancer(LoadBalancer):
                      (node.alias, node.id, node.dns_name))
             try:
                 self._cluster.remove_node(node)
-                self.__last_cluster_mod_time = datetime.datetime.utcnow()
+                self.__last_cluster_mod_time = utils.get_utc_now()
             except Exception:
                 log.error("Failed to remove node %s" % node.alias,
                           exc_info=True)

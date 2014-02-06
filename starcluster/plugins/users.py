@@ -97,7 +97,8 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
             master.ssh.execute(
                 "cp /home/%(user)s/.ssh/id_rsa %(keydest)s" %
                 dict(user=user, keydest=posixpath.join(pardir, user + '.rsa')))
-        cluster_tag = master.cluster_groups[0].name.replace('@sc-', '')
+        cluster_tag = master.cluster_groups[0].name.replace(
+            static.SECURITY_GROUP_PREFIX, '')
         tarfile = "%s-%s.tar.gz" % (cluster_tag, master.region.name)
         master.ssh.execute("tar -C %s -czf ~/%s . --exclude=%s" %
                            (pardir, tarfile, bfile))

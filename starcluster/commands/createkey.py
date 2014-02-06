@@ -32,6 +32,10 @@ class CmdCreateKey(CmdBase):
         parser.add_option("-o", "--output-file", dest="output_file",
                           action="store", type="string", default=None,
                           help="Save the new keypair to a file")
+        parser.add_option("-i", "--import-key", dest="rsa_key_file",
+                          action="callback", type="string", default=None,
+                          callback=self._file_exists,
+                          help="Import an existing RSA key to EC2")
         #parser.add_option("-a","--add-to-config", dest="add_to_config",
             #action="store_true", default=False,
             #help="add new keypair to StarCluster config")
@@ -41,9 +45,14 @@ class CmdCreateKey(CmdBase):
             self.parser.error("please provide a key name")
         name = args[0]
         ofile = self.opts.output_file
-        kp = self.ec2.create_keypair(name, output_file=ofile)
+        rsa_file = self.opts.rsa_key_file
+        if rsa_file:
+            kp = self.ec2.import_keypair(name, rsa_file)
+        else:
+            kp = self.ec2.create_keypair(name, output_file=ofile)
         log.info("Successfully created keypair: %s" % name)
         log.info("fingerprint: %s" % kp.fingerprint)
-        log.info("contents: \n%s" % kp.material)
-        if ofile:
+        if ofile and not rsa_file:
             log.info("keypair written to %s" % ofile)
+        elif kp.material:
+            log.info("contents: \n%s" % kp.material)

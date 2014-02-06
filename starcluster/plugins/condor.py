@@ -35,6 +35,11 @@ class CondorPlugin(clustersetup.DefaultClusterSetup):
         condorcfg.write(condor.condor_tmpl % ctx)
         condorcfg.close()
         node.ssh.execute('pkill condor', ignore_exit_status=True)
+        config_vars = ["LOCAL_DIR", "LOG", "SPOOL", "RUN", "EXECUTE", "LOCK",
+                       "CRED_STORE_DIR"]
+        config_vals = ['$(condor_config_val %s)' % var for var in config_vars]
+        node.ssh.execute('mkdir -p %s' % ' '.join(config_vals))
+        node.ssh.execute('chown -R condor:condor %s' % ' '.join(config_vals))
         node.ssh.execute('/etc/init.d/condor start')
 
     def _setup_condor(self, master=None, nodes=None):
