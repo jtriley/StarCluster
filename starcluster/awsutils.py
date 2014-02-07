@@ -297,30 +297,15 @@ class EasyEC2(EasyAWS):
                 s.stop()
         if auth_ssh:
             ssh_port = static.DEFAULT_SSH_PORT
-            self.conn.authorize_security_group(group_id=sg.id,
-                                               ip_protocol='tcp',
-                                               from_port=ssh_port,
-                                               to_port=ssh_port,
-                                               cidr_ip=static.WORLD_CIDRIP)
+            sg.authorize(ip_protocol='tcp', from_port=ssh_port,
+                         to_port=ssh_port, cidr_ip=static.WORLD_CIDRIP)
         if auth_group_traffic:
-            self.conn.authorize_security_group(
-                group_id=sg.id,
-                src_security_group_group_id=sg.id,
-                ip_protocol='icmp',
-                from_port=-1,
-                to_port=-1)
-            self.conn.authorize_security_group(
-                group_id=sg.id,
-                src_security_group_group_id=sg.id,
-                ip_protocol='tcp',
-                from_port=1,
-                to_port=65535)
-            self.conn.authorize_security_group(
-                group_id=sg.id,
-                src_security_group_group_id=sg.id,
-                ip_protocol='udp',
-                from_port=1,
-                to_port=65535)
+            sg.authorize(src_group=sg, ip_protocol='icmp', from_port=-1,
+                         to_port=-1)
+            sg.authorize(src_group=sg, ip_protocol='tcp', from_port=1,
+                         to_port=65535)
+            sg.authorize(src_group=sg, ip_protocol='udp', from_port=1,
+                         to_port=65535)
         return sg
 
     def get_all_security_groups(self, groupnames=[]):
