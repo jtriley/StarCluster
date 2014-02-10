@@ -32,16 +32,20 @@ try:
         user_options = TestCommand.user_options[:]
         user_options += [
             ('live', 'L', 'Run live StarCluster tests on a real AWS account'),
+            ('coverage', 'C', 'Produce a coverage report for StarCluster'),
         ]
 
         def initialize_options(self):
             TestCommand.initialize_options(self)
             self.live = None
+            self.coverage = None
 
         def finalize_options(self):
             TestCommand.finalize_options(self)
             self.test_suite = True
             self.test_args = []
+            if self.coverage:
+                self.test_args.append('--coverage')
             if self.live:
                 self.test_args.append('--live')
 
@@ -53,7 +57,7 @@ try:
 
     console_scripts = ['starcluster = starcluster.cli:main']
     extra = dict(test_suite="starcluster.tests",
-                 tests_require="pytest",
+                 tests_require=["pytest", "pytest-cov"],
                  cmdclass={"test": PyTest},
                  install_requires=["paramiko>=1.12.1", "boto>=2.23.0",
                                    "workerpool>=0.9.2", "Jinja2>=2.7",
