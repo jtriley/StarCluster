@@ -17,3 +17,4 @@ pyflakes==0.7.3
 watchdog==0.7.1
 pytest==2.5.2
 sphinx==1.2.1
+pudb==2013.5.1
