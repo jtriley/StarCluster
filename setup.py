@@ -29,10 +29,21 @@ try:
     from setuptools.command.test import test as TestCommand
 
     class PyTest(TestCommand):
+        user_options = TestCommand.user_options[:]
+        user_options += [
+            ('live', 'L', 'Run live StarCluster tests on a real AWS account'),
+        ]
+
+        def initialize_options(self):
+            TestCommand.initialize_options(self)
+            self.live = None
+
         def finalize_options(self):
             TestCommand.finalize_options(self)
-            self.test_args = []
             self.test_suite = True
+            self.test_args = []
+            if self.live:
+                self.test_args.append('--live')
 
         def run_tests(self):
             #import here, cause outside the eggs aren't loaded
