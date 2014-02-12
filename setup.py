@@ -50,15 +50,20 @@ try:
                 self.test_args.append('--live')
 
         def run_tests(self):
-            #import here, cause outside the eggs aren't loaded
+            # import here, cause outside the eggs aren't loaded
             import pytest
+            # Needed in order for pytest_cache to load properly
+            # Alternate fix: import pytest_cache and pass to pytest.main
+            import _pytest.config
+            pm = _pytest.config.get_plugin_manager()
+            pm.consider_setuptools_entrypoints()
             errno = pytest.main(self.test_args)
             sys.exit(errno)
 
     console_scripts = ['starcluster = starcluster.cli:main']
     extra = dict(test_suite="starcluster.tests",
-                 tests_require=["pytest", "pytest-cov", "pytest-pep8",
-                                "pytest-flakes"],
+                 tests_require= ["pytest-cov", "pytest-pep8", "pytest-flakes",
+                                 "pytest"],
                  cmdclass={"test": PyTest},
                  install_requires=["paramiko>=1.12.1", "boto>=2.23.0",
                                    "workerpool>=0.9.2", "Jinja2>=2.7",
