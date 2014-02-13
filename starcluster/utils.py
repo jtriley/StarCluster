@@ -593,14 +593,18 @@ class struct_passwd(tuple):
             raise AttributeError
 
 
-def dump_compress_encode(obj, use_json=False):
+def dump_compress_encode(obj, use_json=False, chunk_size=None):
     serializer = cPickle
     if use_json:
         serializer = json
-    return zlib.compress(serializer.dumps(obj)).encode('base64')
+    p = zlib.compress(serializer.dumps(obj)).encode('base64')
+    if chunk_size is not None:
+        return [p[i:i + chunk_size] for i in range(0, len(p), chunk_size)]
+    return p
 
 
 def decode_uncompress_load(string, use_json=False):
+    string = ''.join(string)
     serializer = cPickle
     if use_json:
         serializer = json
