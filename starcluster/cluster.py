@@ -944,9 +944,6 @@ class Cluster(object):
                       user_data=user_data,
                       placement_group=placement_group)
         if self.subnet_id:
-            if not self.public_ips:
-                log.warn(user_msgs.public_ips_disabled %
-                         dict(vpc_id=self.subnet.vpc_id))
             netif = self.ec2.get_network_spec(
                 device_index=0, associate_public_ip_address=self.public_ips,
                 subnet_id=self.subnet_id, groups=[self.cluster_group.id])
@@ -2239,6 +2236,9 @@ class ClusterValidator(validators.Validator):
         elif not self.cluster.public_ips:
             raise exception.ClusterValidationError(
                 "Only VPC clusters can disable public IP addresses")
+        if not self.cluster.public_ips:
+            log.warn(user_msgs.public_ips_disabled %
+                     dict(vpc_id=self.cluster.subnet.vpc_id))
 
 
 if __name__ == "__main__":
