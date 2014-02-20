@@ -254,6 +254,8 @@ class TestStarClusterConfig(tests.StarClusterTest):
         cfg = config.StarClusterConfig(tmp_file.name, cache=True).load()
         assert cfg.aws['aws_access_key_id'] == aws_key
         assert cfg.aws['aws_secret_access_key'] == aws_secret_key
+        del os.environ['AWS_ACCESS_KEY_ID']
+        del os.environ['AWS_SECRET_ACCESS_KEY']
 
     def test_cyclical_extends(self):
         """
