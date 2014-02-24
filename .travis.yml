@@ -4,9 +4,9 @@ python:
     - 2.6
     - 2.7
 install:
-    - python setup.py install -q
+    - python setup.py install --quiet
 script:
-    - python setup.py test
+    - python setup.py test --coverage
 notifications:
   irc:
     channels: "irc.freenode.org#starcluster"

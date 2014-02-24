@@ -588,16 +588,7 @@ class Cluster(object):
                 msg = user_msgs.version_mismatch % d
                 sep = '*' * 60
                 log.warn('\n'.join([sep, msg, sep]), extra={'__textwrap__': 1})
-            cluster_settings = {}
-            if static.CORE_TAG in tags:
-                core = tags.get(static.CORE_TAG, '')
-                cluster_settings.update(
-                    utils.decode_uncompress_load(core, use_json=True))
-            if static.USER_TAG in tags:
-                user = tags.get(static.USER_TAG, '')
-                cluster_settings.update(
-                    utils.decode_uncompress_load(user, use_json=True))
-            self.update(cluster_settings)
+            self.update(self._get_settings_from_tags())
             try:
                 master = self.master_node
             except exception.MasterDoesNotExist:
@@ -680,37 +671,57 @@ class Cluster(object):
                 log.info("Opening %s port range %s-%s for CIDR %s" %
                         (ip_protocol, from_port, to_port, cidr_ip))
                 sg.authorize(ip_protocol, from_port, to_port, cidr_ip)
+            else:
+                log.info("Already open: %s port range %s-%s for CIDR %s" %
+                         (ip_protocol, from_port, to_port, cidr_ip))
             includes_ssh = from_port <= ssh_port <= to_port
             open_to_world = cidr_ip == static.WORLD_CIDRIP
             if ip_protocol == 'tcp' and includes_ssh and not open_to_world:
                 sg.revoke(ip_protocol, ssh_port, ssh_port,
                           static.WORLD_CIDRIP)
 
+    def _add_chunked_tags(self, sg, chunks, base_tag_name):
+        for i, chunk in enumerate(chunks):
+            tag = "%s-%s" % (base_tag_name, i) if i != 0 else base_tag_name
+            if not tag in sg.tags:
+                sg.add_tag(tag, chunk)
+
     def _add_tags_to_sg(self, sg):
         if not static.VERSION_TAG in sg.tags:
             sg.add_tag(static.VERSION_TAG, str(static.VERSION))
-        core_settings = utils.dump_compress_encode(
-            dict(cluster_size=self.cluster_size,
-                 master_image_id=self.master_image_id,
-                 master_instance_type=self.master_instance_type,
-                 node_image_id=self.node_image_id,
-                 node_instance_type=self.node_instance_type,
-                 availability_zone=self.availability_zone,
-                 dns_prefix=self.dns_prefix,
-                 subnet_id=self.subnet_id,
-                 public_ips=self.public_ips,
-                 disable_queue=self.disable_queue,
-                 disable_cloudinit=self.disable_cloudinit),
-            use_json=True)
-        if not static.CORE_TAG in sg.tags:
-            sg.add_tag(static.CORE_TAG, core_settings)
-        user_settings = utils.dump_compress_encode(
-            dict(cluster_user=self.cluster_user,
-                 cluster_shell=self.cluster_shell,
-                 keyname=self.keyname,
-                 spot_bid=self.spot_bid), use_json=True)
-        if not static.USER_TAG in sg.tags:
-            sg.add_tag(static.USER_TAG, user_settings)
+        core_settings = dict(cluster_size=self.cluster_size,
+                             master_image_id=self.master_image_id,
+                             master_instance_type=self.master_instance_type,
+                             node_image_id=self.node_image_id,
+                             node_instance_type=self.node_instance_type,
+                             availability_zone=self.availability_zone,
+                             dns_prefix=self.dns_prefix,
+                             subnet_id=self.subnet_id,
+                             public_ips=self.public_ips,
+                             disable_queue=self.disable_queue,
+                             disable_cloudinit=self.disable_cloudinit)
+        user_settings = dict(cluster_user=self.cluster_user,
+                             cluster_shell=self.cluster_shell,
+                             keyname=self.keyname, spot_bid=self.spot_bid)
+        core = utils.dump_compress_encode(core_settings, use_json=True,
+                                          chunk_size=static.MAX_TAG_LEN)
+        self._add_chunked_tags(sg, core, static.CORE_TAG)
+        user = utils.dump_compress_encode(user_settings, use_json=True,
+                                          chunk_size=static.MAX_TAG_LEN)
+        self._add_chunked_tags(sg, user, static.USER_TAG)
+
+    def _load_chunked_tags(self, sg, base_tag_name):
+        chunks = [sg.tags[i] for i in sg.tags if i.startswith(base_tag_name)]
+        return utils.decode_uncompress_load(chunks, use_json=True)
+
+    def _get_settings_from_tags(self, sg=None):
+        sg = sg or self.cluster_group
+        cluster = {}
+        if static.CORE_TAG in sg.tags:
+            cluster.update(self._load_chunked_tags(sg, static.CORE_TAG))
+        if static.USER_TAG in sg.tags:
+            cluster.update(self._load_chunked_tags(sg, static.USER_TAG))
+        return cluster
 
     @property
     def placement_group(self):
@@ -933,9 +944,6 @@ class Cluster(object):
                       user_data=user_data,
                       placement_group=placement_group)
         if self.subnet_id:
-            if not self.public_ips:
-                log.warn(user_msgs.public_ips_disabled %
-                         dict(vpc_id=self.subnet.vpc_id))
             netif = self.ec2.get_network_spec(
                 device_index=0, associate_public_ip_address=self.public_ips,
                 subnet_id=self.subnet_id, groups=[self.cluster_group.id])
@@ -2228,6 +2236,9 @@ class ClusterValidator(validators.Validator):
         elif not self.cluster.public_ips:
             raise exception.ClusterValidationError(
                 "Only VPC clusters can disable public IP addresses")
+        if not self.cluster.public_ips:
+            log.warn(user_msgs.public_ips_disabled %
+                     dict(vpc_id=self.cluster.subnet.vpc_id))
 
 
 if __name__ == "__main__":

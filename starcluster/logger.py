@@ -169,11 +169,11 @@ def configure_sc_logging(use_syslog=False):
         log.addHandler(syslog_handler)
 
 
-def configure_ssh_logging():
+def configure_paramiko_logging():
     """
     Configure ssh to log to a file for debug
     """
-    l = logging.getLogger("ssh")
+    l = logging.getLogger("paramiko")
     l.setLevel(logging.DEBUG)
     static.create_sc_config_dirs()
     lh = logging.handlers.RotatingFileHandler(static.SSH_DEBUG_FILE,
