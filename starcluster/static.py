@@ -55,7 +55,7 @@ def create_sc_config_dirs():
     __makedirs(STARCLUSTER_LOG_DIR)
 
 
-VERSION = "0.9999"
+VERSION = "0.95.1"
 PID = os.getpid()
 TMP_DIR = tempfile.gettempdir()
 if os.path.exists("/tmp"):
@@ -94,6 +94,7 @@ VOLUME_GROUP = SECURITY_GROUP_PREFIX + VOLUME_GROUP_NAME
 VERSION_TAG = SECURITY_GROUP_PREFIX + 'version'
 CORE_TAG = SECURITY_GROUP_PREFIX + 'core'
 USER_TAG = SECURITY_GROUP_PREFIX + 'user'
+MAX_TAG_LEN = 255
 
 # Internal StarCluster userdata filenames
 UD_PLUGINS_FNAME = "_sc_plugins.txt"
