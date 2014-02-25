@@ -55,7 +55,7 @@ def create_sc_config_dirs():
     __makedirs(STARCLUSTER_LOG_DIR)
 
 
-VERSION = "0.95.1"
+VERSION = "0.95.2"
 PID = os.getpid()
 TMP_DIR = tempfile.gettempdir()
 if os.path.exists("/tmp"):
@@ -260,7 +260,7 @@ CLUSTER_SETTINGS = {
     'cluster_user': (str, False, 'sgeadmin', None, None),
     'cluster_shell': (str, False, 'bash', AVAILABLE_SHELLS.keys(), None),
     'subnet_id': (str, False, None, None, None),
-    'public_ips': (str, False, True, None, None),
+    'public_ips': (bool, False, True, None, None),
     'master_image_id': (str, False, None, None, None),
     'master_instance_type': (str, False, None, INSTANCE_TYPES.keys(), None),
     'node_image_id': (str, True, None, None, None),
