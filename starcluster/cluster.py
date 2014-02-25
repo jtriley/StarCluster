@@ -711,7 +711,9 @@ class Cluster(object):
         self._add_chunked_tags(sg, user, static.USER_TAG)
 
     def _load_chunked_tags(self, sg, base_tag_name):
-        chunks = [sg.tags[i] for i in sg.tags if i.startswith(base_tag_name)]
+        tags = [i for i in sg.tags if i.startswith(base_tag_name)]
+        tags.sort()
+        chunks = [sg.tags[i] for i in tags if i.startswith(base_tag_name)]
         return utils.decode_uncompress_load(chunks, use_json=True)
 
     def _get_settings_from_tags(self, sg=None):

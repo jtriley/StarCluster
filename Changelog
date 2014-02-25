@@ -5,6 +5,47 @@ Version History
 .. contents::
     :local:
 
+.. _version-0.95.2:
+
+0.95.2
+======
+
+.. _v0952-news:
+
+News
+----
+Version 0.95.2 of StarCluster is a bug fix release. Please note that this
+version is *not* compatible with clusters started with older versions of
+StarCluster. Please terminate all clusters before upgrading to 0.95.2.
+
+.. _v0952-fixes:
+
+Bug Fixes
+---------
+* cluster: sort chunked cluster tags before loading (gh-371)
+* config: set public_ip setting type to boolean (gh-366)
+
+.. _version-0.95.1:
+
+0.95.1
+======
+
+.. _v0951-news:
+
+News
+----
+Version 0.95.1 of StarCluster is a bug fix release. Please note that this
+version is *not* compatible with clusters started with older versions of
+StarCluster. Please terminate all clusters before upgrading to 0.95.1.
+
+.. _v0951-fixes:
+
+Bug Fixes
+---------
+* cluster: fix max length error when applying cluster tags (gh-348)
+* start: fix default value for ``--no-public-ips`` option (gh-366)
+* cluster: fix for custom security group permissions (gh-356)
+
 .. _version-0.95:
 
 0.95
