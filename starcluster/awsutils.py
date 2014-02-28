@@ -237,6 +237,12 @@ class EasyEC2(EasyAWS):
     def get_subnets(self, filters=None):
         return self.conn.get_all_subnets(filters=filters)
 
+    def get_internet_gateways(self, filters=None):
+        return self.conn.get_all_internet_gateways(filters=filters)
+
+    def get_route_tables(self, filters=None):
+        return self.conn.get_all_route_tables(filters=filters)
+
     def get_network_spec(self, *args, **kwargs):
         return boto.ec2.networkinterface.NetworkInterfaceSpecification(
             *args, **kwargs)
