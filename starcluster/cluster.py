@@ -411,7 +411,7 @@ class Cluster(object):
                  force_spot_master=False,
                  disable_cloudinit=False,
                  subnet_id=None,
-                 public_ips=True,
+                 public_ips=None,
                  **kwargs):
         # update class vars with given vars
         _vars = locals().copy()
@@ -2250,12 +2250,12 @@ class ClusterValidator(validators.Validator):
                     raise exception.ClusterValidationError(
                         "No route to %s found for subnet: %s" %
                         (static.WORLD_CIDRIP, self.cluster.subnet_id))
-        elif not self.cluster.public_ips:
+            else:
+                log.warn(user_msgs.public_ips_disabled %
+                         dict(vpc_id=self.cluster.subnet.vpc_id))
+        elif self.cluster.public_ips is False:
             raise exception.ClusterValidationError(
                 "Only VPC clusters can disable public IP addresses")
-        if not self.cluster.public_ips:
-            log.warn(user_msgs.public_ips_disabled %
-                     dict(vpc_id=self.cluster.subnet.vpc_id))
 
 
 if __name__ == "__main__":
