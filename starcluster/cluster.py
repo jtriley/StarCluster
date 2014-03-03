@@ -610,8 +610,8 @@ class Cluster(object):
                 msg = user_msgs.version_mismatch % d
                 sep = '*' * 60
                 log.warn('\n'.join([sep, msg, sep]), extra={'__textwrap__': 1})
-            self._config_fields = cluster_settings.keys()
-            self.update(self._get_settings_from_tags())
+            self._config_fields = self._get_settings_from_tags()
+            self.update(self._config_fields)
             try:
                 master = self.master_node
             except exception.MasterDoesNotExist:
