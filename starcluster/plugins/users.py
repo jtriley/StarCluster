@@ -70,7 +70,7 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
                                                  user_shell)
         for node in nodes:
             self.pool.simple_job(node.ssh.execute,
-                                 ("echo '%s' | newusers" % newusers),
+                                 ("echo -n '%s' | newusers" % newusers),
                                  jobid=node.alias)
         self.pool.wait(numtasks=len(nodes))
         log.info("Configuring passwordless ssh for %d cluster users" %
@@ -155,7 +155,7 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
         log.info("Creating %d users on %s" % (self._num_users, node.alias))
         newusers = self._get_newusers_batch_file(master, self._usernames,
                                                  user_shell)
-        node.ssh.execute("echo '%s' | newusers" % newusers)
+        node.ssh.execute("echo -n '%s' | newusers" % newusers)
         log.info("Adding %s to known_hosts for %d users" %
                  (node.alias, self._num_users))
         pbar = self.pool.progress_bar.reset()
