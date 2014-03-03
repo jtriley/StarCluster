@@ -62,8 +62,7 @@ class VolumeCreator(cluster.Cluster):
             ec2_conn=ec2_conn, spot_bid=spot_bid, keyname=keypair,
             key_location=key_location, cluster_tag=static.VOLUME_GROUP_NAME,
             cluster_size=1, cluster_user="sgeadmin", cluster_shell="bash",
-            node_image_id=self._image_id,
-            vpc_id=kwargs.get('vpc_id'), subnet_id=kwargs.get('subnet_id'),
+            node_image_id=self._image_id, subnet_id=kwargs.get('subnet_id'),
             node_instance_type=self._instance_type, force_spot_master=True)
 
     def __repr__(self):
@@ -97,7 +96,7 @@ class VolumeCreator(cluster.Cluster):
                                           instance_type=self._instance_type,
                                           zone=zone)
             self.wait_for_cluster(msg="Waiting for volume host to come up...")
-            self._instance = self.get_node_by_alias(alias)
+            self._instance = self.get_node(alias)
         else:
             s = utils.get_spinner("Waiting for instance %s to come up..." %
                                   self._instance.id)

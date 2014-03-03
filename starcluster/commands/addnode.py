@@ -117,14 +117,6 @@ class CmdAddNode(ClusterCompleter):
             default=False, help="if set, instances of type " +
             str(static.CLUSTER_TYPES) + " will not use the placement group")
 
-    def _get_duplicate(self, lst):
-        d = {}
-        for item in lst:
-            if item in d:
-                return item
-            else:
-                d[item] = 0
-
     def execute(self, args):
         if len(args) != 1:
             self.parser.error("please specify a cluster <cluster_tag>")

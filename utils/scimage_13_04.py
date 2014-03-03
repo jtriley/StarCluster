@@ -59,11 +59,11 @@ APT_SOURCES_FILE = "/etc/apt/sources.list"
 BUILD_UTILS_PKGS = "build-essential devscripts debconf debconf-utils dpkg-dev "
 BUILD_UTILS_PKGS += "python-dev python-setuptools python-pip python-nose rar "
 BUILD_UTILS_PKGS += "python-distutils-extra gfortran unzip unace cdbs patch "
-CLOUD_CFG_FILE = '/etc/cloud/cloud.cfg'
 GRID_SCHEDULER_GIT = 'git://github.com/jtriley/gridscheduler.git'
 CLOUDERA_ARCHIVE_KEY = 'http://archive.cloudera.com/debian/archive.key'
 CLOUDERA_APT = 'http://archive.cloudera.com/debian squeeze-cdh3u5 contrib'
-PPAS = ["ppa:staticfloat/julia-deps", "ppa:justin-t-riley/starcluster"]
+PPAS = ["ppa:staticfloat/julia-deps", "ppa:justin-t-riley/starcluster",
+        "ppa:staticfloat/julianightlies"]
 STARCLUSTER_MOTD = """\
 #!/bin/sh
 cat<<"EOF"
@@ -89,7 +89,7 @@ This AMI Contains:
   * NumPy/SciPy linked against OpenBlas
   * Pandas - Data Analysis Library
   * IPython 1.1.0 with parallel and notebook support
-  * Julia 0.2prerelease with IJulia
+  * Julia 0.3pre
   * and more! (use 'dpkg -l' to show all installed packages)
 
 Open Grid Scheduler/Condor cheat sheet:
@@ -106,48 +106,6 @@ EOF
 
 landscape-sysinfo | grep -iv 'graph this data'
 """
-CLOUD_INIT_CFG = """\
-user: ubuntu
-disable_root: 0
-preserve_hostname: False
-# datasource_list: [ "NoCloud", "OVF", "Ec2" ]
-
-cloud_init_modules:
- - bootcmd
- - resizefs
- - set_hostname
- - update_hostname
- - update_etc_hosts
- - rsyslog
- - ssh
-
-cloud_config_modules:
- - mounts
- - ssh-import-id
- - locale
- - set-passwords
- - grub-dpkg
- - timezone
- - puppet
- - chef
- - mcollective
- - disable-ec2-metadata
- - runcmd
-
-cloud_final_modules:
- - rightscale_userdata
- - scripts-per-once
- - scripts-per-boot
- - scripts-per-instance
- - scripts-user
- - keys-to-console
- - final-message
-
-apt_sources:
- - source: deb $MIRROR $RELEASE multiverse
- - source: deb %(CLOUDERA_APT)s
- - source: deb-src %(CLOUDERA_APT)s
-""" % dict(CLOUDERA_APT=CLOUDERA_APT)
 
 
 def run_command(cmd, ignore_failure=False, failure_callback=None,
@@ -258,7 +216,7 @@ def install_gridscheduler():
     run_command('%s ./aimk -only-depend' % env)
     run_command('%s scripts/zerodepend' % env)
     run_command('%s ./aimk depend' % env)
-    run_command('%s ./aimk -no-secure -no-gui-inst' % env)
+    run_command('%s ./aimk -no-secure -no-gui-inst -man' % env)
     sge_root = '/opt/sge6-fresh'
     os.mkdir(sge_root)
     env += ' SGE_ROOT=%s' % sge_root
@@ -412,19 +370,20 @@ def install_ipython():
 
 
 def install_julia():
-    chdir(SRC_DIR)
-    apt_install('zlib1g-dev patchelf llvm-3.3-dev libsuitesparse-dev '
-                'libncurses5-dev libopenblas-dev liblapack-dev '
-                'libarpack2-dev libfftw3-dev libgmp-dev libpcre3-dev '
-                'libunwind8-dev libreadline-dev libdouble-conversion-dev '
-                'libopenlibm-dev librmath-dev libmpfr-dev')
-    run_command('git clone git://github.com/JuliaLang/julia.git')
-    buildopts = 'LLVM_CONFIG=llvm-config-3.3 VERBOSE=1 USE_BLAS64=0 '
-    libs = ['LLVM', 'ZLIB', 'SUITESPARSE', 'ARPACK', 'BLAS', 'FFTW', 'LAPACK',
-            'GMP', 'MPFR', 'PCRE', 'LIBUNWIND', 'READLINE', 'GRISU',
-            'OPENLIBM', 'RMATH']
-    buildopts += ' '.join(['USE_SYSTEM_%s=1' % lib for lib in libs])
-    run_command('cd julia && make %s PREFIX=/usr install' % buildopts)
+    #chdir(SRC_DIR)
+    #apt_install('zlib1g-dev patchelf llvm-3.3-dev libsuitesparse-dev '
+    #            'libncurses5-dev libopenblas-dev liblapack-dev '
+    #            'libarpack2-dev libfftw3-dev libgmp-dev libpcre3-dev '
+    #            'libunwind8-dev libreadline-dev libdouble-conversion-dev '
+    #            'libopenlibm-dev librmath-dev libmpfr-dev')
+    #run_command('git clone git://github.com/JuliaLang/julia.git')
+    #buildopts = 'LLVM_CONFIG=llvm-config-3.3 VERBOSE=1 USE_BLAS64=0 '
+    #libs = ['LLVM', 'ZLIB', 'SUITESPARSE', 'ARPACK', 'BLAS', 'FFTW', 'LAPACK',
+    #        'GMP', 'MPFR', 'PCRE', 'LIBUNWIND', 'READLINE', 'GRISU',
+    #        'OPENLIBM', 'RMATH']
+    #buildopts += ' '.join(['USE_SYSTEM_%s=1' % lib for lib in libs])
+    #run_command('cd julia && make %s PREFIX=/usr install' % buildopts)
+    apt_install("julia")
 
 
 def configure_motd():
@@ -434,13 +393,6 @@ def configure_motd():
     motd.write(STARCLUSTER_MOTD)
     motd.close()
     os.chmod(motd.name, 0755)
-
-
-def configure_cloud_init():
-    """docstring for configure_cloud_init"""
-    cloudcfg = open('/etc/cloud/cloud.cfg', 'w')
-    cloudcfg.write(CLOUD_INIT_CFG)
-    cloudcfg.close()
 
 
 def configure_bash():
@@ -493,7 +445,7 @@ mysql-server mysql-server/root_password_again seen true
     pkgs += "ksh csh tcsh ec2-api-tools ec2-ami-tools mysql-server "
     pkgs += "mysql-client apache2 libapache2-mod-wsgi nginx sysv-rc-conf "
     pkgs += "pssh emacs irssi htop vim-scripts mosh default-jdk mpich2 xvfb "
-    pkgs += "openmpi-bin libopenmpi-dev libopenblas-dev liblapack-dev"
+    pkgs += "openmpi-bin libopenmpi-dev libopenblas-dev liblapack-dev julia"
     apt_install(pkgs)
 
 
@@ -505,8 +457,7 @@ def configure_init():
 
 
 def cleanup():
-    run_command('rm -f /etc/resolv.conf')
-    run_command('rm -rf /var/run/resolvconf')
+    run_command('rm -rf /run/resolvconf')
     run_command('rm -f /etc/mtab')
     run_command('rm -rf /root/*')
     exclude = ['/root/.bashrc', '/root/.profile', '/root/.bash_aliases']
@@ -532,7 +483,6 @@ def main():
         return
     setup_environ()
     configure_motd()
-    configure_cloud_init()
     configure_bash()
     configure_apt_sources()
     upgrade_packages()
@@ -541,10 +491,10 @@ def main():
     install_default_packages()
     install_python_packages()
     # Only use these to build the packages locally
-    # These should normally be installed from the StarCluster PPA
+    # These should normally be installed from the PPAs
     #install_openblas()
     #install_openmpi()
-    install_julia()
+    #install_julia()
     install_gridscheduler()
     install_condor()
     install_hadoop()

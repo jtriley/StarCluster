@@ -318,8 +318,8 @@ template in detail.
 | cluster_shell        | No       | Sets the cluster user's shell (default: bash, options: bash, zsh, csh, ksh,     |
 |                      |          | tcsh)                                                                           |
 +----------------------+----------+---------------------------------------------------------------------------------+
-| dns_prefix           | No       | If True, prefixes the dns name of nodes with the cluster tag.                   |
-|                      |          | For example:  master --> mycluster-master                                       |
+| dns_prefix           | No       | If True, prefixes the dns name of nodes with the cluster tag. For example:      |
+|                      |          | master --> mycluster-master                                                     |
 +----------------------+----------+---------------------------------------------------------------------------------+
 | master_image_id      | No       | The AMI to use for the master node. (defaults to **node_image_id**)             |
 +----------------------+----------+---------------------------------------------------------------------------------+
@@ -349,10 +349,81 @@ template in detail.
 | disable_queue        | No       | Disables the setup and configuration of the Open Grid Scheduler (OGS, formerly  |
 |                      |          | SGE)                                                                            |
 +----------------------+----------+---------------------------------------------------------------------------------+
-| disable_cloudinit    | No       | Do not use cloudinit for cluster accounting (only required if using non-        |
-|                      |          | cloudinit enabled AMIs)                                                         |
+| disable_cloudinit    | No       | Do not use cloudinit for cluster accounting (only required if using             |
+|                      |          | non-cloudinit enabled AMIs)                                                     |
++----------------------+----------+---------------------------------------------------------------------------------+
+| subnet_id            | No       | The VPC subnet to use when launching cluster instances                          |
++----------------------+----------+---------------------------------------------------------------------------------+
+| public_ips           | No       | Automatically assign a public IP address to all VPC cluster instances. Set to   |
+|                      |          | False to disable public IP addresses from being assigned to your VPC cluster    |
+|                      |          | instances. **WARNING**: If set to False StarCluster must be used from a machine |
+|                      |          | within the VPC in order to connect to the cluster. Default is `True`.           |
 +----------------------+----------+---------------------------------------------------------------------------------+
 
+.. _using-vpc:
+
+Using the Virtual Private Cloud (VPC)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+From Amazon's `VPC page <http://aws.amazon.com/vpc/>`_:
+
+    "Amazon Virtual Private Cloud (Amazon VPC) lets you provision a logically
+    isolated section of the Amazon Web Services (AWS) Cloud where you can
+    launch AWS resources in a virtual network that you define. You have
+    complete control over your virtual networking environment, including
+    selection of your own IP address range, creation of subnets, and
+    configuration of route tables and network gateways."
+
+New AWS accounts use VPC by default and StarCluster supports this configuration
+without user intervention. However, users with `custom` configured VPCs need to
+pay attention to two additional cluster settings: **subnet_id** and
+**public_ips**. In order to launch your clusters within a specific VPC you will
+at least need to specify the VPC subnet id in your config:
+
+.. code-block:: ini
+
+    [cluster smallcluster]
+    keyname = mykeypair1
+    cluster_size = 2
+    node_image_id = ami-0330d16a
+    node_instance_type = m1.small
+    subnet_id = subnet-99999999
+
+Alternatively, you can specify (or override) the subnet id at runtime via the
+``--subnet-id`` (``-N``) option to the ``start`` command::
+
+    $ starcluster start -N subnet-88888888 mycluster
+
+By default StarCluster automatically assigns a public IP address to all VPC
+cluster instances so that it can connect from anywhere. If you prefer not to be
+able to connect to the cluster outside of the VPC you should also set
+**public_ips** to ``False`` in your cluster template:
+
+.. warning::
+
+    Disabling public IPs means that StarCluster must be used from a machine
+    within the VPC in order to connect to the cluster.
+
+.. code-block:: ini
+
+    [cluster smallcluster]
+    keyname = mykeypair1
+    cluster_size = 2
+    node_image_id = ami-0330d16a
+    node_instance_type = m1.small
+    subnet_id = subnet-99999999
+    public_ips = False
+
+This will disable automatically assigning an IP address to all cluster
+instances and instead rely on your custom VPC network configuration. You can
+also disable public ips using the ``--no-public-ips`` option to the
+``start`` command::
+
+    $ starcluster start -N subnet-88888888 --no-public-ips mycluster
+
+.. note::
+
+    The ``--no-public-ips`` option only applies to VPC clusters - this feature
+    is not available for non-VPC clusters.
 
 Defining Multiple Cluster Templates
 -----------------------------------
