@@ -1152,7 +1152,8 @@ class Cluster(object):
         """
         Launches all EC2 instances based on this cluster's settings.
         """
-        log.info("Launching a %d-node cluster..." % self.cluster_size)
+        log.info("Launching a %d-node %s" % (self.cluster_size, ' '.join(
+            ['VPC' if self.subnet_id else '', 'cluster...']).strip()))
         mtype = self.master_instance_type or self.node_instance_type
         self.master_instance_type = mtype
         if self.spot_bid:
