@@ -88,10 +88,12 @@ class IPCluster(DefaultClusterSetup):
     notebook_directory = /home/user/notebooks
     packer = pickle
     log_level = info
-
+    n_engines_per_node = 1 (optional, defauls to num_processors)
+    n_engines_master = 1 (optional, defauls to num_processors - 1)
     """
     def __init__(self, enable_notebook=False, notebook_passwd=None,
-                 notebook_directory=None, packer=None, log_level='INFO'):
+                 notebook_directory=None, packer=None, n_engines_per_node=None,
+                 n_engines_master=None, log_level='INFO'):
         super(IPCluster, self).__init__()
         if isinstance(enable_notebook, basestring):
             self.enable_notebook = enable_notebook.lower().strip() == 'true'
@@ -99,6 +101,17 @@ class IPCluster(DefaultClusterSetup):
             self.enable_notebook = enable_notebook
         self.notebook_passwd = notebook_passwd or utils.generate_passwd(16)
         self.notebook_directory = notebook_directory
+
+        if n_engines_per_node is None:
+            self.n_engines_per_node = None
+        else:
+            self.n_engines_per_node = int(n_engines_per_node)
+
+        if n_engines_master is None:
+            self.n_engines_master = None
+        else:
+            self.n_engines_master = int(n_engines_master)
+
         self.log_level = log_level
         if packer not in (None, 'json', 'pickle', 'msgpack'):
             log.error("Unsupported packer: %s", packer)
@@ -163,13 +176,13 @@ class IPCluster(DefaultClusterSetup):
         f.close()
 
     def _start_cluster(self, master, profile_dir):
-        n_engines = max(1, master.num_processors - 1)
+        self.n_engines_master = self.n_engines_master or max(1, master.num_processors - 1)
         log.info("Starting the IPython controller and %i engines on master"
-                 % n_engines)
+                 % self.n_engines_master)
         # cleanup existing connection files, to prevent their use
         master.ssh.execute("rm -f %s/security/*.json" % profile_dir)
         master.ssh.execute("ipcluster start --n=%i --delay=5 --daemonize"
-                           % n_engines)
+                           % self.n_engines_master)
         # wait for JSON file to exist
         json_filename = '%s/security/ipcontroller-client.json' % profile_dir
         log.info("Waiting for JSON connector file...",
@@ -213,7 +226,7 @@ class IPCluster(DefaultClusterSetup):
         # the connector file: let's open everything in high port numbers
         if not channel_authorized:
             self._authorize_port(master, (1000, 65535), "IPython controller")
-        return local_json, n_engines
+        return local_json, self.n_engines_master
 
     def _start_notebook(self, master, user, profile_dir):
         log.info("Setting up IPython web notebook for user: %s" % user)
@@ -290,9 +303,9 @@ class IPCluster(DefaultClusterSetup):
         non_master_nodes = [node for node in nodes if not node.is_master()]
         for node in non_master_nodes:
             self.pool.simple_job(
-                _start_engines, (node, user, node.num_processors),
+                _start_engines, (node, user, self.n_engines_per_node or node.num_processors),
                 jobid=node.alias)
-        n_engines_non_master = sum(node.num_processors
+        n_engines_non_master = sum(self.n_engines_per_node or node.num_processors
                                    for node in non_master_nodes)
         if len(non_master_nodes) > 0:
             log.info("Adding %d engines on %d nodes",
@@ -310,7 +323,7 @@ class IPCluster(DefaultClusterSetup):
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         self._check_ipython_installed(node)
-        n_engines = node.num_processors
+        n_engines = self.n_engines_per_node or node.num_processors
         log.info("Adding %d engines on %s", n_engines, node.alias)
         _start_engines(node, user)
 
@@ -364,14 +377,37 @@ class IPClusterRestartEngines(DefaultClusterSetup):
     This plugin is meant to be run manually with:
 
       starcluster runplugin plugin_conf_name cluster_name
+    
+
+    Example config:    
+    [plugin restartipcluster]
+    setup_class = starcluster.plugins.ipcluster.IPClusterRestartEngines
+    n_engines_per_node = 1 (optional, defauls to num_processors)
+    n_engines_master = 1 (optional, defauls to num_processors - 1)
 
     """
+    def __init__(self, n_engines_per_node=None,
+                 n_engines_master=None, log_level='INFO'):
+        super(IPClusterRestartEngines, self).__init__()
+
+        if n_engines_per_node is None:
+            self.n_engines_per_node = None
+        else:
+            self.n_engines_per_node = int(n_engines_per_node)
+
+        if n_engines_master is None:
+            self.n_engines_master = None
+        else:
+            self.n_engines_master = int(n_engines_master)
+
+
     def run(self, nodes, master, user, user_shell, volumes):
         n_total = 0
         for node in nodes:
-            n_engines = node.num_processors
-            if node.is_master() and n_engines > 2:
-                n_engines -= 1
+            if node.is_master():
+                n_engines = self.n_engines_master or node.num_processors -1
+            else:
+                n_engines = self.n_engines_per_node or node.num_processors
             self.pool.simple_job(
                 _start_engines, (node, user, n_engines, True),
                 jobid=node.alias)
