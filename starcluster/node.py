@@ -1098,7 +1098,7 @@ class Node(object):
                            hour. Spot instances cannot be stopped so they will
                            be terminated instead. Defaults to False.
         """
-        now = datetime.datetime.utcnow()
+        now = utils.get_utc_now()
         reboots = 0
         if reboot_interval:
             reboot_time = now + datetime.timedelta(minutes=reboot_interval)
@@ -1112,7 +1112,7 @@ class Node(object):
                 log.info(self.alias + " is impaired.")
                 if self.handle_irresponsive_node():
                     break
-            now = datetime.datetime.utcnow()
+            now = utils.get_utc_now()
             if reboot_interval and now > reboot_time:
                 if n_reboot_restart and restart_at == reboots:
                     log.info("Restart interval reached")
@@ -1124,7 +1124,7 @@ class Node(object):
                              self.alias)
                     self.reboot()
                     reboots += 1
-                reboot_time = datetime.datetime.utcnow() + \
+                reboot_time = utils.get_utc_now() + \
                     datetime.timedelta(minutes=reboot_interval)
             time.sleep(interval)
 

@@ -1533,14 +1533,14 @@ class Cluster(object):
         pbar = self.progress_bar.reset()
         pbar.maxval = len(nodes)
         pbar.update(0)
-        now = datetime.datetime.utcnow()
+        now = utils.get_utc_now()
         timeout = now + datetime.timedelta(minutes=kill_pending_after_mins)
         while not pbar.finished:
             running_nodes = [n for n in nodes if n.state == "running"]
             pbar.maxval = len(nodes)
             pbar.update(len(running_nodes))
             if not pbar.finished:
-                if datetime.datetime.utcnow() > timeout:
+                if utils.get_utc_now() > timeout:
                     pending = [n for n in nodes if n not in running_nodes]
                     log.warn("%d nodes have been pending for >= %d mins "
                              "- terminating" % (len(pending),
@@ -1949,7 +1949,7 @@ class Cluster(object):
                             else:
                                 dt = utils\
                                     .iso_to_datetime_tuple(node.launch_time)
-                                now = datetime.datetime.utcnow()
+                                now = utils.get_utc_now()
                                 t_delta = now - dt
                                 if (t_delta.seconds / 60) % 60 \
                                         > remove_on_error:
