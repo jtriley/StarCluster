@@ -17,6 +17,7 @@
 
 """
 A starcluster plugin for running an IPython cluster
+using supervisord to watch processes and restart as necessary.
 (requires IPython 0.13+)
 """
 import json
@@ -77,7 +78,7 @@ def _start_engines(node, user, n_engines=None, kill_existing=False):
     node.ssh.switch_user('root')
 
 
-class IPClusterSupervisord(DefaultClusterSetup):
+class IPCluster(DefaultClusterSetup):
     """Start an IPython (>= 0.13) cluster
 
     Example config:
@@ -368,7 +369,7 @@ class IPClusterSupervisord(DefaultClusterSetup):
         raise NotImplementedError("on_remove_node method not implemented")
 
 
-class IPClusterSupervisordStop(DefaultClusterSetup):
+class IPClusterStop(DefaultClusterSetup):
     """Shutdown all the IPython processes of the cluster
 
     This plugin is meant to be run manually with:
@@ -404,7 +405,7 @@ class IPClusterSupervisordStop(DefaultClusterSetup):
         raise NotImplementedError("on_remove_node method not implemented")
 
 
-class IPClusterSupervisordRestartEngines(DefaultClusterSetup):
+class IPClusterRestartEngines(DefaultClusterSetup):
     """Plugin to kill and restart all engines of an IPython cluster
 
     This plugin can be useful to hard-reset the all the engines, for instance
