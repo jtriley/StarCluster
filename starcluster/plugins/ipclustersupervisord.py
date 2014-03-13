@@ -187,7 +187,7 @@ class IPCluster(DefaultClusterSetup):
             "[program:ipengine]",
             "command=ipcluster engines --n=%i" % self.n_engines_per_node,
             "directory=/home/%s" % user,
-            "user=%s" % user
+            "user=%s" % user,
             "",
         ]))
         f.close()
