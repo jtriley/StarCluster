@@ -199,7 +199,7 @@ class IPCluster(DefaultClusterSetup):
             "pidfile = /tmp/ipcontroller.pid",
             "",
             "[program:ipcontroller]",
-            "command=ipcluster start --delay=5",
+            "command=ipcluster start --n=0 --delay=5",
             "directory=/home/%s" % user,
             "user=%s" % user,
             "",
