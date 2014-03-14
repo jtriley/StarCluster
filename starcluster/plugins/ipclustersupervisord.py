@@ -93,7 +93,8 @@ class IPCluster(DefaultClusterSetup):
     """
     def __init__(self, enable_notebook=False, notebook_passwd=None,
                  notebook_directory=None, packer=None, n_engines_per_node=None,
-                 n_engines_master=None, log_level='INFO'):
+                 n_engines_master=None,
+                 hub_db_class='IPython.parallel.controller.dictdb.NoDB', log_level='INFO'):
         super(IPCluster, self).__init__()
         if isinstance(enable_notebook, basestring):
             self.enable_notebook = enable_notebook.lower().strip() == 'true'
@@ -102,6 +103,7 @@ class IPCluster(DefaultClusterSetup):
         self.notebook_passwd = notebook_passwd or utils.generate_passwd(16)
         self.notebook_directory = notebook_directory
 
+        self.hub_db_class = hub_db_class
         if n_engines_per_node is None:
             self.n_engines_per_node = None
         else:
@@ -139,6 +141,7 @@ class IPCluster(DefaultClusterSetup):
             "c.HubFactory.ip='%s'" % master.private_ip_address,
             "c.IPControllerApp.ssh_server='%s'" % ssh_server,
             "c.Application.log_level = '%s'" % self.log_level,
+            "c.HubFactory.db_class = '%s'" % self.hub_db_class,
             "",
         ]))
         f.close()
@@ -188,6 +191,7 @@ class IPCluster(DefaultClusterSetup):
             "command=ipcluster engines --n=%i" % self.n_engines_per_node,
             "directory=/home/%s" % user,
             "user=%s" % user,
+            "autorestart=true",
             "",
         ]))
         f.close()
@@ -202,6 +206,7 @@ class IPCluster(DefaultClusterSetup):
             "command=ipcluster start --n=0 --delay=5",
             "directory=/home/%s" % user,
             "user=%s" % user,
+            "autorestart=true",
             "",
         ]))
         f.close()
