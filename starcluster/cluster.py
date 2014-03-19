@@ -411,7 +411,7 @@ class Cluster(object):
                  force_spot_master=False,
                  disable_cloudinit=False,
                  subnet_id=None,
-                 public_ips=True,
+                 public_ips=None,
                  **kwargs):
         # update class vars with given vars
         _vars = locals().copy()
@@ -1152,7 +1152,8 @@ class Cluster(object):
         """
         Launches all EC2 instances based on this cluster's settings.
         """
-        log.info("Launching a %d-node cluster..." % self.cluster_size)
+        log.info("Launching a %d-node %s" % (self.cluster_size, ' '.join(
+            ['VPC' if self.subnet_id else '', 'cluster...']).strip()))
         mtype = self.master_instance_type or self.node_instance_type
         self.master_instance_type = mtype
         if self.spot_bid:
@@ -2235,12 +2236,27 @@ class ClusterValidator(validators.Validator):
                 raise exception.ClusterValidationError(
                     "Not enough IP addresses available in %s (%d)" %
                     (self.cluster.subnet.id, ip_count))
-        elif not self.cluster.public_ips:
+            if self.cluster.public_ips:
+                gws = self.cluster.ec2.get_internet_gateways(filters={
+                    'attachment.vpc-id': self.cluster.subnet.vpc_id})
+                if not gws:
+                    raise exception.ClusterValidationError(
+                        "No internet gateway attached to VPC: %s" %
+                        self.cluster.subnet.vpc_id)
+                rtables = self.cluster.ec2.get_route_tables(filters={
+                    'association.subnet-id': self.cluster.subnet_id,
+                    'route.destination-cidr-block': static.WORLD_CIDRIP,
+                    'route.gateway-id': gws[0].id})
+                if not rtables:
+                    raise exception.ClusterValidationError(
+                        "No route to %s found for subnet: %s" %
+                        (static.WORLD_CIDRIP, self.cluster.subnet_id))
+            else:
+                log.warn(user_msgs.public_ips_disabled %
+                         dict(vpc_id=self.cluster.subnet.vpc_id))
+        elif self.cluster.public_ips is False:
             raise exception.ClusterValidationError(
                 "Only VPC clusters can disable public IP addresses")
-        if not self.cluster.public_ips:
-            log.warn(user_msgs.public_ips_disabled %
-                     dict(vpc_id=self.cluster.subnet.vpc_id))
 
 
 if __name__ == "__main__":

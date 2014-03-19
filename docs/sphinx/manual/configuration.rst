@@ -349,15 +349,17 @@ template in detail.
 | disable_queue        | No       | Disables the setup and configuration of the Open Grid Scheduler (OGS, formerly  |
 |                      |          | SGE)                                                                            |
 +----------------------+----------+---------------------------------------------------------------------------------+
-| disable_cloudinit    | No       | Do not use cloudinit for cluster accounting (only required if using             |
-|                      |          | non-cloudinit enabled AMIs)                                                     |
+| disable_cloudinit    | No       | Do not use cloudinit for cluster accounting (only required if using non-        |
+|                      |          | cloudinit enabled AMIs)                                                         |
 +----------------------+----------+---------------------------------------------------------------------------------+
 | subnet_id            | No       | The VPC subnet to use when launching cluster instances                          |
 +----------------------+----------+---------------------------------------------------------------------------------+
-| public_ips           | No       | Automatically assign a public IP address to all VPC cluster instances. Set to   |
-|                      |          | False to disable public IP addresses from being assigned to your VPC cluster    |
-|                      |          | instances. **WARNING**: If set to False StarCluster must be used from a machine |
-|                      |          | within the VPC in order to connect to the cluster. Default is `True`.           |
+| public_ips           | No       | Automatically assign public IP addresses to all VPC cluster instances. Default  |
+|                      |          | is `False`.                                                                     |
+|                      |          |                                                                                 |
+|                      |          | **WARNING**: Enabling public IPs exposes your VPC cluster nodes to the internet |
+|                      |          | which may not be desirable. This option also requires a special VPC             |
+|                      |          | configuration - see :ref:`connect-vpc`                                          |
 +----------------------+----------+---------------------------------------------------------------------------------+
 
 .. _using-vpc:
@@ -373,11 +375,11 @@ From Amazon's `VPC page <http://aws.amazon.com/vpc/>`_:
     selection of your own IP address range, creation of subnets, and
     configuration of route tables and network gateways."
 
-New AWS accounts use VPC by default and StarCluster supports this configuration
-without user intervention. However, users with `custom` configured VPCs need to
-pay attention to two additional cluster settings: **subnet_id** and
-**public_ips**. In order to launch your clusters within a specific VPC you will
-at least need to specify the VPC subnet id in your config:
+New AWS accounts use VPC by default via the `default VPC
+<http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/default-vpc.html>`_ and
+StarCluster supports this configuration without user intervention. However,
+users that wish to launch clusters in a **non-default** VPC must also provide
+the **subnet_id** setting in their cluster template(s):
 
 .. code-block:: ini
 
@@ -388,20 +390,40 @@ at least need to specify the VPC subnet id in your config:
     node_instance_type = m1.small
     subnet_id = subnet-99999999
 
-Alternatively, you can specify (or override) the subnet id at runtime via the
+Alternatively, users can specify or override the subnet ID at runtime via the
 ``--subnet-id`` (``-N``) option to the ``start`` command::
 
     $ starcluster start -N subnet-88888888 mycluster
 
-By default StarCluster automatically assigns a public IP address to all VPC
-cluster instances so that it can connect from anywhere. If you prefer not to be
-able to connect to the cluster outside of the VPC you should also set
-**public_ips** to ``False`` in your cluster template:
+.. _connect-vpc:
+
+Connecting to a VPC Cluster
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+By default StarCluster does **not** automatically assign a public IP address to
+all VPC cluster instances which means **you must be on a machine within the VPC
+in order to successfully create, connect, and configure a cluster in the VPC**
+- otherwise StarCluster will hang indefinitely trying to connect to the nodes.
+StarCluster does not assign public IPs by default for two reasons:
+
+1. It opens the VPC to the internet which is a security risk
+2. It requires a special VPC configuration before it can be used successfully
+
+Specifically, your non-default VPC must have:
+
+1. An internet gateway attached to the VPC
+2. A route table entry linked to the internet gateway and associated with the
+   cluster's VPC subnet that has a destination CIDR block of ``0.0.0.0/0``
+
+StarCluster will raise a validation error if public IPs are requested and these
+requirements are not met. Assuming you're aware of the risks and have
+configured your VPC as mentioned above you can enable public IP addresses by
+setting ``public_ips=True`` in your cluster config:
 
 .. warning::
 
-    Disabling public IPs means that StarCluster must be used from a machine
-    within the VPC in order to connect to the cluster.
+    Enabling public IPs means that all VPC cluster nodes will be accessible
+    from the internet which may not be desirable depending on your
+    network/security requirements.
 
 .. code-block:: ini
 
@@ -411,19 +433,24 @@ able to connect to the cluster outside of the VPC you should also set
     node_image_id = ami-0330d16a
     node_instance_type = m1.small
     subnet_id = subnet-99999999
-    public_ips = False
+    public_ips = True
 
-This will disable automatically assigning an IP address to all cluster
-instances and instead rely on your custom VPC network configuration. You can
-also disable public ips using the ``--no-public-ips`` option to the
-``start`` command::
+This configuration will launch a cluster in a non-default VPC subnet and
+automatically assign a public IP address to all VPC cluster instances. You can
+also enable public IPs using the ``--public-ips`` option to the ``start``
+command::
 
-    $ starcluster start -N subnet-88888888 --no-public-ips mycluster
+    $ starcluster start -N subnet-88888888 --public-ips mycluster
 
 .. note::
 
-    The ``--no-public-ips`` option only applies to VPC clusters - this feature
-    is not available for non-VPC clusters.
+    The ``--public-ips`` option only applies to **non-default** VPC clusters -
+    this option is *not* needed for clusters using the default VPC or EC2
+    classic. Both the default VPC and EC2 classic assign public IPs
+    automatically.
+
+Once public IPs have been enabled you can launch a cluster inside the VPC from
+a machine (e.g. your laptop) outside the VPC.
 
 Defining Multiple Cluster Templates
 -----------------------------------
