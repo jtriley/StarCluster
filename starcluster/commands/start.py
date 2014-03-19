@@ -74,6 +74,9 @@ class CmdStart(ClusterCompleter):
         parser.add_option("-q", "--disable-queue", dest="disable_queue",
                           action="store_true", default=None,
                           help="do not configure a queueing system (SGE)")
+        parser.add_option("-Q", "--enable-queue", dest="disable_queue",
+                          action="store_false", default=None,
+                          help="configure a queueing system (SGE) (default)")
         parser.add_option("--force-spot-master",
                           dest="force_spot_master", action="store_true",
                           default=None, help="when creating a spot cluster "
@@ -81,10 +84,19 @@ class CmdStart(ClusterCompleter):
                           "a flat-rate instance for stability. this option "
                           "forces launching the master node as a spot "
                           "instance when a spot cluster is requested.")
+        parser.add_option("--no-spot-master", dest="force_spot_master",
+                          action="store_false", default=None,
+                          help="Do not launch the master node as a spot "
+                          "instance when a spot cluster is requested. "
+                          "(default)")
+        parser.add_option("--public-ips", dest="public_ips",
+                          default=None, action='store_true',
+                          help="Assign public IPs to all VPC nodes "
+                          "(VPC clusters only)"),
         parser.add_option("--no-public-ips", dest="public_ips",
                           default=None, action='store_false',
-                          help=("Do not automatically assign a public ip to "
-                                "all nodes (VPC clusters only)"))
+                          help="Do NOT assign public ips to all VPC nodes "
+                          "(VPC clusters only) (default)"),
         opt = parser.add_option("-c", "--cluster-template", action="store",
                                 dest="cluster_template", choices=templates,
                                 default=None, help="cluster template to use "
@@ -159,8 +171,12 @@ class CmdStart(ClusterCompleter):
                           "each node on start-up. Can be used multiple times.")
         parser.add_option("-P", "--dns-prefix", dest="dns_prefix",
                           action='store_true',
-                          help=("Prefix dns names of all nodes in the cluster "
-                                "with the cluster tag"))
+                          help="Prefix dns names of all nodes in the cluster "
+                          "with the cluster tag")
+        parser.add_option("-p", "--no-dns-prefix", dest="dns_prefix",
+                          action='store_false',
+                          help="Do NOT prefix dns names of all nodes in the "
+                          "cluster with the cluster tag (default)")
         parser.add_option("-N", "--subnet-id", dest="subnet_id",
                           action="store", type="string",
                           help=("Launch cluster into a VPC subnet"))

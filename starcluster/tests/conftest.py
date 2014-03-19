@@ -61,13 +61,32 @@ def vpc(ec2):
 
 
 @pytest.fixture(scope="module")
-def subnet(ec2, vpc):
+def gw(ec2, vpc):
+    igw = ec2.conn.get_all_internet_gateways(
+        filters={'attachment.vpc-id': vpc.id})
+    if not igw:
+        gw = ec2.conn.create_internet_gateway()
+        ec2.conn.attach_internet_gateway(gw.id, vpc.id)
+    else:
+        gw = igw.pop()
+    return gw
+
+
+@pytest.fixture(scope="module")
+def subnet(ec2, vpc, gw):
     subnets = ec2.conn.get_all_subnets(
         filters={'vpcId': vpc.id, 'cidrBlock': SUBNET_CIDR})
     if not subnets:
         subnet = ec2.conn.create_subnet(vpc.id, SUBNET_CIDR)
     else:
         subnet = subnets.pop()
+    rtables = ec2.get_route_tables(filters={'vpc-id': vpc.id})
+    if not rtables:
+        rt = ec2.conn.create_route_table(vpc.id)
+    else:
+        rt = rtables.pop()
+    ec2.conn.associate_route_table(rt.id, subnet.id)
+    ec2.conn.create_route(rt.id, static.WORLD_CIDRIP, gateway_id=gw.id)
     return subnet
 
 
@@ -87,6 +106,7 @@ def cluster(request, ec2, keypair, subnet, ami):
     shell = 'bash'
     user = 'testuser'
     subnet_id = subnet.id if 'vpc' in request.param else None
+    public_ips = True if 'vpc' in request.param else None
     spot_bid = 0.08 if 'spot' in request.param else None
     instance_type = 't1.micro'
     cl = scluster.Cluster(ec2_conn=ec2,
@@ -99,9 +119,10 @@ def cluster(request, ec2, keypair, subnet, ami):
                           master_instance_type=instance_type,
                           master_image_id=ami.id,
                           node_instance_type=instance_type,
-                          node_image_id=ami,
+                          node_image_id=ami.id,
                           spot_bid=spot_bid,
-                          subnet_id=subnet_id)
+                          subnet_id=subnet_id,
+                          public_ips=public_ips)
     cl.start()
     assert cl.master_node
     assert len(cl.nodes) == size

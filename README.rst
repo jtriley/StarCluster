@@ -1,8 +1,8 @@
 ===================
-StarCluster v0.95.2
+StarCluster v0.95.3
 ===================
 :StarCluster: Cluster Computing Toolkit for the Cloud
-:Version: 0.95.2
+:Version: 0.95.3
 :Author: Justin Riley <justin.t.riley@gmail.com>
 :Team: Software Tools for Academics and Researchers (http://star.mit.edu)
 :Homepage: http://star.mit.edu/cluster
