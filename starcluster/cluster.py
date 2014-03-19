@@ -1027,7 +1027,7 @@ class Cluster(object):
         user_data = self._get_cluster_userdata(aliases)
         kwargs = dict(price=spot_bid, instance_type=instance_type,
                       min_count=count, max_count=count, count=count,
-                      key_name=self.keyname, security_groups=[cluster_sg],
+                      key_name=self.keyname,
                       availability_zone_group=availability_zone_group,
                       launch_group=launch_group,
                       placement=zone or getattr(self.zone, 'name', None),
