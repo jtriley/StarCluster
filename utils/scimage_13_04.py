@@ -57,7 +57,7 @@ import multiprocessing
 SRC_DIR = "/usr/local/src"
 APT_SOURCES_FILE = "/etc/apt/sources.list"
 BUILD_UTILS_PKGS = "build-essential devscripts debconf debconf-utils dpkg-dev "
-BUILD_UTILS_PKGS += "python-dev python-setuptools python-pip python-nose rar "
+BUILD_UTILS_PKGS += "python-dev python-setuptools python-pip python-nose "
 BUILD_UTILS_PKGS += "python-distutils-extra gfortran unzip unace cdbs patch "
 GRID_SCHEDULER_GIT = 'git://github.com/jtriley/gridscheduler.git'
 CLOUDERA_ARCHIVE_KEY = 'http://archive.cloudera.com/debian/archive.key'
@@ -188,7 +188,7 @@ def configure_apt_sources():
     apt_install('debian-archive-keyring')
     for ppa in PPAS:
         run_command('add-apt-repository %s -y -s' % ppa)
-
+    run_command("sudo sed -i.dist 's,universe$,universe multiverse,' /etc/apt/sources.list")
 
 def upgrade_packages():
     apt_command('update')
