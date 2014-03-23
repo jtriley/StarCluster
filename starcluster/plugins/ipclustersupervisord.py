@@ -192,6 +192,8 @@ class IPCluster(DefaultClusterSetup):
             "directory=/home/%s" % user,
             "user=%s" % user,
             "autorestart=true",
+            "stdout_logfile=/home/sgeadmin/.ipython/profile_default/stdout_engine_%(host_node_name)s_%(process_num)s.log",
+            "stderr_logfile=/home/sgeadmin/.ipython/profile_default/stderr_engine_%(host_node_name)s_%(process_num)s.log",
             "",
         ]))
         f.close()
@@ -207,6 +209,8 @@ class IPCluster(DefaultClusterSetup):
             "directory=/home/%s" % user,
             "user=%s" % user,
             "autorestart=true",
+            "stdout_logfile=/home/sgeadmin/.ipython/profile_default/stdout_controller_%(host_node_name)s_%(process_num)s.log",
+            "stderr_logfile=/home/sgeadmin/.ipython/profile_default/stderr_controller_%(host_node_name)s_%(process_num)s.log",
             "",
         ]))
         f.close()
