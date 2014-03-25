@@ -179,7 +179,7 @@ class IPCluster(DefaultClusterSetup):
             ]))
         # else: use the slow default JSON packer
         f.close()
-
+        log.info("Writing supervisord config files")
         f = master.ssh.remote_file('/home/%s/.engine.conf' % user)
         f.write('\n'.join([
             "[supervisord]",
@@ -219,8 +219,7 @@ class IPCluster(DefaultClusterSetup):
         if self.n_engines_master is None:
             self.n_engines_master = max(1, master.num_processors - 1)
 
-        log.info("Starting the IPython controller and %i engines on master"
-                 % self.n_engines_master)
+        log.info("Starting supervisord for ipcontroller on master")
 
 
         master.ssh.execute("pkill -f ipcontrollerapp",
