@@ -547,12 +547,18 @@ class EasyEC2(EasyAWS):
         reqs_ids = []
         max_retries = max(1, max_retries)
         interval = max(1, interval)
-        s = utils.get_spinner("Waiting for %s to propagate..." % obj_name)
+        widgets = ['', progressbar.Fraction(), ' ',
+                   progressbar.Bar(marker=progressbar.RotatingMarker()), ' ',
+                   progressbar.Percentage(), ' ', ' ']
+        log.info("Waiting for %s to propagate..." % obj_name)
+        pbar = progressbar.ProgressBar(widgets=widgets,
+                                       maxval=num_objs).start()
         try:
             for i in range(max_retries + 1):
                 reqs = fetch_func(filters=filters)
                 reqs_ids = [req.id for req in reqs]
                 num_reqs = len(reqs)
+                pbar.update(num_reqs)
                 if num_reqs != num_objs:
                     log.debug("%d: only %d/%d %s have "
                               "propagated - sleeping..." %
@@ -562,7 +568,8 @@ class EasyEC2(EasyAWS):
                 else:
                     return
         finally:
-            s.stop()
+            if not pbar.finished:
+                pbar.finish()
         missing = [oid for oid in obj_ids if oid not in reqs_ids]
         raise exception.PropagationException(
             "Failed to fetch %d/%d %s after %d seconds: %s" %
