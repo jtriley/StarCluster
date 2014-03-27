@@ -1172,35 +1172,29 @@ class Cluster(object):
         """
         lmap = self._get_launch_map()
         zone = None
-        master_map = None
         insts = []
-        for (type, image) in lmap:
-            # launch all aliases that match master's itype/image_id
-            aliases = lmap.get((type, image))
-            if self._make_alias(master=True) in aliases:
-                master_map = (type, image)
-                for alias in aliases:
-                    log.debug("Launching %s (ami: %s, type: %s)" %
-                              (alias, image, type))
-                master_response = self.create_nodes(aliases, image_id=image,
-                                                    instance_type=type,
-                                                    force_flat=True)[0]
-                zone = master_response.instances[0].placement
-                insts.extend(master_response.instances)
-        lmap.pop(master_map)
-        if self.cluster_size <= 1:
-            return
-        for (type, image) in lmap:
-            aliases = lmap.get((type, image))
+        master_alias = self._make_alias(master=True)
+        itype, image = [i for i in lmap if master_alias in lmap[i]][0]
+        aliases = lmap.get((itype, image))
+        for alias in aliases:
+            log.debug("Launching %s (ami: %s, type: %s)" %
+                      (alias, image, itype))
+        master_response = self.create_nodes(aliases, image_id=image,
+                                            instance_type=itype,
+                                            force_flat=True)[0]
+        zone = master_response.instances[0].placement
+        insts.extend(master_response.instances)
+        lmap.pop((itype, image))
+        for (itype, image) in lmap:
+            aliases = lmap.get((itype, image))
             for alias in aliases:
                 log.debug("Launching %s (ami: %s, type: %s)" %
-                          (alias, image, type))
+                          (alias, image, itype))
             resv = self.create_nodes(aliases, image_id=image,
-                                     instance_type=type, zone=zone,
+                                     instance_type=itype, zone=zone,
                                      force_flat=True)
             insts.extend(resv[0].instances)
-        if insts:
-            self.ec2.wait_for_propagation(instances=insts)
+        self.ec2.wait_for_propagation(instances=insts)
 
     def _create_spot_cluster(self):
         """
@@ -1229,8 +1223,6 @@ class Cluster(object):
             # Make sure nodes are in same zone as master
             zone = master_response.instances[0].placement
             insts.extend(master_response.instances)
-        if self.cluster_size <= 1:
-            return
         for id in range(1, self.cluster_size):
             alias = self._make_alias(id)
             (ntype, nimage) = self._get_type_and_image_id(alias)
