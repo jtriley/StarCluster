@@ -1377,16 +1377,16 @@ class Cluster(object):
             pbar.maxval = len(spots)
             pbar.update(0)
             while not pbar.finished:
-                active_spots = filter(lambda x: x.state == "active", spots)
+                active_spots = [s for s in spots if s.state == "active" and
+                                s.instance_id]
                 pbar.maxval = len(spots)
                 pbar.update(len(active_spots))
                 if not pbar.finished:
                     time.sleep(self.refresh_interval)
                     spots = self.get_spot_requests_or_raise()
-                else:
-                    self.ec2.wait_for_propagation(
-                        instances=[s.instance_id for s in active_spots])
             pbar.reset()
+        self.ec2.wait_for_propagation(
+            instances=[s.instance_id for s in spots])
 
     def wait_for_running_instances(self, nodes=None,
                                    kill_pending_after_mins=15):
