@@ -77,5 +77,5 @@ class TestSGELoadBalancer(StarClusterTest):
         assert stat.slots_per_host() == 8
 
     def test_node_working(self):
-        #TODO : FINISH THIS
+        # TODO : FINISH THIS
         pass

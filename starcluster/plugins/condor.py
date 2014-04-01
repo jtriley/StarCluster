@@ -47,7 +47,7 @@ class CondorPlugin(clustersetup.DefaultClusterSetup):
         master = master or self._master
         if not master.ssh.isdir(FS_REMOTE_DIR):
             # TODO: below should work but doesn't for some reason...
-            #master.ssh.mkdir(FS_REMOTE_DIR, mode=01777)
+            # master.ssh.mkdir(FS_REMOTE_DIR, mode=01777)
             master.ssh.mkdir(FS_REMOTE_DIR)
             master.ssh.chmod(01777, FS_REMOTE_DIR)
         nodes = nodes or self.nodes
