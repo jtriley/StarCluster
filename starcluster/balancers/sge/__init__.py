@@ -129,14 +129,14 @@ class SGEStats(object):
                   (num_tasks, tasks))
         return num_tasks
 
-    def qacct_to_datetime_tuple(self, qacct):
+    def qacct_to_datetime_tuple(self, qacct, tzinfo):
         """
         Takes the SGE qacct formatted time and makes a datetime tuple
         format is:
         Tue Jul 13 16:24:03 2010
         """
         dt = datetime.datetime.strptime(qacct, "%a %b %d %H:%M:%S %Y")
-        return dt.replace(tzinfo=iso8601.iso8601.UTC)
+        return dt.replace(tzinfo=tzinfo)
 
     def parse_qacct(self, string, dtnow):
         """
@@ -151,22 +151,23 @@ class SGEStats(object):
         end = None
         counter = 0
         lines = string.split('\n')
+        tzinfo = dtnow.tzinfo
         for l in lines:
             l = l.strip()
             if l.find('jobnumber') != -1:
                 job_id = int(l[13:len(l)])
             if l.find('qsub_time') != -1:
-                qd = self.qacct_to_datetime_tuple(l[13:len(l)])
+                qd = self.qacct_to_datetime_tuple(l[13:len(l)], tzinfo)
             if l.find('start_time') != -1:
                 if l.find('-/-') > 0:
                     start = dtnow
                 else:
-                    start = self.qacct_to_datetime_tuple(l[13:len(l)])
+                    start = self.qacct_to_datetime_tuple(l[13:len(l)], tzinfo)
             if l.find('end_time') != -1:
                 if l.find('-/-') > 0:
                     end = dtnow
                 else:
-                    end = self.qacct_to_datetime_tuple(l[13:len(l)])
+                    end = self.qacct_to_datetime_tuple(l[13:len(l)], tzinfo)
             if l.find('==========') != -1:
                 if qd is not None:
                     self.max_job_id = job_id
