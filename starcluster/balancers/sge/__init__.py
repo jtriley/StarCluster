@@ -478,15 +478,22 @@ class SGELoadBalancer(LoadBalancer):
             except IOError, e:
                 raise exception.BaseException(str(e))
 
-    def get_remote_time(self):
+    def get_remote_time(self, utc=True):
         """
         This function remotely executes 'date' on the master node
         and returns a datetime object with the master's time
         instead of fetching it from local machine, maybe inaccurate.
         """
-        utc = '\n'.join(self._cluster.master_node.ssh.execute('date --utc'))
-        dt = datetime.datetime.strptime(utc, "%a %b %d %H:%M:%S UTC %Y")
-        return dt.replace(tzinfo=iso8601.iso8601.UTC)
+        if utc:
+            utc = \
+                '\n'.join(self._cluster.master_node.ssh.execute('date --utc'))
+            dt = datetime.datetime.strptime(utc, "%a %b %d %H:%M:%S UTC %Y")
+            return dt.replace(tzinfo=iso8601.iso8601.UTC)
+
+        cmd = 'date --rfc-3339=seconds'
+        date_str = '\n'.join(self._cluster.master_node.ssh.execute(cmd))
+        return iso8601.parse_date(date_str)
+
 
     def get_qatime(self, now):
         """
@@ -506,7 +513,7 @@ class SGELoadBalancer(LoadBalancer):
 
     def _get_stats(self):
         master = self._cluster.master_node
-        now = self.get_remote_time()
+        now = self.get_remote_time(utc=False) # qacct expects localtime
         qatime = self.get_qatime(now)
         qacct_cmd = 'qacct -j -b ' + qatime
         qstat_cmd = 'qstat -u \* -xml -f -r'
