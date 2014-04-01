@@ -134,14 +134,14 @@ class SGEStats(object):
                   (num_tasks, tasks))
         return num_tasks
 
-    def qacct_to_datetime_tuple(self, qacct):
+    def qacct_to_datetime_tuple(self, qacct, tzinfo):
         """
         Takes the SGE qacct formatted time and makes a datetime tuple
         format is:
         Tue Jul 13 16:24:03 2010
         """
         dt = datetime.datetime.strptime(qacct, "%a %b %d %H:%M:%S %Y")
-        return dt.replace(tzinfo=iso8601.iso8601.UTC)
+        return dt.replace(tzinfo=tzinfo)
 
     def parse_qacct(self, string, dtnow):
         """
@@ -156,22 +156,23 @@ class SGEStats(object):
         end = None
         counter = 0
         lines = string.split('\n')
+        tzinfo = dtnow.tzinfo
         for l in lines:
             l = l.strip()
             if l.find('jobnumber') != -1:
                 job_id = int(l[13:len(l)])
             elif l.find('qsub_time') != -1:
-                qd = self.qacct_to_datetime_tuple(l[13:len(l)])
+                qd = self.qacct_to_datetime_tuple(l[13:len(l)], tzinfo)
             elif l.find('start_time') != -1:
                 if l.find('-/-') > 0:
                     start = dtnow
                 else:
-                    start = self.qacct_to_datetime_tuple(l[13:len(l)])
+                    start = self.qacct_to_datetime_tuple(l[13:len(l)], tzinfo)
             elif l.find('end_time') != -1:
                 if l.find('-/-') > 0:
                     end = dtnow
                 else:
-                    end = self.qacct_to_datetime_tuple(l[13:len(l)])
+                    end = self.qacct_to_datetime_tuple(l[13:len(l)], tzinfo)
             elif l.find('==========') != -1:
                 if qd is not None:
                     self.max_job_id = job_id
@@ -502,15 +503,21 @@ class SGELoadBalancer(LoadBalancer):
             except IOError, e:
                 raise exception.BaseException(str(e))
 
-    def get_remote_time(self):
+    def get_remote_time(self, utc=True):
         """
         This function remotely executes 'date' on the master node
         and returns a datetime object with the master's time
         instead of fetching it from local machine, maybe inaccurate.
         """
-        utc = '\n'.join(self._cluster.master_node.ssh.execute('date --utc'))
-        dt = datetime.datetime.strptime(utc, "%a %b %d %H:%M:%S UTC %Y")
-        return dt.replace(tzinfo=iso8601.iso8601.UTC)
+        if utc:
+            utc = \
+                '\n'.join(self._cluster.master_node.ssh.execute('date --utc'))
+            dt = datetime.datetime.strptime(utc, "%a %b %d %H:%M:%S UTC %Y")
+            return dt.replace(tzinfo=iso8601.iso8601.UTC)
+
+        cmd = 'date --rfc-3339=seconds'
+        date_str = '\n'.join(self._cluster.master_node.ssh.execute(cmd))
+        return iso8601.parse_date(date_str)
 
     def get_qatime(self, now):
         """
@@ -530,7 +537,7 @@ class SGELoadBalancer(LoadBalancer):
 
     def _get_stats(self):
         master = self._cluster.master_node
-        now = self.get_remote_time()
+        now = self.get_remote_time(utc=False)  # qacct expects localtime
         qatime = self.get_qatime(now)
         qacct_cmd = 'qacct -j -b ' + qatime
         qstat_cmd = 'qstat -u \* -xml -f -r'
