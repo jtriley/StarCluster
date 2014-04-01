@@ -189,7 +189,7 @@ class EasyEC2(EasyAWS):
         Returns boto Region object if it exists, raises RegionDoesNotExist
         otherwise.
         """
-        if not region_name in self.regions:
+        if region_name not in self.regions:
             raise exception.RegionDoesNotExist(region_name)
         return self.regions.get(region_name)
 
@@ -726,10 +726,9 @@ class EasyEC2(EasyAWS):
         return [name_id[gname] for gname in groupnames if gname in name_id]
 
     def get_all_instances(self, instance_ids=[], filters={}):
-
-        #little path to since vpc can't hadle filters with group-name
-        #TODO : dev Tue Apr 24 18:25:58 2012
-        #should move all code to instance.group-id
+        # little path to since vpc can't hadle filters with group-name
+        # TODO : dev Tue Apr 24 18:25:58 2012
+        # should move all code to instance.group-id
         if 'group-name' in filters:
             groupname = filters['group-name']
             try:
@@ -990,7 +989,7 @@ class EasyEC2(EasyAWS):
         if region:
             regs = self.conn.get_all_regions()
             regions = [r.name for r in regs]
-            if not region in regions:
+            if region not in regions:
                 raise exception.RegionDoesNotExist(region)
             for reg in regs:
                 if reg.name == region:

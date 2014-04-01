@@ -36,9 +36,9 @@ class CmdCreateKey(CmdBase):
                           action="callback", type="string", default=None,
                           callback=self._file_exists,
                           help="Import an existing RSA key to EC2")
-        #parser.add_option("-a","--add-to-config", dest="add_to_config",
-            #action="store_true", default=False,
-            #help="add new keypair to StarCluster config")
+        # parser.add_option("-a","--add-to-config", dest="add_to_config",
+        #                   action="store_true", default=False, help="add new
+        #                   keypair to StarCluster config")
 
     def execute(self, args):
         if len(args) != 1:

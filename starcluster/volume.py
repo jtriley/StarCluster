@@ -159,7 +159,7 @@ class VolumeCreator(cluster.Cluster):
         if not img:
             raise exception.ValidationError(
                 'image %s does not exist' % image)
-        if not itype in static.INSTANCE_TYPES:
+        if itype not in static.INSTANCE_TYPES:
             choices = ', '.join(static.INSTANCE_TYPES)
             raise exception.ValidationError(
                 'instance_type must be one of: %s' % choices)

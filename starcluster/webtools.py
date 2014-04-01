@@ -83,7 +83,7 @@ class DocrootHandler(BaseHandler):
         try:
             docroot = globals()['DOCUMENTROOT']
             fname = posixpath.join(docroot, self.path[1:])
-            #remove query args. query args are ignored in static server
+            # remove query args. query args are ignored in static server
             fname = fname.split('?')[0]
             if fname.endswith('/') or os.path.isdir(fname):
                 fname = posixpath.join(fname, 'index.html')
@@ -97,7 +97,7 @@ class DocrootHandler(BaseHandler):
                 if not data:
                     break
                 self.wfile.write(data)
-            #self.wfile.write(f.read())
+            # self.wfile.write(f.read())
             f.close()
             return
         except IOError:

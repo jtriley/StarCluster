@@ -371,7 +371,7 @@ class Node(object):
         """
         Add user (if exists) to group (if exists)
         """
-        if not user in self.get_user_map():
+        if user not in self.get_user_map():
             raise exception.BaseException("user %s does not exist" % user)
         if group in self.get_group_map():
             self.ssh.execute('gpasswd -a %s %s' % (user, 'utmp'))

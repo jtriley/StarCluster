@@ -533,7 +533,7 @@ class Cluster(object):
                 # devices
                 devices.remove(dev)
             volid = vol.get('volume_id')
-            if dev and not volid in devmap:
+            if dev and volid not in devmap:
                 devmap[volid] = dev
         volumes = utils.AttributeDict()
         for volname in vols:
@@ -620,7 +620,7 @@ class Cluster(object):
         include = ['_zone', '_plugins']
         for key in self.__dict__.keys():
             private = key.startswith('_')
-            if (not private or key in include) and not key in exclude:
+            if (not private or key in include) and key not in exclude:
                 val = getattr(self, key)
                 if type(val) in [str, unicode, bool, int, float, list, dict]:
                     cfg[key] = val
@@ -669,7 +669,7 @@ class Cluster(object):
             if not self.ec2.has_permission(sg, ip_protocol, from_port,
                                            to_port, cidr_ip):
                 log.info("Opening %s port range %s-%s for CIDR %s" %
-                        (ip_protocol, from_port, to_port, cidr_ip))
+                         (ip_protocol, from_port, to_port, cidr_ip))
                 sg.authorize(ip_protocol, from_port, to_port, cidr_ip)
             else:
                 log.info("Already open: %s port range %s-%s for CIDR %s" %
@@ -683,11 +683,11 @@ class Cluster(object):
     def _add_chunked_tags(self, sg, chunks, base_tag_name):
         for i, chunk in enumerate(chunks):
             tag = "%s-%s" % (base_tag_name, i) if i != 0 else base_tag_name
-            if not tag in sg.tags:
+            if tag not in sg.tags:
                 sg.add_tag(tag, chunk)
 
     def _add_tags_to_sg(self, sg):
-        if not static.VERSION_TAG in sg.tags:
+        if static.VERSION_TAG not in sg.tags:
             sg.add_tag(static.VERSION_TAG, str(static.VERSION))
         core_settings = dict(cluster_size=self.cluster_size,
                              master_image_id=self.master_image_id,
@@ -926,7 +926,7 @@ class Cluster(object):
         instance_type = instance_type or self.node_instance_type
         if placement_group or instance_type in static.PLACEMENT_GROUP_TYPES:
             region = self.ec2.region.name
-            if not region in static.PLACEMENT_GROUP_REGIONS:
+            if region not in static.PLACEMENT_GROUP_REGIONS:
                 cluster_regions = ', '.join(static.PLACEMENT_GROUP_REGIONS)
                 log.warn("Placement groups are only supported in the "
                          "following regions:\n%s" % cluster_regions)
@@ -1977,13 +1977,13 @@ class ClusterValidator(validators.Validator):
         node_instance_type = cluster.node_instance_type
         instance_types = static.INSTANCE_TYPES
         instance_type_list = ', '.join(instance_types.keys())
-        if not node_instance_type in instance_types:
+        if node_instance_type not in instance_types:
             raise exception.ClusterValidationError(
                 "You specified an invalid node_instance_type %s\n"
                 "Possible options are:\n%s" %
                 (node_instance_type, instance_type_list))
         elif master_instance_type:
-            if not master_instance_type in instance_types:
+            if master_instance_type not in instance_types:
                 raise exception.ClusterValidationError(
                     "You specified an invalid master_instance_type %s\n"
                     "Possible options are:\n%s" %
@@ -2017,7 +2017,7 @@ class ClusterValidator(validators.Validator):
         for itype in cluster.node_instance_types:
             type = itype.get('type')
             img = itype.get('image') or node_image_id
-            if not type in instance_types:
+            if type not in instance_types:
                 raise exception.ClusterValidationError(
                     "You specified an invalid instance type %s\n"
                     "Possible options are:\n%s" % (type, instance_type_list))

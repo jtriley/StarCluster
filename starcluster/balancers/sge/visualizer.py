@@ -72,7 +72,7 @@ class SGEVisualizer(object):
         vals = {'queued': self.records.queued_jobs,
                 'running': self.records.running_jobs,
                 'num_hosts': self.records.hosts,
-                #'slots': self.records.slots,
+                # 'slots': self.records.slots,
                 'avg_duration': self.records.avg_duration,
                 'avg_wait': self.records.avg_wait,
                 'avg_load': self.records.avg_load}

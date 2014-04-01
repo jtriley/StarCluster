@@ -390,10 +390,10 @@ def tailf(filename):
     Constantly displays the last lines in filename
     Similar to 'tail -f' unix command
     """
-    #Set the filename and open the file
+    # Set the filename and open the file
     file = open(filename, 'r')
 
-    #Find the size of the file and move to the end
+    # Find the size of the file and move to the end
     st_results = os.stat(filename)
     st_size = st_results[6]
     file.seek(st_size)
