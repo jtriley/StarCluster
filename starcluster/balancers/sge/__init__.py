@@ -46,6 +46,7 @@ class SGEStats(object):
         self.queues = {}
         self.jobstats = self.jobstat_cachesize * [None]
         self.max_job_id = 0
+        self._oldest_queued_job = None
 
     @property
     def first_job_id(self):
@@ -78,7 +79,7 @@ class SGEStats(object):
                 self.hosts.append(hash)
         return self.hosts
 
-    def parse_qstat(self, qstat_out):
+    def parse_qstat(self, qstat_out, remote_tz_offset):
         """
         This method parses qstat -xml output and makes a neat array
         """
@@ -94,6 +95,13 @@ class SGEStats(object):
         for job in doc.getElementsByTagName("job_list"):
             if job.parentNode.nodeName == 'job_info':
                 self.jobs.extend(self._parse_job(job))
+
+        self._oldest_queued_job = None
+        for j in self.jobs:
+            if 'JB_submission_time' in j:
+                st = j['JB_submission_time'] + remote_tz_offset
+                self._oldest_queued_job = utils.iso_to_datetime_tuple(st)
+
         return self.jobs
 
     def _parse_job(self, job, queue_name=None):
@@ -249,11 +257,8 @@ class SGEStats(object):
         """
         This returns the age of the oldest job in the queue
         """
-        for j in self.jobs:
-            if 'JB_submission_time' in j:
-                st = j['JB_submission_time']
-                dt = utils.iso_to_datetime_tuple(st)
-                return dt
+        if self._oldest_queued_job:
+            return self._oldest_queued_job
         # todo: throw a "no queued jobs" exception
 
     def is_node_working(self, node):
@@ -495,6 +500,9 @@ class SGELoadBalancer(LoadBalancer):
         date_str = '\n'.join(self._cluster.master_node.ssh.execute(cmd))
         return iso8601.parse_date(date_str)
 
+    def get_remote_timezone(self):
+        return '\n'.join(self._cluster.master_node.ssh.execute('date +%z'))
+
     def get_qatime(self, now):
         """
         This function takes the lookback window and creates a string
@@ -528,10 +536,11 @@ class SGELoadBalancer(LoadBalancer):
                 log.info("No jobs have completed yet!")
                 qacct = ''
         self.stat.parse_qhost(qhostxml)
-        self.stat.parse_qstat(qstatxml)
+        self.stat.parse_qstat(qstatxml, now.tzname())
         self.stat.parse_qacct(qacct, now)
         log.debug("sizes: qhost: %d, qstat: %d, qacct: %d" %
                   (len(qhostxml), len(qstatxml), len(qacct)))
+
         return self.stat
 
     @utils.print_timing("Fetching SGE stats", debug=True)
@@ -627,7 +636,7 @@ class SGELoadBalancer(LoadBalancer):
             log.info("Avg job wait time: %d secs" % self.stat.avg_wait_time(),
                      extra=raw)
             log.info("Last cluster modification time: %s" %
-                     self.__last_cluster_mod_time.strftime("%Y-%m-%d %X"),
+                     self.__last_cluster_mod_time.strftime("%Y-%m-%d %X%z"),
                      extra=dict(__raw__=True))
             # evaluate if nodes need to be added
             self._eval_add_node()
