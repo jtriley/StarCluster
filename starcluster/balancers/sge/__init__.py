@@ -495,7 +495,6 @@ class SGELoadBalancer(LoadBalancer):
         date_str = '\n'.join(self._cluster.master_node.ssh.execute(cmd))
         return iso8601.parse_date(date_str)
 
-
     def get_qatime(self, now):
         """
         This function takes the lookback window and creates a string
@@ -514,7 +513,7 @@ class SGELoadBalancer(LoadBalancer):
 
     def _get_stats(self):
         master = self._cluster.master_node
-        now = self.get_remote_time(utc=False) # qacct expects localtime
+        now = self.get_remote_time(utc=False)  # qacct expects localtime
         qatime = self.get_qatime(now)
         qacct_cmd = 'qacct -j -b ' + qatime
         qstat_cmd = 'qstat -u \* -xml -f -r'
