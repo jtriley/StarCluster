@@ -46,7 +46,8 @@ class SGEStats(object):
         self.queues = {}
         self.jobstats = self.jobstat_cachesize * [None]
         self.max_job_id = 0
-        self._oldest_queued_job = None
+        self._remote_tzinfo
+        self._remote_tzname
 
     @property
     def first_job_id(self):
@@ -79,7 +80,7 @@ class SGEStats(object):
                 self.hosts.append(hash)
         return self.hosts
 
-    def parse_qstat(self, qstat_out, remote_tz_offset):
+    def parse_qstat(self, qstat_out):
         """
         This method parses qstat -xml output and makes a neat array
         """
@@ -95,13 +96,6 @@ class SGEStats(object):
         for job in doc.getElementsByTagName("job_list"):
             if job.parentNode.nodeName == 'job_info':
                 self.jobs.extend(self._parse_job(job))
-
-        self._oldest_queued_job = None
-        for j in self.jobs:
-            if 'JB_submission_time' in j:
-                st = j['JB_submission_time'] + remote_tz_offset
-                self._oldest_queued_job = utils.iso_to_datetime_tuple(st)
-                break
 
         return self.jobs
 
@@ -138,14 +132,14 @@ class SGEStats(object):
                   (num_tasks, tasks))
         return num_tasks
 
-    def qacct_to_datetime_tuple(self, qacct, tzinfo):
+    def qacct_to_datetime_tuple(self, qacct):
         """
         Takes the SGE qacct formatted time and makes a datetime tuple
         format is:
         Tue Jul 13 16:24:03 2010
         """
         dt = datetime.datetime.strptime(qacct, "%a %b %d %H:%M:%S %Y")
-        return dt.replace(tzinfo=tzinfo)
+        return dt.replace(tzinfo=self._remote_tzinfo)
 
     def parse_qacct(self, string, dtnow):
         """
@@ -160,23 +154,22 @@ class SGEStats(object):
         end = None
         counter = 0
         lines = string.split('\n')
-        tzinfo = dtnow.tzinfo
         for l in lines:
             l = l.strip()
             if l.find('jobnumber') != -1:
                 job_id = int(l[13:len(l)])
             if l.find('qsub_time') != -1:
-                qd = self.qacct_to_datetime_tuple(l[13:len(l)], tzinfo)
+                qd = self.qacct_to_datetime_tuple(l[13:len(l)])
             if l.find('start_time') != -1:
                 if l.find('-/-') > 0:
                     start = dtnow
                 else:
-                    start = self.qacct_to_datetime_tuple(l[13:len(l)], tzinfo)
+                    start = self.qacct_to_datetime_tuple(l[13:len(l)])
             if l.find('end_time') != -1:
                 if l.find('-/-') > 0:
                     end = dtnow
                 else:
-                    end = self.qacct_to_datetime_tuple(l[13:len(l)], tzinfo)
+                    end = self.qacct_to_datetime_tuple(l[13:len(l)])
             if l.find('==========') != -1:
                 if qd is not None:
                     self.max_job_id = job_id
@@ -258,8 +251,10 @@ class SGEStats(object):
         """
         This returns the age of the oldest job in the queue
         """
-        if self._oldest_queued_job:
-            return self._oldest_queued_job
+        for j in self.jobs:
+            if 'JB_submission_time' in j:
+                st = j['JB_submission_time'] + self._remote_tzname
+                return utils.iso_to_datetime_tuple(st)
         # todo: throw a "no queued jobs" exception
 
     def is_node_working(self, node):
@@ -485,24 +480,18 @@ class SGELoadBalancer(LoadBalancer):
             except IOError, e:
                 raise exception.BaseException(str(e))
 
-    def get_remote_time(self, utc=True):
+    def get_remote_time(self):
         """
         This function remotely executes 'date' on the master node
         and returns a datetime object with the master's time
         instead of fetching it from local machine, maybe inaccurate.
         """
-        if utc:
-            utc = \
-                '\n'.join(self._cluster.master_node.ssh.execute('date --utc'))
-            dt = datetime.datetime.strptime(utc, "%a %b %d %H:%M:%S UTC %Y")
-            return dt.replace(tzinfo=iso8601.iso8601.UTC)
-
-        cmd = 'date --rfc-3339=seconds'
+        cmd = 'date --iso-8601=seconds'
         date_str = '\n'.join(self._cluster.master_node.ssh.execute(cmd))
-        return iso8601.parse_date(date_str)
-
-    def get_remote_timezone(self):
-        return '\n'.join(self._cluster.master_node.ssh.execute('date +%z'))
+        d = iso8601.parse_date(date_str)
+        self._remote_tzinfo = d.tzinfo
+        self._remote_tzname = d.tzname()
+        return d
 
     def get_qatime(self, now):
         """
@@ -522,7 +511,7 @@ class SGELoadBalancer(LoadBalancer):
 
     def _get_stats(self):
         master = self._cluster.master_node
-        now = self.get_remote_time(utc=False)  # qacct expects localtime
+        now = self.get_remote_time()
         qatime = self.get_qatime(now)
         qacct_cmd = 'qacct -j -b ' + qatime
         qstat_cmd = 'qstat -u \* -xml -f -r'
@@ -537,7 +526,7 @@ class SGELoadBalancer(LoadBalancer):
                 log.info("No jobs have completed yet!")
                 qacct = ''
         self.stat.parse_qhost(qhostxml)
-        self.stat.parse_qstat(qstatxml, now.tzname())
+        self.stat.parse_qstat(qstatxml)
         self.stat.parse_qacct(qacct, now)
         log.debug("sizes: qhost: %d, qstat: %d, qacct: %d" %
                   (len(qhostxml), len(qstatxml), len(qacct)))
