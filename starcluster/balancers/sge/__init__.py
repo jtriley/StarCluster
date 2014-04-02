@@ -46,8 +46,8 @@ class SGEStats(object):
         self.queues = {}
         self.jobstats = self.jobstat_cachesize * [None]
         self.max_job_id = 0
-        self._remote_tzinfo
-        self._remote_tzname
+        self.remote_tzinfo = None
+        self.remote_tzname = None
 
     @property
     def first_job_id(self):
@@ -138,7 +138,7 @@ class SGEStats(object):
         Tue Jul 13 16:24:03 2010
         """
         dt = datetime.datetime.strptime(qacct, "%a %b %d %H:%M:%S %Y")
-        return dt.replace(tzinfo=self._remote_tzinfo)
+        return dt.replace(tzinfo=self.remote_tzinfo)
 
     def parse_qacct(self, string, dtnow):
         """
@@ -252,7 +252,7 @@ class SGEStats(object):
         """
         for j in self.jobs:
             if 'JB_submission_time' in j:
-                st = j['JB_submission_time'] + self._remote_tzname
+                st = j['JB_submission_time'] + self.remote_tzname
                 return utils.iso_to_datetime_tuple(st)
         # todo: throw a "no queued jobs" exception
 
@@ -488,8 +488,8 @@ class SGELoadBalancer(LoadBalancer):
         cmd = 'date --iso-8601=seconds'
         date_str = '\n'.join(self._cluster.master_node.ssh.execute(cmd))
         d = iso8601.parse_date(date_str)
-        self._remote_tzinfo = d.tzinfo
-        self._remote_tzname = d.tzname()
+        self.stat.remote_tzinfo = d.tzinfo
+        self.stat.remote_tzname = d.tzname()
         return d
 
     def get_qatime(self, now):
