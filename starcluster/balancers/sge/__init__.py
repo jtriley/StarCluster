@@ -21,8 +21,6 @@ import time
 import datetime
 import xml.dom.minidom
 
-import iso8601
-
 from starcluster import utils
 from starcluster import static
 from starcluster import exception
@@ -46,6 +44,7 @@ class SGEStats(object):
         self.queues = {}
         self.jobstats = self.jobstat_cachesize * [None]
         self.max_job_id = 0
+        self.remote_tzinfo = None
 
     @property
     def first_job_id(self):
@@ -136,7 +135,7 @@ class SGEStats(object):
         Tue Jul 13 16:24:03 2010
         """
         dt = datetime.datetime.strptime(qacct, "%a %b %d %H:%M:%S %Y")
-        return dt.replace(tzinfo=iso8601.iso8601.UTC)
+        return dt.replace(tzinfo=self.remote_tzinfo)
 
     def parse_qacct(self, string, dtnow):
         """
@@ -252,7 +251,7 @@ class SGEStats(object):
             if 'JB_submission_time' in j:
                 st = j['JB_submission_time']
                 dt = utils.iso_to_datetime_tuple(st)
-                return dt
+                return dt.replace(tzinfo=self.remote_tzinfo)
         # todo: throw a "no queued jobs" exception
 
     def is_node_working(self, node):
@@ -484,9 +483,11 @@ class SGELoadBalancer(LoadBalancer):
         and returns a datetime object with the master's time
         instead of fetching it from local machine, maybe inaccurate.
         """
-        utc = '\n'.join(self._cluster.master_node.ssh.execute('date --utc'))
-        dt = datetime.datetime.strptime(utc, "%a %b %d %H:%M:%S UTC %Y")
-        return dt.replace(tzinfo=iso8601.iso8601.UTC)
+        cmd = 'date --iso-8601=seconds'
+        date_str = '\n'.join(self._cluster.master_node.ssh.execute(cmd))
+        d = utils.iso_to_datetime_tuple(date_str)
+        self.stat.remote_tzinfo = d.tzinfo
+        return d
 
     def get_qatime(self, now):
         """
@@ -620,7 +621,7 @@ class SGELoadBalancer(LoadBalancer):
             log.info("Avg job wait time: %d secs" % self.stat.avg_wait_time(),
                      extra=raw)
             log.info("Last cluster modification time: %s" %
-                     self.__last_cluster_mod_time.strftime("%Y-%m-%d %X"),
+                     self.__last_cluster_mod_time.strftime("%Y-%m-%d %X%z"),
                      extra=dict(__raw__=True))
             # evaluate if nodes need to be added
             self._eval_add_node()
