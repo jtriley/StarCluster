@@ -414,8 +414,8 @@ class SGELoadBalancer(LoadBalancer):
         self._cluster = None
         self._keep_polling = True
         self._visualizer = None
+        self._stat = None
         self.__last_cluster_mod_time = utils.get_utc_now()
-        self.stat = SGEStats()
         self.polling_interval = interval
         self.kill_after = kill_after
         self.longest_allowed_queue_time = wait_time
@@ -431,6 +431,13 @@ class SGELoadBalancer(LoadBalancer):
         self.plot_output_dir = plot_output_dir
         if plot_stats:
             assert self.visualizer is not None
+
+    @property
+    def stat(self):
+        if not self._stat:
+            rtime = self.get_remote_time()
+            self._stat = SGEStats(remote_tzinfo=rtime.tzinfo)
+        return self._stat
 
     @property
     def visualizer(self):
@@ -486,7 +493,8 @@ class SGELoadBalancer(LoadBalancer):
         cmd = 'date --iso-8601=seconds'
         date_str = '\n'.join(self._cluster.master_node.ssh.execute(cmd))
         d = utils.iso_to_datetime_tuple(date_str)
-        self.stat.remote_tzinfo = d.tzinfo
+        if self._stat:
+            self._stat.remote_tzinfo = d.tzinfo
         return d
 
     def get_qatime(self, now):
