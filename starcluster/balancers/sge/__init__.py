@@ -37,14 +37,14 @@ class SGEStats(object):
     """
     SunGridEngine stats parser
     """
-    def __init__(self):
+    def __init__(self, remote_tzinfo=None):
         self.jobstat_cachesize = 200
         self.hosts = []
         self.jobs = []
         self.queues = {}
         self.jobstats = self.jobstat_cachesize * [None]
         self.max_job_id = 0
-        self.remote_tzinfo = None
+        self.remote_tzinfo = remote_tzinfo or utils.get_utc_now().tzinfo
 
     @property
     def first_job_id(self):
