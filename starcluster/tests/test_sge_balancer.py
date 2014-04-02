@@ -61,7 +61,7 @@ class TestSGELoadBalancer(StarClusterTest):
 
     def test_loaded_qstat_parser(self):
         stat = sge.SGEStats()
-        stat_hash = stat.parse_qstat(sge_balancer.loaded_qstat_xml)
+        stat_hash = stat.parse_qstat(sge_balancer.loaded_qstat_xml, "+0000")
         assert len(stat_hash) == 192
         assert stat.first_job_id == 385
         assert stat.last_job_id == 576
