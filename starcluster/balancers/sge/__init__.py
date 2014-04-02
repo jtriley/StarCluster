@@ -101,6 +101,7 @@ class SGEStats(object):
             if 'JB_submission_time' in j:
                 st = j['JB_submission_time'] + remote_tz_offset
                 self._oldest_queued_job = utils.iso_to_datetime_tuple(st)
+                break
 
         return self.jobs
 
