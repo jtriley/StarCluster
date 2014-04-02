@@ -96,7 +96,6 @@ class SGEStats(object):
         for job in doc.getElementsByTagName("job_list"):
             if job.parentNode.nodeName == 'job_info':
                 self.jobs.extend(self._parse_job(job))
-
         return self.jobs
 
     def _parse_job(self, job, queue_name=None):
@@ -530,7 +529,6 @@ class SGELoadBalancer(LoadBalancer):
         self.stat.parse_qacct(qacct, now)
         log.debug("sizes: qhost: %d, qstat: %d, qacct: %d" %
                   (len(qhostxml), len(qstatxml), len(qacct)))
-
         return self.stat
 
     @utils.print_timing("Fetching SGE stats", debug=True)
