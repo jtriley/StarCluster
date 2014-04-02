@@ -21,8 +21,6 @@ import time
 import datetime
 import xml.dom.minidom
 
-import iso8601
-
 from starcluster import utils
 from starcluster import static
 from starcluster import exception
@@ -47,7 +45,6 @@ class SGEStats(object):
         self.jobstats = self.jobstat_cachesize * [None]
         self.max_job_id = 0
         self.remote_tzinfo = None
-        self.remote_tzname = None
 
     @property
     def first_job_id(self):
@@ -252,8 +249,9 @@ class SGEStats(object):
         """
         for j in self.jobs:
             if 'JB_submission_time' in j:
-                st = j['JB_submission_time'] + self.remote_tzname
-                return utils.iso_to_datetime_tuple(st)
+                st = j['JB_submission_time']
+                dt = utils.iso_to_datetime_tuple(st)
+                return dt.replace(tzinfo=self.remote_tzinfo)
         # todo: throw a "no queued jobs" exception
 
     def is_node_working(self, node):
@@ -489,7 +487,6 @@ class SGELoadBalancer(LoadBalancer):
         date_str = '\n'.join(self._cluster.master_node.ssh.execute(cmd))
         d = utils.iso_to_datetime_tuple(date_str)
         self.stat.remote_tzinfo = d.tzinfo
-        self.stat.remote_tzname = d.tzname()
         return d
 
     def get_qatime(self, now):
