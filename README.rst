@@ -203,7 +203,9 @@ This branch intends to be a mirror of https://github.com/jtriley/StarCluster dev
 * Added commands
     - printconfig - To print your existing cluster configuration
     - reloadconfig - To reload the core and plugins configuration of a ''running'' cluster.
-    - cleancluster - Will clean Open Grid Engine from dead nodes. 
+    - cleancluster
+        + Will clean Open Grid Engine from dead nodes. (Eg.: Dead spot instances)
+        + Manages "impaired" nodes. (Reboots reserved instances, kills spot instances.)
       (Useful with spot instances and used by the vanilla_improvements load balancer)
     - recover
         + If sge_qmaster crashed, restarts it.
