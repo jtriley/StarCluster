@@ -642,7 +642,7 @@ class Node(object):
                     log.warn("src and destination are the same: %s, skipping" %
                              remote_file)
                     continue
-                self.ssh.put(f.name, dest)
+                node.ssh.put(f.name, dest)
                 nrf = node.ssh.remote_file(dest, 'a')
                 nrf.chown(uid, gid)
                 nrf.chmod(mode)
