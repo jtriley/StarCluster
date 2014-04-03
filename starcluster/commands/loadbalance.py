@@ -17,7 +17,6 @@
 
 from starcluster import exception
 from starcluster.balancers import sge
-from starcluster import static
 
 from completers import ClusterCompleter
 

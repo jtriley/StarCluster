@@ -22,8 +22,6 @@ import datetime
 import xml.dom.minidom
 import traceback
 
-import iso8601
-
 from starcluster import utils
 from starcluster import static
 from starcluster import exception
@@ -41,15 +39,14 @@ class SGEStats(object):
     """
     SunGridEngine stats parser
     """
-    def __init__(self):
+    def __init__(self, remote_tzinfo=None):
         self.jobstat_cachesize = 200
         self.hosts = []
         self.jobs = []
         self.queues = {}
         self.jobstats = self.jobstat_cachesize * [None]
         self.max_job_id = 0
-        self.remote_tzinfo = None
-        self.remote_tzname = None
+        self.remote_tzinfo = remote_tzinfo or utils.get_utc_now().tzinfo
 
     @property
     def first_job_id(self):
@@ -257,8 +254,9 @@ class SGEStats(object):
         """
         for j in self.jobs:
             if 'JB_submission_time' in j:
-                st = j['JB_submission_time'] + self.remote_tzname
-                return utils.iso_to_datetime_tuple(st)
+                st = j['JB_submission_time']
+                dt = utils.iso_to_datetime_tuple(st)
+                return dt.replace(tzinfo=self.remote_tzinfo)
         # todo: throw a "no queued jobs" exception
 
     def is_node_working(self, node):
@@ -434,8 +432,8 @@ class SGELoadBalancer(LoadBalancer):
         self._cluster = None
         self._keep_polling = True
         self._visualizer = None
+        self._stat = None
         self.__last_cluster_mod_time = utils.get_utc_now()
-        self.stat = SGEStats()
         self.polling_interval = interval
         self.kill_after = kill_after
         self.longest_allowed_queue_time = wait_time
@@ -457,6 +455,13 @@ class SGELoadBalancer(LoadBalancer):
             self._placement_group = None
         self.reboot_interval = reboot_interval
         self.n_reboot_restart = n_reboot_restart
+
+    @property
+    def stat(self):
+        if not self._stat:
+            rtime = self.get_remote_time()
+            self._stat = SGEStats(remote_tzinfo=rtime.tzinfo)
+        return self._stat
 
     @property
     def visualizer(self):
@@ -511,9 +516,9 @@ class SGELoadBalancer(LoadBalancer):
         """
         cmd = 'date --iso-8601=seconds'
         date_str = '\n'.join(self._cluster.master_node.ssh.execute(cmd))
-        d = iso8601.parse_date(date_str)
-        self.stat.remote_tzinfo = d.tzinfo
-        self.stat.remote_tzname = d.tzname()
+        d = utils.iso_to_datetime_tuple(date_str)
+        if self._stat:
+            self._stat.remote_tzinfo = d.tzinfo
         return d
 
     def get_qatime(self, now):
