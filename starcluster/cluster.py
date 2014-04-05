@@ -577,8 +577,6 @@ class Cluster(object):
         Cluster object. Settings are loaded from cluster group tags and the
         master node's user data.
         """
-        if not (load_plugins or load_volumes):
-            return True
         try:
             tags = self.cluster_group.tags
             version = tags.get(static.VERSION_TAG, '')
@@ -589,6 +587,8 @@ class Cluster(object):
                 sep = '*' * 60
                 log.warn('\n'.join([sep, msg, sep]), extra={'__textwrap__': 1})
             self.update(self._get_settings_from_tags())
+            if not (load_plugins or load_volumes):
+                return True
             try:
                 master = self.master_node
             except exception.MasterDoesNotExist:
