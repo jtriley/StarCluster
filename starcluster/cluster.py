@@ -871,7 +871,8 @@ class Cluster(object):
         group_id = self.cluster_group.id
         states = ['active', 'open']
         filters = {'state': states}
-        if self.cluster_group.vpc_id:
+        vpc_id = self.cluster_group.vpc_id
+        if vpc_id and self.subnet_id:
             # According to the EC2 API docs this *should* be
             # launch.network-interface.group-id but it doesn't work
             filters['network-interface.group-id'] = group_id
