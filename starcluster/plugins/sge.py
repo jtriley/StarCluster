@@ -14,6 +14,7 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+import posixpath
 
 from starcluster import clustersetup
 from starcluster.templates import sge
@@ -21,9 +22,18 @@ from starcluster.logger import log
 
 
 class SGEPlugin(clustersetup.DefaultClusterSetup):
+    SGE_ROOT = "/opt/sge6"
+    SGE_FRESH = "/opt/sge6-fresh"
+    SGE_PROFILE = "/etc/profile.d/sge.sh"
+    SGE_INST = "inst_sge_sc"
+    SGE_CONF = "ec2_sge.conf"
 
-    def __init__(self, master_is_exec_host=True, **kwargs):
+    def __init__(self, master_is_exec_host=True, slots_per_host=None,
+                 **kwargs):
         self.master_is_exec_host = str(master_is_exec_host).lower() == "true"
+        self.slots_per_host = None
+        if slots_per_host is not None:
+            self.slots_per_host = int(slots_per_host)
         super(SGEPlugin, self).__init__(**kwargs)
 
     def _add_sge_submit_host(self, node):
@@ -35,8 +45,8 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         mssh.execute('qconf -ah %s' % node.alias)
 
     def _setup_sge_profile(self, node):
-        sge_profile = node.ssh.remote_file("/etc/profile.d/sge.sh", "w")
-        arch = node.ssh.execute("/opt/sge6/util/arch")[0]
+        sge_profile = node.ssh.remote_file(self.SGE_PROFILE, "w")
+        arch = node.ssh.execute(self._sge_path("util/arch"))[0]
         sge_profile.write(sge.sgeprofile_template % dict(arch=arch))
         sge_profile.close()
 
@@ -77,13 +87,36 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             mssh.execute('qconf -mattr queue pe_list "%s" %s' % (name, queue))
 
     def _inst_sge(self, node, exec_host=True):
-        inst_sge = 'cd /opt/sge6 && TERM=rxvt ./inst_sge '
+        inst_sge = 'cd %s && TERM=rxvt ./%s ' % (self.SGE_ROOT, self.SGE_INST)
         if node.is_master():
             inst_sge += '-m '
         if exec_host:
             inst_sge += '-x '
-        inst_sge += '-noremote -auto ./ec2_sge.conf'
+        inst_sge += '-noremote -auto ./%s' % self.SGE_CONF
         node.ssh.execute(inst_sge, silent=True, only_printable=True)
+        if exec_host:
+            master = self._master
+            num_slots = self.slots_per_host
+            if num_slots is None:
+                num_slots = node.num_processors
+            master.ssh.execute("qconf -aattr hostgroup hostlist %s @allhosts" %
+                               node.alias)
+            master.ssh.execute('qconf -aattr queue slots "[%s=%d]" all.q' %
+                               (node.alias, num_slots))
+
+    def _sge_path(self, path):
+        return posixpath.join(self.SGE_ROOT, path)
+
+    def _disable_add_queue(self):
+        """
+        Disables the install script from automatically adding the exec host to
+        the queue with slots=num_cpus so that this plugin can customize the
+        number of slots *before* the node is available to accept jobs.
+        """
+        master = self._master
+        master.ssh.execute("cd %s && sed 's/AddQueue/#AddQueue/g' inst_sge > "
+                           "%s" % (self.SGE_ROOT, self.SGE_INST))
+        master.ssh.chmod(0755, self._sge_path(self.SGE_INST))
 
     def _setup_sge(self):
         """
@@ -91,15 +124,16 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         environment on StarCluster
         """
         master = self._master
-        if not master.ssh.isdir('/opt/sge6'):
-            # copy fresh sge installation files to /opt/sge6
-            master.ssh.execute('cp -r /opt/sge6-fresh /opt/sge6')
-            master.ssh.execute('chown -R %(user)s:%(user)s /opt/sge6' %
-                               {'user': self._user})
-        self._setup_nfs(self.nodes, export_paths=['/opt/sge6'],
+        if not master.ssh.isdir(self.SGE_ROOT):
+            # copy fresh sge installation files to SGE_ROOT
+            master.ssh.execute('cp -r %s %s' % (self.SGE_FRESH, self.SGE_ROOT))
+            master.ssh.execute('chown -R %(user)s:%(user)s %(sge_root)s' %
+                               {'user': self._user, 'sge_root': self.SGE_ROOT})
+        self._disable_add_queue()
+        self._setup_nfs(self.nodes, export_paths=[self.SGE_ROOT],
                         start_server=False)
         # setup sge auto install file
-        default_cell = '/opt/sge6/default'
+        default_cell = self._sge_path('default')
         if master.ssh.isdir(default_cell):
             log.info("Removing previous SGE installation...")
             master.ssh.execute('rm -rf %s' % default_cell)
@@ -107,12 +141,12 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         admin_hosts = ' '.join(map(lambda n: n.alias, self._nodes))
         submit_hosts = admin_hosts
         exec_hosts = admin_hosts
-        ec2_sge_conf = master.ssh.remote_file("/opt/sge6/ec2_sge.conf", "w")
+        sge_conf = master.ssh.remote_file(self._sge_path(self.SGE_CONF), "w")
         conf = sge.sgeinstall_template % dict(admin_hosts=admin_hosts,
                                               submit_hosts=submit_hosts,
                                               exec_hosts=exec_hosts)
-        ec2_sge_conf.write(conf)
-        ec2_sge_conf.close()
+        sge_conf.write(conf)
+        sge_conf.close()
         log.info("Installing Sun Grid Engine...")
         self._inst_sge(master, exec_host=self.master_is_exec_host)
         self._setup_sge_profile(master)
@@ -137,7 +171,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._create_sge_pe(nodes=nodes)
 
     def run(self, nodes, master, user, user_shell, volumes):
-        if not master.ssh.isdir("/opt/sge6-fresh"):
+        if not master.ssh.isdir(self.SGE_FRESH):
             log.error("SGE is not installed on this AMI, skipping...")
             return
         log.info("Configuring SGE...")
@@ -155,7 +189,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._user_shell = user_shell
         self._volumes = volumes
         log.info("Adding %s to SGE" % node.alias)
-        self._setup_nfs(nodes=[node], export_paths=['/opt/sge6'],
+        self._setup_nfs(nodes=[node], export_paths=[self.SGE_ROOT],
                         start_server=False)
         self._add_sge_admin_host(node)
         self._add_sge_submit_host(node)
