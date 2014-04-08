@@ -152,8 +152,6 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         # set all.q shell to bash
         master.ssh.execute('qconf -mattr queue shell "/bin/bash" all.q')
         for node in self.nodes:
-            self._add_sge_admin_host(node)
-            self._add_sge_submit_host(node)
             self.pool.simple_job(self._add_to_sge, (node,), jobid=node.alias)
         self.pool.wait(numtasks=len(self.nodes))
         self._create_sge_pe()
