@@ -53,7 +53,6 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
     def _add_to_sge(self, node):
         node.ssh.execute('pkill -9 sge', ignore_exit_status=True)
         node.ssh.execute('rm /etc/init.d/sge*', ignore_exit_status=True)
-        self._setup_sge_profile(node)
         self._inst_sge(node, exec_host=True)
 
     def _create_sge_pe(self, name="orte", nodes=None, queue="all.q"):
@@ -87,6 +86,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             mssh.execute('qconf -mattr queue pe_list "%s" %s' % (name, queue))
 
     def _inst_sge(self, node, exec_host=True):
+        self._setup_sge_profile(node)
         inst_sge = 'cd %s && TERM=rxvt ./%s ' % (self.SGE_ROOT, self.SGE_INST)
         if node.is_master():
             inst_sge += '-m '
@@ -149,7 +149,6 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         sge_conf.close()
         log.info("Installing Sun Grid Engine...")
         self._inst_sge(master, exec_host=self.master_is_exec_host)
-        self._setup_sge_profile(master)
         # set all.q shell to bash
         master.ssh.execute('qconf -mattr queue shell "/bin/bash" all.q')
         for node in self.nodes:
