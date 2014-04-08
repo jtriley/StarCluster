@@ -85,8 +85,7 @@ class CmdAddNode(ClusterCompleter):
             "-I", "--instance-type", dest="instance_type",
             action="store", type="choice", default=None,
             choices=sorted(static.INSTANCE_TYPES.keys()),
-            help="The instance type to use when launching volume "
-            "host instance")
+            help="instance type to use when launching node")
         parser.add_option(
             "-z", "--availability-zone", dest="zone", action="store",
             type="string", default=None, help="availability zone for "
