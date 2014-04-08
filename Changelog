@@ -47,8 +47,8 @@ Features
 
 Bug Fixes
 ---------
-* users: pass -n to echo to avoid trailing newlines (gh-375)
-* cluster: do not use public IPs with VPC by default (gh-372)
+* users: pass -n to echo to avoid trailing newlines (#375)
+* cluster: do not use public IPs with VPC by default (#372)
 * cluster: fix VPC public IPs validation
 
 .. _version-0.95.2:
@@ -68,8 +68,8 @@ StarCluster. Please terminate all clusters before upgrading to 0.95.2.
 
 Bug Fixes
 ---------
-* cluster: sort chunked cluster tags before loading (gh-371)
-* config: set public_ip setting type to boolean (gh-366)
+* cluster: sort chunked cluster tags before loading (#371)
+* config: set public_ip setting type to boolean (#366)
 
 .. _version-0.95.1:
 
@@ -88,9 +88,9 @@ StarCluster. Please terminate all clusters before upgrading to 0.95.1.
 
 Bug Fixes
 ---------
-* cluster: fix max length error when applying cluster tags (gh-348)
-* start: fix default value for ``--no-public-ips`` option (gh-366)
-* cluster: fix for custom security group permissions (gh-356)
+* cluster: fix max length error when applying cluster tags (#348)
+* start: fix default value for ``--no-public-ips`` option (#366)
+* cluster: fix for custom security group permissions (#356)
 
 .. _version-0.95:
 

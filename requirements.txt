@@ -20,4 +20,5 @@ pytest-cov==1.6
 pytest-pep8==1.0.5
 pytest-flakes==0.2
 sphinx==1.2.1
+sphinxcontrib-issuetracker==0.11
 pudb==2013.5.1
