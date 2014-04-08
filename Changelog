@@ -5,6 +5,50 @@ Version History
 .. contents::
     :local:
 
+.. _version-0.95.4:
+
+0.95.4
+======
+
+.. _v0954-news:
+
+
+News
+----
+.. warning::
+
+    This release fixes a show-stopping issue for users launching spot clusters
+    on a default-VPC account without explicitly specifying a VPC/subnet. It is
+    recommended that you upgrade as soon as possible.
+
+Version 0.95.4 of StarCluster is a bug fix release. The sections below contain
+the full list of changes. This version is *not* compatible with clusters
+started with older versions of StarCluster. Please terminate all clusters
+before upgrading to 0.95.4.
+
+Features
+--------
+* sge: new ``slots_per_host`` setting for specifying a custom number of slots
+  per execution host in the cluster (see :ref:`sge-plugin-sph`)
+
+.. _v0954-fixes:
+
+Bug Fixes
+---------
+* cluster: fix spot_requests property to correctly account for spot clusters
+  that get automatically assigned to the default VPC by EC2. (#377)
+* loadbalance: fetch and use the remote time zone from the master node rather
+  than assuming the timezone is always set to UTC. (#385)
+* sge: fix parallel environment slot allocation to respect both
+  the ``master_is_exec_host`` and the new ``slots_per_host`` setting.
+
+Enhancements
+------------
+* awsutils: show progress bar when waiting for spot requests/instances to
+  propagate
+* listspots: show detailed status and status message
+* sge: remove redundant admin/submit host setup
+
 .. _version-0.95.3:
 
 0.95.3
@@ -38,12 +82,12 @@ Please note that this version is *not* compatible with clusters started with
 older versions of StarCluster. Please terminate all clusters before upgrading
 to 0.95.3.
 
-.. _v0953-fixes:
-
 Features
 --------
 * start: add -Q, -p, and --no-spot-master options
 * cluster: update 'Creating cluster' log msg to indicate VPC
+
+.. _v0953-fixes:
 
 Bug Fixes
 ---------
