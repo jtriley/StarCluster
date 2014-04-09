@@ -84,6 +84,8 @@ To disable the master node being used as an `execution host` set
 Now whenever a new cluster is created with the SGE plugin enabled the master
 will *not* be configured as an `execution host`.
 
+.. _sge-plugin-sph:
+
 Setting the Number of Slots Per Host
 ------------------------------------
 By default StarCluster configures each execution host in the cluster with a

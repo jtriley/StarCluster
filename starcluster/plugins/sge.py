@@ -53,7 +53,6 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
     def _add_to_sge(self, node):
         node.ssh.execute('pkill -9 sge', ignore_exit_status=True)
         node.ssh.execute('rm /etc/init.d/sge*', ignore_exit_status=True)
-        self._setup_sge_profile(node)
         self._inst_sge(node, exec_host=True)
 
     def _create_sge_pe(self, name="orte", nodes=None, queue="all.q"):
@@ -69,24 +68,27 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         pe_exists = mssh.get_status('qconf -sp %s' % name) == 0
         verb = 'Updating' if pe_exists else 'Creating'
         log.info("%s SGE parallel environment '%s'" % (verb, name))
-        # iterate through each machine and count the number of processors
-        nodes = nodes or self._nodes
-        num_processors = sum(self.pool.map(lambda n: n.num_processors, nodes,
-                                           jobid_fn=lambda n: n.alias))
+        if not nodes:
+            nodes = self._nodes if self.master_is_exec_host else self.nodes
+        if self.slots_per_host is None:
+            pe_slots = sum(self.pool.map(lambda n: n.num_processors, nodes,
+                                         jobid_fn=lambda n: n.alias))
+        else:
+            pe_slots = self.slots_per_host * len(nodes)
         if not pe_exists:
             penv = mssh.remote_file("/tmp/pe.txt", "w")
-            penv.write(sge.sge_pe_template % (name, num_processors))
+            penv.write(sge.sge_pe_template % (name, pe_slots))
             penv.close()
             mssh.execute("qconf -Ap %s" % penv.name)
         else:
-            mssh.execute("qconf -mattr pe slots %s %s" %
-                         (num_processors, name))
+            mssh.execute("qconf -mattr pe slots %s %s" % (pe_slots, name))
         if queue:
             log.info("Adding parallel environment '%s' to queue '%s'" %
                      (name, queue))
             mssh.execute('qconf -mattr queue pe_list "%s" %s' % (name, queue))
 
     def _inst_sge(self, node, exec_host=True):
+        self._setup_sge_profile(node)
         inst_sge = 'cd %s && TERM=rxvt ./%s ' % (self.SGE_ROOT, self.SGE_INST)
         if node.is_master():
             inst_sge += '-m '
@@ -95,14 +97,13 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         inst_sge += '-noremote -auto ./%s' % self.SGE_CONF
         node.ssh.execute(inst_sge, silent=True, only_printable=True)
         if exec_host:
-            master = self._master
             num_slots = self.slots_per_host
             if num_slots is None:
                 num_slots = node.num_processors
-            master.ssh.execute("qconf -aattr hostgroup hostlist %s @allhosts" %
-                               node.alias)
-            master.ssh.execute('qconf -aattr queue slots "[%s=%d]" all.q' %
-                               (node.alias, num_slots))
+            node.ssh.execute("qconf -aattr hostgroup hostlist %s @allhosts" %
+                             node.alias)
+            node.ssh.execute('qconf -aattr queue slots "[%s=%d]" all.q' %
+                             (node.alias, num_slots))
 
     def _sge_path(self, path):
         return posixpath.join(self.SGE_ROOT, path)
@@ -120,8 +121,8 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
 
     def _setup_sge(self):
         """
-        Install Sun Grid Engine with a default parallel
-        environment on StarCluster
+        Install Sun Grid Engine with a default parallel environment on
+        StarCluster
         """
         master = self._master
         if not master.ssh.isdir(self.SGE_ROOT):
@@ -149,12 +150,9 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         sge_conf.close()
         log.info("Installing Sun Grid Engine...")
         self._inst_sge(master, exec_host=self.master_is_exec_host)
-        self._setup_sge_profile(master)
         # set all.q shell to bash
         master.ssh.execute('qconf -mattr queue shell "/bin/bash" all.q')
         for node in self.nodes:
-            self._add_sge_admin_host(node)
-            self._add_sge_submit_host(node)
             self.pool.simple_job(self._add_to_sge, (node,), jobid=node.alias)
         self.pool.wait(numtasks=len(self.nodes))
         self._create_sge_pe()
