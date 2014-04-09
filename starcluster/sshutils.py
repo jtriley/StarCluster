@@ -502,7 +502,7 @@ class SSHClient(object):
         Returns the stdout/stderr output from a ssh channel as a list of
         strings (non-interactive only)
         """
-        #stdin = channel.makefile('wb', -1)
+        # stdin = channel.makefile('wb', -1)
         stdout = channel.makefile('rb', -1)
         stderr = channel.makefile_stderr('rb', -1)
         if silent:
@@ -787,8 +787,8 @@ class SSHGlob(object):
         if not dirname:
             dirname = posixpath.curdir
         if isinstance(pattern, unicode) and not isinstance(dirname, unicode):
-            #encoding = sys.getfilesystemencoding() or sys.getdefaultencoding()
-            #dirname = unicode(dirname, encoding)
+            # enc = sys.getfilesystemencoding() or sys.getdefaultencoding()
+            # dirname = unicode(dirname, enc)
             dirname = unicode(dirname, 'UTF-8')
         try:
             names = [posixpath.basename(n) for n in self.ssh.ls(dirname)]

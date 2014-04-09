@@ -285,10 +285,10 @@ class DefaultClusterSetup(ClusterSetup):
             if not (vol_id and device and mount_path):
                 log.error("missing required settings for vol %s" % vol)
                 continue
-            if not device in devices and device.startswith('/dev/sd'):
+            if device not in devices and device.startswith('/dev/sd'):
                 # check for "correct" device in unpatched kernels
                 device = device.replace('/dev/sd', '/dev/xvd')
-                if not device in devices:
+                if device not in devices:
                     log.warn("Cannot find device %s for volume %s" %
                              (device, vol_id))
                     log.warn("Not mounting %s on %s" % (vol_id, mount_path))
@@ -307,7 +307,7 @@ class DefaultClusterSetup(ClusterSetup):
                         "which partition to use (e.g. partition=0, "
                         "partition=1, etc.) in the volume's config")
                     continue
-            elif not volume_partition in partitions:
+            elif volume_partition not in partitions:
                 log.warn("Cannot find partition %s on volume %s" %
                          (volume_partition, vol_id))
                 log.warn("Not mounting %s on %s" % (vol_id, mount_path))
@@ -334,7 +334,7 @@ class DefaultClusterSetup(ClusterSetup):
         for vol in self._volumes:
             vol = self._volumes[vol]
             mount_path = vol.get('mount_path')
-            if not mount_path in export_paths:
+            if mount_path not in export_paths:
                 export_paths.append(mount_path)
         return export_paths
 

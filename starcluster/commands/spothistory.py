@@ -78,7 +78,7 @@ class CmdSpotHistory(CmdBase):
             self.parser.error("options -c and -v cannot be specified at "
                               "the same time")
         instance_type = args[0]
-        if not instance_type in static.INSTANCE_TYPES:
+        if instance_type not in static.INSTANCE_TYPES:
             self.parser.error('invalid instance type. possible options: %s' %
                               instance_types)
         start = self.opts.start_time

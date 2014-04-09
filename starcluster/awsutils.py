@@ -189,7 +189,7 @@ class EasyEC2(EasyAWS):
         Returns boto Region object if it exists, raises RegionDoesNotExist
         otherwise.
         """
-        if not region_name in self.regions:
+        if region_name not in self.regions:
             raise exception.RegionDoesNotExist(region_name)
         return self.regions.get(region_name)
 
@@ -547,12 +547,18 @@ class EasyEC2(EasyAWS):
         reqs_ids = []
         max_retries = max(1, max_retries)
         interval = max(1, interval)
-        s = utils.get_spinner("Waiting for %s to propagate..." % obj_name)
+        widgets = ['', progressbar.Fraction(), ' ',
+                   progressbar.Bar(marker=progressbar.RotatingMarker()), ' ',
+                   progressbar.Percentage(), ' ', ' ']
+        log.info("Waiting for %s to propagate..." % obj_name)
+        pbar = progressbar.ProgressBar(widgets=widgets,
+                                       maxval=num_objs).start()
         try:
             for i in range(max_retries + 1):
                 reqs = fetch_func(filters=filters)
                 reqs_ids = [req.id for req in reqs]
                 num_reqs = len(reqs)
+                pbar.update(num_reqs)
                 if num_reqs != num_objs:
                     log.debug("%d: only %d/%d %s have "
                               "propagated - sleeping..." %
@@ -562,7 +568,8 @@ class EasyEC2(EasyAWS):
                 else:
                     return
         finally:
-            s.stop()
+            if not pbar.finished:
+                pbar.finish()
         missing = [oid for oid in obj_ids if oid not in reqs_ids]
         raise exception.PropagationException(
             "Failed to fetch %d/%d %s after %d seconds: %s" %
@@ -719,10 +726,9 @@ class EasyEC2(EasyAWS):
         return [name_id[gname] for gname in groupnames if gname in name_id]
 
     def get_all_instances(self, instance_ids=[], filters={}):
-
-        #little path to since vpc can't hadle filters with group-name
-        #TODO : dev Tue Apr 24 18:25:58 2012
-        #should move all code to instance.group-id
+        # little path to since vpc can't hadle filters with group-name
+        # TODO : dev Tue Apr 24 18:25:58 2012
+        # should move all code to instance.group-id
         if 'group-name' in filters:
             groupname = filters['group-name']
             try:
@@ -784,6 +790,8 @@ class EasyEC2(EasyAWS):
             launch_group = spot.launch_group or 'N/A'
             zone_group = spot.availability_zone_group or 'N/A'
             price = spot.price or 'N/A'
+            status = spot.status.code or 'N/A'
+            message = spot.status.message or 'N/A'
             lspec = spot.launch_specification
             instance_type = lspec.instance_type
             image_id = lspec.image_id
@@ -791,6 +799,8 @@ class EasyEC2(EasyAWS):
             groups = ', '.join([g.id for g in lspec.groups])
             print "id: %s" % spot_id
             print "price: $%0.2f" % price
+            print "status: %s" % status
+            print "message: %s" % message
             print "spot_request_type: %s" % type
             print "state: %s" % state
             print "instance_id: %s" % instance_id
@@ -979,7 +989,7 @@ class EasyEC2(EasyAWS):
         if region:
             regs = self.conn.get_all_regions()
             regions = [r.name for r in regs]
-            if not region in regions:
+            if region not in regions:
                 raise exception.RegionDoesNotExist(region)
             for reg in regs:
                 if reg.name == region:

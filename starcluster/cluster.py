@@ -533,7 +533,7 @@ class Cluster(object):
                 # devices
                 devices.remove(dev)
             volid = vol.get('volume_id')
-            if dev and not volid in devmap:
+            if dev and volid not in devmap:
                 devmap[volid] = dev
         volumes = utils.AttributeDict()
         for volname in vols:
@@ -577,8 +577,6 @@ class Cluster(object):
         Cluster object. Settings are loaded from cluster group tags and the
         master node's user data.
         """
-        if not (load_plugins or load_volumes):
-            return True
         try:
             tags = self.cluster_group.tags
             version = tags.get(static.VERSION_TAG, '')
@@ -589,6 +587,8 @@ class Cluster(object):
                 sep = '*' * 60
                 log.warn('\n'.join([sep, msg, sep]), extra={'__textwrap__': 1})
             self.update(self._get_settings_from_tags())
+            if not (load_plugins or load_volumes):
+                return True
             try:
                 master = self.master_node
             except exception.MasterDoesNotExist:
@@ -620,7 +620,7 @@ class Cluster(object):
         include = ['_zone', '_plugins']
         for key in self.__dict__.keys():
             private = key.startswith('_')
-            if (not private or key in include) and not key in exclude:
+            if (not private or key in include) and key not in exclude:
                 val = getattr(self, key)
                 if type(val) in [str, unicode, bool, int, float, list, dict]:
                     cfg[key] = val
@@ -669,7 +669,7 @@ class Cluster(object):
             if not self.ec2.has_permission(sg, ip_protocol, from_port,
                                            to_port, cidr_ip):
                 log.info("Opening %s port range %s-%s for CIDR %s" %
-                        (ip_protocol, from_port, to_port, cidr_ip))
+                         (ip_protocol, from_port, to_port, cidr_ip))
                 sg.authorize(ip_protocol, from_port, to_port, cidr_ip)
             else:
                 log.info("Already open: %s port range %s-%s for CIDR %s" %
@@ -683,11 +683,11 @@ class Cluster(object):
     def _add_chunked_tags(self, sg, chunks, base_tag_name):
         for i, chunk in enumerate(chunks):
             tag = "%s-%s" % (base_tag_name, i) if i != 0 else base_tag_name
-            if not tag in sg.tags:
+            if tag not in sg.tags:
                 sg.add_tag(tag, chunk)
 
     def _add_tags_to_sg(self, sg):
-        if not static.VERSION_TAG in sg.tags:
+        if static.VERSION_TAG not in sg.tags:
             sg.add_tag(static.VERSION_TAG, str(static.VERSION))
         core_settings = dict(cluster_size=self.cluster_size,
                              master_image_id=self.master_image_id,
@@ -871,7 +871,8 @@ class Cluster(object):
         group_id = self.cluster_group.id
         states = ['active', 'open']
         filters = {'state': states}
-        if self.cluster_group.vpc_id:
+        vpc_id = self.cluster_group.vpc_id
+        if vpc_id and self.subnet_id:
             # According to the EC2 API docs this *should* be
             # launch.network-interface.group-id but it doesn't work
             filters['network-interface.group-id'] = group_id
@@ -926,7 +927,7 @@ class Cluster(object):
         instance_type = instance_type or self.node_instance_type
         if placement_group or instance_type in static.PLACEMENT_GROUP_TYPES:
             region = self.ec2.region.name
-            if not region in static.PLACEMENT_GROUP_REGIONS:
+            if region not in static.PLACEMENT_GROUP_REGIONS:
                 cluster_regions = ', '.join(static.PLACEMENT_GROUP_REGIONS)
                 log.warn("Placement groups are only supported in the "
                          "following regions:\n%s" % cluster_regions)
@@ -1172,35 +1173,29 @@ class Cluster(object):
         """
         lmap = self._get_launch_map()
         zone = None
-        master_map = None
         insts = []
-        for (type, image) in lmap:
-            # launch all aliases that match master's itype/image_id
-            aliases = lmap.get((type, image))
-            if self._make_alias(master=True) in aliases:
-                master_map = (type, image)
-                for alias in aliases:
-                    log.debug("Launching %s (ami: %s, type: %s)" %
-                              (alias, image, type))
-                master_response = self.create_nodes(aliases, image_id=image,
-                                                    instance_type=type,
-                                                    force_flat=True)[0]
-                zone = master_response.instances[0].placement
-                insts.extend(master_response.instances)
-        lmap.pop(master_map)
-        if self.cluster_size <= 1:
-            return
-        for (type, image) in lmap:
-            aliases = lmap.get((type, image))
+        master_alias = self._make_alias(master=True)
+        itype, image = [i for i in lmap if master_alias in lmap[i]][0]
+        aliases = lmap.get((itype, image))
+        for alias in aliases:
+            log.debug("Launching %s (ami: %s, type: %s)" %
+                      (alias, image, itype))
+        master_response = self.create_nodes(aliases, image_id=image,
+                                            instance_type=itype,
+                                            force_flat=True)[0]
+        zone = master_response.instances[0].placement
+        insts.extend(master_response.instances)
+        lmap.pop((itype, image))
+        for (itype, image) in lmap:
+            aliases = lmap.get((itype, image))
             for alias in aliases:
                 log.debug("Launching %s (ami: %s, type: %s)" %
-                          (alias, image, type))
+                          (alias, image, itype))
             resv = self.create_nodes(aliases, image_id=image,
-                                     instance_type=type, zone=zone,
+                                     instance_type=itype, zone=zone,
                                      force_flat=True)
             insts.extend(resv[0].instances)
-        if insts:
-            self.ec2.wait_for_propagation(instances=insts)
+        self.ec2.wait_for_propagation(instances=insts)
 
     def _create_spot_cluster(self):
         """
@@ -1229,8 +1224,6 @@ class Cluster(object):
             # Make sure nodes are in same zone as master
             zone = master_response.instances[0].placement
             insts.extend(master_response.instances)
-        if self.cluster_size <= 1:
-            return
         for id in range(1, self.cluster_size):
             alias = self._make_alias(id)
             (ntype, nimage) = self._get_type_and_image_id(alias)
@@ -1385,16 +1378,16 @@ class Cluster(object):
             pbar.maxval = len(spots)
             pbar.update(0)
             while not pbar.finished:
-                active_spots = filter(lambda x: x.state == "active", spots)
+                active_spots = [s for s in spots if s.state == "active" and
+                                s.instance_id]
                 pbar.maxval = len(spots)
                 pbar.update(len(active_spots))
                 if not pbar.finished:
                     time.sleep(self.refresh_interval)
                     spots = self.get_spot_requests_or_raise()
-                else:
-                    self.ec2.wait_for_propagation(
-                        instances=[s.instance_id for s in active_spots])
             pbar.reset()
+        self.ec2.wait_for_propagation(
+            instances=[s.instance_id for s in spots])
 
     def wait_for_running_instances(self, nodes=None,
                                    kill_pending_after_mins=15):
@@ -1985,13 +1978,13 @@ class ClusterValidator(validators.Validator):
         node_instance_type = cluster.node_instance_type
         instance_types = static.INSTANCE_TYPES
         instance_type_list = ', '.join(instance_types.keys())
-        if not node_instance_type in instance_types:
+        if node_instance_type not in instance_types:
             raise exception.ClusterValidationError(
                 "You specified an invalid node_instance_type %s\n"
                 "Possible options are:\n%s" %
                 (node_instance_type, instance_type_list))
         elif master_instance_type:
-            if not master_instance_type in instance_types:
+            if master_instance_type not in instance_types:
                 raise exception.ClusterValidationError(
                     "You specified an invalid master_instance_type %s\n"
                     "Possible options are:\n%s" %
@@ -2025,7 +2018,7 @@ class ClusterValidator(validators.Validator):
         for itype in cluster.node_instance_types:
             type = itype.get('type')
             img = itype.get('image') or node_image_id
-            if not type in instance_types:
+            if type not in instance_types:
                 raise exception.ClusterValidationError(
                     "You specified an invalid instance type %s\n"
                     "Possible options are:\n%s" % (type, instance_type_list))

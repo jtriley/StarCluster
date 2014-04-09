@@ -185,7 +185,6 @@ class S3ImageCreator(ImageCreator):
                      '-s %(secret_key)s' % config_dict, silent=False)
 
     def _cleanup(self):
-        #just in case...
         self._cleanup_pem_files()
         conn = self.host_ssh
         conn.execute('rm -f ~/.bash_history', silent=False)
@@ -302,7 +301,7 @@ class EBSImageCreator(ImageCreator):
         dev = None
         for i in string.ascii_lowercase[::-1]:
             dev = '/dev/sd%s' % i
-            if not dev in host.block_device_mapping:
+            if dev not in host.block_device_mapping:
                 break
         log.info("Attaching volume %s to instance %s on %s" %
                  (vol.id, host.id, dev))

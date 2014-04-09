@@ -100,7 +100,7 @@ class ConsoleLogger(logging.StreamHandler):
         if record.levelno in [ERROR, CRITICAL, FATAL]:
             stream = self.error_stream
         if not hasattr(types, "UnicodeType"):
-             # if no unicode support...
+            # if no unicode support...
             stream.write(fs % msg)
         else:
             try:
@@ -217,7 +217,7 @@ def get_log_for_pid(pid):
         if pid_str in line:
             yield line
             found_pid = True
-        elif found_pid and not ' PID: ' in line:
+        elif found_pid and ' PID: ' not in line:
             yield line
         else:
             found_pid = False

@@ -55,7 +55,7 @@ def create_sc_config_dirs():
     __makedirs(STARCLUSTER_LOG_DIR)
 
 
-VERSION = "0.95.3"
+VERSION = "0.95.4"
 PID = os.getpid()
 TMP_DIR = tempfile.gettempdir()
 if os.path.exists("/tmp"):
@@ -250,8 +250,8 @@ PERMISSION_SETTINGS = {
     # skip this for now...these two options are mutually exclusive to
     # the four settings above and source_group is  less commonly
     # used. address this when someone requests it.
-    #'source_group': (str, False, None),
-    #'source_group_owner': (int, False, None),
+    # 'source_group': (str, False, None),
+    # 'source_group_owner': (int, False, None),
 }
 
 CLUSTER_SETTINGS = {
