@@ -178,7 +178,8 @@ class ClusterManager(managers.Manager):
 
     def add_nodes(self, cluster_name, num_nodes, aliases=None, no_create=False,
                   image_id=None, instance_type=None, zone=None,
-                  placement_group=None, spot_bid=None):
+                  placement_group=None, spot_bid=None,
+                  subnet_id=None):
         """
         Add one or more nodes to cluster
         """
@@ -186,7 +187,8 @@ class ClusterManager(managers.Manager):
         return cl.add_nodes(num_nodes, aliases=aliases, image_id=image_id,
                             instance_type=instance_type, zone=zone,
                             placement_group=placement_group, spot_bid=spot_bid,
-                            no_create=no_create)
+                            no_create=no_create,
+                            subnet_id=subnet_id)
 
     def remove_node(self, cluster_name, alias=None, terminate=True,
                     force=False):
@@ -434,7 +436,7 @@ class Cluster(object):
 
         self._cluster_group = None
         self._placement_group = None
-        self._subnet = None
+        self._subnet = {}
         self._zone = None
         self._master = None
         self._nodes = []
@@ -634,9 +636,18 @@ class Cluster(object):
 
     @property
     def subnet(self):
-        if not self._subnet and self.subnet_id:
-            self._subnet = self.ec2.get_subnet(self.subnet_id)
-        return self._subnet
+        return self.get_subnet(self.subnet_id)
+    
+    def get_subnet(self, subnet_id=None):
+        """Return either default subnet or subnet by the specified id.
+           Caches the subnet objects to avoid redundant ec2 lookups"""
+        subnet_id = subnet_id or self.subnet_id
+        if subnet_id:
+            found = self._subnet.get(subnet_id, None)
+            if found == None:
+                found = self.ec2.get_subnet(subnet_id)
+                self._subnet[subnet_id] = found
+        return found
 
     @property
     def cluster_group(self):
@@ -913,7 +924,7 @@ class Cluster(object):
 
     def create_nodes(self, aliases, image_id=None, instance_type=None,
                      zone=None, placement_group=None, spot_bid=None,
-                     force_flat=False):
+                     force_flat=False, subnet_id=None):
         """
         Convenience method for requesting instances with this cluster's
         settings. All settings (kwargs) except force_flat default to cluster
@@ -946,19 +957,22 @@ class Cluster(object):
                       placement=zone or getattr(self.zone, 'name', None),
                       user_data=user_data,
                       placement_group=placement_group)
-        if self.subnet_id:
+        
+        subnet_id = subnet_id or self.subnet_id
+        if subnet_id:
             netif = self.ec2.get_network_spec(
                 device_index=0, associate_public_ip_address=self.public_ips,
-                subnet_id=self.subnet_id, groups=[self.cluster_group.id])
+                subnet_id=subnet_id, groups=[self.cluster_group.id])
             kwargs.update(
                 network_interfaces=self.ec2.get_network_collection(netif))
         else:
             kwargs.update(security_groups=[cluster_sg])
+            
         resvs = []
         if spot_bid:
             security_group_id = self.cluster_group.id
             for alias in aliases:
-                if not self.subnet_id:
+                if not subnet_id:
                     kwargs['security_group_ids'] = [security_group_id]
                 kwargs['user_data'] = self._get_cluster_userdata([alias])
                 resvs.extend(self.ec2.request_instances(image_id, **kwargs))
@@ -997,7 +1011,7 @@ class Cluster(object):
 
     def add_nodes(self, num_nodes, aliases=None, image_id=None,
                   instance_type=None, zone=None, placement_group=None,
-                  spot_bid=None, no_create=False):
+                  spot_bid=None, no_create=False, subnet_id=None):
         """
         Add new nodes to this cluster
 
@@ -1016,12 +1030,14 @@ class Cluster(object):
             raise exception.ClusterValidationError(
                 "worker nodes cannot have master as an alias")
         if not no_create:
-            if self.subnet:
-                ip_count = self.subnet.available_ip_address_count
+            # Why is this even here? Shouldn't it be down in self.create_nodes?
+            subnet = self.get_subnet(subnet_id)
+            if subnet:
+                ip_count = subnet.available_ip_address_count
                 if ip_count < len(aliases):
                     raise exception.ClusterValidationError(
                         "Not enough IP addresses available in %s (%d)" %
-                        (self.subnet.id, ip_count))
+                        (subnet.id, ip_count))
             for node in running_pending:
                 if node.alias in aliases:
                     raise exception.ClusterValidationError(
@@ -1030,7 +1046,8 @@ class Cluster(object):
             resp = self.create_nodes(aliases, image_id=image_id,
                                      instance_type=instance_type, zone=zone,
                                      placement_group=placement_group,
-                                     spot_bid=spot_bid)
+                                     spot_bid=spot_bid,
+                                     subnet_id=subnet_id)
             if spot_bid or self.spot_bid:
                 self.ec2.wait_for_propagation(spot_requests=resp)
             else:

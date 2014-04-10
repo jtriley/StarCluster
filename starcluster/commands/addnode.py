@@ -97,6 +97,9 @@ class CmdAddNode(ClusterCompleter):
             "-x", "--no-create", dest="no_create", action="store_true",
             default=False, help="do not launch new EC2 instances when "
             "adding nodes (use existing instances instead)")
+        parser.add_option(
+            "-N", "--subnet-id", dest="subnet_id", action="store", type="string",
+            default=None, help=("Launch the new nodes into this VPC subnet"))
 
     def execute(self, args):
         if len(args) != 1:
@@ -125,4 +128,5 @@ class CmdAddNode(ClusterCompleter):
                           image_id=self.opts.image_id,
                           instance_type=self.opts.instance_type,
                           zone=self.opts.zone, spot_bid=self.opts.spot_bid,
-                          no_create=self.opts.no_create)
+                          no_create=self.opts.no_create,
+                          subnet_id=self.opts.subnet_id)
