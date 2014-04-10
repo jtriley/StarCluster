@@ -637,14 +637,14 @@ class Cluster(object):
     @property
     def subnet(self):
         return self.get_subnet(self.subnet_id)
-    
+
     def get_subnet(self, subnet_id=None):
         """Return either default subnet or subnet by the specified id.
            Caches the subnet objects to avoid redundant ec2 lookups"""
         subnet_id = subnet_id or self.subnet_id
         if subnet_id:
             found = self._subnet.get(subnet_id, None)
-            if found == None:
+            if found is None:
                 found = self.ec2.get_subnet(subnet_id)
                 self._subnet[subnet_id] = found
         return found
@@ -957,7 +957,7 @@ class Cluster(object):
                       placement=zone or getattr(self.zone, 'name', None),
                       user_data=user_data,
                       placement_group=placement_group)
-        
+
         subnet_id = subnet_id or self.subnet_id
         if subnet_id:
             netif = self.ec2.get_network_spec(
@@ -967,7 +967,7 @@ class Cluster(object):
                 network_interfaces=self.ec2.get_network_collection(netif))
         else:
             kwargs.update(security_groups=[cluster_sg])
-            
+
         resvs = []
         if spot_bid:
             security_group_id = self.cluster_group.id
