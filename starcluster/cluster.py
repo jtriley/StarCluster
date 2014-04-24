@@ -1188,6 +1188,8 @@ class Cluster(object):
         lmap.pop((itype, image))
         for (itype, image) in lmap:
             aliases = lmap.get((itype, image))
+            if not aliases:
+                continue
             for alias in aliases:
                 log.debug("Launching %s (ami: %s, type: %s)" %
                           (alias, image, itype))
