@@ -5,6 +5,36 @@ Version History
 .. contents::
     :local:
 
+
+.. _version-0.95.5:
+
+0.95.5
+======
+
+.. _v0955-news:
+
+News
+----
+Version 0.95.5 of StarCluster is a bug fix release. The sections below contain
+the full list of changes. This version is *not* compatible with clusters
+started with older versions of StarCluster. Please terminate all clusters
+before upgrading to 0.95.5.
+
+Features
+--------
+* Add support for R3 instance types (#392, #393)
+
+.. _v0955-fixes:
+
+Bug Fixes
+---------
+* cluster: fix bug when creating a flat rate cluster with master_instance_type
+  or master_image_id specified
+
+Enhancements
+------------
+* docs: update image host command to use -I,-m options (#388)
+
 .. _version-0.95.4:
 
 0.95.4
