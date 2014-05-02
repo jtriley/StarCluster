@@ -216,6 +216,7 @@ GLOBAL_SETTINGS = {
 AWS_SETTINGS = {
     'aws_access_key_id': (str, True, None, None, None),
     'aws_secret_access_key': (str, True, None, None, None),
+    'aws_security_token': (str, False, None, None, None),
     'aws_user_id': (str, False, None, None, None),
     'ec2_cert': (str, False, None, None, __expand_all),
     'ec2_private_key': (str, False, None, None, __expand_all),
