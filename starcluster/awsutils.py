@@ -1600,11 +1600,10 @@ class EasyEC2(EasyAWS):
                                           zone=zone,
                                           mute=True)
             price = price[0][1]
-            log.info("%s: %f", zone, price)
+            log.debug("%s: %f", zone, price)
             if price < min_price:
                 min_zone = zone
                 min_price = price
-        log.info(instance_type)
         return min_zone, min_price
 
 
