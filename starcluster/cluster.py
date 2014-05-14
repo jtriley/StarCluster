@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -599,8 +599,6 @@ class Cluster(object):
         Cluster object. Settings are loaded from cluster group tags and the
         master node's user data.
         """
-        if not (load_plugins or load_volumes):
-            return True
         try:
             tags = self.cluster_group.tags
             version = tags.get(static.VERSION_TAG, '')
@@ -612,6 +610,8 @@ class Cluster(object):
                 log.warn('\n'.join([sep, msg, sep]), extra={'__textwrap__': 1})
             self._config_fields = self._get_settings_from_tags()
             self.update(self._config_fields)
+            if not (load_plugins or load_volumes):
+                return True
             try:
                 master = self.master_node
             except exception.MasterDoesNotExist:
@@ -951,7 +951,8 @@ class Cluster(object):
         group_id = self.cluster_group.id
         states = ['active', 'open']
         filters = {'state': states}
-        if self.cluster_group.vpc_id:
+        vpc_id = self.cluster_group.vpc_id
+        if vpc_id and self.subnet_id:
             # According to the EC2 API docs this *should* be
             # launch.network-interface.group-id but it doesn't work
             filters['network-interface.group-id'] = group_id
@@ -1315,6 +1316,8 @@ class Cluster(object):
         lmap.pop((itype, image))
         for (itype, image) in lmap:
             aliases = lmap.get((itype, image))
+            if not aliases:
+                continue
             for alias in aliases:
                 log.debug("Launching %s (ami: %s, type: %s)" %
                           (alias, image, itype))
