@@ -936,7 +936,7 @@ class Cluster(object):
             elif not placement_group:
                 placement_group = self.placement_group.name
 
-        if spot_bid and placement_group is None and zone is None:
+        if spot_bid and not placement_group and zone is None:
             zone, price = self.ec2.get_spot_cheapest_zone(instance_type)
             log.info("Min price of %f found in zone %s", price, zone)
             if price > spot_bid:
