@@ -1018,11 +1018,19 @@ class Cluster(object):
                 placement_group = self.placement_group.name
         availability_zone_group = None if placement_group is False \
             else cluster_sg
-        if zone is None and placement_group is not False:
-            zone = getattr(self.zone, 'name', None)
-
         #launch_group is related to placement group
         launch_group = availability_zone_group
+
+        if spot_bid and placement_group is None and zone is None:
+            zone, price = self.ec2.get_spot_cheapest_zone(instance_type)
+            log.info("Min price of %f found in zone %s", price, zone)
+            if price > spot_bid:
+                # Let amazon pick the first zone where the prices goes
+                # bellow the spot_bid
+                log.info("Reverting to \"no zone\" as the min price is "
+                         "above the spot bid.")
+                zone = None
+
         image_id = image_id or self.node_image_id
         count = len(aliases) if not spot_bid else 1
         user_data = self._get_cluster_userdata(aliases)
