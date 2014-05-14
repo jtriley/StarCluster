@@ -65,7 +65,7 @@ class CmdSpotHistory(CmdBase):
         parser.add_option("-p", "--plot", dest="plot",
                           action="store_true", default=False,
                           help="plot spot history in a web browser")
-        parser.add_option("-c", "--cluster-name", dest="cluster_name",
+        parser.add_option("--cluster-name", dest="cluster_name",
                           default=None,
                           help="limit results to the clusters master node "
                           "availability zone")
