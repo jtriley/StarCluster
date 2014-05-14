@@ -1503,7 +1503,12 @@ class EasyEC2(EasyAWS):
     def get_spot_history(self, instance_type, start=None, end=None, zone=None,
                          plot=False, plot_server_interface="localhost",
                          plot_launch_browser=True, plot_web_browser=None,
-                         plot_shutdown_server=True, classic=False, vpc=False):
+                         plot_shutdown_server=True, classic=False, vpc=False,
+                         mute=False):
+        def log_info(*args):
+            if not mute:
+                log.info(*args)
+
         if start and not utils.is_iso_time(start):
             raise exception.InvalidIsoDate(start)
         if end and not utils.is_iso_time(end):
@@ -1520,7 +1525,7 @@ class EasyEC2(EasyAWS):
         else:
             pdesc = "Linux/UNIX (Amazon VPC)"
             short_pdesc = "VPC"
-        log.info("Fetching spot history for %s (%s)" %
+        log_info("Fetching spot history for %s (%s)" %
                  (instance_type, short_pdesc))
         hist = self.conn.get_spot_price_history(start_time=start, end_time=end,
                                                 availability_zone=zone,
@@ -1539,9 +1544,9 @@ class EasyEC2(EasyAWS):
             data.append([timestamp, price])
         maximum = max(prices)
         avg = sum(prices) / float(len(prices))
-        log.info("Current price: $%.4f" % prices[0])
-        log.info("Max price: $%.4f" % maximum)
-        log.info("Average price: $%.4f" % avg)
+        log_info("Current price: $%.4f" % prices[0])
+        log_info("Max price: $%.4f" % maximum)
+        log_info("Average price: $%.4f" % avg)
         if plot:
             xaxisrange = dates[-1] - dates[0]
             xpanrange = [dates[0] - xaxisrange / 2.,
@@ -1557,20 +1562,20 @@ class EasyEC2(EasyAWS):
                            shutdown=plot_shutdown_server,
                            xpanrange=xpanrange, ypanrange=ypanrange,
                            xzoomrange=xzoomrange, yzoomrange=yzoomrange)
-            log.info("", extra=dict(__raw__=True))
-            log.info("Starting StarCluster Webserver...")
+            log_info("", extra=dict(__raw__=True))
+            log_info("Starting StarCluster Webserver...")
             s = webtools.get_template_server('web', context=context,
                                              interface=plot_server_interface)
             base_url = "http://%s:%s" % s.server_address
             shutdown_url = '/'.join([base_url, 'shutdown'])
             spot_url = "http://%s:%s/spothistory.html" % s.server_address
-            log.info("Server address is %s" % base_url)
-            log.info("(use CTRL-C or navigate to %s to shutdown server)" %
+            log_info("Server address is %s" % base_url)
+            log_info("(use CTRL-C or navigate to %s to shutdown server)" %
                      shutdown_url)
             if plot_launch_browser:
                 webtools.open_browser(spot_url, plot_web_browser)
             else:
-                log.info("Browse to %s to view the spot history plot" %
+                log_info("Browse to %s to view the spot history plot" %
                          spot_url)
             s.serve_forever()
         return data
@@ -1584,6 +1589,23 @@ class EasyEC2(EasyAWS):
             print console_output
         else:
             log.info("No console output available...")
+
+    def get_spot_cheapest_zone(self, instance_type):
+        # Find cheapest zone
+        min_price = 9999
+        min_zone = None
+        for z in ['a', 'c', 'd']:
+            zone = 'us-east-1' + z
+            price = self.get_spot_history(instance_type,
+                                          zone=zone,
+                                          mute=True)
+            price = price[0][1]
+            log.info("%s: %f", zone, price)
+            if price < min_price:
+                min_zone = zone
+                min_price = price
+        log.info(instance_type)
+        return min_zone, min_price
 
 
 class EasyS3(EasyAWS):
