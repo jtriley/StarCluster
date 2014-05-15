@@ -1039,7 +1039,7 @@ class Cluster(object):
                       key_name=self.keyname,
                       availability_zone_group=availability_zone_group,
                       launch_group=launch_group,
-                      placement=zone or getattr(self.zone, 'name', None),
+                      placement=zone,
                       user_data=user_data,
                       placement_group=placement_group)
         if self.subnet_id:
