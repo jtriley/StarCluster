@@ -64,7 +64,24 @@ class CmdPut(ClusterCompleter):
                 raise exception.BaseException(
                     "Local file or directory does not exist: %s" % lpath)
         cl = self.cm.get_cluster(ctag, load_receipt=False)
-        node = cl.get_node(self.opts.node)
+        try:
+            node = cl.get_node(self.opts.node)
+        except exception.InstanceDoesNotExist as ide:
+            if self.opts.node == "master":
+                #may have happened because master node is clustername-master
+                #i.e. dns_prefix = True in config
+                #lets check
+                try:
+                    node = cl.get_node('%s-%s' % (ctag, self.opts.node) )
+                except exception.InstanceDoesNotExist as ide2:
+                    #k, master is just not there, raise original error
+                    log.debug("Neither master nor %s-%s exist." % (ctag, 
+                        self.opts.node))
+                    raise( ide )
+            else:
+                #node name was provided
+                raise
+
         if self.opts.user:
             node.ssh.switch_user(self.opts.user)
         if len(lpaths) > 1 and not node.ssh.isdir(rpath):

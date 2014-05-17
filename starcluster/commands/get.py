@@ -19,6 +19,7 @@ import glob
 
 from starcluster import exception
 from completers import ClusterCompleter
+from starcluster.logger import log
 
 
 class CmdGet(ClusterCompleter):
@@ -58,7 +59,23 @@ class CmdGet(ClusterCompleter):
         lpath = args[-1]
         rpaths = args[1:-1]
         cl = self.cm.get_cluster(ctag, load_receipt=False)
-        node = cl.get_node(self.opts.node)
+        try:
+            node = cl.get_node(self.opts.node)
+        except exception.InstanceDoesNotExist as ide:
+            if self.opts.node == "master":
+                #may have happened because master node is clustername-master
+                #i.e. dns_prefix = True in config
+                #lets check
+                try:
+                    node = cl.get_node('%s-%s' % (ctag, self.opts.node) )
+                except exception.InstanceDoesNotExist as ide2:
+                    #k, master is just not there, raise original error
+                    log.debug("Neither master nor %s-%s exist." % (ctag, 
+                        self.opts.node))
+                    raise( ide )
+            else:
+                #node name was provided
+                raise
         if self.opts.user:
             node.ssh.switch_user(self.opts.user)
         for rpath in rpaths:
