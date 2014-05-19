@@ -75,8 +75,7 @@ class CmdPut(ClusterCompleter):
                     node = cl.get_node('%s-%s' % (ctag, self.opts.node))
                 except exception.InstanceDoesNotExist as ide2:
                     #k, master is just not there, raise original error
-                    log.debug("Neither master nor %s-%s exist." % (ctag, 
-                        self.opts.node))
+                    log.debug("Neither master nor %s-%s exist." % (ctag, self.opts.node))
                     raise(ide)
             else:
                 # node name was provided
