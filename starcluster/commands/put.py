@@ -68,18 +68,18 @@ class CmdPut(ClusterCompleter):
             node = cl.get_node(self.opts.node)
         except exception.InstanceDoesNotExist as ide:
             if self.opts.node == "master":
-                #may have happened because master node is clustername-master
-                #i.e. dns_prefix = True in config
-                #lets check
+                # may have happened because master node is clustername-master
+                # i.e. dns_prefix = True in config
+                # lets check
                 try:
-                    node = cl.get_node('%s-%s' % (ctag, self.opts.node) )
+                    node = cl.get_node('%s-%s' % (ctag, self.opts.node))
                 except exception.InstanceDoesNotExist as ide2:
                     #k, master is just not there, raise original error
                     log.debug("Neither master nor %s-%s exist." % (ctag, 
                         self.opts.node))
-                    raise( ide )
+                    raise(ide)
             else:
-                #node name was provided
+                # node name was provided
                 raise
 
         if self.opts.user:
