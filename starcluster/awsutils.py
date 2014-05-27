@@ -722,7 +722,7 @@ class EasyEC2(EasyAWS):
 
     def get_securityids_from_names(self, groupnames):
         name_id = dict([(sec.name, sec.id) for sec in
-                        self.conn.get_all_security_groups()])
+                        self.get_all_security_groups(groupnames)])
         return [name_id[gname] for gname in groupnames if gname in name_id]
 
     def get_all_instances(self, instance_ids=[], filters={}):
