@@ -96,6 +96,8 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
         new_batch_file = \
             self._get_newusers_batch_file(master, batchfile_new_users,
                                           user_shell, add_new_users=True)
+        if new_batch_file:
+            log.info("User batch file updated")
         new_uid, new_gid = self._get_max_unused_user_id()
         for user in new_users:
             for node in nodes:
