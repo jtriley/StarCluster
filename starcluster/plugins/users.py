@@ -68,15 +68,15 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
         self._user_shell = user_shell
         self._volumes = volumes
         log.info("Creating %d cluster users" % self._num_users)
-        current_batch_file_users = self._get_newusers_batch_file(master, 
-                                   self._usernames, user_shell)                           
+        current_batch_file_users = \
+            self._get_newusers_batch_file(master, self._usernames, user_shell)
         new_users = self._usernames
         # Copy the user list before manipulating it
         copy_new_users = copy.deepcopy(new_users)
         # Get user map here of /etc/passwd
         current_user_map = master.get_user_map()
         for user in new_users:
-            if user in current_user_map:        
+            if user in current_user_map:
                 if user == current_user_map[user][0]:
                     copy_new_users.remove(user)
             else:
@@ -92,21 +92,22 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
         for current_batch_file_line in current_batch_file_users_list:
                 current_batch_file_user = current_batch_file_line.split(':')[0]
                 if current_batch_file_user in new_users:
-                        batchfile_new_users.remove(current_batch_file_user)  
-        new_batch_file = self._get_newusers_batch_file(master, 
-            batchfile_new_users, user_shell, add_new_users=True)
+                        batchfile_new_users.remove(current_batch_file_user)
+        new_batch_file = \
+            self._get_newusers_batch_file(master, batchfile_new_users,
+                                          user_shell, add_new_users=True)
         new_uid, new_gid = self._get_max_unused_user_id()
         for user in new_users:
             for node in nodes:
                 node.add_user(user, uid=new_uid)
             new_uid = new_uid + 1
-        log.info("Configuring passwordless ssh for %d cluster users" 
-                % self._num_users)
+        log.info("Configuring passwordless ssh for %d cluster users"
+                 % self._num_users)
         pbar = self.pool.progress_bar.reset()
         pbar.maxval = self._num_users
         for i, user in enumerate(self._usernames):
-            master.generate_key_for_user(user, auth_new_key=True, 
-                                        auth_conn_key=True)
+            master.generate_key_for_user(user, auth_new_key=True,
+                                         auth_conn_key=True)
             master.add_to_known_hosts(user, nodes)
             pbar.update(i + 1)
         pbar.finish()
@@ -186,8 +187,8 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
                 usernames = batch_user_list
         except:
                 if usernames:
-                        usernames = [user.strip() for user in 
-                                    usernames.split(',')]
+                        usernames = [user.strip() for user in
+                                     usernames.split(',')]
         self._nodes = nodes
         self._master = master
         self._user = user
