@@ -31,6 +31,7 @@ from starcluster import userdata
 from starcluster import exception
 from starcluster.logger import log
 
+from starcluster.exception import RemoteCommandFailed
 
 class NodeManager(managers.Manager):
     """
@@ -92,6 +93,7 @@ class Node(object):
         self._num_procs = None
         self._memory = None
         self._user_data = None
+        self.apt_get_initialized=False
 
     def __repr__(self):
         return '<Node: %s (%s)>' % (self.alias, self.id)
@@ -1137,6 +1139,29 @@ class Node(object):
         cmd = "DEBIAN_FRONTEND='noninteractive' " + cmd
         self.ssh.execute(cmd)
 
+    def apt_do(self, cmd):
+        
+        tried_source = False
+        while True:
+            try:
+                if not self.apt_get_initialized:
+                    log.warn('Doing apt clean and update')
+                    self.apt_command('clean')
+                    self.apt_command('update')
+                    self.apt_get_initialized = True
+                
+                self.apt_command(cmd)
+                break
+            except RemoteCommandFailed as rcf:
+                if not tried_source:
+                    log.warn("apt cmd '%s' failed. Trying a different source..." % cmd)
+                    self.ssh.execute("cp /etc/apt/sources.list /etc/apt/sources.list.orig")
+                    self.ssh.execute("sed -i 's/us-east-1.ec2/us/g' /etc/apt/sources.list")
+                    self.apt_get_initialized = False
+                    tried_source = True
+                else:    
+                    raise rcf
+
     def apt_install(self, pkgs):
         """
         Install a set of packages via apt-get.
@@ -1144,8 +1169,7 @@ class Node(object):
         pkgs is a string that contains one or more packages separated by a
         space
         """
-        self.apt_command('update')
-        self.apt_command('install %s' % pkgs)
+        self.apt_do('install %s' % pkgs)
 
     def yum_command(self, cmd):
         """
