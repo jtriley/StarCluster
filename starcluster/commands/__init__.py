@@ -97,7 +97,6 @@ all_cmds = [
     CmdShell(),
     CmdHelp(),
     CmdPrintConfig(),
-    CmdReloadConfig(),
     CmdCleanCluster(),
     CmdRecover(),
 ]
