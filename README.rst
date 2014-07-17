@@ -228,7 +228,7 @@ This branch intends to be a mirror of https://github.com/jtriley/StarCluster dev
   
   - Pros
       + Allows to easily update the config by editing the file.
-      + No more obscure config compressed/hashed in metadata/tags and other "obscure" places.
+      + No more obscure update config compressed/hashed data in metadata/tags and other "obscure" places.
   - Cons
       + No longer possible to start a stopped cluster via StarCluster. (This is technically fixable, but not planned at the moment.)
 
