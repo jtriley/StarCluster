@@ -202,7 +202,6 @@ This branch intends to be a mirror of https://github.com/jtriley/StarCluster dev
 
 * Added commands
     - printconfig - To print your existing cluster configuration
-    - reloadconfig - To reload the core and plugins configuration of a ''running'' cluster.
     - cleancluster
         + Will clean Open Grid Engine from dead nodes. (Eg.: Dead spot instances)
         + Manages "impaired" nodes. (Reboots reserved instances, kills spot instances.)
@@ -224,6 +223,14 @@ This branch intends to be a mirror of https://github.com/jtriley/StarCluster dev
           be stopped. Defaults to false.
 * Improved node cleanup - Merged `robbyt`_ `pull request`_ which makes node cleanup faster.
 * Improved node addition - Removed some remote read/writes (very slow) and replaced them get/edit/push.
+* Adds a mode where the cluster configuration is written to master:/etc/starcluster. To activate, simply add flag 
+  "--config-on-master" to the start command. Clusters in this mode have the following pros and cons.
+  
+  - Pros
+      + Allows to easily update the config by editing the file.
+      + No more obscure config compressed/hashed in metadata/tags and other "obscure" places.
+  - Cons
+      + No longer possible to start a stopped cluster via StarCluster. (This is technically fixable, but not planned at the moment.)
 
 .. _robbyt: https://github.com/robbyt 
 .. _pull request: https://github.com/jtriley/StarCluster/pull/123

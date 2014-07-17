@@ -158,7 +158,7 @@ def configure_sc_logging(use_syslog=False):
     rfh.setLevel(logging.DEBUG)
     rfh.setFormatter(formatter)
     log.addHandler(rfh)
-    console.setLevel(logging.INFO)
+    console.setLevel(logging.DEBUG)
     log.addHandler(console)
     syslog_device = '/dev/log'
     if use_syslog and os.path.exists(syslog_device):

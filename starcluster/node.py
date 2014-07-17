@@ -764,7 +764,8 @@ class Node(object):
         self.ssh.execute("mkdir -p %s" % DUMMY_EXPORT_DIR)
         with self.ssh.remote_file(DUMMY_EXPORT_FILE, 'w') as dummyf:
             dummyf.write(DUMMY_EXPORT_LINE)
-        self.ssh.execute('/etc/init.d/nfs start')
+        # TEMP DISABLED
+        # self.ssh.execute('/etc/init.d/nfs start')
         self.ssh.execute('rm -f %s' % DUMMY_EXPORT_FILE)
         self.ssh.execute('rm -rf %s' % DUMMY_EXPORT_DIR)
         self.ssh.execute('exportfs -fra')

@@ -22,6 +22,7 @@ import string
 import pprint
 import warnings
 import datetime
+import json
 
 import iptools
 
@@ -63,6 +64,11 @@ class ClusterManager(managers.Manager):
                 group = self.ec2.get_security_group(clname)
             cl = Cluster(ec2_conn=self.ec2, cluster_tag=cltag,
                          cluster_group=group)
+
+            # Useful when config is on master node
+            cl.key_location = \
+                self.cfg.get_key(cl.master_node.key_name).get('key_location')
+
             if load_receipt:
                 cl.load_receipt(load_plugins=load_plugins,
                                 load_volumes=load_volumes)
@@ -420,6 +426,7 @@ class Cluster(object):
                  subnet_id=None,
                  public_ips=None,
                  plugins_order=[],
+                 config_on_master=False,
                  **kwargs):
         # update class vars with given vars
         _vars = locals().copy()
@@ -455,7 +462,6 @@ class Cluster(object):
         self._nodes = []
         self._pool = None
         self._progress_bar = None
-        self._config_fields = None
         self.__default_plugin = None
         self.__sge_plugin = None
 
@@ -588,10 +594,12 @@ class Cluster(object):
         return pprint.pformat(cfg)
 
     def print_config(self):
-        config = {}
-        for key in self._config_fields:
-            config[key] = getattr(self, key)
-        pprint.pprint(config)
+        core_settings, user_settings = self._get_settings()
+        print "Core settings"
+        print json.dumps(core_settings, indent=1, sort_keys=True)
+        print
+        print "User settings"
+        print json.dumps(user_settings, indent=1, sort_keys=True)
 
     def load_receipt(self, load_plugins=True, load_volumes=True):
         """
@@ -608,8 +616,9 @@ class Cluster(object):
                 msg = user_msgs.version_mismatch % d
                 sep = '*' * 60
                 log.warn('\n'.join([sep, msg, sep]), extra={'__textwrap__': 1})
-            self._config_fields = self._get_settings_from_tags()
-            self.update(self._config_fields)
+            self.update(self._get_settings_from_tags())
+            if self.config_on_master:
+                self._load_config_from_master()
             if not (load_plugins or load_volumes):
                 return True
             try:
@@ -655,26 +664,6 @@ class Cluster(object):
     @property
     def _security_group(self):
         return static.SECURITY_GROUP_TEMPLATE % self.cluster_tag
-
-    def save_core_settings(self, sg):
-        core_settings = utils.dump_compress_encode(
-            dict(cluster_size=self.cluster_size,
-                 master_image_id=self.master_image_id,
-                 master_instance_type=self.master_instance_type,
-                 node_image_id=self.node_image_id,
-                 node_instance_type=self.node_instance_type,
-                 disable_queue=self.disable_queue,
-                 disable_cloudinit=self.disable_cloudinit,
-                 plugins_order=self.plugins_order),
-            use_json=True)
-        sg.add_tag(static.CORE_TAG, core_settings)
-
-    def save_user_settings(self, sg):
-        user_settings = utils.dump_compress_encode(
-            dict(cluster_user=self.cluster_user,
-                 cluster_shell=self.cluster_shell, keyname=self.keyname,
-                 spot_bid=self.spot_bid), use_json=True)
-        sg.add_tag(static.USER_TAG, user_settings)
 
     @property
     def subnet(self):
@@ -730,9 +719,10 @@ class Cluster(object):
             if tag not in sg.tags:
                 sg.add_tag(tag, chunk)
 
-    def _add_tags_to_sg(self, sg):
-        if static.VERSION_TAG not in sg.tags:
-            sg.add_tag(static.VERSION_TAG, str(static.VERSION))
+    def _get_settings(self):
+        """
+        The settings to save
+        """
         core_settings = dict(cluster_size=self.cluster_size,
                              master_image_id=self.master_image_id,
                              master_instance_type=self.master_instance_type,
@@ -743,16 +733,30 @@ class Cluster(object):
                              subnet_id=self.subnet_id,
                              public_ips=self.public_ips,
                              disable_queue=self.disable_queue,
-                             disable_cloudinit=self.disable_cloudinit)
+                             disable_cloudinit=self.disable_cloudinit,
+                             plugins_order=self.plugins_order)
         user_settings = dict(cluster_user=self.cluster_user,
                              cluster_shell=self.cluster_shell,
                              keyname=self.keyname, spot_bid=self.spot_bid)
-        core = utils.dump_compress_encode(core_settings, use_json=True,
-                                          chunk_size=static.MAX_TAG_LEN)
-        self._add_chunked_tags(sg, core, static.CORE_TAG)
-        user = utils.dump_compress_encode(user_settings, use_json=True,
-                                          chunk_size=static.MAX_TAG_LEN)
-        self._add_chunked_tags(sg, user, static.USER_TAG)
+        return core_settings, user_settings
+
+    def _add_tags_to_sg(self, sg):
+        if static.VERSION_TAG not in sg.tags:
+            sg.add_tag(static.VERSION_TAG, str(static.VERSION))
+        if self.config_on_master:
+            # the only info we store is the fact that config is on master
+            core = utils.dump_compress_encode(
+                dict(config_on_master=self.config_on_master),
+                use_json=True, chunk_size=static.MAX_TAG_LEN)
+            self._add_chunked_tags(sg, core, static.CORE_TAG)
+        else:
+            core_settings, user_settings = self._get_settings()
+            core = utils.dump_compress_encode(core_settings, use_json=True,
+                                              chunk_size=static.MAX_TAG_LEN)
+            self._add_chunked_tags(sg, core, static.CORE_TAG)
+            user = utils.dump_compress_encode(user_settings, use_json=True,
+                                              chunk_size=static.MAX_TAG_LEN)
+            self._add_chunked_tags(sg, user, static.USER_TAG)
 
     def _load_chunked_tags(self, sg, base_tag_name):
         tags = [i for i in sg.tags if i.startswith(base_tag_name)]
@@ -768,6 +772,34 @@ class Cluster(object):
         if static.USER_TAG in sg.tags:
             cluster.update(self._load_chunked_tags(sg, static.USER_TAG))
         return cluster
+
+    def save_config_on_master(self):
+        """
+        Vanilla Improvements function - save the config on the master node.
+        For cluster saving their config on the master node rather than in
+        the security group tags. No more chunk/hashing/splitting headaches.
+        """
+        settings, user_settings = self._get_settings()
+        settings.update(user_settings)
+        settings["plugins"] = self._plugins
+        config = self.master_node.ssh.remote_file(static.MASTER_CFG_FILE, 'wt')
+        json.dump(settings, config, indent=4, separators=(',', ': '),
+                  sort_keys=True)
+        config.close()
+
+    def _load_config_from_master(self):
+        """
+        Vanilla Improvements function - loads the config on the master node.
+        """
+        config = self.master_node.ssh.remote_file(static.MASTER_CFG_FILE, 'rt')
+        loaded_config = json.load(config)
+        self.plugins_order = loaded_config["plugins"]
+        self.update(loaded_config)
+        config.close()
+        master = self.master_node
+        self.plugins = self.load_plugins(
+            master.get_plugins(self.plugins_order))
+        self.validate()
 
     @property
     def placement_group(self):
