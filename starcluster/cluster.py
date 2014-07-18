@@ -1468,6 +1468,9 @@ class Cluster(object):
         filters = {'instance.group-name': self._security_group,
                    'instance-state-name': states}
         insts = self.ec2.get_all_instances(filters=filters)
+        filters = {'placement-group-name': self.placement_group.name,
+                   'instance-state-name': states}
+        insts += self.ec2.get_all_instances(filters=filters)
         return len(insts) == 0
 
     def attach_volumes_to_master(self):
