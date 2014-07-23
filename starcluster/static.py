@@ -292,4 +292,4 @@ CLUSTER_SETTINGS = {
     'dns_prefix': (bool, False, False, None, None),
 }
 
-MASTER_CFG_FILE = '/etc/starcluster' # vanilla improvements
+MASTER_CFG_FILE = '/etc/starcluster'
