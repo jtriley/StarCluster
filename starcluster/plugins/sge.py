@@ -195,7 +195,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             line = filter(lambda x: len(x) > 0, line.split(" "))
             parsed_qhosts[line[0]] = line[1:]
         for node in nodes:
-            #nodes missing from qhost
+            # nodes missing from qhost
             if node.alias not in parsed_qhosts:
                 if node.alias == "master":
                     assert(not self.master_is_exec_host)
@@ -247,12 +247,12 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         alive_nodes = [node.alias for node in nodes]
 
         cleaned = []
-        #find dead hosts
+        # find dead hosts
         for node_alias in qhosts:
             if node_alias not in alive_nodes:
                 cleaned.append(node_alias)
 
-        #find jobs running in dead hosts
+        # find jobs running in dead hosts
         qstats_xml = self._master.ssh.execute("qstat -u \"*\" -xml",
                                               source_profile=True)
         qstats_xml[1:]  # remove first line
@@ -270,7 +270,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             if job_list.find("state").text == "Eqw":
                 job_number = job_list.find("JB_job_number").text
                 to_repair.append(job_number)
-        #delete the jobs
+        # delete the jobs
         if to_delete:
             log.info("Stopping jobs: " + str(to_delete))
             self._master.ssh.execute("qdel -f " + " ".join(to_delete))
@@ -287,9 +287,9 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             log.error("LOST QRSH??")
             log.error("pkill -9 qrsh")
             self._master.ssh.execute("pkill -9 qrsh", ignore_exit_status=True)
-        #----------------------------------
+        # ----------------------------------
 
-        #delete the host config
+        # delete the host config
         for c in cleaned:
             log.info("Cleaning node " + c)
             if len(master.ssh.get_remote_file_lines("/etc/hosts", c)) == 0:
@@ -300,7 +300,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
                 rfile.close()
             self._remove_from_sge(DeadNode(c), only_clean_master=True)
 
-        #fix to allow pickling
+        # fix to allow pickling
         self._master = None
         self._nodes = None
 
@@ -318,7 +318,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._add_to_sge(node)
         self._create_sge_pe()
 
-        #fix to allow pickling
+        # fix to allow pickling
         self._nodes = None
         self._master = None
         self._user = None
@@ -338,7 +338,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._remove_from_sge(node)
         self._remove_nfs_exports(node)
 
-        #fix to allow pickling
+        # fix to allow pickling
         self._nodes = None
         self._master = None
         self._user = None

@@ -107,7 +107,7 @@ def json_diff(old, new):
     current_add = add
     changed = False
 
-    #add
+    # add
     while 1:
         try:
             k, v = current_new_it.next()
@@ -145,7 +145,7 @@ def json_diff(old, new):
     current_old_it = old.iteritems()
     current_new = new
 
-    #remove
+    # remove
     def setRemove():
         current_remove = remove
         for i in range(0, len(stack)):

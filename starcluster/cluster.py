@@ -834,8 +834,8 @@ class Cluster(object):
         # remove any cached nodes not in the current node list from EC2
         current_ids = [n.id for n in nodes]
 
-        #If a node was terminated due to error, even if it still shows up,
-        #ignore it
+        # If a node was terminated due to error, even if it still shows up,
+        # ignore it
         to_remove = set()
         for id in NodeManager.nodes_id_ignore:
             if id in current_ids:
@@ -871,14 +871,14 @@ class Cluster(object):
                     self._nodes.append(n)
         self._nodes.sort(key=lambda n: n.alias)
         log.debug('returning self._nodes = %s' % self._nodes)
-        aliases = [n.alias for n in self._nodes]
+        aliases = [_n.alias for _n in self._nodes]
         if len(aliases) != len(set(aliases)):
             log.error("Nodes with same name detected!")
-            if not any([n.reset_alias() for n in self._nodes]):
+            if not any([_n.reset_alias() for _n in self._nodes]):
                 raise exception.BaseException("Failed to fix nodes with same "
                                               "name issue")
 
-            aliases = [n.alias for n in self._nodes]
+            aliases = [_n.alias for _n in self._nodes]
             if len(aliases) != len(set(aliases)):
                 raise exception.BaseException("Failed to fix nodes with same "
                                               "name issue")
@@ -1046,11 +1046,11 @@ class Cluster(object):
                 log.warn("Instances will not be launched in a placement group")
                 placement_group = None
             elif placement_group is None:
-                #if placement_group is False -> leave false
+                # if placement_group is False -> leave false
                 placement_group = self.placement_group.name
         availability_zone_group = None if placement_group is False \
             else cluster_sg
-        #launch_group is related to placement group
+        # launch_group is related to placement group
         launch_group = availability_zone_group
 
         if spot_bid and not placement_group and zone is None:
@@ -1171,12 +1171,12 @@ class Cluster(object):
                               reboot_interval=reboot_interval,
                               n_reboot_restart=n_reboot_restart)
         if all([not no_create, spot_bid, reboot_interval, n_reboot_restart]):
-            #this will recreate the spot instances that might have died in
-            #wait_for_cluster
+            # this will recreate the spot instances that might have died in
+            # wait_for_cluster
             try_again_aliases = []
             while 1:
                 for alias in aliases:
-                    #verify all nodes were correctly added
+                    # verify all nodes were correctly added
                     try:
                         self.get_node_by_alias(alias)
                     except exception.InstanceDoesNotExist:
@@ -1200,7 +1200,7 @@ class Cluster(object):
                         reboot_interval=reboot_interval,
                         n_reboot_restart=n_reboot_restart)
                 else:
-                    #all nodes successfully created
+                    # all nodes successfully created
                     break
 
         log.debug("Adding node(s): %s" % aliases)
@@ -1243,7 +1243,7 @@ class Cluster(object):
                 self.run_plugins(method_name="on_remove_node",
                                  node=node, reverse=True)
             except:
-                #will still allow node termination
+                # will still allow node termination
                 pass
             if not terminate:
                 continue
@@ -1936,7 +1936,7 @@ class Cluster(object):
                     continue
                 node.handle_irresponsive_node()
         if not self.disable_queue:
-            #clean sge
+            # clean sge
             sge_plugin = sge.SGEPlugin()
             sge_plugin.clean_cluster(self.nodes, self.master_node,
                                      self.cluster_user,
@@ -1965,7 +1965,7 @@ class Cluster(object):
                     result = plugin.get_nodes_to_recover(self.nodes)
                     to_recover.append(result)
                 except:
-                    #the plugin does not implement get_nodes_to_recover
+                    # the plugin does not implement get_nodes_to_recover
                     pass
             if len(to_recover) > 1:
                 log.error("Support for more than one list of nodes "
@@ -1973,8 +1973,8 @@ class Cluster(object):
             elif len(to_recover) == 1:
                 errors = []
                 for node in to_recover[0]:
-                    #call it one at a time so that x doesn't prevent
-                    #y to be added
+                    # call it one at a time so that x doesn't prevent
+                    # y to be added
                     if node.alias == "master":
                         raise Exception("Cannot add back master node")
                     try:

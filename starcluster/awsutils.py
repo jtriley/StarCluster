@@ -536,18 +536,18 @@ class EasyEC2(EasyAWS):
         for request in requests:
             requests_ids.append(request.id)
 
-        #Make sure the spot instance request has been ingested by EC2
-        #before proceeding. Wait at most 10 sec.
+        # Make sure the spot instance request has been ingested by EC2
+        # before proceeding. Wait at most 10 sec.
         counter = 0
         while True:
             all_requests = self.conn.get_all_spot_instance_requests()
-            all_requests.reverse()  # start from the end as our request will
-                                    # usually be the last
+            # start from the end as our request will usually be the last
+            all_requests.reverse()
             for request in all_requests:
                 if request.id in requests_ids:
                     del requests_ids[requests_ids.index(request.id)]
                     if len(requests_ids) == 0:
-                        #done
+                        # done
                         return requests
 
             if counter % 10 == 0:

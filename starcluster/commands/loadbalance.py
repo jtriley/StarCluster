@@ -134,5 +134,5 @@ class CmdLoadBalance(ClusterCompleter):
             lb.run(cluster)
         except KeyboardInterrupt:
             import traceback
-            #traceback.format_exc()
+            # traceback.format_exc()
             self.log.info(traceback.format_exc())

@@ -306,8 +306,8 @@ class SSHClient(object):
             log.debug('no regex supplied...returning')
             return
         lines = self.get_remote_file_lines(remote_file, regex, matching=False)
-        #this log is too big
-        #log.debug("new %s after removing regex (%s) matches:\n%s" %
+        # this log is too big
+        # log.debug("new %s after removing regex (%s) matches:\n%s" %
         #          (remote_file, regex, ''.join(lines)))
         self.write_to_remote_file(remote_file, lines)
 

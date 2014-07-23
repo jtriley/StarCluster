@@ -291,7 +291,7 @@ class SGEStats(object):
                 if job['end']:
                     delta = job['end'] - job['start']
                 elif job['start']:
-                    #currently running job
+                    # currently running job
                     delta = self.remote_time - job['start']
                 else:
                     continue
