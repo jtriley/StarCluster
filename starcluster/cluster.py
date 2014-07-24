@@ -756,6 +756,7 @@ class Cluster(object):
         For cluster saving their config on the master node rather than in
         the security group tags. No more chunk/hashing/splitting headaches.
         """
+        log.info("Saving config on master")
         settings, user_settings = self._get_settings()
         settings.update(user_settings)
         settings["plugins"] = self._plugins
@@ -1647,7 +1648,8 @@ class Cluster(object):
             self.ec2.delete_group(sg)
 
     def start(self, create=True, create_only=False, validate=True,
-              validate_only=False, validate_running=False):
+              validate_only=False, validate_running=False,
+              save_config_on_master=False):
         """
         Creates and configures a cluster from this cluster template's settings.
 
@@ -1678,10 +1680,12 @@ class Cluster(object):
                 return
         else:
             log.warn("SKIPPING VALIDATION - USE AT YOUR OWN RISK")
-        return self._start(create=create, create_only=create_only)
+        return self._start(create=create, create_only=create_only,
+                           save_config_on_master=save_config_on_master)
 
     @print_timing("Starting cluster")
-    def _start(self, create=True, create_only=False):
+    def _start(self, create=True, create_only=False,
+               save_config_on_master=False):
         """
         Create and configure a cluster from this cluster template's settings
         (Does not attempt to validate before running)
@@ -1701,25 +1705,27 @@ class Cluster(object):
                 node.start()
         if create_only:
             return
-        self.setup_cluster()
+        self.setup_cluster(save_config_on_master)
 
-    def setup_cluster(self):
+    def setup_cluster(self, save_config_on_master):
         """
         Waits for all nodes to come up and then runs the default
         StarCluster setup routines followed by any additional plugin setup
         routines
         """
         self.wait_for_cluster()
-        self._setup_cluster()
+        self._setup_cluster(save_config_on_master)
 
     @print_timing("Configuring cluster")
-    def _setup_cluster(self):
+    def _setup_cluster(self, save_config_on_master):
         """
         Runs the default StarCluster setup routines followed by any additional
         plugin setup routines. Does not wait for nodes to come up.
         """
         log.info("The master node is %s" % self.master_node.dns_name)
         log.info("Configuring cluster...")
+        if save_config_on_master:
+            self.save_config_on_master()
         if self.volumes:
             self.attach_volumes_to_master()
         self.run_plugins()

@@ -261,10 +261,8 @@ class CmdStart(ClusterCompleter):
         try:
             scluster.start(create=create, create_only=create_only,
                            validate=validate, validate_only=validate_only,
-                           validate_running=validate_running)
-            if self.opts.config_on_master and create:
-                log.info("Saving config on master node")
-                scluster.save_config_on_master()
+                           validate_running=validate_running,
+                           save_config_on_master=self.opts.config_on_master)
         except KeyboardInterrupt:
             if validate_only:
                 raise
