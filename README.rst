@@ -223,6 +223,8 @@ This branch intends to be a mirror of https://github.com/jtriley/StarCluster dev
           be stopped. Defaults to false.
 * Improved node cleanup - Merged `robbyt`_ `pull request`_ which makes node cleanup faster.
 * Improved node addition - Removed some remote read/writes (very slow) and replaced them get/edit/push.
+* Support for multiple subnets - Via the cluster template, allows to get spot instances in the cheapest zone.
+  Dropped the --subnet-id start command flag.
 * Adds a mode where the cluster configuration is written to master:/etc/starcluster. To activate, simply add flag 
   "--config-on-master" to the start command. Clusters in this mode have the following pros and cons.
   
