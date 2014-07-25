@@ -259,6 +259,10 @@ class CmdStart(ClusterCompleter):
             if not validate_only and not create_only:
                 self.warn_experimental(msg, num_secs=5)
         if self.opts.dns_prefix:
+            if tag.find(".") > -1:
+                raise exception.ClusterValidationError(
+                    "Cannot use --dns-prefix when the cluster tag contains "
+                    "a dot.")
             scluster.dns_prefix = tag
         if self.opts.dns_sufix:
             scluster.dns_sufix = tag
