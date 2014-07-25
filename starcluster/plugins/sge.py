@@ -197,12 +197,11 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         for node in nodes:
             # nodes missing from qhost
             if node.alias not in parsed_qhosts:
-                if node.alias == "master":
+                if node.alias.is_master():
                     assert(not self.master_is_exec_host)
                 else:
                     missing.append(node)
-            elif parsed_qhosts[node.alias][-1] == "-" \
-                    and node.alias != "master":
+            elif parsed_qhosts[node.alias][-1] == "-" and not node.is_master():
                 # nodes present but w/o stats
                 try:
                     node.ssh.execute("qhost", source_profile=True)

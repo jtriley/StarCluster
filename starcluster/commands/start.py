@@ -187,11 +187,19 @@ class CmdStart(ClusterCompleter):
                           action='store_true', help="Store the config on the "
                           "master node rather than into the security group "
                           "tags")
+        parser.add_option("--dns-sufix", action='store_true',
+                          help="Sufix dns names of all nodes in the cluster "
+                          "with the cluster tag.")
 
     def execute(self, args):
         if len(args) != 1:
             self.parser.error("please specify a <cluster_tag>")
         tag = args[0]
+        if tag.find("master") > -1:
+            # Because of Node.is_master
+            raise exception.ClusterValidationError("Cluster name cannot "
+                                                   "contain master")
+
         create = not self.opts.no_create
         scluster = self.cm.get_cluster_group_or_none(tag)
         if scluster and create:
@@ -252,6 +260,8 @@ class CmdStart(ClusterCompleter):
                 self.warn_experimental(msg, num_secs=5)
         if self.opts.dns_prefix:
             scluster.dns_prefix = tag
+        if self.opts.dns_sufix:
+            scluster.dns_sufix = tag
         if config_on_master:
             scluster.config_on_master = True
             if self.opts.no_create:

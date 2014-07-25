@@ -428,6 +428,7 @@ class Cluster(object):
                  public_ips=None,
                  plugins_order=[],
                  config_on_master=False,
+                 dns_sufix=None,
                  **kwargs):
         # update class vars with given vars
         _vars = locals().copy()
@@ -454,6 +455,7 @@ class Cluster(object):
         self.force_spot_master = force_spot_master
         self.disable_cloudinit = disable_cloudinit
         self.plugins_order = plugins_order
+        self.dns_sufix = dns_sufix and cluster_tag
 
         self._cluster_group = None
         self._placement_group = None
@@ -466,6 +468,7 @@ class Cluster(object):
         self.__sge_plugin = None
         self._vpc_id = None
         self._subnet_zones_mapping = None
+
 
     def __repr__(self):
         return '<Cluster: %s (%s-node)>' % (self.cluster_tag,
@@ -748,7 +751,8 @@ class Cluster(object):
                              public_ips=self.public_ips,
                              disable_queue=self.disable_queue,
                              disable_cloudinit=self.disable_cloudinit,
-                             plugins_order=self.plugins_order)
+                             plugins_order=self.plugins_order,
+                             dns_sufix=self.dns_sufix)
         user_settings = dict(cluster_user=self.cluster_user,
                              cluster_shell=self.cluster_shell,
                              keyname=self.keyname, spot_bid=self.spot_bid)
@@ -971,18 +975,17 @@ class Cluster(object):
 
     def _make_alias(self, id=None, master=False):
         if master:
-            if self.dns_prefix:
-                return "%s-master" % self.dns_prefix
-            else:
-                return "master"
+            alias = "master"
         elif id is not None:
-            if self.dns_prefix:
-                alias = '%s-node%.3d' % (self.dns_prefix, id)
-            else:
-                alias = 'node%.3d' % id
+            alias = 'node{:03d}'.format(id)
         else:
             raise AttributeError("_make_alias(...) must receive either"
                                  " master=True or a node id number")
+
+        if self.dns_prefix:
+            alias = "{}-{}".format(self.dns_prefix, alias)
+        if self.dns_sufix:
+            alias = "{}.{}".format(alias, self.dns_sufix)
         return alias
 
     @property
@@ -2140,6 +2143,7 @@ class ClusterValidator(validators.Validator):
             self.validate_required_settings()
             self.validate_vpc()
             self.validate_dns_prefix()
+            self.validate_dns_sufix()
             self.validate_spot_bid()
             self.validate_cluster_size()
             self.validate_cluster_user()
@@ -2184,6 +2188,22 @@ class ClusterValidator(validators.Validator):
                 " via the dns_prefix option, {dns_prefix} should only have"
                 " alphanumeric characters and a '-' or '.'".format(
                     dns_prefix=self.cluster.dns_prefix))
+        return True
+
+    def validate_dns_sufix(self):
+        if not self.cluster.dns_sufix:
+            return True
+
+        # check that the dns prefix is a valid hostname
+        is_valid = utils.is_valid_hostname(self.cluster.dns_sufix)
+        if not is_valid:
+            raise exception.ClusterValidationError(
+                "The cluster name you chose, {dns_prefix}, is"
+                " not a valid dns name. "
+                " Since you have chosen to prepend the hostnames"
+                " via the dns_prefix option, {dns_prefix} should only have"
+                " alphanumeric characters and a '-' or '.'".format(
+                    dns_prefix=self.cluster.dns_sufix))
         return True
 
     def validate_spot_bid(self):

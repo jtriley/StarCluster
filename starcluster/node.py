@@ -164,6 +164,10 @@ class Node(object):
             self._alias = alias
         return self._alias
 
+    @property
+    def short_alias(self):
+        return self.alias.split(".", 1)[0]
+
     def reset_alias(self):
         """
         Used to reset the name and alias when there is a conflict
@@ -878,8 +882,8 @@ class Node(object):
         Remove all network names and ips for node in nodes arg from this node's
         /etc/hosts file
         """
-        aliases = map(lambda x: x.alias, nodes)
-        ips = map(lambda x: x.private_ip_address.replace(".", "\."), nodes)
+        aliases = [n.short_alias for n in nodes]
+        ips = [n.private_ip_address.replace(".", "\.") for n in nodes]
         self.ssh.remove_lines_from_file('/etc/hosts', '|'.join(aliases))
         self.ssh.remove_lines_from_file('/etc/hosts', '|'.join(ips))
 
@@ -912,6 +916,7 @@ class Node(object):
         names['INTERNAL_NAME'] = self.private_dns_name
         names['INTERNAL_NAME_SHORT'] = self.private_dns_name_short
         names['INTERNAL_ALIAS'] = self.alias
+        names['INTERNAL_SHORT_ALIAS'] = self.short_alias
         return names
 
     @property
@@ -968,7 +973,7 @@ class Node(object):
             return spot[0]
 
     def is_master(self):
-        return self.alias == 'master' or self.alias.endswith("-master")
+        return self.alias.find("master") != -1
 
     def is_instance_store(self):
         return self.instance.root_device_type == "instance-store"
@@ -1240,7 +1245,8 @@ class Node(object):
 
     def get_hosts_entry(self):
         """ Returns /etc/hosts entry for this node """
-        etc_hosts_line = "%(INTERNAL_IP)s %(INTERNAL_ALIAS)s"
+        etc_hosts_line = \
+            "%(INTERNAL_IP)s %(INTERNAL_ALIAS)s %(INTERNAL_SHORT_ALIAS)s"
         etc_hosts_line = etc_hosts_line % self.network_names
         return etc_hosts_line
 
