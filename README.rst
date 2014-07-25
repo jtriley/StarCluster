@@ -233,6 +233,7 @@ This branch intends to be a mirror of https://github.com/jtriley/StarCluster dev
       + No more obscure update config compressed/hashed data in metadata/tags and other "obscure" places.
   - Cons
       + No longer possible to start a stopped cluster via StarCluster. (This is technically fixable, but not planned at the moment.)
-
+* Adds a --dns-sufix flag to the start command. (`Commit 72f3bc`_)
 .. _robbyt: https://github.com/robbyt 
 .. _pull request: https://github.com/jtriley/StarCluster/pull/123
+.. _Commit 72f3bc: https://github.com/datacratic/StarCluster/commit/72f3bc5ddb028a675f49f3d792c74f6bd3cd1961
