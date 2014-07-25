@@ -224,9 +224,9 @@ This branch intends to be a mirror of https://github.com/jtriley/StarCluster dev
 * Improved node cleanup - Merged `robbyt`_ `pull request`_ which makes node cleanup faster.
 * Improved node addition - Removed some remote read/writes (very slow) and replaced them get/edit/push.
 * Support for multiple subnets - Via the cluster template, allows to get spot instances in the cheapest zone.
-  Dropped the --subnet-id start command flag.
+  Dropped the --subnet-id start command flag. (`Commit 0824e3`_)
 * Adds a mode where the cluster configuration is written to master:/etc/starcluster. To activate, simply add flag 
-  "--config-on-master" to the start command. Clusters in this mode have the following pros and cons.
+  "--config-on-master" to the start command. Clusters in this mode have the following pros and cons. (`Commit 4bc193`_)
   
   - Pros
       + Allows to easily update the config by editing the file.
@@ -236,4 +236,6 @@ This branch intends to be a mirror of https://github.com/jtriley/StarCluster dev
 * Adds a --dns-sufix flag to the start command. (`Commit 72f3bc`_)
 .. _robbyt: https://github.com/robbyt 
 .. _pull request: https://github.com/jtriley/StarCluster/pull/123
+.. _Commit 0824e3: https://github.com/datacratic/StarCluster/commit/0824e39c5d1fd6f5379a433cba575d808daee471
+.. _Commit 4bc193: https://github.com/datacratic/StarCluster/commit/4bc1938e6d7829b78295f065300e0cfbe04503f0
 .. _Commit 72f3bc: https://github.com/datacratic/StarCluster/commit/72f3bc5ddb028a675f49f3d792c74f6bd3cd1961
