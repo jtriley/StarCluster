@@ -469,7 +469,6 @@ class Cluster(object):
         self._vpc_id = None
         self._subnet_zones_mapping = None
 
-
     def __repr__(self):
         return '<Cluster: %s (%s-node)>' % (self.cluster_tag,
                                             self.cluster_size)
@@ -1099,7 +1098,7 @@ class Cluster(object):
                       user_data=user_data,
                       placement_group=placement_group)
         if self.subnet_ids:
-            subnet_id = self.subnet_ids[0] # default subnet
+            subnet_id = self.subnet_ids[0]  # default subnet
             if zone:
                 found = False
                 for s_id, s_net in self.subnets_mapping.iteritems():
@@ -2637,7 +2636,7 @@ class ClusterValidator(validators.Validator):
             #             (static.WORLD_CIDRIP, subnet_id))
         else:
             log.warn(user_msgs.public_ips_disabled %
-                        dict(vpc_id=self.cluster.vpc_id))
+                     dict(vpc_id=self.cluster.vpc_id))
 
 
 if __name__ == "__main__":
