@@ -609,8 +609,9 @@ class Cluster(object):
                     master = self.master_node
                 else:
                     raise
-            if load_plugins:
-                self.plugins = self.load_plugins(master.get_plugins())
+            if load_plugins and self.plugins is None:
+                self.plugins = self.load_plugins(
+                    master.get_plugins(self.plugins_order))
             if load_volumes:
                 self.volumes = master.get_volumes()
         except exception.PluginError:
@@ -776,7 +777,7 @@ class Cluster(object):
         config.close()
         master = self.master_node
         self.plugins = self.load_plugins(
-            master.get_plugins(self.plugins_order))
+            master.get_plugins(self.plugins_order, loaded_config["plugins"]))
         self.validate()
 
     @property
