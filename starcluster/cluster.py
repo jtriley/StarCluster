@@ -2004,12 +2004,9 @@ class Cluster(object):
                 sge_plugin = sge.SGEPlugin()
                 to_recover.append(sge_plugin.get_nodes_to_recover(self.nodes))
             for plugin in self.plugins:
-                try:
+                if hasattr(plugin, "get_nodes_to_recover"):
                     result = plugin.get_nodes_to_recover(self.nodes)
                     to_recover.append(result)
-                except:
-                    # the plugin does not implement get_nodes_to_recover
-                    pass
             if len(to_recover) > 1:
                 log.error("Support for more than one list of nodes "
                           "to recover is not implemented")

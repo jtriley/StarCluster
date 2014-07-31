@@ -244,7 +244,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         if len(qhosts) == 0:
             log.info("Nothing to clean")
 
-        alive_nodes = [node.alias for node in nodes]
+        alive_nodes = [node.short_alias for node in nodes]
 
         cleaned = []
         # find dead hosts
