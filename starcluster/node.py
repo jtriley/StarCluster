@@ -207,8 +207,10 @@ class Node(object):
                 order)
         return plugins_metadata
 
-    def get_plugins(self, order):
-        plugins_metadata = self.get_plugins_full_metadata(order)
+    def get_plugins(self, order, plugins_metadata=None):
+        if plugins_metadata is None:
+            plugins_metadata = self.get_plugins_full_metadata(order)
+        print plugins_metadata
         plugs = []
         for klass, args, kwargs in plugins_metadata:
             mod_path, klass_name = klass.rsplit('.', 1)
