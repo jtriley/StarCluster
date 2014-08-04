@@ -23,6 +23,7 @@ import pprint
 import warnings
 import datetime
 import json
+import traceback
 from collections import Counter
 
 import iptools
@@ -2021,9 +2022,12 @@ class Cluster(object):
                         log.info("Adding back node " + node.alias)
                         self.add_nodes(num_nodes=1, aliases=[node.alias],
                                        no_create=True)
+                    except KeyboardInterrupt as e:
+                        log.info("KeyboardInterrupt")
+                        log.info(traceback.format_exc())
+                        raise e
                     except:
                         failures += 1
-                        import traceback
                         log.error(traceback.format_exc())
                         log.error("Failed to add back node " + node.alias)
                         errors.append(node)
@@ -2050,7 +2054,6 @@ class Cluster(object):
                                     failures -= 1
                                     NodeManager.nodes_id_ignore.add(node.id)
                         except:
-                            import traceback
                             log.error(traceback.format_exc())
                             log.error("type:" + str(type(remove_on_error)))
                             log.error("val:" + str(remove_on_error))
