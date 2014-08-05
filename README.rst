@@ -234,8 +234,10 @@ This branch intends to be a mirror of https://github.com/jtriley/StarCluster dev
   - Cons
       + No longer possible to start a stopped cluster via StarCluster. (This is technically fixable, but not planned at the moment.)
 * Adds a --dns-sufix flag to the start command. (`Commit 72f3bc`_)
+* The runplugin command supports additional arguments. Useful to create StarCluster related tools. (`Commit c3e097`_)
 .. _robbyt: https://github.com/robbyt 
 .. _pull request: https://github.com/jtriley/StarCluster/pull/123
 .. _Commit 0824e3: https://github.com/datacratic/StarCluster/commit/0824e39c5d1fd6f5379a433cba575d808daee471
 .. _Commit 4bc193: https://github.com/datacratic/StarCluster/commit/4bc1938e6d7829b78295f065300e0cfbe04503f0
 .. _Commit 72f3bc: https://github.com/datacratic/StarCluster/commit/72f3bc5ddb028a675f49f3d792c74f6bd3cd1961
+.. _Commit c3e097: https://github.com/datacratic/StarCluster/commit/c3e097dc54162f27f70af4448be869faaea060d7
