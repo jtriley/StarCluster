@@ -380,7 +380,7 @@ class ClusterManager(managers.Manager):
                 print 'Cluster nodes: N/A'
             print
 
-    def run_plugin(self, plugin_name, cluster_tag):
+    def run_plugin(self, plugin_name, cluster_tag, args=[]):
         """
         Run a plugin defined in the config.
 
@@ -392,7 +392,7 @@ class ClusterManager(managers.Manager):
             raise exception.ClusterNotRunning(cluster_tag)
         plugs = [self.cfg.get_plugin(plugin_name)]
         plug = deathrow._load_plugins(plugs)[0]
-        cl.run_plugin(plug, name=plugin_name)
+        cl.run_plugin(plug, name=plugin_name, args=args)
 
 
 class Cluster(object):
@@ -1909,7 +1909,8 @@ class Cluster(object):
         for plug in plugs:
             self.run_plugin(plug, method_name=method_name, node=node)
 
-    def run_plugin(self, plugin, name='', method_name='run', node=None):
+    def run_plugin(self, plugin, name='', method_name='run', node=None,
+                   args=[]):
         """
         Run a StarCluster plugin.
 
@@ -1928,7 +1929,7 @@ class Cluster(object):
                          (plugin_name, method_name))
                 return
             args = [self.nodes, self.master_node, self.cluster_user,
-                    self.cluster_shell, self.volumes]
+                    self.cluster_shell, self.volumes] + args
             if node:
                 args.insert(0, node)
             log.info("Running plugin %s" % plugin_name)
