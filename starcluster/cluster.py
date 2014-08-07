@@ -810,12 +810,6 @@ class Cluster(object):
         """
         Vanilla Improvements function - loads the config on the master node.
         """
-        try:
-            self.validator.validate_keypair()
-        except exception.ClusterValidationError as e:
-            log.error("Failed to find your ssh key pair. Check your config "
-                      "template.")
-            raise e
         config = self.master_node.ssh.remote_file(static.MASTER_CFG_FILE, 'rt')
         loaded_config = json.load(config)
         self.plugins_order = loaded_config["plugins"]
