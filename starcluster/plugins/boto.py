@@ -40,6 +40,7 @@ class BotoPlugin(clustersetup.ClusterSetup):
 
     def run(self, nodes, master, user, shell, volumes):
         mssh = master.ssh
+        orig_user = mssh.get_current_user()
         mssh.switch_user(user)
         botocfg = '/home/%s/.boto' % user
         if not mssh.path_exists(botocfg):
@@ -55,3 +56,4 @@ class BotoPlugin(clustersetup.ClusterSetup):
             mssh.chmod(0400, botocfg)
         else:
             log.warn("AWS credentials already present - skipping install")
+        mssh.switch_user(orig_user)
