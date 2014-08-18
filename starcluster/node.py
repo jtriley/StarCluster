@@ -818,10 +818,19 @@ class Node(object):
         """
         Adds all names for node in nodes arg to this node's /etc/hosts file
         """
-        self.remove_from_etc_hosts(nodes)
-        host_file = self.ssh.remote_file('/etc/hosts', 'a')
+        aliases = [n.alias for n in nodes]
+        expr = re.compile("|".join(aliases))
+
+        host_file = self.ssh.remote_file('/etc/hosts', 'r')
+        host_file_lines = host_file.readlines()
+        host_file.close()
+        host_file_lines = \
+            filter(lambda line: not expr.findall(line), host_file_lines)
         for node in nodes:
-            print >> host_file, node.get_hosts_entry()
+            host_file_lines.append(node.get_hosts_entry() + "\n")
+
+        host_file = self.ssh.remote_file('/etc/hosts', 'w')
+        print >> host_file, "".join(host_file_lines)
         host_file.close()
 
     def remove_from_etc_hosts(self, nodes):
