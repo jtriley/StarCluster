@@ -62,7 +62,6 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
         super(CreateUsers, self).__init__()
 
     def run(self, nodes, master, user, user_shell, volumes):
-        
         self._nodes = nodes
         self._master = master
         self._user = user
@@ -197,18 +196,16 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
         newusers = self._get_newusers_batch_file(master, self._usernames,
                                                  user_shell)
         newusers_list = []
-        
-        #populate list
+        # populate list
         for user in newusers.splitlines():
             line = user.split(':')
             newusers_list.append(line[0])
 
         self._num_users = len(newusers_list)
-        #for user in newusers_list:
         log.info("Creating %d users on %s" % (self._num_users, node.alias))
         node.ssh.execute("echo -n '%s' | newusers" % newusers)
         log.info("Adding %s to known_hosts for %d users" %
-                (node.alias, self._num_users))
+                 (node.alias, self._num_users))
 
         pbar = self.pool.progress_bar.reset()
         pbar.maxval = self._num_users
