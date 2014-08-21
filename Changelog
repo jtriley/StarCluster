@@ -5,6 +5,362 @@ Version History
 .. contents::
     :local:
 
+
+.. _version-0.95.5:
+
+0.95.5
+======
+
+.. _v0955-news:
+
+News
+----
+Version 0.95.5 of StarCluster is a bug fix release. The sections below contain
+the full list of changes. This version is *not* compatible with clusters
+started with older versions of StarCluster. Please terminate all clusters
+before upgrading to 0.95.5.
+
+Features
+--------
+* Add support for R3 instance types (#392, #393)
+
+.. _v0955-fixes:
+
+Bug Fixes
+---------
+* cluster: fix bug when creating a flat rate cluster with master_instance_type
+  or master_image_id specified
+
+Enhancements
+------------
+* docs: update image host command to use -I,-m options (#388)
+
+.. _version-0.95.4:
+
+0.95.4
+======
+
+.. _v0954-news:
+
+
+News
+----
+.. warning::
+
+    This release fixes a show-stopping issue for users launching spot clusters
+    on a default-VPC account without explicitly specifying a VPC/subnet. It is
+    recommended that you upgrade as soon as possible.
+
+Version 0.95.4 of StarCluster is a bug fix release. The sections below contain
+the full list of changes. This version is *not* compatible with clusters
+started with older versions of StarCluster. Please terminate all clusters
+before upgrading to 0.95.4.
+
+Features
+--------
+* sge: new ``slots_per_host`` setting for specifying a custom number of slots
+  per execution host in the cluster (see :ref:`sge-plugin-sph`)
+
+.. _v0954-fixes:
+
+Bug Fixes
+---------
+* cluster: fix spot_requests property to correctly account for spot clusters
+  that get automatically assigned to the default VPC by EC2. (#377)
+* loadbalance: fetch and use the remote time zone from the master node rather
+  than assuming the timezone is always set to UTC. (#385)
+* sge: fix parallel environment slot allocation to respect both
+  the ``master_is_exec_host`` and the new ``slots_per_host`` setting.
+
+Enhancements
+------------
+* awsutils: show progress bar when waiting for spot requests/instances to
+  propagate
+* listspots: show detailed status and status message
+* sge: remove redundant admin/submit host setup
+
+.. _version-0.95.3:
+
+0.95.3
+======
+
+.. _v0953-news:
+
+News
+----
+Version 0.95.3 of StarCluster is a bug fix release. StarCluster no longer
+assigns public IPs for non-default VPC clusters by default now because of the
+following issues:
+
+1. It opens up the VPC to the internet by default which is a security risk
+2. It requires a special VPC configuration (internet gateway attached to the
+   VPC and a route to the gateway with dest CIDR block 0.0.0.0/0 associated
+   with the VPC subnet).  Configuring this automatically (which does not happen
+   currently) would be a security risk and without this configuration
+   StarCluster cannot connect to the VPC nodes even though they've been
+   assigned a public IP.  See :ref:`connect-vpc` for more details.
+
+Users can still enable public IPs for their non-default VPC clusters via the
+``PUBLIC_IPS`` config setting or the new ``--public-ips`` option to the
+``start`` command assuming they've properly configured their VPC to use public
+IPs. If the VPC hasn't been properly configured for public IPs an error will be
+raised during validation. The ``--no-public-ips`` option has been preserved so
+that users can disable the config setting (``PUBLIC_IPS``) from the ``start``
+command. Please see :ref:`using-vpc` and :ref:`connect-vpc` for more details.
+
+Please note that this version is *not* compatible with clusters started with
+older versions of StarCluster. Please terminate all clusters before upgrading
+to 0.95.3.
+
+Features
+--------
+* start: add -Q, -p, and --no-spot-master options
+* cluster: update 'Creating cluster' log msg to indicate VPC
+
+.. _v0953-fixes:
+
+Bug Fixes
+---------
+* users: pass -n to echo to avoid trailing newlines (#375)
+* cluster: do not use public IPs with VPC by default (#372)
+* cluster: fix VPC public IPs validation
+
+.. _version-0.95.2:
+
+0.95.2
+======
+
+.. _v0952-news:
+
+News
+----
+Version 0.95.2 of StarCluster is a bug fix release. Please note that this
+version is *not* compatible with clusters started with older versions of
+StarCluster. Please terminate all clusters before upgrading to 0.95.2.
+
+.. _v0952-fixes:
+
+Bug Fixes
+---------
+* cluster: sort chunked cluster tags before loading (#371)
+* config: set public_ip setting type to boolean (#366)
+
+.. _version-0.95.1:
+
+0.95.1
+======
+
+.. _v0951-news:
+
+News
+----
+Version 0.95.1 of StarCluster is a bug fix release. Please note that this
+version is *not* compatible with clusters started with older versions of
+StarCluster. Please terminate all clusters before upgrading to 0.95.1.
+
+.. _v0951-fixes:
+
+Bug Fixes
+---------
+* cluster: fix max length error when applying cluster tags (#348)
+* start: fix default value for ``--no-public-ips`` option (#366)
+* cluster: fix for custom security group permissions (#356)
+
+.. _version-0.95:
+
+0.95
+====
+
+.. _v095-news:
+
+News
+----
+Version 0.95 of StarCluster is a feature release with many enhancements and bug
+fixes. This release has support for Amazon's `Virtual Private Cloud (VPC)
+<http://aws.amazon.com/vpc/>`_. See :ref:`using-vpc` for details on using
+StarCluster with VPC. This release comes with new Ubuntu 13.04 AMIs for 32bit
+and 64bit platforms as well as an HVM AMI that comes with drivers for GPU and
+enhanced networking. The HVM AMI also comes with the CUDA toolkit, PyCuda,
+MAGMA, and OGS GPU sensor. These new AMIs are available in all AWS regions.
+Please use the **listpublic** command to find them::
+
+    $ starcluster listpublic
+
+The sections below list the full set of features, enhancements, and bug fixes
+for this release. Please note that this version is *not* compatible with
+clusters started with older versions of StarCluster. Please terminate all
+clusters before upgrading to 0.95.
+
+.. _v095-features:
+
+Features
+--------
+* **Add Virtual Private Cloud (VPC) support**
+* **Update base StarCluster AMI ids to 13.04**
+* Add support for new C3 instance types
+* Add support for new GRID GPU g2.2xlarge (non-GPGPU) instance type
+* Add support for m3.{medium,large} instance types
+* Add support for new I2 instance family
+* start: add ``--subnet`` (``-N``) and ``--no-public-ips option`` (VPC-only)
+* start: add ``--dns-prefix`` (``-P``) option to prefix hostnames with the
+  cluster tag
+* removenode: added ``--force`` (``-f``) option to removenode
+* removenode: prompt for confirmation and add ``--confirm`` (``-c``) option
+* sshmaster, sshnode: add ``--pseudo-tty`` (``-t``) option
+* createkey: add ``--import-key`` (``-i``) option
+* cluster: validate imported keypair fingerprints
+* spothistory: add ``--vpc`` and ``--classic`` options
+* spothistory: use classic or vpc prices based on default vpc
+* hadoop: tune number of map/reduce tasks to number of CPUs
+* hadoop: document all advanced settings
+* listclusters, listinstances: show vpc and subnet ids
+
+.. _v095-enhancements:
+
+Enhancements
+------------
+* removenode: update usage to mimic addnode (ie added ``-n`` and ``-a``
+  options similar to addnode) - old usage works but is deprecated
+* Removed internal scp module in favor of @jbardin's scp module
+* awsutils: wait for placement and security group deletion propagation in
+  ec2.delete_group
+* node: don't force NFSv3 - use OS default (NFSv4 on recent AMIs)
+* ebsimage: reduce rsync output by switching -v to -q (s3->ebs)
+* ebsimage: log the ebs volume formatting step
+* volume: log the exception when volume creation fails
+* loadbalance: set UTC tzinfo in all datetime objects
+* utils: use UTC timezone for all datetime objects
+* cluster: deprecated all get_node_by* calls in favor of cluster.get_node
+* awsutils: raise exc in EasyEC2.wait_for_propagation after max_retries
+* Use pytest to run tests
+
+.. _v095-fixes:
+
+Bug Fixes
+---------
+* node: fix stale NFS entries from force-terminated spot nodes
+* node: remove 'user' setting from NFS mount options
+* node: add work-around for bug in debian nfs-kernel-server init script in
+  Ubuntu 13.04+
+* node: use apt-get instead of apt in package_provider property
+* node: run apt-get update before install in apt_install
+* cluster: always use master's zone if not specified
+* cluster: store availability_zone in core cluster settings tag
+* cluster: raise error if MOUNT_PATH=/
+* cluster: retry deleting placement group until successful
+* cluster: check for master in remove_nodes prior to removing any nodes
+* loadbalance: add nodes when below minimum
+* loadbalance: raise an exception if min_nodes > max_nodes in loadbalancer
+* loadbalance: fix crash in get_all_stats() when arr is empty
+* ebsimage: set fs label = / on root vol when converting s3->ebs
+* ebsimage: fix for bmap when converting s3->ebs
+* ebsimage: only set 1 ephemeral drive when converting s3->ebs
+* volume: only detach if vol != available in _delete_new_volume
+* volume: remove duplicates from volume hosts list
+* spothistory: improve accuracy by not using a possibly out-of-sync local time
+  stamp for the end date as long as -e is not specified
+* spothistory: set UTC tzinfo on all datetime objects
+* awsutils: raise exception if keypair exists in create_keypair
+* awsutils: use instance store bmap for 32bit m1.small
+* awsutils: dont specify ephemeral drives w/ t1.micro
+* cli: raise parser error if tag is incorrectly specified
+* condor: fetch & create condor dirs from config
+* condor: set SCHEDD_NAME on each host
+* condor: improve dedicated scheduler config
+
+.. _version-0.94.3:
+
+0.94.3
+======
+
+.. _v0943-news:
+
+News
+----
+Version 0.94.3 of StarCluster is a bug fix release. See the "Bug Fixes"
+sections below for details. In general it's recommended to terminate all
+clusters before upgrading to new versions of StarCluster although this is not
+always strictly required.
+
+.. _v0943-fixes:
+
+Bug Fixes
+---------
+* Fixed 'InvalidSnapshot.NotFound' errors on cluster launch
+* Fixed issue with Server.InternalError: Internal error on launch when using
+  m1.small instance type with a 32bit AMI.
+* Updated default AMIs in config template to 64bit AMIs
+
+.. _version-0.94.2:
+
+0.94.2
+======
+
+.. _v0942-news:
+
+News
+----
+Version 0.94.2 of StarCluster is a bug fix release. See the "Bug Fixes"
+sections below for details. In general it's recommended to terminate all
+clusters before upgrading to new versions of StarCluster although this is not
+always strictly required.
+
+.. _v0942-fixes:
+
+Bug Fixes
+---------
+* node: fixed regression where the instance's connection object was not being
+  reused which was causing issues for folks using regions other than the default
+  us-east-1.
+
+.. _version-0.94.1:
+
+0.94.1
+======
+
+.. _v0941-news:
+
+News
+----
+Version 0.94.1 of StarCluster is a bug fix release. See the "Features" and
+"Bug Fixes" sections below for details. In general it's recommended to
+terminate all clusters before upgrading to new versions of StarCluster
+although this is not always strictly required.
+
+.. _v0941-features:
+
+Features
+--------
+* restart: add ``--reboot-only`` option
+* awsutils: force ``delete_on_termation`` on root volume when launching
+  instances
+* delay using optional imports in starcluster.utils until needed (reduces the
+  time it takes to load StarCluster)
+
+.. _v0941-fixes:
+
+Bug Fixes
+---------
+* cluster: wait for all instance and spot requests to propagate (fixes
+  'instance not found' errors and 'missing' spot requests when waiting for
+  cluster to come up)
+* cluster: terminate any instance that's been pending for more than 15 minutes
+  (fixes infinite wait due to a forever pending node)
+* s3image: fix block device map issue when host instance is EBS-backed
+* awsutils: fix custom block device map for S3 instances/AMIs
+* sshnode: fix keypair validation bug
+* node: fix for duplicate entries in known_hosts file
+* node: fix bug where credentials attributes were missing from node.ec2 object
+* loadbalancer: always pass ``--utc`` when calling date command
+* loadbalancer: set matplotlib backend to Agg - allows ``--plot`` option to
+  work without a display
+* config: convert ``EC2_CERT`` and ``EC2_PRIVATE_KEY`` in ``[aws]`` section to
+  absolute path
+* config: fix typo in config template (``PROTOCOL`` -> ``IP_PROTOCOL``)
+* tmux plugin: fix race condition where ``new-window -t`` is called before
+  ``new-session`` has finished
+* spothistory: update help docs for ``--plot`` option
+
 .. _version-0.94:
 
 0.94
@@ -30,13 +386,14 @@ Features
 * Updated base AMIs to latest 12.04 versions
 * OGS (formerly SGE): set default parallel environment allocation_rule to $fill_up
 * Added authentication agent forwarding to sshmaster, sshnode, and sshinstance
-* Support for loading config based on STARCLUSTER_CONFIG environment variable
+* Support for loading config based on ``$STARCLUSTER_CONFIG`` environment
+  variable
 * New plugin to install python packages with pip (pypkginstaller plugin)
 * New plugin that either copies or autogenerates a boto config for the cluster
   user
-* Added --force option to terminate/stop commands
+* Added ``--force`` option to terminate/stop commands
 * Add tags and virtualization type to listinstance output
-* Add --zone (-z) option to spothistory command
+* Add ``--zone`` (``-z``) option to spothistory command
 
 .. _v094-fixes:
 
@@ -48,20 +405,20 @@ Bug Fixes
 * awsutils: use 3 decimal places in spot history prices
 * cluster: fix thread leak when running plugins
 * cluster: store cluster metadata in userdata/tags
-* cluster: dont launch master as spot when cluster_size=1
+* cluster: dont launch master as spot when ``CLUSTER_SIZE=1``
 * cluster: reraise uncaught exceptions in run_plugins
 * cluster: fix instance filtering for default VPC
 * cluster: only clean-up placement groups in supported regions
 * clustersetup: ebs volume mounting improvements
-* clustersetup: raise exception if user's $HOME is owned by root
+* clustersetup: raise exception if user's ``$HOME`` is owned by root
 * improve ebs volume device and partition detection
 * config: allow inline comments in the config file
-* config: support [vol] shortcut in config
+* config: support ``[vol]`` shortcut in config
 * config: document/warn where/when env overrides cfg
 * threadpool: clear the exceptions queue in wait()
 * node: fix Node.root_device_name for misconfigured AMIs
 * node: fix ~/.ssh ownership in generate_key_for_user
-* sge: Export DRMAA_LIBRARY_PATH for Python DRMAA
+* sge: Export ``$DRMAA_LIBRARY_PATH`` for Python DRMAA
 * cli: use logging module to log/show exceptions
 * cli: write header to sys.stderr
 * logger: move console logs from stderr to stdout

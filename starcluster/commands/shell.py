@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -146,7 +146,7 @@ class CmdShell(CmdBase):
                    for module in starcluster.__all__]
         modules += [('boto', 'boto'), ('paramiko', 'paramiko'),
                     ('workerpool', 'workerpool'), ('jinja2', 'jinja2'),
-                    ('pyasn1', 'pyasn1'), ('iptools', 'iptools')]
+                    ('Crypto', 'Crypto'), ('iptools', 'iptools')]
         for fullname, modname in modules:
             log.info('Importing module %s' % modname)
             try:

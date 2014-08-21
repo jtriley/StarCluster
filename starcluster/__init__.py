@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -51,11 +51,30 @@ __all__ = [
 ]
 
 
-def test():
+def test_nose():
     try:
         from nose import run
         run(argv=['sctest', '-s', '--exe', 'starcluster'], exit=False)
     except ImportError:
         print 'error importing nose'
 
+
+def test_pytest():
+    try:
+        import pytest
+        import os
+        pytest.main('-xvs %s' % os.path.dirname(__file__))
+    except ImportError:
+        print 'error importing pytest'
+
+
+def test(use_nose=False):
+    if use_nose:
+        test_nose()
+    else:
+        test_pytest()
+
+
+test_nose.__test__ = False
+test_pytest.__test__ = False
 test.__test__ = False

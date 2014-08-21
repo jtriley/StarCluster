@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -21,13 +21,13 @@ from threading import Thread
 
 
 class Spinner(Thread):
-    #Set the screen position of the spinner (chars from the left).
+    # Set the screen position of the spinner (chars from the left).
     spin_screen_pos = 1
-    #Set the current index position in the spinner character list.
+    # Set the current index position in the spinner character list.
     char_index_pos = 0
-    #Set the time between character changes in the spinner.
+    # Set the time between character changes in the spinner.
     sleep_time = 1
-    #Set the spinner type: 0-3
+    # Set the spinner type: 0-3
     spin_type = 2
 
     def __init__(self, type=spin_type):

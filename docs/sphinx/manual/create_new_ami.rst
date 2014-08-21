@@ -20,7 +20,7 @@ Launching a New Image Host
 When launching a new *image host* it is recommended that you start a new
 cluster called *imagehost* using the following command::
 
-    $ starcluster start -o -s 1 -i <INSTANCE-TYPE> -n <BASE-AMI-ID> imagehost
+    $ starcluster start -o -s 1 -I <INSTANCE-TYPE> -m <BASE-AMI-ID> imagehost
 
 .. note::
 
@@ -32,8 +32,8 @@ cluster called *imagehost* using the following command::
     instance type.
 
 This command will create a single node (``-s 1``) cluster called *imagehost*
-using the AMI you wish to customize (``-n <BASE-AMI-ID>``) and a compatible
-instance type (``-i <INSTANCE-TYPE>``). The ``-o`` option tells StarCluster to
+using the AMI you wish to customize (``-m <BASE-AMI-ID>``) and a compatible
+instance type (``-I <INSTANCE-TYPE>``). The ``-o`` option tells StarCluster to
 only create the instance(s) and not to setup and configure the instance(s) as a
 cluster.  This way you start with a *clean* version of the AMI you're
 extending.
@@ -41,7 +41,7 @@ extending.
 You can also use a spot instance as the image host by passing ``--bid``
 (``-b``) option::
 
-    $ starcluster start -o -s 1 -b 0.50 -i <INSTANCE-TYPE> -n <BASE-AMI-ID> imagehost
+    $ starcluster start -o -s 1 -b 0.50 -I <INSTANCE-TYPE> -m <BASE-AMI-ID> imagehost
 
 If you used the ``-o`` option you'll need to periodically run the
 **listclusters** command to check whether or not the  *image host* is up::

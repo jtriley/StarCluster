@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -26,13 +26,51 @@ if sys.version_info < (2, 6):
 
 try:
     from setuptools import setup, find_packages
+    from setuptools.command.test import test as TestCommand
+
+    class PyTest(TestCommand):
+        user_options = TestCommand.user_options[:]
+        user_options += [
+            ('live', 'L', 'Run live StarCluster tests on a real AWS account'),
+            ('coverage', 'C', 'Produce a coverage report for StarCluster'),
+        ]
+
+        def initialize_options(self):
+            TestCommand.initialize_options(self)
+            self.live = None
+            self.coverage = None
+
+        def finalize_options(self):
+            TestCommand.finalize_options(self)
+            self.test_suite = True
+            self.test_args = []
+            if self.coverage:
+                self.test_args.append('--coverage')
+            if self.live:
+                self.test_args.append('--live')
+
+        def run_tests(self):
+            # import here, cause outside the eggs aren't loaded
+            import pytest
+            # Needed in order for pytest_cache to load properly
+            # Alternate fix: import pytest_cache and pass to pytest.main
+            import _pytest.config
+            pm = _pytest.config.get_plugin_manager()
+            pm.consider_setuptools_entrypoints()
+            errno = pytest.main(self.test_args)
+            sys.exit(errno)
+
     console_scripts = ['starcluster = starcluster.cli:main']
     extra = dict(test_suite="starcluster.tests",
-                 tests_require="nose",
-                 install_requires=["paramiko>=1.11.0", "boto>=2.10.0",
+                 tests_require= ["pytest-cov", "pytest-pep8", "pytest-flakes",
+                                 "pytest"],
+                 cmdclass={"test": PyTest},
+                 install_requires=["paramiko>=1.12.1", "boto>=2.23.0",
                                    "workerpool>=0.9.2", "Jinja2>=2.7",
-                                   "decorator>=3.4.0", "pyasn1>=0.1.7",
-                                   "iptools>=0.6.1", "optcomplete>=1.2-devel"],
+                                   "decorator>=3.4.0", "iptools>=0.6.1",
+                                   "optcomplete>=1.2-devel",
+                                   "pycrypto>=2.5", "scp>=0.7.1",
+                                   "iso8601>=0.1.8"],
                  include_package_data=True,
                  entry_points=dict(console_scripts=console_scripts),
                  zip_safe=False)

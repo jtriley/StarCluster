@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -91,7 +91,7 @@ class CmdLoadBalance(ClusterCompleter):
                           action="callback", type="int", default=None,
                           callback=self._positive_int,
                           help="Seconds to wait before cluster "
-                          "stabilizes (min: 300s)")
+                          "stabilizes (default: 180)")
         parser.add_option("-l", "--lookback_window", dest="lookback_win",
                           action="callback", type="int", default=None,
                           callback=self._positive_int,

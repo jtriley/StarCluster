@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -64,7 +64,7 @@ class CmdPut(ClusterCompleter):
                 raise exception.BaseException(
                     "Local file or directory does not exist: %s" % lpath)
         cl = self.cm.get_cluster(ctag, load_receipt=False)
-        node = cl.get_node_by_alias(self.opts.node)
+        node = cl.get_node(self.opts.node)
         if self.opts.user:
             node.ssh.switch_user(self.opts.user)
         if len(lpaths) > 1 and not node.ssh.isdir(rpath):

@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -34,10 +34,15 @@ class CmdRestart(ClusterCompleter):
     """
     names = ['restart', 'reboot']
 
+    def addopts(self, parser):
+        parser.add_option("-o", "--reboot-only", dest="reboot_only",
+                          action="store_true", default=False,
+                          help="only reboot EC2 instances (skip plugins)")
+
     tag = None
 
     def execute(self, args):
         if not args:
             self.parser.error("please specify a cluster <tag_name>")
         for arg in args:
-            self.cm.restart_cluster(arg)
+            self.cm.restart_cluster(arg, reboot_only=self.opts.reboot_only)

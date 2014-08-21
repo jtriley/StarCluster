@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -194,11 +194,11 @@ class TestClusterValidation(StarClusterTest):
                 "cluster allows invalid permission settings (cases %s)" %
                 failed)
 
-    #def test_image_validation(self):
-        #pass
+    # def test_image_validation(self):
+    #     pass
 
-    #def test_zone_validation(self):
-        #pass
+    # def test_zone_validation(self):
+    #     pass
 
-    #def test_platform_validation(self):
-        #pass
+    # def test_platform_validation(self):
+    #     pass

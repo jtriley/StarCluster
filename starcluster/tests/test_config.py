@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -139,14 +139,14 @@ class TestStarClusterConfig(tests.StarClusterTest):
         c3_settings = ['__name__', 'extends', 'keyname', 'key_location',
                        'cluster_size', 'volumes']
         for key in c1:
-            if key in c2 and not key in c2_settings:
+            if key in c2 and key not in c2_settings:
                 assert c2[key] == c1[key]
             else:
                 # below only true for default test config
                 # not required in general
                 assert c2[key] != c1[key]
         for key in c2:
-            if key in c3 and not key in c3_settings:
+            if key in c3 and key not in c3_settings:
                 assert c3[key] == c2[key]
             else:
                 # below only true for default test config
@@ -254,6 +254,8 @@ class TestStarClusterConfig(tests.StarClusterTest):
         cfg = config.StarClusterConfig(tmp_file.name, cache=True).load()
         assert cfg.aws['aws_access_key_id'] == aws_key
         assert cfg.aws['aws_secret_access_key'] == aws_secret_key
+        del os.environ['AWS_ACCESS_KEY_ID']
+        del os.environ['AWS_SECRET_ACCESS_KEY']
 
     def test_cyclical_extends(self):
         """

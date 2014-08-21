@@ -318,6 +318,9 @@ template in detail.
 | cluster_shell        | No       | Sets the cluster user's shell (default: bash, options: bash, zsh, csh, ksh,     |
 |                      |          | tcsh)                                                                           |
 +----------------------+----------+---------------------------------------------------------------------------------+
+| dns_prefix           | No       | If True, prefixes the dns name of nodes with the cluster tag. For example:      |
+|                      |          | master --> mycluster-master                                                     |
++----------------------+----------+---------------------------------------------------------------------------------+
 | master_image_id      | No       | The AMI to use for the master node. (defaults to **node_image_id**)             |
 +----------------------+----------+---------------------------------------------------------------------------------+
 | master_instance_type | No       | The instance type for the master node. (defaults to **node_instance_type**)     |
@@ -349,7 +352,105 @@ template in detail.
 | disable_cloudinit    | No       | Do not use cloudinit for cluster accounting (only required if using non-        |
 |                      |          | cloudinit enabled AMIs)                                                         |
 +----------------------+----------+---------------------------------------------------------------------------------+
+| subnet_id            | No       | The VPC subnet to use when launching cluster instances                          |
++----------------------+----------+---------------------------------------------------------------------------------+
+| public_ips           | No       | Automatically assign public IP addresses to all VPC cluster instances. Default  |
+|                      |          | is `False`.                                                                     |
+|                      |          |                                                                                 |
+|                      |          | **WARNING**: Enabling public IPs exposes your VPC cluster nodes to the internet |
+|                      |          | which may not be desirable. This option also requires a special VPC             |
+|                      |          | configuration - see :ref:`connect-vpc`                                          |
++----------------------+----------+---------------------------------------------------------------------------------+
 
+.. _using-vpc:
+
+Using the Virtual Private Cloud (VPC)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+From Amazon's `VPC page <http://aws.amazon.com/vpc/>`_:
+
+    "Amazon Virtual Private Cloud (Amazon VPC) lets you provision a logically
+    isolated section of the Amazon Web Services (AWS) Cloud where you can
+    launch AWS resources in a virtual network that you define. You have
+    complete control over your virtual networking environment, including
+    selection of your own IP address range, creation of subnets, and
+    configuration of route tables and network gateways."
+
+New AWS accounts use VPC by default via the `default VPC
+<http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/default-vpc.html>`_ and
+StarCluster supports this configuration without user intervention. However,
+users that wish to launch clusters in a **non-default** VPC must also provide
+the **subnet_id** setting in their cluster template(s):
+
+.. code-block:: ini
+
+    [cluster smallcluster]
+    keyname = mykeypair1
+    cluster_size = 2
+    node_image_id = ami-0330d16a
+    node_instance_type = m1.small
+    subnet_id = subnet-99999999
+
+Alternatively, users can specify or override the subnet ID at runtime via the
+``--subnet-id`` (``-N``) option to the ``start`` command::
+
+    $ starcluster start -N subnet-88888888 mycluster
+
+.. _connect-vpc:
+
+Connecting to a VPC Cluster
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+By default StarCluster does **not** automatically assign a public IP address to
+all VPC cluster instances which means **you must be on a machine within the VPC
+in order to successfully create, connect, and configure a cluster in the VPC**
+- otherwise StarCluster will hang indefinitely trying to connect to the nodes.
+StarCluster does not assign public IPs by default for two reasons:
+
+1. It opens the VPC to the internet which is a security risk
+2. It requires a special VPC configuration before it can be used successfully
+
+Specifically, your non-default VPC must have:
+
+1. An internet gateway attached to the VPC
+2. A route table entry linked to the internet gateway and associated with the
+   cluster's VPC subnet that has a destination CIDR block of ``0.0.0.0/0``
+
+StarCluster will raise a validation error if public IPs are requested and these
+requirements are not met. Assuming you're aware of the risks and have
+configured your VPC as mentioned above you can enable public IP addresses by
+setting ``public_ips=True`` in your cluster config:
+
+.. warning::
+
+    Enabling public IPs means that all VPC cluster nodes will be accessible
+    from the internet which may not be desirable depending on your
+    network/security requirements.
+
+.. code-block:: ini
+
+    [cluster smallcluster]
+    keyname = mykeypair1
+    cluster_size = 2
+    node_image_id = ami-0330d16a
+    node_instance_type = m1.small
+    subnet_id = subnet-99999999
+    public_ips = True
+
+This configuration will launch a cluster in a non-default VPC subnet and
+automatically assign a public IP address to all VPC cluster instances. You can
+also enable public IPs using the ``--public-ips`` option to the ``start``
+command::
+
+    $ starcluster start -N subnet-88888888 --public-ips mycluster
+
+.. note::
+
+    The ``--public-ips`` option only applies to **non-default** VPC clusters -
+    this option is *not* needed for clusters using the default VPC or EC2
+    classic. Both the default VPC and EC2 classic assign public IPs
+    automatically.
+
+Once public IPs have been enabled you can launch a cluster inside the VPC from
+a machine (e.g. your laptop) outside the VPC.
 
 Defining Multiple Cluster Templates
 -----------------------------------

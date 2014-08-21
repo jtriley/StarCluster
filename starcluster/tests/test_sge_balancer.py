@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -15,8 +15,10 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
 
+import iso8601
 import datetime
 
+from starcluster import utils
 from starcluster.balancers import sge
 from starcluster.tests import StarClusterTest
 from starcluster.tests.templates import sge_balancer
@@ -45,13 +47,14 @@ class TestSGELoadBalancer(StarClusterTest):
         assert len(stat.get_queued_jobs()) == 20
         assert len(stat.get_running_jobs()) == 3
         assert stat.num_slots_for_job(21) == 1
-        oldest = datetime.datetime(2010, 6, 18, 23, 39, 14)
+        oldest = datetime.datetime(2010, 6, 18, 23, 39, 14,
+                                   tzinfo=iso8601.iso8601.UTC)
         assert stat.oldest_queued_job_age() == oldest
         assert len(stat.queues) == 3
 
     def test_qacct_parser(self):
         stat = sge.SGEStats()
-        now = datetime.datetime.utcnow()
+        now = utils.get_utc_now()
         self.jobstats = stat.parse_qacct(sge_balancer.qacct_txt, now)
         assert stat.avg_job_duration() == 90
         assert stat.avg_wait_time() == 263
@@ -65,7 +68,8 @@ class TestSGELoadBalancer(StarClusterTest):
         assert len(stat.get_queued_jobs()) == 188
         assert len(stat.get_running_jobs()) == 4
         assert stat.num_slots_for_job(576) == 20
-        oldest = datetime.datetime(2010, 7, 8, 4, 40, 32)
+        oldest = datetime.datetime(2010, 7, 8, 4, 40, 32,
+                                   tzinfo=iso8601.iso8601.UTC)
         assert stat.oldest_queued_job_age() == oldest
         assert len(stat.queues) == 10
         assert stat.count_total_slots() == 80
@@ -73,5 +77,5 @@ class TestSGELoadBalancer(StarClusterTest):
         assert stat.slots_per_host() == 8
 
     def test_node_working(self):
-        #TODO : FINISH THIS
+        # TODO : FINISH THIS
         pass

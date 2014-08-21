@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -85,8 +85,7 @@ class CmdAddNode(ClusterCompleter):
             "-I", "--instance-type", dest="instance_type",
             action="store", type="choice", default=None,
             choices=sorted(static.INSTANCE_TYPES.keys()),
-            help="The instance type to use when launching volume "
-            "host instance")
+            help="instance type to use when launching node")
         parser.add_option(
             "-z", "--availability-zone", dest="zone", action="store",
             type="string", default=None, help="availability zone for "
@@ -99,24 +98,16 @@ class CmdAddNode(ClusterCompleter):
             default=False, help="do not launch new EC2 instances when "
             "adding nodes (use existing instances instead)")
 
-    def _get_duplicate(self, lst):
-        d = {}
-        for item in lst:
-            if item in d:
-                return item
-            else:
-                d[item] = 0
-
     def execute(self, args):
         if len(args) != 1:
             self.parser.error("please specify a cluster <cluster_tag>")
         tag = self.tag = args[0]
-
         aliases = []
         for alias in self.opts.alias:
             aliases.extend(alias.split(','))
-        if 'master' in aliases:
-            self.parser.error("'master' is a reserved alias")
+        if ('master' in aliases) or ('%s-master' % tag in aliases):
+            self.parser.error(
+                "'master' and '%s-master' are reserved aliases" % tag)
         num_nodes = self.opts.num_nodes
         if num_nodes == 1 and aliases:
             num_nodes = len(aliases)

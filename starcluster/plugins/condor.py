@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -35,6 +35,11 @@ class CondorPlugin(clustersetup.DefaultClusterSetup):
         condorcfg.write(condor.condor_tmpl % ctx)
         condorcfg.close()
         node.ssh.execute('pkill condor', ignore_exit_status=True)
+        config_vars = ["LOCAL_DIR", "LOG", "SPOOL", "RUN", "EXECUTE", "LOCK",
+                       "CRED_STORE_DIR"]
+        config_vals = ['$(condor_config_val %s)' % var for var in config_vars]
+        node.ssh.execute('mkdir -p %s' % ' '.join(config_vals))
+        node.ssh.execute('chown -R condor:condor %s' % ' '.join(config_vals))
         node.ssh.execute('/etc/init.d/condor start')
 
     def _setup_condor(self, master=None, nodes=None):
@@ -42,7 +47,7 @@ class CondorPlugin(clustersetup.DefaultClusterSetup):
         master = master or self._master
         if not master.ssh.isdir(FS_REMOTE_DIR):
             # TODO: below should work but doesn't for some reason...
-            #master.ssh.mkdir(FS_REMOTE_DIR, mode=01777)
+            # master.ssh.mkdir(FS_REMOTE_DIR, mode=01777)
             master.ssh.mkdir(FS_REMOTE_DIR)
             master.ssh.chmod(01777, FS_REMOTE_DIR)
         nodes = nodes or self.nodes

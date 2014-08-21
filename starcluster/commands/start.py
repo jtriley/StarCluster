@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -74,6 +74,9 @@ class CmdStart(ClusterCompleter):
         parser.add_option("-q", "--disable-queue", dest="disable_queue",
                           action="store_true", default=None,
                           help="do not configure a queueing system (SGE)")
+        parser.add_option("-Q", "--enable-queue", dest="disable_queue",
+                          action="store_false", default=None,
+                          help="configure a queueing system (SGE) (default)")
         parser.add_option("--force-spot-master",
                           dest="force_spot_master", action="store_true",
                           default=None, help="when creating a spot cluster "
@@ -81,6 +84,19 @@ class CmdStart(ClusterCompleter):
                           "a flat-rate instance for stability. this option "
                           "forces launching the master node as a spot "
                           "instance when a spot cluster is requested.")
+        parser.add_option("--no-spot-master", dest="force_spot_master",
+                          action="store_false", default=None,
+                          help="Do not launch the master node as a spot "
+                          "instance when a spot cluster is requested. "
+                          "(default)")
+        parser.add_option("--public-ips", dest="public_ips",
+                          default=None, action='store_true',
+                          help="Assign public IPs to all VPC nodes "
+                          "(VPC clusters only)"),
+        parser.add_option("--no-public-ips", dest="public_ips",
+                          default=None, action='store_false',
+                          help="Do NOT assign public ips to all VPC nodes "
+                          "(VPC clusters only) (default)"),
         opt = parser.add_option("-c", "--cluster-template", action="store",
                                 dest="cluster_template", choices=templates,
                                 default=None, help="cluster template to use "
@@ -153,6 +169,17 @@ class CmdStart(ClusterCompleter):
                           action="append", default=None, metavar="FILE",
                           help="Path to userdata script that will run on "
                           "each node on start-up. Can be used multiple times.")
+        parser.add_option("-P", "--dns-prefix", dest="dns_prefix",
+                          action='store_true',
+                          help="Prefix dns names of all nodes in the cluster "
+                          "with the cluster tag")
+        parser.add_option("-p", "--no-dns-prefix", dest="dns_prefix",
+                          action='store_false',
+                          help="Do NOT prefix dns names of all nodes in the "
+                          "cluster with the cluster tag (default)")
+        parser.add_option("-N", "--subnet-id", dest="subnet_id",
+                          action="store", type="string",
+                          help=("Launch cluster into a VPC subnet"))
 
     def execute(self, args):
         if len(args) != 1:
@@ -209,6 +236,8 @@ class CmdStart(ClusterCompleter):
                                        'tag': tag}
             if not validate_only and not create_only:
                 self.warn_experimental(msg, num_secs=5)
+        if self.opts.dns_prefix:
+            scluster.dns_prefix = tag
         try:
             scluster.start(create=create, create_only=create_only,
                            validate=validate, validate_only=validate_only,

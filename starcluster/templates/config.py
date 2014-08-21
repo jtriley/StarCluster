@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -100,15 +100,29 @@ CLUSTER_USER = sgeadmin
 # optionally specify shell (defaults to bash)
 # (options: %(shells)s)
 CLUSTER_SHELL = bash
+# Uncomment to prepent the cluster tag to the dns name of all nodes created
+# using this cluster config.  ie: mycluster-master and mycluster-node001
+# If you choose to enable this option, it's recommended that you enable it in
+# the DEFAULT_TEMPLATE so all nodes will automatically have the prefix
+# DNS_PREFIX = True
 # AMI to use for cluster nodes. These AMIs are for the us-east-1 region.
 # Use the 'listpublic' command to list StarCluster AMIs in other regions
 # The base i386 StarCluster AMI is %(x86_ami)s
 # The base x86_64 StarCluster AMI is %(x86_64_ami)s
 # The base HVM StarCluster AMI is %(hvm_ami)s
-NODE_IMAGE_ID = %(x86_ami)s
+NODE_IMAGE_ID = %(x86_64_ami)s
 # instance type for all cluster nodes
 # (options: %(instance_types)s)
 NODE_INSTANCE_TYPE = m1.small
+# Launch cluster in a VPC subnet (OPTIONAL)
+#SUBNET_ID=subnet-99999999
+# Uncomment to assign public IPs to cluster nodes (VPC-ONLY) (OPTIONAL)
+# WARNING: Using public IPs with a VPC requires:
+# 1. An internet gateway attached to the VPC
+# 2. A route table entry linked to the VPC's internet gateway and associated
+#    with the VPC subnet with a destination CIDR block of 0.0.0.0/0
+# WARNING: Public IPs allow direct access to your VPC nodes from the internet
+#PUBLIC_IPS=True
 # Uncomment to disable installing/configuring a queueing system on the
 # cluster (SGE)
 #DISABLE_QUEUE=True
@@ -117,7 +131,7 @@ NODE_INSTANCE_TYPE = m1.small
 #MASTER_INSTANCE_TYPE = m1.small
 # Uncomment to specify a separate AMI to use for the master node. (OPTIONAL)
 # (defaults to NODE_IMAGE_ID if not specified)
-#MASTER_IMAGE_ID = %(x86_ami)s (OPTIONAL)
+#MASTER_IMAGE_ID = %(x86_64_ami)s (OPTIONAL)
 # availability zone to launch the cluster in (OPTIONAL)
 # (automatically determined based on volumes (if any) or
 # selected by Amazon if not specified)

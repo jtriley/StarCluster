@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -275,7 +275,7 @@ class StarClusterConfig(object):
             func = self.type_validators.get(func)
             value = func(self.config, section_name, setting)
             if value is not None:
-                if options and not value in options:
+                if options and value not in options:
                     raise exception.ConfigError(
                         '"%s" setting in section "%s" must be one of: %s' %
                         (setting, section_name,
@@ -380,7 +380,7 @@ class StarClusterConfig(object):
         vols = AttributeDict()
         cluster_section['volumes'] = vols
         for volume in volumes:
-            if not volume in self.vols:
+            if volume not in self.vols:
                 raise exception.ConfigError(
                     "volume '%s' not defined in config" % volume)
             vol = self.vols.get(volume).copy()
@@ -394,7 +394,7 @@ class StarClusterConfig(object):
             return
         plugs = []
         for plugin in plugins:
-            if not plugin in self.plugins:
+            if plugin not in self.plugins:
                 raise exception.ConfigError(
                     "plugin '%s' not defined in config" % plugin)
             plugs.append(self.plugins.get(plugin))
@@ -427,7 +427,7 @@ class StarClusterConfig(object):
         choices_string = ', '.join(static.INSTANCE_TYPES.keys())
         try:
             default_instance_type = instance_types[-1]
-            if not default_instance_type in static.INSTANCE_TYPES:
+            if default_instance_type not in static.INSTANCE_TYPES:
                 raise exception.ConfigError(
                     "invalid node_instance_type specified: '%s'\n"
                     "must be one of: %s" %
@@ -444,7 +444,7 @@ class StarClusterConfig(object):
             itype = type_spec[0]
             itype_image = None
             itype_num = 1
-            if not itype in static.INSTANCE_TYPES:
+            if itype not in static.INSTANCE_TYPES:
                 raise exception.ConfigError(
                     "invalid type specified (%s) in node_instance_type "
                     "item: '%s'\nmust be one of: %s" %
@@ -620,6 +620,7 @@ class StarClusterConfig(object):
                                                        debug=DEBUG_CONFIG)
             if not ec2_conn:
                 ec2_conn = self.get_easy_ec2()
+
             clust = Cluster(ec2_conn, **kwargs)
             return clust
         except KeyError:
@@ -635,7 +636,7 @@ class StarClusterConfig(object):
         if not default:
             raise exception.NoDefaultTemplateFound(
                 options=self.clusters.keys())
-        if not default in self.clusters:
+        if default not in self.clusters:
             raise exception.ClusterTemplateDoesNotExist(default)
         return default
 

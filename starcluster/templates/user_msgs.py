@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -141,4 +141,11 @@ changes:
     $ starcluster ebsimage <instance-id> <image-name>
 
 Pass the --help flag to the 'ebsimage' command for more details.
+"""
+
+public_ips_disabled = """\
+PUBLIC IPS HAVE BEEN DISABLED!!!
+
+This means StarCluster must be executed from a machine within the cluster's VPC
+(%(vpc_id)s) otherwise it will hang forever trying to connect to the instances.
 """

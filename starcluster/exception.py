@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -119,6 +119,11 @@ class InstanceNotRunning(AWSError):
         self.msg = "%s %s is not running (%s)" % (label, instance_id, state)
 
 
+class SubnetDoesNotExist(AWSError):
+    def __init__(self, subnet_id):
+        self.msg = "subnet does not exist: %s" % subnet_id
+
+
 class SecurityGroupDoesNotExist(AWSError):
     def __init__(self, sg_name):
         self.msg = "security group %s does not exist" % sg_name
@@ -127,6 +132,11 @@ class SecurityGroupDoesNotExist(AWSError):
 class PlacementGroupDoesNotExist(AWSError):
     def __init__(self, pg_name):
         self.msg = "placement group %s does not exist" % pg_name
+
+
+class KeyPairAlreadyExists(AWSError):
+    def __init__(self, keyname):
+        self.msg = "keypair %s already exists" % keyname
 
 
 class KeyPairDoesNotExist(AWSError):
@@ -206,9 +216,17 @@ class SpotHistoryError(AWSError):
         self.msg += "%s - %s" % (start, end)
 
 
+class PropagationException(AWSError):
+    pass
+
+
 class InvalidIsoDate(BaseException):
     def __init__(self, date):
         self.msg = "Invalid date specified: %s" % date
+
+
+class InvalidHostname(BaseException):
+    pass
 
 
 class ConfigError(BaseException):
@@ -543,7 +561,7 @@ Please terminate the cluster using:
 """
 
     def __init__(self, group):
-        tag = group.name.replace(static.SECURITY_GROUP_PREFIX + '-', '')
+        tag = group.name.replace(static.SECURITY_GROUP_PREFIX, '')
         states = ['pending', 'running', 'stopping', 'stopped']
         insts = group.connection.get_all_instances(
             filters={'instance-state-name': states,

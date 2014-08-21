@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -78,7 +78,7 @@ class TmuxControlCenter(clustersetup.DefaultClusterSetup):
         node.ssh.execute('tmux send-keys -t %s:%s "Enter"' % (envname, window))
 
     def _new_session(self, node, envname):
-        node.ssh.execute('tmux new-session -d -s %s' % envname, detach=True)
+        node.ssh.execute('tmux new-session -d -s %s' % envname)
 
     def _kill_session(self, node, envname):
         node.ssh.execute('tmux kill-session -t %s' % envname)

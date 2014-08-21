@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -32,7 +32,7 @@ and the latest released version of some dependencies::
 
     [plugin ipython-dev]
     setup_class = starcluster.plugins.pypkginstaller.PyPkgInstaller
-    install_cmd = pip install -U %s
+    install_command = pip install -U %s
     packages = pyzmq,
                python-msgpack,
                git+http://github.com/ipython/ipython.git

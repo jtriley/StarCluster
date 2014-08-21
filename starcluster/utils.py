@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -36,6 +36,7 @@ import urlparse
 from datetime import datetime
 
 import iptools
+import iso8601
 import decorator
 
 from starcluster import spinner
@@ -179,6 +180,20 @@ def is_valid_image_name(image_name):
         return False
 
 
+def is_valid_hostname(hostname):
+    """From StackOverflow on 2013-10-04:
+
+    http://stackoverflow.com
+    /questions/2532053/validate-a-hostname-string#answer-2532344
+    """
+    if len(hostname) > 255:
+        return False
+    if hostname[-1] == ".":
+        hostname = hostname[:-1]  # strip exactly one dot from the right
+    allowed = re.compile("(?!-)[A-Z\d-]{1,63}(?<!-)$", re.IGNORECASE)
+    return all(allowed.match(x) for x in hostname.split("."))
+
+
 def make_one_liner(script):
     """
     Returns command to execute python script as a one-line python program
@@ -224,7 +239,7 @@ def is_iso_time(iso):
     try:
         iso_to_datetime_tuple(iso)
         return True
-    except ValueError:
+    except iso8601.ParseError:
         return False
 
 
@@ -232,20 +247,26 @@ def iso_to_datetime_tuple(iso):
     """
     Converts an iso time string to a datetime tuple
     """
-    #remove timezone
-    iso = iso.split('.')[0]
-    try:
-        return datetime.strptime(iso, "%Y-%m-%dT%H:%M:%S")
-    except AttributeError:
-        # python2.4 datetime module doesnt have strptime
-        return datetime(*time.strptime(iso, "%Y-%m-%dT%H:%M:%S")[:6])
+    return iso8601.parse_date(iso)
+
+
+def get_utc_now(iso=False):
+    """
+    Returns datetime.utcnow with UTC timezone info
+    """
+    now = datetime.utcnow().replace(tzinfo=iso8601.iso8601.UTC)
+    if iso:
+        return datetime_tuple_to_iso(now)
+    else:
+        return now
 
 
 def datetime_tuple_to_iso(tup):
     """
-    Converts a datetime tuple to iso time string
+    Converts a datetime tuple to a UTC iso time string
     """
-    iso = datetime.strftime(tup, "%Y-%m-%dT%H:%M:%S")
+    iso = datetime.strftime(tup.astimezone(iso8601.iso8601.UTC),
+                            "%Y-%m-%dT%H:%M:%S.%fZ")
     return iso
 
 
@@ -369,10 +390,10 @@ def tailf(filename):
     Constantly displays the last lines in filename
     Similar to 'tail -f' unix command
     """
-    #Set the filename and open the file
+    # Set the filename and open the file
     file = open(filename, 'r')
 
-    #Find the size of the file and move to the end
+    # Find the size of the file and move to the end
     st_results = os.stat(filename)
     st_size = st_results[6]
     file.seek(st_size)
@@ -572,14 +593,18 @@ class struct_passwd(tuple):
             raise AttributeError
 
 
-def dump_compress_encode(obj, use_json=False):
+def dump_compress_encode(obj, use_json=False, chunk_size=None):
     serializer = cPickle
     if use_json:
         serializer = json
-    return zlib.compress(serializer.dumps(obj)).encode('base64')
+    p = zlib.compress(serializer.dumps(obj)).encode('base64')
+    if chunk_size is not None:
+        return [p[i:i + chunk_size] for i in range(0, len(p), chunk_size)]
+    return p
 
 
 def decode_uncompress_load(string, use_json=False):
+    string = ''.join(string)
     serializer = cPickle
     if use_json:
         serializer = json

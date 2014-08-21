@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -58,7 +58,7 @@ class CmdGet(ClusterCompleter):
         lpath = args[-1]
         rpaths = args[1:-1]
         cl = self.cm.get_cluster(ctag, load_receipt=False)
-        node = cl.get_node_by_alias(self.opts.node)
+        node = cl.get_node(self.opts.node)
         if self.opts.user:
             node.ssh.switch_user(self.opts.user)
         for rpath in rpaths:
