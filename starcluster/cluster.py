@@ -775,13 +775,16 @@ class Cluster(object):
         log.debug('returning self._nodes = %s' % self._nodes)
         return self._nodes
 
-    def get_nodes_or_raise(self):
-        nodes = self.nodes
-        if not nodes:
+    def get_nodes_or_raise(self, nodes=None):
+        _nodes = self.nodes
+        if not _nodes:
             filters = {'instance.group-name': self._security_group}
             terminated_nodes = self.ec2.get_all_instances(filters=filters)
             raise exception.NoClusterNodesFound(terminated_nodes)
-        return nodes
+        if nodes:
+            nodes_ids = [n.id for n in nodes]
+            _nodes = filter(lambda n: n.id in nodes_ids, _nodes)
+        return _nodes
 
     def get_node(self, identifier, nodes=None):
         """
@@ -1397,19 +1400,19 @@ class Cluster(object):
         Wait until all cluster nodes are in a 'running' state
         """
         log.info("Waiting for all nodes to be in a 'running' state...")
-        nodes = nodes or self.get_nodes_or_raise()
+        _nodes = nodes or self.get_nodes_or_raise()
         pbar = self.progress_bar.reset()
-        pbar.maxval = len(nodes)
+        pbar.maxval = len(_nodes)
         pbar.update(0)
         now = datetime.datetime.utcnow()
         timeout = now + datetime.timedelta(minutes=kill_pending_after_mins)
         while not pbar.finished:
-            running_nodes = [n for n in nodes if n.state == "running"]
-            pbar.maxval = len(nodes)
+            running_nodes = [n for n in _nodes if n.state == "running"]
+            pbar.maxval = len(_nodes)
             pbar.update(len(running_nodes))
             if not pbar.finished:
                 if datetime.datetime.utcnow() > timeout:
-                    pending = [n for n in nodes if n not in running_nodes]
+                    pending = [n for n in _nodes if n not in running_nodes]
                     log.warn("%d nodes have been pending for >= %d mins "
                              "- terminating" % (len(pending),
                                                 kill_pending_after_mins))
@@ -1417,7 +1420,7 @@ class Cluster(object):
                         node.terminate()
                 else:
                     time.sleep(self.refresh_interval)
-                nodes = self.get_nodes_or_raise()
+                _nodes = self.get_nodes_or_raise(nodes)
         pbar.reset()
 
     def wait_for_ssh(self, nodes=None):
