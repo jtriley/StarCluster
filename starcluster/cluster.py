@@ -1253,7 +1253,7 @@ class Cluster(object):
 
         interval = self.refresh_interval
         log.info("Waiting for one of the new nodes to be up "
-                "(updating every {}s)".format(interval))
+                 "(updating every {}s)".format(interval))
         while True:
             ready_instances = []
             if spots:

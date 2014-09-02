@@ -650,6 +650,7 @@ def get_spinner(msg):
     s.start()
     return s
 
+
 def filter_move(keep_fct, in_, out, extract_fct=None):
     def _filter(item):
         if keep_fct(item):
