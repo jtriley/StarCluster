@@ -649,3 +649,14 @@ def get_spinner(msg):
     log.info(msg, extra=dict(__nonewline__=True))
     s.start()
     return s
+
+def filter_move(keep_fct, in_, out, extract_fct=None):
+    def _filter(item):
+        if keep_fct(item):
+            return True
+        if extract_fct:
+            out.append(extract_fct(item))
+        else:
+            out.append(item)
+        return False
+    return filter(_filter, in_)

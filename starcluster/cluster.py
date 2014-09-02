@@ -1021,7 +1021,13 @@ class Cluster(object):
         if self._make_alias(master=True) in aliases:
             raise exception.ClusterValidationError(
                 "worker nodes cannot have master as an alias")
-        if not no_create:
+        if no_create:
+            self.wait_for_cluster(msg="Waiting for node(s) to come up...")
+            log.debug("Adding node(s): %s" % aliases)
+            for alias in aliases:
+                node = self.get_node(alias)
+                self.run_plugins(method_name="on_add_node", node=node)
+        else:
             if self.subnet:
                 ip_count = self.subnet.available_ip_address_count
                 if ip_count < len(aliases):
@@ -1039,13 +1045,53 @@ class Cluster(object):
                                      spot_bid=spot_bid)
             if spot_bid or self.spot_bid:
                 self.ec2.wait_for_propagation(spot_requests=resp)
+                self.streaming_add(spots=resp)
             else:
                 self.ec2.wait_for_propagation(instances=resp[0].instances)
-        self.wait_for_cluster(msg="Waiting for node(s) to come up...")
-        log.debug("Adding node(s): %s" % aliases)
-        for alias in aliases:
-            node = self.get_node(alias)
-            self.run_plugins(method_name="on_add_node", node=node)
+                self.streaming_add(instances=resp[0].instances)
+
+    def streaming_add(self, spots=[], instances=[]):
+        """
+        As soon as a new node is ready, run the add plugins commands over it.
+        """
+        assert bool(spots) != bool(instances), \
+            "You must define either spots or instances"
+
+        interval = self.refresh_interval
+        log.info("Waiting for one of the new nodes to be up "
+                "(updating every {}s)".format(interval))
+        while True:
+            ready_instances = []
+            if spots:
+                spots = self.get_spot_requests_or_raise(spots)
+                instance_ids = []
+
+                spots = utils.filter_move(
+                    lambda s: s.state != 'active' or s.instance_id is None,
+                    spots, instance_ids, lambda s: s.instance_id)
+                if spots:
+                    log.info("Still waiting for spots: " + str(spots))
+                if instance_ids:
+                    log.info("Instance ids:" + str(instance_ids))
+                    instances += \
+                        self.ec2.get_all_instances(instance_ids=instance_ids)
+            if instances:
+                instances = self.get_nodes_or_raise(nodes=instances)
+                instances = utils.filter_move(
+                    lambda i: i.state != 'running' or not i.is_up(),
+                    instances, ready_instances)
+                if instances:
+                    log.info("Still waiting for instances: " + str(instances))
+            for ready_instance in ready_instances:
+                log.info("Adding node: %s" % ready_instance.alias)
+                up_nodes = filter(lambda n: n.is_up(), self.nodes)
+                self.run_plugins(method_name="on_add_node",
+                                 node=ready_instance, nodes=up_nodes)
+            if spots or instances:
+                time.sleep(interval)
+            else:
+                break
+
 
     def remove_node(self, node=None, terminate=True, force=False):
         """
@@ -1678,7 +1724,7 @@ class Cluster(object):
         self.run_plugins()
 
     def run_plugins(self, plugins=None, method_name="run", node=None,
-                    reverse=False):
+                    reverse=False, nodes=None):
         """
         Run all plugins specified in this Cluster object's self.plugins list
         Uses plugins list instead of self.plugins if specified.
@@ -1693,9 +1739,11 @@ class Cluster(object):
         if reverse:
             plugs.reverse()
         for plug in plugs:
-            self.run_plugin(plug, method_name=method_name, node=node)
+            self.run_plugin(plug, method_name=method_name, node=node,
+                            nodes=nodes)
 
-    def run_plugin(self, plugin, name='', method_name='run', node=None):
+    def run_plugin(self, plugin, name='', method_name='run', node=None,
+                   nodes=None):
         """
         Run a StarCluster plugin.
 
@@ -1713,7 +1761,7 @@ class Cluster(object):
                 log.warn("Plugin %s has no %s method...skipping" %
                          (plugin_name, method_name))
                 return
-            args = [self.nodes, self.master_node, self.cluster_user,
+            args = [nodes or self.nodes, self.master_node, self.cluster_user,
                     self.cluster_shell, self.volumes]
             if node:
                 args.insert(0, node)
