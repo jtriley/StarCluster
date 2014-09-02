@@ -1059,7 +1059,7 @@ class Cluster(object):
 
         interval = self.refresh_interval
         log.info("Waiting for one of the new nodes to be up "
-                "(updating every {}s)".format(interval))
+                 "(updating every {}s)".format(interval))
         while True:
             ready_instances = []
             if spots:
@@ -1091,7 +1091,6 @@ class Cluster(object):
                 time.sleep(interval)
             else:
                 break
-
 
     def remove_node(self, node=None, terminate=True, force=False):
         """
