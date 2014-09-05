@@ -1297,9 +1297,12 @@ class Cluster(object):
 
             if instances:
                 instances = self.get_nodes_or_raise(nodes=instances)
-                instances = utils.filter_move(
-                    lambda i: i.state != 'running' or not i.is_up(),
-                    instances, ready_instances)
+                ssh_up = self.pool.map(lambda i: i.is_up(), instances)
+                zip_instances = utils.filter_move(
+                    lambda i: i[0].state != 'running' or not i[1],
+                    zip(instances, ssh_up), ready_instances,
+                    lambda i: i[0])
+                instances = [i[0] for i in zip_instances]
                 if instances:
                     log.info("Still waiting for instances: " + str(instances))
             for ready_instance in ready_instances:
