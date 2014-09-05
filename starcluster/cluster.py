@@ -1073,7 +1073,7 @@ class Cluster(object):
                     unpropagated_spots, spots)
                 if unpropagated_spots:
                     log.info("Still waiting for unpropagated spots:"
-                            + str(unpropagated_spots))
+                             + str(unpropagated_spots))
 
             if spots:
                 instance_ids = []
@@ -1097,7 +1097,7 @@ class Cluster(object):
                     unpropagated_instances, instances)
                 if unpropagated_instances:
                     log.info("Still waiting for unpropagated instances: "
-                            + str(unpropagated_instances))
+                             + str(unpropagated_instances))
 
             if instances:
                 instances = self.get_nodes_or_raise(nodes=instances)
