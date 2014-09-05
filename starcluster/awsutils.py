@@ -597,6 +597,32 @@ class EasyEC2(EasyAWS):
                 instance_ids, self.get_all_instances, 'instance-id',
                 'instances', max_retries=max_retries, interval=interval)
 
+    def _check_for_propagation(self, obj_ids, fetch_func, id_filter, obj_name):
+        filters = {id_filter: obj_ids}
+        reqs_ids = []
+        reqs = fetch_func(filters=filters)
+        reqs_ids = [req.id for req in reqs]
+        found = [oid for oid in obj_ids if oid in reqs_ids]
+        return found
+
+    def check_for_propagation(self, instance_ids=None, spot_ids=None):
+        """
+        Check propagated instances. Returns a tuple where the first item is
+        a list of the found instances and the second a list of the found
+        spot requests.
+        """
+        found_instance_ids = []
+        found_spot_ids = []
+        if spot_ids:
+            found_instance_ids = self._check_for_propagation(
+                spot_ids, self.get_all_spot_requests,
+                'spot-instance-request-id', 'spot requests')
+        if instance_ids:
+            found_spot_ids = self._check_for_propagation(
+                instance_ids, self.get_all_instances, 'instance-id',
+                'instances')
+        return found_instance_ids, found_spot_ids
+
     def run_instances(self, image_id, instance_type='m1.small', min_count=1,
                       max_count=1, key_name=None, security_groups=None,
                       placement=None, user_data=None, placement_group=None,

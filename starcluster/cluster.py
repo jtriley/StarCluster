@@ -1044,10 +1044,8 @@ class Cluster(object):
                                      placement_group=placement_group,
                                      spot_bid=spot_bid)
             if spot_bid or self.spot_bid:
-                self.ec2.wait_for_propagation(spot_requests=resp)
                 self.streaming_add(spots=resp)
             else:
-                self.ec2.wait_for_propagation(instances=resp[0].instances)
                 self.streaming_add(instances=resp[0].instances)
 
     def streaming_add(self, spots=[], instances=[]):
@@ -1060,21 +1058,47 @@ class Cluster(object):
         interval = self.refresh_interval
         log.info("Waiting for one of the new nodes to be up "
                  "(updating every {}s)".format(interval))
+
+        unpropagated_spots = spots
+        spots = []
+        unpropagated_instances = instances
+        instances = []
         while True:
             ready_instances = []
-            if spots:
-                spots = self.get_spot_requests_or_raise(spots)
-                instance_ids = []
+            if unpropagated_spots:
+                propagated_spot_ids, _ = self.ec2.check_for_propagation(
+                    spot_ids=[s.id for s in unpropagated_spots])
+                unpropagated_spots = utils.filter_move(
+                    lambda s: s.id not in propagated_spot_ids,
+                    unpropagated_spots, spots)
+                if unpropagated_spots:
+                    log.info("Still waiting for unpropagated spots:"
+                            + str(unpropagated_spots))
 
+            if spots:
+                instance_ids = []
+                spots = self.get_spot_requests_or_raise(spots)
                 spots = utils.filter_move(
                     lambda s: s.state != 'active' or s.instance_id is None,
                     spots, instance_ids, lambda s: s.instance_id)
-                if spots:
-                    log.info("Still waiting for spots: " + str(spots))
                 if instance_ids:
                     log.info("Instance ids:" + str(instance_ids))
+                    # Those one are already propagated
                     instances += \
                         self.ec2.get_all_instances(instance_ids=instance_ids)
+                if spots:
+                    log.info("Still waiting for spots: " + str(spots))
+
+            if unpropagated_instances:
+                _, propagated_instance_ids = self.ec2.check_for_propagation(
+                    instance_ids=[s.id for s in unpropagated_instances])
+                unpropagated_instances = utils.filter_move(
+                    lambda i: i.id not in propagated_instance_ids,
+                    unpropagated_instances, instances)
+                if unpropagated_instances:
+                    log.info("Still waiting for unpropagated instances: "
+                            + str(unpropagated_instances))
+
             if instances:
                 instances = self.get_nodes_or_raise(nodes=instances)
                 instances = utils.filter_move(
@@ -1087,7 +1111,8 @@ class Cluster(object):
                 up_nodes = filter(lambda n: n.is_up(), self.nodes)
                 self.run_plugins(method_name="on_add_node",
                                  node=ready_instance, nodes=up_nodes)
-            if spots or instances:
+            if any([unpropagated_spots, spots,
+                    unpropagated_instances, instances]):
                 time.sleep(interval)
             else:
                 break
