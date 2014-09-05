@@ -279,23 +279,23 @@ class Hadoop(clustersetup.ClusterSetup):
         node.ssh.execute("chmod -R %s %s" % (permission, path))
 
     def _start_datanode(self, node):
-        node.ssh.execute('/etc/init.d/hadoop-0.20-datanode restart')
+        node.ssh.execute('service hadoop-0.20-datanode restart')
 
     def _start_tasktracker(self, node):
-        node.ssh.execute('/etc/init.d/hadoop-0.20-tasktracker restart')
+        node.ssh.execute('service hadoop-0.20-tasktracker restart')
 
     def _start_hadoop(self, master, nodes):
         log.info("Starting namenode...")
-        master.ssh.execute('/etc/init.d/hadoop-0.20-namenode restart')
+        master.ssh.execute('service hadoop-0.20-namenode restart')
         log.info("Starting secondary namenode...")
-        master.ssh.execute('/etc/init.d/hadoop-0.20-secondarynamenode restart')
+        master.ssh.execute('service hadoop-0.20-secondarynamenode restart')
         log.info("Starting datanode on all nodes...")
         for node in nodes:
             self.pool.simple_job(self._start_datanode, (node,),
                                  jobid=node.alias)
         self.pool.wait()
         log.info("Starting jobtracker...")
-        master.ssh.execute('/etc/init.d/hadoop-0.20-jobtracker restart')
+        master.ssh.execute('service hadoop-0.20-jobtracker restart')
         log.info("Starting tasktracker on all nodes...")
         for node in nodes:
             self.pool.simple_job(self._start_tasktracker, (node,),

@@ -40,7 +40,7 @@ class CondorPlugin(clustersetup.DefaultClusterSetup):
         config_vals = ['$(condor_config_val %s)' % var for var in config_vars]
         node.ssh.execute('mkdir -p %s' % ' '.join(config_vals))
         node.ssh.execute('chown -R condor:condor %s' % ' '.join(config_vals))
-        node.ssh.execute('/etc/init.d/condor start')
+        node.ssh.execute('service condor start')
 
     def _setup_condor(self, master=None, nodes=None):
         log.info("Setting up Condor grid")
