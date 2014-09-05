@@ -222,7 +222,10 @@ This branch intends to be a mirror of https://github.com/jtriley/StarCluster dev
           issue comes from the hardware. If the node is a spot instance, it will be terminated instead since it cannot 
           be stopped. Defaults to false.
 * Improved node cleanup - Merged `robbyt`_ `pull request`_ which makes node cleanup faster.
-* Improved node addition - Removed some remote read/writes (very slow) and replaced them get/edit/push.
+* Improved node addition
+
+  - Streaming the process by adding nodes as soon as they are ready instead of waiting for all of them. (`Pull Request 434`_)
+  - Removed some remote read/writes (very slow) and replaced them get/edit/push.
 * Support for multiple subnets - Via the cluster template, allows to get spot instances in the cheapest zone.
   Dropped the --subnet-id start command flag. (`Commit 0824e3`_)
 * Adds a mode where the cluster configuration is written to master:/etc/starcluster. To activate, simply add flag 
@@ -241,3 +244,4 @@ This branch intends to be a mirror of https://github.com/jtriley/StarCluster dev
 .. _Commit 4bc193: https://github.com/datacratic/StarCluster/commit/4bc1938e6d7829b78295f065300e0cfbe04503f0
 .. _Commit 72f3bc: https://github.com/datacratic/StarCluster/commit/72f3bc5ddb028a675f49f3d792c74f6bd3cd1961
 .. _Commit c3e097: https://github.com/datacratic/StarCluster/commit/c3e097dc54162f27f70af4448be869faaea060d7
+.. _Pull Request 434: https://github.com/jtriley/StarCluster/pull/434
