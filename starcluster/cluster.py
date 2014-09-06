@@ -1116,6 +1116,10 @@ class Cluster(object):
                                  node=ready_instance, nodes=up_nodes)
             if any([unpropagated_spots, spots,
                     unpropagated_instances, instances]):
+                if ready_instances:
+                    # Nodes were added, that took
+                    # time so we should loop again now
+                    continue
                 time.sleep(interval)
             else:
                 break
