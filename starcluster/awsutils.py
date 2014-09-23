@@ -531,30 +531,7 @@ class EasyEC2(EasyAWS):
                                network_interfaces=None):
         kwargs = locals()
         kwargs.pop('self')
-        requests = self.conn.request_spot_instances(**kwargs)
-        requests_ids = []
-        for request in requests:
-            requests_ids.append(request.id)
-
-        # Make sure the spot instance request has been ingested by EC2
-        # before proceeding. Wait at most 10 sec.
-        counter = 0
-        while True:
-            all_requests = self.conn.get_all_spot_instance_requests()
-            # start from the end as our request will usually be the last
-            all_requests.reverse()
-            for request in all_requests:
-                if request.id in requests_ids:
-                    del requests_ids[requests_ids.index(request.id)]
-                    if len(requests_ids) == 0:
-                        # done
-                        return requests
-
-            if counter % 10 == 0:
-                log.info("Still waiting for instances " + str(requests_ids))
-            log.debug(str(counter) + ": Instance not propagated, sleeping")
-            time.sleep(1)
-            counter += 1
+        return self.conn.request_spot_instances(**kwargs)
 
     def _wait_for_propagation(self, obj_ids, fetch_func, id_filter, obj_name,
                               max_retries=60, interval=5):
