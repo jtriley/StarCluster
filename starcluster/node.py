@@ -894,8 +894,8 @@ class Node(object):
         """
         aliases = [n.short_alias for n in nodes]
         ips = [n.private_ip_address.replace(".", "\.") for n in nodes]
-        self.ssh.remove_lines_from_file('/etc/hosts', '|'.join(aliases))
-        self.ssh.remove_lines_from_file('/etc/hosts', '|'.join(ips))
+        self.ssh.remove_lines_from_file('/etc/hosts',
+                                        '|'.join(aliases) + '|'.join(ips))
 
     def set_hostname(self, hostname=None):
         """
