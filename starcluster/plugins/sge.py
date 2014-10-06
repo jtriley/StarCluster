@@ -208,7 +208,16 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
                     node.ssh.execute("qhost", source_profile=True)
                 except RemoteCommandFailed:
                     # normal -> means OGS doesn't run on the node
+                    # slow path
                     missing.append(node)
+                else:
+                    # fast path
+                    log.warning("Restarting sge_execd over " + node.alias)
+                    node.ssh.execute(
+                        "pkill -9 sge_execd "
+                        "&& /opt/sge6/bin/linux-x64/sge_execd",
+                        source_profile=True)
+
         return missing
 
     def run(self, nodes, master, user, user_shell, volumes):
