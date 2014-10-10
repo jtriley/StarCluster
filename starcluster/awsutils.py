@@ -1648,7 +1648,8 @@ class EasyEC2(EasyAWS):
         """
         def filter_fct(sir):
             if sir.status.code in ['price-too-low', 'capacity-oversubscribed']:
-                log.info("Cancelling spot instance: " + sir.status.message)
+                log.info("Cancelling spot instance {}: {}"
+                         .format(sir.id, sir.status.message))
                 sir.cancel()
                 return False
             return True
