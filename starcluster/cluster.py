@@ -891,8 +891,11 @@ class Cluster(object):
         self._nodes.sort(key=lambda n: n.alias)
         log.debug('returning self._nodes = %s' % self._nodes)
         aliases = [_n.alias for _n in self._nodes]
-        if len(aliases) != len(set(aliases)):
-            log.error("Nodes with same name detected!")
+        tmp_aliases = Counter(aliases)
+        tmp_aliases = filter(lambda k: tmp_aliases[k] > 1, tmp_aliases)
+        if tmp_aliases:
+            log.error("Nodes with same name detected! {}"
+                      .format(tmp_aliases.keys()))
             if not any([_n.reset_alias() for _n in self._nodes]):
                 raise exception.BaseException("Failed to fix nodes with same "
                                               "name issue")
