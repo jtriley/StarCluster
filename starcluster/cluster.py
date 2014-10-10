@@ -2073,7 +2073,9 @@ class Cluster(object):
             it back once before terminating.
         """
         self.run_plugins(method_name="recover", reverse=True)
-        self.wait_for_active_spots()
+        sirs = filter(lambda sir: sir.state == "open", self.spot_requests)
+        if sirs:
+            self.streaming_add(sirs)
         while 1:
             failures = 0
             to_recover = []
