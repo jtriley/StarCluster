@@ -226,7 +226,7 @@ This branch intends to be a mirror of https://github.com/jtriley/StarCluster dev
 
   - Streaming the process by adding nodes as soon as they are ready instead of waiting for all of them. (`Pull Request 434`_)
   - Removed some remote read/writes (very slow) and replaced them get/edit/push.
-  - Cancels spot instances requests going to state "bid-too-low", which avoids StarCluster to look frozen while waiting endlessly for them to become active. (`Commit f4c4d0`_)
+  - Cancels spot instances requests going to state "bid-too-low" or "capacity-oversubscribed", which avoids StarCluster to look frozen while waiting endlessly for them to become active. (`Commit f4c4d0`_)
 * Support for multiple subnets - Via the cluster template, allows to get spot instances in the cheapest zone.
   Dropped the --subnet-id start command flag. (`Commit 0824e3`_)
 * Adds a mode where the cluster configuration is written to master:/etc/starcluster. To activate, simply add flag 
