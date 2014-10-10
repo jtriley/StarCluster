@@ -660,7 +660,7 @@ class SGELoadBalancer(LoadBalancer):
                      self.__last_cluster_mod_time.strftime("%Y-%m-%d %X%z"),
                      extra=dict(__raw__=True))
             # evaluate if nodes need to be added
-            self._eval_add_node()
+            skip_sleep = self._eval_add_node()
             # evaluate if nodes need to be removed
             self._eval_remove_node()
             if self.dump_stats or self.plot_stats:
@@ -676,11 +676,12 @@ class SGELoadBalancer(LoadBalancer):
                 if self._eval_terminate_cluster():
                     log.info("Terminating cluster and exiting...")
                     return self._cluster.terminate_cluster()
-            log.info("Sleeping...(looping again in %d secs)\n" %
-                     self.polling_interval)
-            log.info("Sleeping, it's " + str(datetime.datetime.utcnow()))
-            time.sleep(self.polling_interval)
-            log.info("Waking up, it's " + str(datetime.datetime.utcnow()))
+            if not skip_sleep:
+                log.info("Sleeping...(looping again in %d secs)\n" %
+                         self.polling_interval)
+                log.info("Sleeping, it's " + str(datetime.datetime.utcnow()))
+                time.sleep(self.polling_interval)
+                log.info("Waking up, it's " + str(datetime.datetime.utcnow()))
 
     def has_cluster_stabilized(self):
         now = utils.get_utc_now()
@@ -702,15 +703,15 @@ class SGELoadBalancer(LoadBalancer):
         if num_nodes >= self.max_nodes:
             log.info("Not adding nodes: already at or above maximum (%d)" %
                      self.max_nodes)
-            return
+            return False
         queued_jobs = self.stat.get_queued_jobs()
         if not queued_jobs and num_nodes >= self.min_nodes:
             log.info("Not adding nodes: at or above minimum nodes "
                      "and no queued jobs...")
-            return
+            return False
         total_slots = self.stat.count_total_slots()
         if not self.has_cluster_stabilized() and total_slots > 0:
-            return
+            return False
         running_jobs = self.stat.get_running_jobs()
         used_slots = sum([int(j['slots']) for j in running_jobs])
         qw_slots = sum([int(j['slots']) for j in queued_jobs])
@@ -742,28 +743,34 @@ class SGELoadBalancer(LoadBalancer):
                          self.longest_allowed_queue_time)
         max_add = self.max_nodes - len(self._cluster.running_nodes)
         need_to_add = min(self.add_nodes_per_iteration, need_to_add, max_add)
-        if need_to_add > 0:
-            log.warn("Adding %d nodes at %s" %
-                     (need_to_add, str(utils.get_utc_now())))
-            try:
-                self._cluster.add_nodes(need_to_add,
-                                        reboot_interval=self.reboot_interval,
-                                        n_reboot_restart=self.n_reboot_restart,
-                                        placement_group=self._placement_group)
+        if need_to_add < 1:
+            return False
+
+        log.warn("Adding %d nodes at %s" %
+                 (need_to_add, str(utils.get_utc_now())))
+        try:
+            self._cluster.add_nodes(need_to_add,
+                                    reboot_interval=self.reboot_interval,
+                                    n_reboot_restart=self.n_reboot_restart,
+                                    placement_group=self._placement_group)
+            if num_nodes < len(self._cluster.nodes):
                 self.__last_cluster_mod_time = utils.get_utc_now()
                 log.info("Done adding nodes at %s" %
                          str(self.__last_cluster_mod_time))
-            except ThreadPoolException as tpe:
-                traceback.print_exc()
-                log.error("Failed to add new host", exc_info=True)
-                log.debug(traceback.format_exc())
-                log.error("Individual errors follow")
-                for exc in tpe.exceptions:
-                    print exc[1]
-            except Exception:
-                traceback.print_exc()
-                log.error("Failed to add new host", exc_info=True)
-                log.debug(traceback.format_exc())
+            else:
+                log.info("No nodes were successfully added.")
+        except ThreadPoolException as tpe:
+            traceback.print_exc()
+            log.error("Failed to add new host", exc_info=True)
+            log.debug(traceback.format_exc())
+            log.error("Individual errors follow")
+            for exc in tpe.exceptions:
+                print exc[1]
+        except Exception:
+            traceback.print_exc()
+            log.error("Failed to add new host", exc_info=True)
+            log.debug(traceback.format_exc())
+        return True
 
     def _eval_remove_node(self):
         """
