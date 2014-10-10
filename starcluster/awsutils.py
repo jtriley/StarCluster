@@ -1640,9 +1640,14 @@ class EasyEC2(EasyAWS):
                 min_price = price
         return min_zone, min_price
 
-    def cancel_spot_bid_too_low(self, spots):
+    def cancel_stuck_spot_instance_request(self, spots):
+        """
+        SIR in state "price-too-low or in state "capacity-oversubscribed" can
+        somewhat freeze StarCluster in a waiting state that can last a long
+        time. Cancels them.
+        """
         def filter_fct(sir):
-            if sir.status.code == 'price-too-low':
+            if sir.status.code in ['price-too-low', 'capacity-oversubscribed']:
                 log.info("Cancelling spot instance: " + sir.status.message)
                 sir.cancel()
                 return False
