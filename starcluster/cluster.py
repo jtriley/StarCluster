@@ -1283,6 +1283,8 @@ class Cluster(object):
                     instances += \
                         self.ec2.get_all_instances(instance_ids=instance_ids)
                 if spots:
+                    spots = self.ec2.cancel_spot_bid_too_low(spots)
+                if spots:
                     log.info("Still waiting for spots: " + str(spots))
 
             if unpropagated_instances:

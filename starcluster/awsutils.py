@@ -1640,6 +1640,15 @@ class EasyEC2(EasyAWS):
                 min_price = price
         return min_zone, min_price
 
+    def cancel_spot_bid_too_low(self, spots):
+        def filter_fct(sir):
+            if sir.status.code == 'price-too-low':
+                log.info("Cancelling spot instance: " + sir.status.message)
+                sir.cancel()
+                return False
+            return True
+        return filter(filter_fct, spots)
+
 
 class EasyS3(EasyAWS):
     DefaultHost = 's3.amazonaws.com'
