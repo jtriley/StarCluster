@@ -221,7 +221,8 @@ class IPCluster(DefaultClusterSetup):
         ssl_cert = posixpath.join(profile_dir, '%s.pem' % user)
         if not master.ssh.isfile(user_cert):
             log.info("Creating SSL certificate for user %s" % user)
-            ssl_subj = "/C=US/ST=SC/L=STAR/O=Dis/CN=%s" % master.dns_name
+            dns_name = master.dns_name if master.dns_name else '/'
+            ssl_subj = "/C=US/ST=SC/L=STAR/O=Dis/CN=%s" % dns_name
             master.ssh.execute(
                 "openssl req -new -newkey rsa:4096 -days 365 "
                 '-nodes -x509 -subj %s -keyout %s -out %s' %
