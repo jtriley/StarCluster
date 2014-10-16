@@ -118,7 +118,8 @@ class IPCluster(DefaultClusterSetup):
         master.ssh.execute("rm -rf '%s'" % profile_dir)
         master.ssh.execute('ipython profile create')
         f = master.ssh.remote_file('%s/ipcontroller_config.py' % profile_dir)
-        ssh_server = "@".join([user, master.public_dns_name])
+        public_dns_name = master.public_dns_name or master.private_ip_address
+        ssh_server = "@".join([user, public_dns_name])
         f.write('\n'.join([
             "c = get_config()",
             "c.HubFactory.ip='%s'" % master.private_ip_address,
@@ -221,7 +222,7 @@ class IPCluster(DefaultClusterSetup):
         ssl_cert = posixpath.join(profile_dir, '%s.pem' % user)
         if not master.ssh.isfile(user_cert):
             log.info("Creating SSL certificate for user %s" % user)
-            dns_name = master.dns_name if master.dns_name else '/'
+            dns_name = master.dns_name or '/'
             ssl_subj = "/C=US/ST=SC/L=STAR/O=Dis/CN=%s" % dns_name
             master.ssh.execute(
                 "openssl req -new -newkey rsa:4096 -days 365 "
@@ -255,7 +256,7 @@ class IPCluster(DefaultClusterSetup):
             master.ssh.execute_async("ipython notebook --no-browser")
         self._authorize_port(master, notebook_port, 'notebook')
         log.info("IPython notebook URL: https://%s:%s" %
-                 (master.dns_name, notebook_port))
+                 (master.dns_name or master.private_ip_address, notebook_port))
         log.info("The notebook password is: %s" % self.notebook_passwd)
         log.warn("Please check your local firewall settings if you're having "
                  "issues connecting to the IPython notebook",
