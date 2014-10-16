@@ -130,7 +130,7 @@ class CmdLoadBalance(ClusterCompleter):
             cluster_tag = args[0]
             cluster = self.cm.get_cluster(cluster_tag)
             cluster.recover(self.opts.reboot_interval,
-                            self.opt.n_reboot_restart)
+                            self.opts.n_reboot_restart)
             lb = sge.SGELoadBalancer(**self.specified_options_dict)
             lb.run(cluster)
         except KeyboardInterrupt:
