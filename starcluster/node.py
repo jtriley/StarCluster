@@ -1091,15 +1091,15 @@ class Node(object):
                      "be terminated.")
             self.terminate()
             return True
-        else:
-            self.stop()
+
+        self.stop()
+        time.sleep(10)
+        while self.update() != "stopped":
+            log.info("Waiting for node " + self.alias +
+                     "to be in a stopped state.")
             time.sleep(10)
-            while self.update() != "stopped":
-                log.info("Waiting for node " + self.alias +
-                         "to be in a stopped state.")
-                time.sleep(10)
-            self.start()
-            return False
+        self.start()
+        return False
 
     def wait(self, interval=30, reboot_interval=10, n_reboot_restart=False):
         """
@@ -1113,34 +1113,8 @@ class Node(object):
                            hour. Spot instances cannot be stopped so they will
                            be terminated instead. Defaults to False.
         """
-        now = utils.get_utc_now()
-        reboots = 0
-        if reboot_interval:
-            reboot_time = now + datetime.timedelta(minutes=reboot_interval)
-            if n_reboot_restart:
-                restart_at = n_reboot_restart
-        elif n_reboot_restart:
-            log.warn("node.wait: n_reboot_restart is useless if "
-                     "reboot_interval is 0.")
-        while not self.is_up():
-            if self.is_impaired():
-                log.info(self.alias + " is impaired.")
-                if self.handle_irresponsive_node():
-                    break
-            now = utils.get_utc_now()
-            if reboot_interval and now > reboot_time:
-                if n_reboot_restart and restart_at == reboots:
-                    log.info("Restart interval reached")
-                    if self.handle_irresponsive_node():
-                        break
-                    restart_at += n_reboot_restart
-                else:
-                    log.info("Reboot interval reached -> rebooting node " +
-                             self.alias)
-                    self.reboot()
-                    reboots += 1
-                reboot_time = utils.get_utc_now() + \
-                    datetime.timedelta(minutes=reboot_interval)
+        nrm = NodeRecoveryManager(self, reboot_interval, n_reboot_restart)
+        while not self.is_up() and nrm.check():
             time.sleep(interval)
 
     def is_up(self):
@@ -1323,3 +1297,45 @@ class Node(object):
     def __del__(self):
         if self._ssh:
             self._ssh.close()
+
+
+class NodeRecoveryManager(object):
+    def __init__(self, node, reboot_interval, n_reboot_restart):
+        self.node = node
+        self.reboot_interval = reboot_interval
+        self.n_reboot_restart = n_reboot_restart
+        self._set_next_restart()
+        self._set_next_reboot()
+
+    def _set_next_reboot(self):
+        self._next_reboot = utils.get_utc_now() + \
+            datetime.timedelta(minutes=self.reboot_interval)
+
+    def _set_next_restart(self):
+        self._next_restart = self.n_reboot_restart
+
+    def check(self):
+        """
+        Manages the reboot/restart/terminate (when spot) of a node.
+        Returns True if the node is still alive, False otherwise.
+        """
+        if utils.get_utc_now() > self._next_reboot:
+            if self.n_reboot_restart == 0:
+                terminated = self.node.handle_irresponsive_node()
+                if terminated:
+                    return False
+                self._set_next_restart()
+            else:
+                self.node.reboot()
+                self._next_restart -= 1
+            self._set_next_reboot()
+            return True
+
+        if self.node.is_impaired():
+            self._restart()
+            terminated = self.node.handle_irresponsive_node()
+            if terminated:
+                return False
+            self._set_next_restart()
+            self._set_next_reboot()
+        return True

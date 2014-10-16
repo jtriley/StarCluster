@@ -23,7 +23,6 @@ import pprint
 import warnings
 import datetime
 import json
-import traceback
 from collections import Counter
 
 import iptools
@@ -41,6 +40,7 @@ from starcluster import progressbar
 from starcluster import clustersetup
 from starcluster.node import Node
 from starcluster.node import NodeManager
+from starcluster.node import NodeRecoveryManager
 from starcluster.plugins import sge
 from starcluster.utils import print_timing
 from starcluster.templates import user_msgs
@@ -1218,9 +1218,12 @@ class Cluster(object):
                                      placement_group=placement_group,
                                      spot_bid=spot_bid)
             if spot_bid or self.spot_bid:
-                self.streaming_add(spots=resp)
+                self.streaming_add(spots=resp, reboot_interval=reboot_interval,
+                                   n_reboot_restart=n_reboot_restart)
             else:
-                self.streaming_add(instances=resp[0].instances)
+                self.streaming_add(instances=resp[0].instances,
+                                   reboot_interval=reboot_interval,
+                                   n_reboot_restart=n_reboot_restart)
 
         if all([not no_create, spot_bid, reboot_interval, n_reboot_restart]):
             # this will recreate the spot instances that might have died in
@@ -1242,12 +1245,69 @@ class Cluster(object):
                                              zone=zone,
                                              placement_group=placement_group,
                                              spot_bid=spot_bid)
-                    self.streaming_add(spots=resp)
+                    self.streaming_add(spots=resp,
+                                       reboot_interval=reboot_interval,
+                                       n_reboot_restart=n_reboot_restart)
                 else:
                     # all nodes successfully created
                     break
 
-    def streaming_add(self, spots=[], instances=[]):
+    def stream_unpropagated_spots(self, unpropagated_spots, spots):
+        propagated_spot_ids, _ = self.ec2.check_for_propagation(
+            spot_ids=[s.id for s in unpropagated_spots])
+        unpropagated_spots_tmp = utils.filter_move(
+            lambda s: s.id not in propagated_spot_ids,
+            unpropagated_spots, spots)
+        del unpropagated_spots[:]
+        unpropagated_spots += unpropagated_spots_tmp
+        if unpropagated_spots:
+            log.info("Still waiting for unpropagated spots:"
+                     + str(unpropagated_spots))
+
+    def stream_spots(self, spots, instances):
+        instance_ids = []
+        spots_tmp = self.get_spot_requests_or_raise(spots)
+        spots_tmp = utils.filter_move(
+            lambda s: s.state != 'active' or s.instance_id is None,
+            spots_tmp, instance_ids, lambda s: s.instance_id)
+        if instance_ids:
+            log.info("Instance ids:" + str(instance_ids))
+            # Those one are already propagated
+            instances += \
+                self.ec2.get_all_instances(instance_ids=instance_ids)
+        if spots_tmp:
+            spots_tmp = self.ec2.cancel_stuck_spot_instance_request(spots_tmp)
+        del spots[:]
+        spots += spots_tmp
+        if spots:
+            log.info("Still waiting for spots: " + str(spots))
+
+    def stream_unpropagated_instances(self, unpropagated_instances, instances):
+        _, propagated_instance_ids = self.ec2.check_for_propagation(
+            instance_ids=[s.id for s in unpropagated_instances])
+        unpropagated_instances_tmp = utils.filter_move(
+            lambda i: i.id not in propagated_instance_ids,
+            unpropagated_instances, instances)
+        del unpropagated_instances[:]
+        unpropagated_instances += unpropagated_instances_tmp
+        if unpropagated_instances:
+            log.info("Still waiting for unpropagated instances: "
+                     + str(unpropagated_instances))
+
+    def stream_instances(self, instances, ready_instances):
+        instances_tmp = self.get_nodes_or_raise(nodes=instances)
+        ssh_up = self.pool.map(lambda i: i.is_up(), instances_tmp)
+        zip_instances = utils.filter_move(
+            lambda i: i[0].state != 'running' or not i[1],
+            zip(instances_tmp, ssh_up), ready_instances,
+            lambda i: i[0])
+        del instances[:]
+        instances += [i[0] for i in zip_instances]
+        if instances:
+            log.info("Still waiting for instances: " + str(instances))
+
+    def streaming_add(self, spots=[], instances=[], reboot_interval=10,
+                      n_reboot_restart=False):
         """
         As soon as a new node is ready, run the add plugins commands over it.
         """
@@ -1262,54 +1322,32 @@ class Cluster(object):
         spots = []
         unpropagated_instances = instances
         instances = []
+        instances_nrm = {}
         while True:
             ready_instances = []
             if unpropagated_spots:
-                propagated_spot_ids, _ = self.ec2.check_for_propagation(
-                    spot_ids=[s.id for s in unpropagated_spots])
-                unpropagated_spots = utils.filter_move(
-                    lambda s: s.id not in propagated_spot_ids,
-                    unpropagated_spots, spots)
-                if unpropagated_spots:
-                    log.info("Still waiting for unpropagated spots:"
-                             + str(unpropagated_spots))
-
+                self.stream_unpropagated_spots(unpropagated_spots, spots)
             if spots:
-                instance_ids = []
-                spots = self.get_spot_requests_or_raise(spots)
-                spots = utils.filter_move(
-                    lambda s: s.state != 'active' or s.instance_id is None,
-                    spots, instance_ids, lambda s: s.instance_id)
-                if instance_ids:
-                    log.info("Instance ids:" + str(instance_ids))
-                    # Those one are already propagated
-                    instances += \
-                        self.ec2.get_all_instances(instance_ids=instance_ids)
-                if spots:
-                    spots = self.ec2.cancel_stuck_spot_instance_request(spots)
-                if spots:
-                    log.info("Still waiting for spots: " + str(spots))
-
+                self.stream_spots(spots, instances)
             if unpropagated_instances:
-                _, propagated_instance_ids = self.ec2.check_for_propagation(
-                    instance_ids=[s.id for s in unpropagated_instances])
-                unpropagated_instances = utils.filter_move(
-                    lambda i: i.id not in propagated_instance_ids,
-                    unpropagated_instances, instances)
-                if unpropagated_instances:
-                    log.info("Still waiting for unpropagated instances: "
-                             + str(unpropagated_instances))
-
+                self.stream_unpropagated_instances(unpropagated_instances,
+                                                   instances)
             if instances:
-                instances = self.get_nodes_or_raise(nodes=instances)
-                ssh_up = self.pool.map(lambda i: i.is_up(), instances)
-                zip_instances = utils.filter_move(
-                    lambda i: i[0].state != 'running' or not i[1],
-                    zip(instances, ssh_up), ready_instances,
-                    lambda i: i[0])
-                instances = [i[0] for i in zip_instances]
-                if instances:
-                    log.info("Still waiting for instances: " + str(instances))
+                self.stream_instances(instances, ready_instances)
+            for instance in instances:
+                if instance not in instances_nrm:
+                    if isinstance(instance, Node):
+                        nrm = NodeRecoveryManager(instance, reboot_interval,
+                                                  n_reboot_restart)
+                    else:
+                        nrm = NodeRecoveryManager(Node(instance,
+                                                       self.key_location),
+                                                  reboot_interval,
+                                                  n_reboot_restart)
+                    instances_nrm[instance] = nrm
+                elif not instances_nrm[instance].check():
+                    del instances_nrm[instance]
+
             for ready_instance in ready_instances:
                 log.info("Adding node: %s" % ready_instance.alias)
                 up_nodes = filter(lambda n: n.is_up(), self.nodes)
@@ -1317,11 +1355,12 @@ class Cluster(object):
                                  node=ready_instance, nodes=up_nodes)
             if any([unpropagated_spots, spots,
                     unpropagated_instances, instances]):
-                if instances or ready_instances:
-                    # instances means we wait on ssh is_up, no need to sleep
+                if ready_instances:
                     # ready_instances means nodes were added, that took
                     # time so we should loop again now
                     continue
+                log.info("{} Sleeping for {} seconds"
+                         .format(utils.get_utc_now(), interval))
                 time.sleep(interval)
             else:
                 break
@@ -2069,7 +2108,7 @@ class Cluster(object):
 
         self.run_plugins(method_name="clean_cluster", reverse=True)
 
-    def recover(self, remove_on_error=False, retries=0):
+    def recover(self, reboot_interval=10, n_reboot_restart=False):
         """
         Will try to recover dangling nodes.
         remove_on_error The hour block minute after wich termination is
@@ -2080,84 +2119,26 @@ class Cluster(object):
         self.run_plugins(method_name="recover", reverse=True)
         sirs = filter(lambda sir: sir.state == "open", self.spot_requests)
         if sirs:
-            self.streaming_add(sirs)
-        while 1:
-            failures = 0
-            to_recover = []
-            if not self.disable_queue:
-                sge_plugin = sge.SGEPlugin()
-                to_recover.append(sge_plugin.get_nodes_to_recover(self.nodes))
-            for plugin in self.plugins:
-                if hasattr(plugin, "get_nodes_to_recover"):
-                    result = plugin.get_nodes_to_recover(self.nodes)
-                    to_recover.append(result)
-            if len(to_recover) > 1:
-                log.error("Support for more than one list of nodes "
-                          "to recover is not implemented")
-            elif len(to_recover) == 1:
-                errors = []
-                for node in to_recover[0]:
-                    # call it one at a time so that x doesn't prevent
-                    # y to be added
-                    if node.alias == "master":
-                        raise Exception("Cannot add back master node")
-                    try:
-                        log.info("Adding back node " + node.alias)
-                        self.add_nodes(num_nodes=1, aliases=[node.alias],
-                                       no_create=True)
-                    except KeyboardInterrupt as e:
-                        log.info("KeyboardInterrupt")
-                        log.info(traceback.format_exc())
-                        raise e
-                    except:
-                        failures += 1
-                        log.error(traceback.format_exc())
-                        log.error("Failed to add back node " + node.alias)
-                        errors.append(node)
-                        log.info("Rebooting node " + node.alias)
-                        node.reboot()
+            self.streaming_add(sirs,
+                               reboot_interval=reboot_interval,
+                               n_reboot_restart=n_reboot_restart)
 
-                if remove_on_error or type(remove_on_error) == int:
-                    for node in errors:
-                        try:
-                            if remove_on_error is True:
-                                log.info("Terminating misbehaving node "
-                                         + node.alias)
-                                self.remove_nodes([node])
-                                failures -= 1
-                                NodeManager.nodes_id_ignore.add(node.id)
-                            else:
-                                dt = utils\
-                                    .iso_to_datetime_tuple(node.launch_time)
-                                now = utils.get_utc_now()
-                                t_delta = now - dt
-                                if (t_delta.seconds / 60) % 60 \
-                                        > remove_on_error:
-                                    self.remove_nodes([node])
-                                    failures -= 1
-                                    NodeManager.nodes_id_ignore.add(node.id)
-                        except:
-                            log.error(traceback.format_exc())
-                            log.error("type:" + str(type(remove_on_error)))
-                            log.error("val:" + str(remove_on_error))
-                            log.error("Failed to remove misbehaving node " +
-                                      node.alias)
-                            log.error("Forcing termination via EC2")
-                            node.terminate()
-                            failures -= 1
-                            NodeManager.nodes_id_ignore.add(node.id)
-
-            if failures:
-                log.error("Failures occured, sleeping for a minute "
-                          "then trying again")
-                log.info("Sleeping, it's "
-                         + str(datetime.datetime.utcnow()))
-                time.sleep(60)
-                log.info("Waiking up, it's "
-                         + str(datetime.datetime.utcnow()))
-                continue
-            log.info("Out of recover procedure")
-            break
+        to_recover = []
+        if not self.disable_queue:
+            sge_plugin = sge.SGEPlugin()
+            to_recover.append(sge_plugin.get_nodes_to_recover(self.nodes))
+        for plugin in self.plugins:
+            if hasattr(plugin, "get_nodes_to_recover"):
+                result = plugin.get_nodes_to_recover(self.nodes)
+                to_recover.append(result)
+        if len(to_recover) > 1:
+            log.error("Support for more than one list of nodes "
+                      "to recover is not implemented")
+        elif len(to_recover) == 1 and len(to_recover[0]) > 0:
+            self.streaming_add(instances=to_recover[0],
+                               reboot_interval=reboot_interval,
+                               n_reboot_restart=n_reboot_restart)
+        log.info("Out of recover procedure")
 
 
 class ClusterValidator(validators.Validator):
