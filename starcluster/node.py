@@ -168,25 +168,21 @@ class Node(object):
     def short_alias(self):
         return self.alias.split(".", 1)[0]
 
-    def reset_alias(self):
+    def rename(self, new_name):
         """
         Used to reset the name and alias when there is a conflict
         """
-        new_alias = self.get_aliases(self.ami_launch_index)
-        if new_alias is None:
-            raise exception.BaseException(
-                "No new alias could be defined for %s" % self.id)
-        if self.alias != new_alias:
-            log.info("Node %s will be renamed %s" %
-                     (self.alias, new_alias))
-            old_alias = self.alias
-            self._alias = None
-            self.remove_tag("alias")
-            self.remove_tag("Name")
-            self.alias
-            assert self.alias != old_alias
-            return True
-        return False
+        self.remove_tag("alias")
+        self.remove_tag("Name")
+        self.add_tag("Name", new_name)
+        self.add_tag("alias", new_name)
+        while True:
+            tags = self.tags
+            if tags.get("Name", "") == new_name \
+                    and tags.get("alias", "") == new_name:
+                break
+            log.info("Waiting for new name to propagate")
+            time.sleep(5)
 
     def get_plugins_org_metadata(self):
         plugstxt = self.user_data.get(static.UD_PLUGINS_FNAME)

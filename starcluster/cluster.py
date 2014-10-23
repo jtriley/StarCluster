@@ -838,6 +838,11 @@ class Cluster(object):
         self._master.key_location = self.key_location
         return self._master
 
+    def _get_duplicate_aliases(self):
+        aliases = [_n.alias for _n in self.nodes]
+        tmp_aliases = Counter(aliases)
+        return filter(lambda k: tmp_aliases[k] > 1, tmp_aliases)
+
     @property
     def nodes(self):
         states = ['pending', 'running', 'stopping', 'stopped']
@@ -890,23 +895,6 @@ class Cluster(object):
                     self._nodes.append(n)
         self._nodes.sort(key=lambda n: n.alias)
         log.debug('returning self._nodes = %s' % self._nodes)
-        aliases = [_n.alias for _n in self._nodes]
-        tmp_aliases = Counter(aliases)
-        tmp_aliases = filter(lambda k: tmp_aliases[k] > 1, tmp_aliases)
-        if tmp_aliases:
-            log.error("Nodes with same name detected! {}"
-                      .format(tmp_aliases.keys()))
-            if not any([_n.reset_alias() for _n in self._nodes]):
-                raise exception.BaseException("Failed to fix nodes with same "
-                                              "name issue")
-
-            aliases = [_n.alias for _n in self._nodes]
-            if len(aliases) != len(set(aliases)):
-                raise exception.BaseException("Failed to fix nodes with same "
-                                              "name issue")
-
-            self.recover()
-
         return self._nodes
 
     def get_nodes_or_raise(self, nodes=None):
@@ -1264,7 +1252,7 @@ class Cluster(object):
             log.info("Still waiting for unpropagated spots:"
                      + str(unpropagated_spots))
 
-    def stream_spots(self, spots, instances):
+    def stream_spots(self, spots, unpropagated_instances):
         instance_ids = []
         spots_tmp = self.get_spot_requests_or_raise(spots)
         spots_tmp = utils.filter_move(
@@ -1272,9 +1260,9 @@ class Cluster(object):
             spots_tmp, instance_ids, lambda s: s.instance_id)
         if instance_ids:
             log.info("Instance ids:" + str(instance_ids))
-            # Those one are already propagated
-            instances += \
-                self.ec2.get_all_instances(instance_ids=instance_ids)
+            for instance_id in instance_ids:
+                unpropagated_instances.append(
+                    UnpropagatedInstance(instance_id))
         if spots_tmp:
             spots_tmp = self.ec2.cancel_stuck_spot_instance_request(spots_tmp)
         del spots[:]
@@ -2108,6 +2096,32 @@ class Cluster(object):
 
         self.run_plugins(method_name="clean_cluster", reverse=True)
 
+    def _recover_duplicate_aliases(self):
+        aliases = self._get_duplicate_aliases()
+        if not aliases:
+            return
+
+        log.error("Nodes with same alias detected! {}".format(aliases))
+        etc_hosts = self._master.ssh.get_remote_file_lines('/etc/hosts')
+        for alias in aliases:
+            ip = None
+            for line in etc_hosts:
+                if re.findall(alias, line):
+                    ip, _ = line.split(" ", 1)
+                    break
+            log.debug("Found ip: " + ip)
+            for node in self.nodes:
+                if node.alias != alias:
+                    continue
+                if node.private_ip_address != ip:
+                    new_alias = self._make_alias(self._get_next_node_num())
+                    log.info("Renaming {} from {} to {}"
+                             .format(node, node.alias, new_alias))
+                    node.rename(new_alias)
+                    # force a memory refresh
+                    self._nodes = []
+                    self.nodes
+
     def recover(self, reboot_interval=10, n_reboot_restart=False):
         """
         Will try to recover dangling nodes.
@@ -2116,6 +2130,7 @@ class Cluster(object):
             equivalent to setting 0, meaning that it will only try to add
             it back once before terminating.
         """
+        self._recover_duplicate_aliases()
         self.run_plugins(method_name="recover", reverse=True)
         sirs = filter(lambda sir: sir.state == "open", self.spot_requests)
         if sirs:
@@ -2702,6 +2717,11 @@ class ClusterValidator(validators.Validator):
             log.warn(user_msgs.public_ips_disabled %
                      dict(vpc_id=self.cluster.vpc_id))
 
+
+class UnpropagatedInstance(object):
+
+    def __init__(self, id):
+        self.id = id
 
 if __name__ == "__main__":
     from starcluster.config import StarClusterConfig
