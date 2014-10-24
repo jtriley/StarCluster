@@ -1310,22 +1310,27 @@ class NodeRecoveryManager(object):
     def _set_next_restart(self):
         self._next_restart = self.n_reboot_restart
 
+    def handle_reboot(self):
+        if self.n_reboot_restart == 0:
+            terminated = self.node.handle_irresponsive_node()
+            if terminated:
+                return False
+            self._set_next_restart()
+        else:
+            self.node.reboot()
+            self._next_restart -= 1
+        self._set_next_reboot()
+        return True
+
     def check(self):
         """
         Manages the reboot/restart/terminate (when spot) of a node.
         Returns True if the node is still alive, False otherwise.
         """
+        log.debug("{} next reboot {}"
+                  .format(self.node.alias, self._next_reboot))
         if utils.get_utc_now() > self._next_reboot:
-            if self.n_reboot_restart == 0:
-                terminated = self.node.handle_irresponsive_node()
-                if terminated:
-                    return False
-                self._set_next_restart()
-            else:
-                self.node.reboot()
-                self._next_restart -= 1
-            self._set_next_reboot()
-            return True
+            return self.handle_reboot()
 
         if self.node.is_impaired():
             self._restart()
