@@ -44,7 +44,7 @@ from starcluster.plugins import sge
 from starcluster.utils import print_timing
 from starcluster.templates import user_msgs
 from starcluster.logger import log
-from starcuster.streaming_node_add import streaming_add
+from starcluster.streaming_node_add import streaming_add
 
 
 class ClusterManager(managers.Manager):
@@ -1206,13 +1206,13 @@ class Cluster(object):
                                      placement_group=placement_group,
                                      spot_bid=spot_bid)
             if spot_bid or self.spot_bid:
-                self.streaming_add(self, spots=resp,
-                                   reboot_interval=reboot_interval,
-                                   n_reboot_restart=n_reboot_restart)
+                streaming_add(self, spots=resp,
+                              reboot_interval=reboot_interval,
+                              n_reboot_restart=n_reboot_restart)
             else:
-                self.streaming_add(self, instances=resp[0].instances,
-                                   reboot_interval=reboot_interval,
-                                   n_reboot_restart=n_reboot_restart)
+                streaming_add(self, instances=resp[0].instances,
+                              reboot_interval=reboot_interval,
+                              n_reboot_restart=n_reboot_restart)
 
         if all([not no_create, spot_bid, reboot_interval, n_reboot_restart]):
             # this will recreate the spot instances that might have died in
@@ -1234,9 +1234,9 @@ class Cluster(object):
                                              zone=zone,
                                              placement_group=placement_group,
                                              spot_bid=spot_bid)
-                    self.streaming_add(self, spots=resp,
-                                       reboot_interval=reboot_interval,
-                                       n_reboot_restart=n_reboot_restart)
+                    streaming_add(self, spots=resp,
+                                  reboot_interval=reboot_interval,
+                                  n_reboot_restart=n_reboot_restart)
                 else:
                     # all nodes successfully created
                     break
@@ -2022,8 +2022,8 @@ class Cluster(object):
         self.run_plugins(method_name="recover", reverse=True)
         sirs = filter(lambda sir: sir.state == "open", self.spot_requests)
         if sirs:
-            self.streaming_add(self, sirs, reboot_interval=reboot_interval,
-                               n_reboot_restart=n_reboot_restart)
+            streaming_add(self, sirs, reboot_interval=reboot_interval,
+                          n_reboot_restart=n_reboot_restart)
 
         to_recover = []
         if not self.disable_queue:

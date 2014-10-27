@@ -77,6 +77,7 @@ class StreamingNodeAdd(object):
         if self.unpropagated_instances:
             log.info("Still waiting for unpropagated instances: "
                      + str(self.unpropagated_instances))
+        self.instances = self.cluster.get_nodes_or_raise(nodes=self.instances)
 
     def stream_update_nrm(self):
         for instance in self.instances:
@@ -94,11 +95,10 @@ class StreamingNodeAdd(object):
         if not self.instances:
             return
 
-        instances_tmp = self.cluster.get_nodes_or_raise(nodes=self.instances)
-        ssh_up = self.cluster.pool.map(lambda i: i.is_up(), instances_tmp)
+        ssh_up = self.cluster.pool.map(lambda i: i.is_up(), self.instances)
         zip_instances = utils.filter_move(
             lambda i: i[0].state != 'running' or not i[1],
-            zip(instances_tmp, ssh_up), self.ready_instances,
+            zip(self.instances, ssh_up), self.ready_instances,
             lambda i: i[0])
         self.instances = [i[0] for i in zip_instances]
         if self.instances:
