@@ -61,11 +61,17 @@ def _worker_factory(parent):
 
 
 class SimpleJob(workerpool.jobs.SimpleJob):
-    def __init__(self, method, args=[], kwargs={}, jobid=None,
+    def __init__(self, method, args=None, kwargs=None, jobid=None,
                  results_queue=None):
         self.method = method
-        self.args = args
-        self.kwargs = kwargs
+        if args is None:
+            self.args = []
+        else:
+            self.args = args
+        if kwargs is None:
+            self.kwargs = {}
+        else:
+            self.kwargs = kwargs
         self.jobid = jobid
         self.results_queue = results_queue
 
