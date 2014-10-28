@@ -18,8 +18,8 @@ class StreamingNodeAdd(object):
     the more the nodes that are added at once.
     """
 
-    def __init__(self, cluster, spots=[], instances=[], reboot_interval=10,
-                 n_reboot_restart=False):
+    def __init__(self, cluster, spots, instances, reboot_interval,
+                 n_reboot_restart):
         assert bool(spots) != bool(instances), \
             "You must define either spots or instances"
         self.cluster = cluster
@@ -168,8 +168,12 @@ class UnpropagatedInstance(object):
         self.id = id
 
 
-def streaming_add(cluster, spots=[], instances=[], reboot_interval=10,
+def streaming_add(cluster, spots=None, instances=None, reboot_interval=10,
                   n_reboot_restart=False):
+    if spots is None:
+        spots = []
+    if instances is None:
+        instances = []
     sna = StreamingNodeAdd(cluster, spots, instances, reboot_interval,
                            n_reboot_restart)
     sna.run()
