@@ -115,8 +115,12 @@ class ThreadPool(workerpool.WorkerPool):
             self._progress_bar = pbar
         return self._progress_bar
 
-    def simple_job(self, method, args=[], kwargs={}, jobid=None,
+    def simple_job(self, method, args=None, kwargs=None, jobid=None,
                    results_queue=None):
+        if args is None:
+            args = []
+        if kwargs is None:
+            kwargs = {}
         results_queue = results_queue or self._results_queue
         job = SimpleJob(method, args, kwargs, jobid,
                         results_queue=results_queue)
