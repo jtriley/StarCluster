@@ -751,7 +751,11 @@ class EasyEC2(EasyAWS):
                         self.get_all_security_groups(groupnames)])
         return [name_id[gname] for gname in groupnames if gname in name_id]
 
-    def get_all_instances(self, instance_ids=[], filters={}):
+    def get_all_instances(self, instance_ids=None, filters=None):
+        if instance_ids is None:
+            instance_ids = []
+        if filters is None:
+            filters = {}
         # little path to since vpc can't hadle filters with group-name
         # TODO : dev Tue Apr 24 18:25:58 2012
         # should move all code to instance.group-id
@@ -793,7 +797,9 @@ class EasyEC2(EasyAWS):
                 return False
             raise
 
-    def get_all_spot_requests(self, spot_ids=[], filters=None):
+    def get_all_spot_requests(self, spot_ids=None, filters=None):
+        if spot_ids is None:
+            spot_ids = []
         spots = self.conn.get_all_spot_instance_requests(spot_ids,
                                                          filters=filters)
         return spots

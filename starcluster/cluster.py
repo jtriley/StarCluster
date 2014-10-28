@@ -1905,7 +1905,7 @@ class Cluster(object):
                             nodes=nodes)
 
     def run_plugin(self, plugin, name='', method_name='run', node=None,
-                   nodes=None, args=[]):
+                   nodes=None, args=None):
         """
         Run a StarCluster plugin.
 
@@ -1915,6 +1915,8 @@ class Cluster(object):
         node - optional node to pass as first argument to plugin method (used
         for on_add_node/on_remove_node)
         """
+        if args is None:
+            args = []
         plugin_name = name or getattr(plugin, '__name__',
                                       utils.get_fq_class_name(plugin))
         try:
