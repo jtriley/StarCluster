@@ -1996,8 +1996,10 @@ class Cluster(object):
             for line in etc_hosts:
                 if re.findall(alias, line):
                     ip, _ = line.split(" ", 1)
+                    log.debug("Found ip: " + ip)
                     break
-            log.debug("Found ip: " + ip)
+            else:
+                log.debug("No ip found")
             for node in self.nodes:
                 if node.alias != alias:
                     continue
@@ -2022,7 +2024,7 @@ class Cluster(object):
         self.run_plugins(method_name="recover", reverse=True)
         sirs = filter(lambda sir: sir.state == "open", self.spot_requests)
         if sirs:
-            streaming_add(self, sirs, reboot_interval=reboot_interval,
+            streaming_add(self, spots=sirs, reboot_interval=reboot_interval,
                           n_reboot_restart=n_reboot_restart)
 
         to_recover = []
