@@ -41,6 +41,7 @@ from starcluster.plugins import sge
 from starcluster.utils import print_timing
 from starcluster.templates import user_msgs
 from starcluster.logger import log
+from starcluster.streaming_node_add import streaming_add
 
 
 class ClusterManager(managers.Manager):
@@ -1038,9 +1039,9 @@ class Cluster(object):
                                      placement_group=placement_group,
                                      spot_bid=spot_bid)
             if spot_bid or self.spot_bid:
-                self.ec2.wait_for_propagation(spot_requests=resp)
+                streaming_add(self, spots=resp)
             else:
-                self.ec2.wait_for_propagation(instances=resp[0].instances)
+                streaming_add(self, instances=resp[0].instances)
         self.wait_for_cluster(msg="Waiting for node(s) to come up...")
         log.debug("Adding node(s): %s" % aliases)
         for alias in aliases:

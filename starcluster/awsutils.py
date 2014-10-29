@@ -597,6 +597,32 @@ class EasyEC2(EasyAWS):
                 instance_ids, self.get_all_instances, 'instance-id',
                 'instances', max_retries=max_retries, interval=interval)
 
+    def _check_for_propagation(self, obj_ids, fetch_func, id_filter, obj_name):
+        filters = {id_filter: obj_ids}
+        reqs_ids = []
+        reqs = fetch_func(filters=filters)
+        reqs_ids = [req.id for req in reqs]
+        found = [oid for oid in obj_ids if oid in reqs_ids]
+        return found
+
+    def check_for_propagation(self, instance_ids=None, spot_ids=None):
+        """
+        Check propagated instances. Returns a tuple where the first item is
+        a list of the found instances and the second a list of the found
+        spot requests.
+        """
+        found_instance_ids = []
+        found_spot_ids = []
+        if spot_ids:
+            found_instance_ids = self._check_for_propagation(
+                spot_ids, self.get_all_spot_requests,
+                'spot-instance-request-id', 'spot requests')
+        if instance_ids:
+            found_spot_ids = self._check_for_propagation(
+                instance_ids, self.get_all_instances, 'instance-id',
+                'instances')
+        return found_instance_ids, found_spot_ids
+
     def run_instances(self, image_id, instance_type='m1.small', min_count=1,
                       max_count=1, key_name=None, security_groups=None,
                       placement=None, user_data=None, placement_group=None,
@@ -1584,6 +1610,21 @@ class EasyEC2(EasyAWS):
             print console_output
         else:
             log.info("No console output available...")
+
+    def cancel_stuck_spot_instance_request(self, spots):
+        """
+        SIR in state "price-too-low or in state "capacity-oversubscribed" can
+        somewhat freeze StarCluster in a waiting state that can last a long
+        time. Cancels them.
+        """
+        def filter_fct(sir):
+            if sir.status.code in ['price-too-low', 'capacity-oversubscribed']:
+                log.info("Cancelling spot instance {}: {}"
+                         .format(sir.id, sir.status.message))
+                sir.cancel()
+                return False
+            return True
+        return filter(filter_fct, spots)
 
 
 class EasyS3(EasyAWS):
