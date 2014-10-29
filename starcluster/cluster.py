@@ -883,11 +883,14 @@ class Cluster(object):
             filters['launch.group-id'] = group_id
         return self.ec2.get_all_spot_requests(filters=filters)
 
-    def get_spot_requests_or_raise(self):
-        spots = self.spot_requests
-        if not spots:
+    def get_spot_requests_or_raise(self, spots):
+        _spots = self.spot_requests
+        if not _spots:
             raise exception.NoClusterSpotRequests
-        return spots
+        if spots:
+            spots_ids = [s.id for s in spots]
+            _spots = filter(lambda s: s.id in spots_ids, _spots)
+        return _spots
 
     def create_node(self, alias, image_id=None, instance_type=None, zone=None,
                     placement_group=None, spot_bid=None, force_flat=False):
@@ -1389,7 +1392,7 @@ class Cluster(object):
                 pbar.update(len(active_spots))
                 if not pbar.finished:
                     time.sleep(self.refresh_interval)
-                    spots = self.get_spot_requests_or_raise()
+                    spots = self.get_spot_requests_or_raise(spots)
             pbar.reset()
         self.ec2.wait_for_propagation(
             instances=[s.instance_id for s in spots])
