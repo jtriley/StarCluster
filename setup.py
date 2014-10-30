@@ -65,7 +65,7 @@ try:
                  tests_require= ["pytest-cov", "pytest-pep8", "pytest-flakes",
                                  "pytest"],
                  cmdclass={"test": PyTest},
-                 install_requires=["paramiko>=1.15.1", "boto>=2.34.0",
+                 install_requires=["paramiko>=1.15.1", "boto>=2.32.1",
                                    "workerpool>=0.9.2", "Jinja2>=2.7",
                                    "decorator>=3.4.0", "iptools>=0.6.1",
                                    "optcomplete>=1.2-devel",
