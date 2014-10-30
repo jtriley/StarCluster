@@ -1251,3 +1251,4 @@ class NodeRecoveryManager(object):
                   .format(self.node.alias, self._next_reboot))
         if utils.get_utc_now() > self._next_reboot or self.node.is_impaired():
             return self.handle_reboot()
+        return True
