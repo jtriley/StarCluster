@@ -1,3 +1,20 @@
+# Copyright 2014 Francois-Michel L'Heureux
+#
+# This file is part of StarCluster.
+#
+# StarCluster is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# StarCluster is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+
 import time
 from functools import partial
 from starcluster.logger import log
@@ -89,7 +106,7 @@ class StreamingNodeAdd(object):
                     nrm = nrm_cls(instance)
                 else:
                     nrm = nrm_cls(Node(instance, self.cluster.key_location))
-                self.instances_nrm[instance] = nrm
+                self.instances_nrm[instance.id] = nrm
 
     def stream_instances(self):
         if not self.instances:
@@ -107,10 +124,10 @@ class StreamingNodeAdd(object):
     def stream_manage_reboots(self):
         dead_instances = []
         self.instances = \
-            utils.filter_move(lambda i: self.instances_nrm[i].check(),
+            utils.filter_move(lambda i: self.instances_nrm[i.id].check(),
                               self.instances, dead_instances)
         for instance in dead_instances:
-            del self.instances_nrm[instance]
+            del self.instances_nrm[instance.id]
 
     def stream_ready_instances(self):
         for ready_instance in self.ready_instances:
@@ -120,16 +137,16 @@ class StreamingNodeAdd(object):
                 self.cluster.run_plugins(method_name="on_add_node",
                                          node=ready_instance, nodes=up_nodes)
                 # success
-                del self.instances_nrm[ready_instance]
+                del self.instances_nrm[ready_instance.id]
             except:
                 log.error("Failed to add node {}"
                           .format(ready_instance.alias), exc_info=True)
-                if self.instances_nrm[ready_instance].handle_reboot():
+                if self.instances_nrm[ready_instance.id].handle_reboot():
                     # back to not ready list
                     self.instances.append(ready_instance)
                 else:
                     # dead, delete
-                    del self.instances_nrm[ready_instance]
+                    del self.instances_nrm[ready_instance.id]
 
     def run(self):
         """
