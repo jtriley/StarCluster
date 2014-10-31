@@ -1045,7 +1045,11 @@ class Node(object):
         """
         if self.spot_id:
             log.info("Canceling spot request %s" % self.spot_id)
-            self.get_spot_request().cancel()
+            try:
+                self.get_spot_request().cancel()
+            except Exception as e:
+                log.error("Spot request matching node {} not found"
+                          .format(self.id), exc_info=True)
         log.info("Terminating node: %s (%s)" % (self.alias, self.id))
         return self.instance.terminate()
 
