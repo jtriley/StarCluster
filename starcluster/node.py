@@ -1249,6 +1249,9 @@ class NodeRecoveryManager(object):
         """
         log.debug("{} next reboot {}"
                   .format(self.node.alias, self._next_reboot))
-        if utils.get_utc_now() > self._next_reboot or self.node.is_impaired():
+        if self.node.is_impaired():
+            log.info("{} is impaired".format(self.node.alias))
+            return self.handle_reboot()
+        if utils.get_utc_now() > self._next_reboot:
             return self.handle_reboot()
         return True
