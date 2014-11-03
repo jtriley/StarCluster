@@ -21,6 +21,7 @@ import stat
 import base64
 import posixpath
 import subprocess
+import socket
 
 from starcluster import utils
 from starcluster import static
@@ -1017,7 +1018,12 @@ class Node(object):
     def is_up(self):
         if self.update() != 'running':
             return False
-        if not self.is_ssh_up():
+        try:
+            if not self.is_ssh_up():
+                return False
+        except socket.error as e:
+            log.warning("Checking if node {} is up encountered exception {}"
+                        .format(self.alias, e), exc_info=True)
             return False
         if self.private_ip_address is None:
             log.debug("instance %s has no private_ip_address" % self.id)
