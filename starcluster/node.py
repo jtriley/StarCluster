@@ -1047,7 +1047,7 @@ class Node(object):
             log.info("Canceling spot request %s" % self.spot_id)
             try:
                 self.get_spot_request().cancel()
-            except Exception as e:
+            except Exception:
                 log.error("Spot request matching node {} not found"
                           .format(self.id), exc_info=True)
         log.info("Terminating node: %s (%s)" % (self.alias, self.id))
@@ -1121,8 +1121,13 @@ class Node(object):
         if self.update() != 'running':
             log.info(self.alias + " is not running")
             return False
-        if not self.is_ssh_up():
-            log.info(self.alias + " ssh is not up")
+        try:
+            if not self.is_ssh_up():
+                log.info(self.alias + " ssh is not up")
+                return False
+        except Exception as e:
+            log.warning("Checking is node {} is up encountered exception {}"
+                        .format(self.alias, e), exc_info=True)
             return False
         if self.private_ip_address is None:
             log.debug("instance %s has no private_ip_address" % self.id)
