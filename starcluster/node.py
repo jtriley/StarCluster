@@ -24,6 +24,7 @@ import subprocess
 import datetime
 import tempfile
 import os
+import socket
 
 import config
 from starcluster import utils
@@ -1125,7 +1126,7 @@ class Node(object):
             if not self.is_ssh_up():
                 log.info(self.alias + " ssh is not up")
                 return False
-        except Exception as e:
+        except socket.error as e:
             log.warning("Checking is node {} is up encountered exception {}"
                         .format(self.alias, e), exc_info=True)
             return False
