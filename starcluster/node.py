@@ -1315,12 +1315,15 @@ class NodeRecoveryManager(object):
         self._next_restart = self.n_reboot_restart
 
     def handle_reboot(self):
-        if self.n_reboot_restart == 0:
+        if self._next_restart == 0:
+            log.debug("Restarting node {}".format(self.node.alias))
             terminated = self.node.handle_irresponsive_node()
             if terminated:
+                log.debug("Terminated node {}".format(self.node.alias))
                 return False
             self._set_next_restart()
         else:
+            log.debug("Rebooting node {}".format(self.node.alias))
             self.node.reboot()
             self._next_restart -= 1
         self._set_next_reboot()
@@ -1333,9 +1336,14 @@ class NodeRecoveryManager(object):
         """
         log.debug("{} next reboot {}"
                   .format(self.node.alias, self._next_reboot))
+        log.debug("{} next restart {}"
+                  .format(self.node.alias, self._next_restart))
         if self.node.is_impaired():
             log.info("{} is impaired".format(self.node.alias))
-            return self.handle_reboot()
+            rez = self.handle_reboot()
+            log.debug("{} next restart {}"
+                      .format(self.node.alias, self._next_restart))
+            return rez
         if utils.get_utc_now() > self._next_reboot:
             return self.handle_reboot()
         return True

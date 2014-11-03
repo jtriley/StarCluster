@@ -98,7 +98,7 @@ class StreamingNodeAdd(object):
 
     def stream_update_nrm(self):
         for instance in self.instances:
-            if instance not in self.instances_nrm:
+            if instance.id not in self.instances_nrm:
                 nrm_cls = partial(NodeRecoveryManager,
                                   reboot_interval=self.reboot_interval,
                                   n_reboot_restart=self.n_reboot_restart)
