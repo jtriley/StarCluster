@@ -1,16 +1,14 @@
 ===================
 StarCluster v0.95.5
 ===================
+vanilla_improvements notes are at the bottom.
+
 :StarCluster: Cluster Computing Toolkit for the Cloud
 :Version: 0.95.5
 :Author: Justin Riley <justin.t.riley@gmail.com>
 :Team: Software Tools for Academics and Researchers (http://star.mit.edu)
 :Homepage: http://star.mit.edu/cluster
 :License: LGPL
-.. image:: https://secure.travis-ci.org/jtriley/StarCluster.png?branch=develop
-  :target: https://secure.travis-ci.org/jtriley/StarCluster
-.. image:: https://pypip.in/d/StarCluster/badge.png
-  :target: https://crate.io/packages/StarCluster
 
 Description:
 ============
@@ -197,3 +195,42 @@ Licensing
 =========
 StarCluster is licensed under the LGPLv3
 See COPYING.LESSER (LGPL) and COPYING (GPL) for LICENSE details
+
+vanilla_improvements branch notes
+=============
+This branch intends to be a mirror of https://github.com/jtriley/StarCluster develop with more features.
+
+* Added commands
+    - printconfig - To print your existing cluster configuration
+    - cleancluster
+        + Will clean Open Grid Engine from dead nodes. (Eg.: Dead spot instances)
+        + Manages "impaired" nodes. (Reboots reserved instances, kills spot instances.)
+      (Useful with spot instances and used by the vanilla_improvements load balancer)
+    - recover
+        + If sge_qmaster crashed, restarts it.
+        + If a newly created instance failed to initialize (it's booted but not properly configured in OGS) 
+          the instance will be added back to the cluster.
+* Improved load balancer
+    - More stable with spot instances with automatic cleaning, required when a spot instance dies. Note that 
+      stuck jobs resulting in a dead instance are killed by the clean command. You will need to relaunch your job.
+    - loadbalance new flags
+        + --ignore-grp Instances won't have the placement group constraint. When using spot instances, it makes it easier
+          to get instances at a lower price.
+        + --reboot-interval - Delay in minutes beyond which a node is rebooted if it's still being unreachable via SSH. 
+          Defaults to 10.
+        + --num_reboot_restart - Number of reboots after which a node is restarted (stop/start). Helpful in case the 
+          issue comes from the hardware. If the node is a spot instance, it will be terminated instead since it cannot 
+          be stopped. Defaults to false.
+* Improved node cleanup - Merged `robbyt`_ `pull request`_ which makes node cleanup faster.
+* Improved node addition - Removed some remote read/writes (very slow) and replaced them get/edit/push.
+* Adds a mode where the cluster configuration is written to master:/etc/starcluster. To activate, simply add flag 
+  "--config-on-master" to the start command. Clusters in this mode have the following pros and cons.
+  
+  - Pros
+      + Allows to easily update the config by editing the file.
+      + No more obscure config compressed/hashed in metadata/tags and other "obscure" places.
+  - Cons
+      + No longer possible to start a stopped cluster via StarCluster. (This is technically fixable, but not planned at the moment.)
+
+.. _robbyt: https://github.com/robbyt 
+.. _pull request: https://github.com/jtriley/StarCluster/pull/123

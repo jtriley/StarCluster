@@ -20,12 +20,14 @@ import re
 import time
 import datetime
 import xml.dom.minidom
+import traceback
 
 from starcluster import utils
 from starcluster import static
 from starcluster import exception
 from starcluster.balancers import LoadBalancer
 from starcluster.logger import log
+from starcluster.exception import ThreadPoolException
 
 
 SGE_STATS_DIR = os.path.join(static.STARCLUSTER_CFG_DIR, 'sge')
@@ -56,7 +58,7 @@ class SGEStats(object):
         if self.jobs:
             return int(self.jobs[-1]['JB_job_number'])
 
-    def parse_qhost(self, qhost_out):
+    def parse_qhost(self, qhost_out, additional_config={}):
         """
         this function parses qhost -xml output and makes a neat array
         takes in a string, so we can pipe in output from ssh.exec('qhost -xml')
@@ -74,6 +76,9 @@ class SGEStats(object):
                         val = hvalue.data
                     hash[attr] = val
             if hash['name'] != u'global':
+                if name in additional_config:
+                    for k, v in additional_config[name].items():
+                        hash[k] = v
                 self.hosts.append(hash)
         return self.hosts
 
@@ -154,19 +159,19 @@ class SGEStats(object):
             l = l.strip()
             if l.find('jobnumber') != -1:
                 job_id = int(l[13:len(l)])
-            if l.find('qsub_time') != -1:
+            elif l.find('qsub_time') != -1:
                 qd = self.qacct_to_datetime_tuple(l[13:len(l)])
-            if l.find('start_time') != -1:
+            elif l.find('start_time') != -1:
                 if l.find('-/-') > 0:
                     start = dtnow
                 else:
                     start = self.qacct_to_datetime_tuple(l[13:len(l)])
-            if l.find('end_time') != -1:
+            elif l.find('end_time') != -1:
                 if l.find('-/-') > 0:
                     end = dtnow
                 else:
                     end = self.qacct_to_datetime_tuple(l[13:len(l)])
-            if l.find('==========') != -1:
+            elif l.find('==========') != -1:
                 if qd is not None:
                     self.max_job_id = job_id
                     hash = {'queued': qd, 'start': start, 'end': end}
@@ -283,7 +288,13 @@ class SGEStats(object):
         total_seconds = 0
         for job in self.jobstats:
             if job is not None:
-                delta = job['end'] - job['start']
+                if job['end']:
+                    delta = job['end'] - job['start']
+                elif job['start']:
+                    #currently running job
+                    delta = self.remote_time - job['start']
+                else:
+                    continue
                 total_seconds += delta.seconds
                 count += 1
         if count == 0:
@@ -296,7 +307,12 @@ class SGEStats(object):
         total_seconds = 0
         for job in self.jobstats:
             if job is not None:
-                delta = job['start'] - job['queued']
+                if job['start'] and job['queued']:
+                    delta = job['start'] - job['queued']
+                elif job['queued']:
+                    delta = self.remote_time - job['queued']
+                else:
+                    continue
                 total_seconds += delta.seconds
                 count += 1
         if count == 0:
@@ -410,7 +426,9 @@ class SGELoadBalancer(LoadBalancer):
     def __init__(self, interval=60, max_nodes=None, wait_time=900,
                  add_pi=1, kill_after=45, stab=180, lookback_win=3,
                  min_nodes=None, kill_cluster=False, plot_stats=False,
-                 plot_output_dir=None, dump_stats=False, stats_file=None):
+                 plot_output_dir=None, dump_stats=False, stats_file=None,
+                 reboot_interval=10, n_reboot_restart=False,
+                 ignore_grp=False):
         self._cluster = None
         self._keep_polling = True
         self._visualizer = None
@@ -431,6 +449,12 @@ class SGELoadBalancer(LoadBalancer):
         self.plot_output_dir = plot_output_dir
         if plot_stats:
             assert self.visualizer is not None
+        if ignore_grp:
+            self._placement_group = False
+        else:
+            self._placement_group = None
+        self.reboot_interval = reboot_interval
+        self.n_reboot_restart = n_reboot_restart
 
     @property
     def stat(self):
@@ -612,12 +636,16 @@ class SGELoadBalancer(LoadBalancer):
         if self.plot_stats:
             log.info("Plotting stats to directory: %s" % self.plot_output_dir)
         while(self._keep_polling):
+            cluster.recover(remove_on_error=self.kill_after)
+            cluster.clean()
             if not cluster.is_cluster_up():
                 log.info("Waiting for all nodes to come up...")
                 time.sleep(self.polling_interval)
                 continue
             self.get_stats()
             log.info("Execution hosts: %d" % len(self.stat.hosts), extra=raw)
+            log.info("Execution slots: %d" % self.stat.count_total_slots(),
+                     extra=raw)
             log.info("Queued jobs: %d" % len(self.stat.get_queued_jobs()),
                      extra=raw)
             oldest_queued_job_age = self.stat.oldest_queued_job_age()
@@ -650,7 +678,9 @@ class SGELoadBalancer(LoadBalancer):
                     return self._cluster.terminate_cluster()
             log.info("Sleeping...(looping again in %d secs)\n" %
                      self.polling_interval)
+            log.info("Sleeping, it's " + str(datetime.datetime.utcnow()))
             time.sleep(self.polling_interval)
+            log.info("Waking up, it's " + str(datetime.datetime.utcnow()))
 
     def has_cluster_stabilized(self):
         now = utils.get_utc_now()
@@ -716,12 +746,24 @@ class SGELoadBalancer(LoadBalancer):
             log.warn("Adding %d nodes at %s" %
                      (need_to_add, str(utils.get_utc_now())))
             try:
-                self._cluster.add_nodes(need_to_add)
+                self._cluster.add_nodes(need_to_add,
+                                        reboot_interval=self.reboot_interval,
+                                        n_reboot_restart=self.n_reboot_restart,
+                                        placement_group=self._placement_group)
                 self.__last_cluster_mod_time = utils.get_utc_now()
                 log.info("Done adding nodes at %s" %
                          str(self.__last_cluster_mod_time))
-            except Exception:
+            except ThreadPoolException as tpe:
+                traceback.print_exc()
                 log.error("Failed to add new host", exc_info=True)
+                log.debug(traceback.format_exc())
+                log.error("Individual errors follow")
+                for exc in tpe.exceptions:
+                    print exc[1]
+            except Exception:
+                traceback.print_exc()
+                log.error("Failed to add new host", exc_info=True)
+                log.debug(traceback.format_exc())
 
     def _eval_remove_node(self):
         """
@@ -753,9 +795,19 @@ class SGELoadBalancer(LoadBalancer):
             try:
                 self._cluster.remove_node(node)
                 self.__last_cluster_mod_time = utils.get_utc_now()
-            except Exception:
+            except ThreadPoolException as tpe:
+                traceback.print_exc()
                 log.error("Failed to remove node %s" % node.alias,
                           exc_info=True)
+                log.debug(traceback.format_exc())
+                log.error("Individual errors follow")
+                for exc in tpe.exceptions:
+                    print exc[1]
+            except Exception:
+                traceback.print_exc()
+                log.error("Failed to remove node %s" % node.alias,
+                          exc_info=True)
+                log.debug(traceback.format_exc())
 
     def _eval_terminate_cluster(self):
         """

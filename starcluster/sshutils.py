@@ -27,6 +27,7 @@ import fnmatch
 import hashlib
 import warnings
 import posixpath
+import tempfile
 
 import scp
 import paramiko
@@ -203,6 +204,7 @@ class SSHClient(object):
         if not self._sftp or self._sftp.sock.closed:
             log.debug("creating sftp connection")
             self._sftp = paramiko.SFTPClient.from_transport(self.transport)
+            self._sftp.get_channel().settimeout(self._timeout)
         return self._sftp
 
     @property
@@ -281,9 +283,10 @@ class SSHClient(object):
         If matching is set to False then only lines *not* containing a pattern
         that matches regex will be returned
         """
-        f = self.remote_file(remote_file, 'r')
-        flines = f.readlines()
-        f.close()
+        with tempfile.NamedTemporaryFile(
+                prefix=os.path.basename(remote_file) + "_") as f:
+            self.get(remote_file, f.name)
+            flines = f.readlines()
         if regex is None:
             return flines
         r = re.compile(regex)
@@ -304,11 +307,10 @@ class SSHClient(object):
             log.debug('no regex supplied...returning')
             return
         lines = self.get_remote_file_lines(remote_file, regex, matching=False)
-        log.debug("new %s after removing regex (%s) matches:\n%s" %
-                  (remote_file, regex, ''.join(lines)))
-        f = self.remote_file(remote_file)
-        f.writelines(lines)
-        f.close()
+        #this log is too big
+        #log.debug("new %s after removing regex (%s) matches:\n%s" %
+        #          (remote_file, regex, ''.join(lines)))
+        self.write_to_remote_file(remote_file, lines)
 
     def unlink(self, remote_file):
         return self.sftp.unlink(remote_file)
@@ -320,6 +322,16 @@ class SSHClient(object):
         rfile = self.sftp.open(file, mode)
         rfile.name = file
         return rfile
+
+    def write_to_remote_file(self, filename, lines):
+        """
+        Overwrites the remote file with the provided lines
+        """
+        with tempfile.NamedTemporaryFile(
+                prefix=os.path.basename(filename) + "_") as f:
+            f.writelines(lines)
+            f.flush()
+            self.put(f.name, filename)
 
     def path_exists(self, path):
         """
@@ -492,6 +504,7 @@ class SSHClient(object):
         Execute a remote command and return the exit status
         """
         channel = self.transport.open_session()
+        channel.settimeout(self._timeout)
         if source_profile:
             command = "source /etc/profile && %s" % command
         channel.exec_command(command)
@@ -549,6 +562,7 @@ class SSHClient(object):
         returns List of output lines
         """
         channel = self.transport.open_session()
+        channel.settimeout(self._timeout)
         if detach:
             command = "nohup %s &" % command
             if source_profile:
@@ -632,6 +646,7 @@ class SSHClient(object):
 
     def _invoke_shell(self, term='screen', cols=80, lines=24):
         chan = self.transport.open_session()
+        chan.settimeout(self._timeout)
         chan.get_pty(term, cols, lines)
         chan.invoke_shell()
         return chan
