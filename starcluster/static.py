@@ -180,7 +180,7 @@ HVM_ONLY_TYPES = (CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES +
 HVM_TYPES = (HVM_ONLY_TYPES + HI_IO_TYPES + HI_STORAGE_TYPES + SEC_GEN_TYPES +
              M3_COMPUTE_TYPES)
 
-EBS_ONLY_TYPES = (T1_INSTANCE_TYPES + T2_INSTANCE_TYPES)
+EBS_ONLY_TYPES = T1_INSTANCE_TYPES + T2_INSTANCE_TYPES
 
 # Always make sure these match instances listed here:
 # http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html
@@ -189,6 +189,10 @@ EBS_ONLY_TYPES = (T1_INSTANCE_TYPES + T2_INSTANCE_TYPES)
 # still works for some older accounts.
 PLACEMENT_GROUP_TYPES = (M3_COMPUTE_TYPES + HVM_ONLY_TYPES + HI_IO_TYPES +
                          HI_STORAGE_TYPES)
+# T2 instances are HVM_ONLY_TYPES however they're not compatible with placement
+# groups so remove them from the list
+for itype in T2_INSTANCE_TYPES:
+    PLACEMENT_GROUP_TYPES.remove(itype)
 
 # Only add a region to this list after testing that you can create and delete a
 # placement group there.
