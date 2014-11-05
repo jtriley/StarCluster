@@ -249,4 +249,4 @@ Note that all the listed commits are only there for references and may contain i
 .. _Commit c3e097: https://github.com/datacratic/StarCluster/commit/c3e097dc54162f27f70af4448be869faaea060d7
 .. _Pull Request 434: https://github.com/jtriley/StarCluster/pull/434
 .. _Commit f4c4d0: https://github.com/datacratic/StarCluster/commit/f4c4d05cb48f7395ca41332c12188050122eb308
-.. _Commit c58253 https://github.com/datacratic/StarCluster/commit/c58253a0a05e6209ab82232ebdd151c771389238
+.. _Commit c58253: https://github.com/datacratic/StarCluster/commit/c58253a0a05e6209ab82232ebdd151c771389238
