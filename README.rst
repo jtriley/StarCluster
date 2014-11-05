@@ -199,6 +199,7 @@ See COPYING.LESSER (LGPL) and COPYING (GPL) for LICENSE details
 vanilla_improvements branch notes
 =============
 This branch intends to be a mirror of https://github.com/jtriley/StarCluster develop with more features.
+Note that all the listed commits are only there for references and may contain issues that have been fixed in subsequent commits.
 
 * Added commands
     - printconfig - To print your existing cluster configuration
@@ -210,6 +211,7 @@ This branch intends to be a mirror of https://github.com/jtriley/StarCluster dev
         + If sge_qmaster crashed, restarts it.
         + If a newly created instance failed to initialize (it's booted but not properly configured in OGS) 
           the instance will be added back to the cluster.
+        + Fixes nodes with same alias. (`Commit c58253`_)
 * Improved load balancer
     - More stable with spot instances with automatic cleaning, required when a spot instance dies. Note that 
       stuck jobs resulting in a dead instance are killed by the clean command. You will need to relaunch your job.
@@ -247,3 +249,4 @@ This branch intends to be a mirror of https://github.com/jtriley/StarCluster dev
 .. _Commit c3e097: https://github.com/datacratic/StarCluster/commit/c3e097dc54162f27f70af4448be869faaea060d7
 .. _Pull Request 434: https://github.com/jtriley/StarCluster/pull/434
 .. _Commit f4c4d0: https://github.com/datacratic/StarCluster/commit/f4c4d05cb48f7395ca41332c12188050122eb308
+.. _Commit c58253 https://github.com/datacratic/StarCluster/commit/c58253a0a05e6209ab82232ebdd151c771389238
