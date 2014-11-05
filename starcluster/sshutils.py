@@ -211,7 +211,8 @@ class SSHClient(object):
         if not self._scp or not self._scp.transport.is_active():
             log.debug("creating scp connection")
             self._scp = scp.SCPClient(self.transport,
-                                      progress=self._file_transfer_progress)
+                                      progress=self._file_transfer_progress,
+                                      socket_timeout=self._timeout)
         return self._scp
 
     def generate_rsa_key(self):
