@@ -19,9 +19,9 @@ import re
 import time
 import stat
 import base64
+import socket
 import posixpath
 import subprocess
-import socket
 
 from starcluster import utils
 from starcluster import static
@@ -1010,6 +1010,10 @@ class Node(object):
             return self.ssh.transport is not None
         except exception.SSHError:
             return False
+        except socket.error:
+            log.warning("error encountered while checking if {} is up:"
+                        .format(self.alias), exc_info=True)
+            return False
 
     def wait(self, interval=30):
         while not self.is_up():
@@ -1018,12 +1022,7 @@ class Node(object):
     def is_up(self):
         if self.update() != 'running':
             return False
-        try:
-            if not self.is_ssh_up():
-                return False
-        except socket.error as e:
-            log.warning("Checking if node {} is up encountered exception {}"
-                        .format(self.alias, e), exc_info=True)
+        if not self.is_ssh_up():
             return False
         if self.private_ip_address is None:
             log.debug("instance %s has no private_ip_address" % self.id)
