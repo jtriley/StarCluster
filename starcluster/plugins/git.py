@@ -30,11 +30,6 @@ class GitCredentials(clustersetup.DefaultClusterSetup):
     USERNAME_COMMAND = 'git config --global user.name \"%s\"'
     EMAIL_COMMAND = 'git config --global user.email \"%s\"'
 
-    SSH_CONFIG_ADDON = """
-Host github.com
- IdentityFile ~/.ssh/%s
-"""
-
     def __init__(self,
                  private_github_ssh_key_location=None,
                  git_user_name=None,
