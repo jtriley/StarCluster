@@ -75,7 +75,6 @@ class GitCredentials(clustersetup.DefaultClusterSetup):
         if not self.repos:
             log.info("GitCredentials: No remote repositories to pull!")
         else:
-            log.info("GitCredentials: Setting GitHub user name on master node to %s" % self.git_user_name)
             for repo in self.repos:
                 log.info("GitCredentials: Pulling repo at %s" % repo)
                 master.shell(user='root', command='cd %s && git pull' % repo, forward_agent=True)
