@@ -54,39 +54,13 @@ Host github.com
             log.info("GitCredentials: No GitHub SSH key specified!")
         else:
             log.info("GitCredentials: Using SSH Agent forwarding to share key in %s for Git pulls " % self.key_location)
-            # username = 'root'
-            # user = master.getpwnam(username)
-            # ssh_folder = posixpath.join(user.pw_dir, '.ssh')
 
             # add SSH key to local ssh-agent so it can be forwarded later when we call the pull commands.
-            print 'KEVINPRINT about to run eval ssh-agent'
             out = 0
             out += subprocess.call('eval `ssh-agent -s`', shell=True)
-            print 'KEVINPRINT about to run ssh-add'
             out += subprocess.call('ssh-add %s' % self.key_location, shell=True)
             if out:
                 raise SystemError("There was a problem adding the key from %s. Does it exist?" % self.key_location)
-            print 'KEVINPRINT phew! made it'
-
-
-            # NOTE: I can't seem to get this ssh-add method to work.  Added keys seem to disappear by your next session.
-            # I'm not sure why it seems to persist when I do this on my laptop and seems not to on the cluster but for
-            # now I'm just abandoning the whole approach.  On to agent forwarding!
-            #
-            # # copy private key to master node
-            # master.ssh.put(self.key_location, ssh_folder)
-            #
-            # # tell ssh to always use this key for github.com
-            # key_name = os.path.basename(self.key_location)
-            # # this ssh-add based solution doesn't seem to work.  it seems to lose the ssh-agent between each shell session
-            # # print master.ssh.execute('exec ssh-agent bash && ssh-add ~/.ssh/%s' % key_name)
-            # # SOLUTION: ssh-agent/ssh-add the necessary keys on host laptop.  use agent forwarding when sshing in to
-            # # git pull
-            # print 'key_name:', key_name
-            # print 'MONSTER:', 'echo %s >> ~/.ssh/config' % self.SSH_CONFIG_ADDON % key_name
-            # print 'ENDMONSTER'
-            # master.ssh.execute('echo %s >> ~/.ssh/config' % self.SSH_CONFIG_ADDON % key_name)
-            # print master.ssh.execute('')
 
         # set git user name
         if not self.git_user_name:
@@ -110,5 +84,3 @@ Host github.com
             for repo in self.repos:
                 log.info("GitCredentials: Pulling repo at %s" % repo)
                 master.shell(user='root', command='cd %s && git pull' % repo, forward_agent=True)
-                # master.ssh.execute('cd %s' % repo)
-                # master.ssh.execute('git pull')
