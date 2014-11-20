@@ -428,7 +428,7 @@ class SGELoadBalancer(LoadBalancer):
                  min_nodes=None, kill_cluster=False, plot_stats=False,
                  plot_output_dir=None, dump_stats=False, stats_file=None,
                  reboot_interval=10, n_reboot_restart=False,
-                 ignore_grp=False):
+                 ignore_grp=False, instance_type=None, spot_bid=None):
         self._cluster = None
         self._keep_polling = True
         self._visualizer = None
@@ -455,6 +455,8 @@ class SGELoadBalancer(LoadBalancer):
             self._placement_group = None
         self.reboot_interval = reboot_interval
         self.n_reboot_restart = n_reboot_restart
+        self._instance_type = instance_type
+        self._spot_bid = spot_bid
 
     @property
     def stat(self):
@@ -753,7 +755,9 @@ class SGELoadBalancer(LoadBalancer):
             self._cluster.add_nodes(need_to_add,
                                     reboot_interval=self.reboot_interval,
                                     n_reboot_restart=self.n_reboot_restart,
-                                    placement_group=self._placement_group)
+                                    placement_group=self._placement_group,
+                                    spot_bid=self._spot_bid,
+                                    instance_type=self._instance_type)
             if num_nodes < len(self._cluster.nodes):
                 self.__last_cluster_mod_time = utils.get_utc_now()
                 log.info("Done adding nodes at %s" %

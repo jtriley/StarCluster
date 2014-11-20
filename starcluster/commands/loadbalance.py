@@ -110,7 +110,7 @@ class CmdLoadBalance(ClusterCompleter):
             "to 10.")
         parser.add_option(
             "--num_reboot_restart", dest="n_reboot_restart", type="int",
-            default=False, help="Numbere of reboots after which a node "
+            default=False, help="Number of reboots after which a node "
             "is restarted (stop/start). Helpfull in case the issue comes from "
             "the hardware. If the node is a spot instance, it "
             "will be terminated instead since it cannot be stopped. Defaults "
@@ -119,6 +119,12 @@ class CmdLoadBalance(ClusterCompleter):
             "--ignore-grp", dest="ignore_grp", action="store_true",
             default=False,
             help="if set, instances will not use the placement group")
+        parser.add_option(
+            "--instance-type", dest="instance_type", default=None,
+            help="If set, overrides which instance type newly added nodes will use")
+        parser.add_option(
+            "--spot-bid", dest="spot_bid", default=None, 
+            help="If set, forces spot instances to be used and overrides the maxium price placed.")
 
     def execute(self, args):
         if not self.cfg.globals.enable_experimental:
