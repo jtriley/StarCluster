@@ -68,8 +68,13 @@ class ClusterManager(managers.Manager):
                          cluster_group=group)
 
             # Useful when config is on master node
-            cl.key_location = \
-                self.cfg.get_key(cl.master_node.key_name).get('key_location')
+            try:
+                cl.key_location = \
+                    self.cfg.get_key(cl.master_node.key_name).get('key_location')
+            except (exception.KeyNotFound, exception.MasterDoesNotExist):
+                if require_keys:
+                    raise
+                cl.key_location = ''
 
             if load_receipt:
                 cl.load_receipt(load_plugins=load_plugins,
