@@ -1965,10 +1965,12 @@ class Cluster(object):
                           command=command)
 
     def get_impaired_nodes(self):
-        impaired_statuses = self.ec2.conn.get_all_instance_status(
-            instance_ids=[node.id for node in self.nodes],
-            filters={"instance-status.status": "impaired"}
-        )
+        impaired_statuses = []
+        for instance_id_batch in utils.chunk_list([node.id for node in self.nodes], 100):
+            impaired_statuses.extend( self.ec2.conn.get_all_instance_status(
+                instance_ids=instance_id_batch,
+                filters={"instance-status.status": "impaired"}
+            ) )
         impaired_nodes_ids = [impaired.id for impaired in impaired_statuses]
         return [node for node in self.nodes if node.id in impaired_nodes_ids]
 
