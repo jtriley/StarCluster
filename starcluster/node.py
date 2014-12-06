@@ -19,6 +19,7 @@ import re
 import time
 import stat
 import base64
+import socket
 import posixpath
 import subprocess
 import datetime
@@ -1078,6 +1079,10 @@ class Node(object):
         try:
             return self.ssh.transport is not None
         except exception.SSHError:
+            return False
+        except socket.error:
+            log.warning("error encountered while checking if {} is up:"
+                        .format(self.alias), exc_info=True)
             return False
 
     def is_impaired(self):
