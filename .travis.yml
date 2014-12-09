@@ -6,6 +6,7 @@ install:
     - python setup.py install --quiet
 script:
     - python setup.py test --coverage
+    - python check.py
 # notifications:
 #  irc:
 #    channels: "irc.freenode.org#starcluster"
