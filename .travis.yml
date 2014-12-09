@@ -5,6 +5,7 @@ python:
 install:
     - python setup.py install --quiet
     - pip install pep8
+    - pip install pyflakes
 script:
     - python setup.py test --coverage
     - python check.py
