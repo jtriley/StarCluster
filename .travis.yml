@@ -4,6 +4,7 @@ python:
     - 2.7
 install:
     - python setup.py install --quiet
+    - pip install pep8
 script:
     - python setup.py test --coverage
     - python check.py
