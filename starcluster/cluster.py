@@ -70,7 +70,8 @@ class ClusterManager(managers.Manager):
             # Useful when config is on master node
             try:
                 cl.key_location = \
-                    self.cfg.get_key(cl.master_node.key_name).get('key_location')
+                    self.cfg.get_key(cl.master_node.key_name)\
+                        .get('key_location')
             except (exception.KeyNotFound, exception.MasterDoesNotExist):
                 if require_keys:
                     raise
@@ -1966,11 +1967,12 @@ class Cluster(object):
 
     def get_impaired_nodes(self):
         impaired_statuses = []
-        for instance_id_batch in utils.chunk_list([node.id for node in self.nodes], 100):
-            impaired_statuses.extend( self.ec2.conn.get_all_instance_status(
+        node_ids = [node.id for node in self.nodes]
+        for instance_id_batch in utils.chunk_list(node_ids, 100):
+            impaired_statuses.extend(self.ec2.conn.get_all_instance_status(
                 instance_ids=instance_id_batch,
                 filters={"instance-status.status": "impaired"}
-            ) )
+            ))
         impaired_nodes_ids = [impaired.id for impaired in impaired_statuses]
         return [node for node in self.nodes if node.id in impaired_nodes_ids]
 

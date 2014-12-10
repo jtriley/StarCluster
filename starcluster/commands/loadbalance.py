@@ -121,10 +121,12 @@ class CmdLoadBalance(ClusterCompleter):
             help="if set, instances will not use the placement group")
         parser.add_option(
             "--instance-type", dest="instance_type", default=None,
-            help="If set, overrides which instance type newly added nodes will use")
+            help="If set, overrides which instance type newly added nodes "
+                 "will use")
         parser.add_option(
-            "--spot-bid", dest="spot_bid", default=None, 
-            help="If set, forces spot instances to be used and overrides the maxium price placed.")
+            "--spot-bid", dest="spot_bid", default=None,
+            help="If set, forces spot instances to be used and overrides "
+                 "the maximum price placed.")
 
     def execute(self, args):
         if not self.cfg.globals.enable_experimental:
