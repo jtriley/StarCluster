@@ -10,6 +10,9 @@ vanilla_improvements notes are at the bottom.
 :Homepage: http://star.mit.edu/cluster
 :License: LGPL
 
+.. image:: https://secure.travis-ci.org/datacratic/StarCluster.png?branch=vanilla_improvements
+  :target: https://secure.travis-ci.org/datacratic/StarCluster
+
 Description:
 ============
 StarCluster is a utility for creating and managing computing clusters hosted on

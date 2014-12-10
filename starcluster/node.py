@@ -25,7 +25,6 @@ import subprocess
 import datetime
 import tempfile
 import os
-import socket
 
 import config
 from starcluster import utils
