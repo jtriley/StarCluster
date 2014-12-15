@@ -859,7 +859,7 @@ class Cluster(object):
         def filter_fct(n):
             if n.spot_instance_request_id is not None:
                 return False
-            if self._security_group in [g.name for g in node.groups]:
+            if self._security_group in [g.name for g in n.groups]:
                 return True
             log.warning("EC2 issue? Got instance not in security group. "
                         "Filtering out.")
