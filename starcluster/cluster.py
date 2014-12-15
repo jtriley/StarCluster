@@ -749,6 +749,15 @@ class Cluster(object):
         filters = {'instance-state-name': states,
                    'instance.group-name': self._security_group}
         nodes = self.ec2.get_all_instances(filters=filters)
+
+        def filter_fct(node):
+            if self._security_group in [g.name for g in node.groups]:
+                return True
+            log.warning("EC2 issue? Got instance not in security group. "
+                        "Filtering out.")
+            return False
+        nodes = filter(filter_fct, nodes)
+
         # remove any cached nodes not in the current node list from EC2
         current_ids = [n.id for n in nodes]
         remove_nodes = [n for n in self._nodes if n.id not in current_ids]
