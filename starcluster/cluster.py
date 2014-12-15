@@ -851,16 +851,21 @@ class Cluster(object):
 
     @property
     def nodes(self):
-        states = ['pending', 'running', 'stopping', 'stopped']
+        states = ['pending', 'running']
         filters = {'instance-state-name': states,
                    'instance.group-name': self._security_group}
         nodes = self.ec2.get_all_instances(filters=filters)
 
-        def filterFct(n):
-            return n.spot_instance_request_id is None or \
-                n.state in ["running", "pending"]
+        def filter_fct(n):
+            if n.spot_instance_request_id is not None:
+                return False
+            if self._security_group in [g.name for g in node.groups]:
+                return True
+            log.warning("EC2 issue? Got instance not in security group. "
+                        "Filtering out.")
+            return False
+        nodes = filter(filter_fct, nodes)
 
-        nodes = filter(filterFct, nodes)  # filter stopping/stopped spot
         # remove any cached nodes not in the current node list from EC2
         current_ids = [n.id for n in nodes]
 
