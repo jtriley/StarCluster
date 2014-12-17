@@ -869,30 +869,46 @@ class Node(object):
         """
         Adds all names for node in nodes arg to this node's /etc/hosts file
         """
-        aliases = [n.alias for n in nodes]
-        expr = re.compile("|".join(aliases))
+        host_file_lines = self.remove_from_etc_hosts(nodes, return_lines=True)
 
-        host_file = self.ssh.remote_file('/etc/hosts', 'r')
-        host_file_lines = host_file.readlines()
-        host_file.close()
-        host_file_lines = \
-            filter(lambda line: not expr.findall(line), host_file_lines)
         for node in nodes:
             host_file_lines.append(node.get_hosts_entry() + "\n")
 
-        host_file = self.ssh.remote_file('/etc/hosts', 'w')
-        print >> host_file, "".join(host_file_lines)
-        host_file.close()
+        with self.ssh.remote_file('/etc/hosts', 'w') as host_file:
+            print >> host_file, "\n".join(host_file_lines)
 
-    def remove_from_etc_hosts(self, nodes):
+    @classmethod
+    def filter_etc_hosts_lines(cls, nodes, lines):
+        to_remove = \
+            [n.short_alias + "|"
+             + "^" + n.private_ip_address.replace(".", "\.") + "\s"
+             for n in nodes]
+        expr = re.compile("|".join(to_remove))
+        rejected_lines = []
+        lines = utils.filter_move(
+            lambda line: bool(line) and not expr.findall(line),
+            lines, rejected_lines)
+
+        if rejected_lines:
+            log.debug("Filtered out: {}".format(rejected_lines))
+        return lines, rejected_lines
+
+    def remove_from_etc_hosts(self, nodes, return_lines=False):
         """
         Remove all network names and ips for node in nodes arg from this node's
         /etc/hosts file
         """
-        aliases = [n.short_alias for n in nodes]
-        ips = [n.private_ip_address.replace(".", "\.") for n in nodes]
-        self.ssh.remove_lines_from_file('/etc/hosts',
-                                        '|'.join(aliases) + '|'.join(ips))
+        with self.ssh.remote_file('/etc/hosts', 'r') as host_file:
+            lines = host_file.read().split("\n")
+
+        lines, rejected = self.filter_etc_hosts_lines(nodes, lines)
+
+        if return_lines:
+            return lines
+
+        if rejected:
+            with self.ssh.remote_file('/etc/hosts', 'w') as host_file:
+                print >> host_file, "\n".join(lines)
 
     def set_hostname(self, hostname=None):
         """
