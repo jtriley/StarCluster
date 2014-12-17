@@ -872,7 +872,7 @@ class Node(object):
         host_file_lines = self.remove_from_etc_hosts(nodes, return_lines=True)
 
         for node in nodes:
-            host_file_lines.append(node.get_hosts_entry() + "\n")
+            host_file_lines.append(node.get_hosts_entry())
 
         with self.ssh.remote_file('/etc/hosts', 'w') as host_file:
             print >> host_file, "\n".join(host_file_lines)
