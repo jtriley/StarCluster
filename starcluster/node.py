@@ -1173,7 +1173,7 @@ class Node(object):
         try:
             self.instance = res[0]
             return self.state
-        except:
+        except IndexError:
             log.error("Failed to update instance-id {}".format(self.id),
                       exc_info=True)
         return "unknown"
