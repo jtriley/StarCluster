@@ -1170,8 +1170,13 @@ class Node(object):
 
     def update(self):
         res = self.ec2.get_all_instances(filters={'instance-id': self.id})
-        self.instance = res[0]
-        return self.state
+        try:
+            self.instance = res[0]
+            return self.state
+        except IndexError:
+            log.error("Failed to update instance-id {}".format(self.id),
+                      exc_info=True)
+        return "unknown"
 
     @property
     def addr(self):
