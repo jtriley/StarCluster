@@ -312,7 +312,10 @@ class SGEStats(object):
         for h in self.hosts:
             if h['load_avg'] == '-':
                 h['load_avg'] = 0
-            loads.append(h['load_avg'])
+            load_avg = h['load_avg']
+            if isinstance(load_avg, (unicode, str)) and load_avg[-1] == 'K':
+                load_avg = float(load_avg[:-1]) * 1000
+            loads.append(load_avg)
         return loads
 
     def _add(self, x, y):
