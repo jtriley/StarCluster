@@ -250,10 +250,11 @@ class SGEStats(object):
 
     def oldest_queued_job_age(self):
         """
-        This returns the age of the oldest job in the queue
+        This returns the age of the oldest job in the queue in normal waiting
+        state
         """
         for j in self.jobs:
-            if 'JB_submission_time' in j:
+            if 'JB_submission_time' in j and j['state'] == 'qw':
                 st = j['JB_submission_time']
                 dt = utils.iso_to_datetime_tuple(st)
                 return dt.replace(tzinfo=self.remote_tzinfo)
