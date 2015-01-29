@@ -208,7 +208,7 @@ class SGEStats(object):
         """
         queued = []
         for j in self.jobs:
-            if j['job_state'] == u'pending':
+            if j['job_state'] == u'pending' and j['state'] == u'qw':
                 queued.append(j)
         return queued
 
