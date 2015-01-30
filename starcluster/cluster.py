@@ -1093,6 +1093,8 @@ class Cluster(object):
                          "above the spot bid.")
                 zone = None
         elif zone is None:
+            # Make sure master is in the same zone as the volumes mounted by
+            # the cluster.
             zone = getattr(self.zone, 'name', None)
 
         image_id = image_id or self.node_image_id
