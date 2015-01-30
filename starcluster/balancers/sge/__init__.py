@@ -311,9 +311,16 @@ class SGEStats(object):
         """
         loads = []
         for h in self.hosts:
-            if h['load_avg'] == '-':
-                h['load_avg'] = 0
-            loads.append(h['load_avg'])
+            load_avg = h['load_avg']
+            try:
+                if load_avg == "-":
+                    load_avg = 0
+                elif load_avg[-1] == 'K':
+                    load_avg = float(load_avg[:-1]) * 1000
+            except TypeError:
+                # load_avg was already a number
+                pass
+            loads.append(load_avg)
         return loads
 
     def _add(self, x, y):
