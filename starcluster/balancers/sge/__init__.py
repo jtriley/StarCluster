@@ -317,6 +317,7 @@ class SGEStats(object):
                 if load_avg[-1] == 'K':
                     load_avg = float(load_avg[:-1]) * 1000
             except TypeError:
+                # load_avg was already a number
                 pass
             loads.append(load_avg)
         return loads
