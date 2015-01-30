@@ -314,7 +314,9 @@ class SGEStats(object):
                 h['load_avg'] = 0
             load_avg = h['load_avg']
             try:
-                if load_avg[-1] == 'K':
+                if load_avg == "-":
+                    load_avg = 0
+                elif load_avg[-1] == 'K':
                     load_avg = float(load_avg[:-1]) * 1000
             except TypeError:
                 # load_avg was already a number
