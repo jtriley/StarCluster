@@ -310,8 +310,6 @@ class SGEStats(object):
         """
         loads = []
         for h in self.hosts:
-            if h['load_avg'] == '-':
-                h['load_avg'] = 0
             load_avg = h['load_avg']
             try:
                 if load_avg == "-":
