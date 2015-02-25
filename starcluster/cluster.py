@@ -1496,12 +1496,19 @@ class Cluster(object):
         for vol in wait_for_volumes:
             self.ec2.wait_for_volume(vol, state='attached')
 
-    def detach_volumes(self):
+    def detach_volumes(self,external=False):
         """
         Detach all volumes from all nodes
         """
-        for node in self.nodes:
-            node.detach_external_volumes()
+        if external:
+            log.info("Detaching all external volumes")
+            for node in self.nodes:
+                node.detach_external_volumes()
+        else:
+            log.info("Detaching shared volumes only")
+            for node in self.nodes:
+                node.detach_shared_volumes()
+
 
     @print_timing('Restarting cluster')
     def restart_cluster(self, reboot_only=False):
@@ -1553,7 +1560,7 @@ class Cluster(object):
                 log.warn("Cannot run plugins: %s" % e)
             else:
                 raise
-        self.detach_volumes()
+        self.detach_volumes(external=False)
         for node in nodes:
             node.shutdown()
 
@@ -1570,7 +1577,7 @@ class Cluster(object):
                 log.warn("Cannot run plugins: %s" % e)
             else:
                 raise
-        self.detach_volumes()
+        self.detach_volumes(external=True)
         nodes = self.nodes
         for node in nodes:
             node.terminate()
