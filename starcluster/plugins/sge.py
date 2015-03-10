@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
 import posixpath
+import socket
 
 from starcluster import clustersetup
 from starcluster.templates import sge
@@ -215,6 +216,12 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
                     except RemoteCommandFailed:
                         # normal -> means OGS doesn't run on the node
                         # slow path
+                        log.debug("RemoteCommandFailed, "
+                                  "OGS likely not running remotely")
+                        missing.append(node)
+                    except socket.error:
+                        # socket closed by remote... try to add it back
+                        log.warning("socket.error", exc_info=True)
                         missing.append(node)
                 else:
                     missing.append(node)
