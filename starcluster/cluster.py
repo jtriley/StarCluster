@@ -2047,14 +2047,20 @@ class ClusterValidator(validators.Validator):
             except ValueError:
                 raise exception.InvalidPortRange(
                     from_port, to_port, reason="integer range required")
-            if from_port < 0 or to_port < 0:
-                raise exception.InvalidPortRange(
-                    from_port, to_port,
-                    reason="from/to must be positive integers")
-            if from_port > to_port:
-                raise exception.InvalidPortRange(
-                    from_port, to_port,
-                    reason="'from_port' must be <= 'to_port'")
+            if protocol == 'icmp':
+                if from_port != -1 or to_port != -1:
+                    raise exception.InvalidPortRange(
+                        from_port, to_port,
+                        reason="for icmp protocol from_port and to_port must be -1")
+            else:
+                if from_port < 0 or to_port < 0:
+                    raise exception.InvalidPortRange(
+                        from_port, to_port,
+                        reason="from/to must be positive integers")
+                if from_port > to_port:
+                    raise exception.InvalidPortRange(
+                        from_port, to_port,
+                        reason="'from_port' must be <= 'to_port'")
             cidr_ip = permission.get('cidr_ip')
             if not iptools.ipv4.validate_cidr(cidr_ip):
                 raise exception.InvalidCIDRSpecified(cidr_ip)
