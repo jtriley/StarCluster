@@ -2051,7 +2051,8 @@ class ClusterValidator(validators.Validator):
                 if from_port != -1 or to_port != -1:
                     raise exception.InvalidPortRange(
                         from_port, to_port,
-                        reason="for icmp protocol from_port and to_port must be -1")
+                        reason="for icmp protocol from_port "
+                        "and to_port must be -1")
             else:
                 if from_port < 0 or to_port < 0:
                     raise exception.InvalidPortRange(
