@@ -271,6 +271,16 @@ class SSHClient(object):
             if not ignore_failure:
                 raise
 
+    def rename(self, oldpath, newpath, ignore_failure=False):
+        """
+        Rename a file on the remote machine
+        """
+        try:
+            return self.sftp.rename(oldpath,newpath)
+        except IOError:
+            if not ignore_failure:
+                raise
+
     def get_remote_file_lines(self, remote_file, regex=None, matching=True):
         """
         Returns list of lines in a remote_file
