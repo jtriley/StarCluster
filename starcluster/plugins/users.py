@@ -131,7 +131,7 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
         for user in usernames:
             if user in bfilecontents:
 	        log.info ("Skipping %s user previously created" % user)
-                break	
+                continue	
             found_newuser = True
             home_folder = '/home/%s' % user
             if master.ssh.path_exists(home_folder):
