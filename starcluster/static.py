@@ -143,6 +143,11 @@ INSTANCE_TYPES = {
     'c3.2xlarge': ['x86_64'],
     'c3.4xlarge': ['x86_64'],
     'c3.8xlarge': ['x86_64'],
+    'c4.large': ['x86_64'],
+    'c4.xlarge': ['x86_64'],
+    'c4.2xlarge': ['x86_64'],
+    'c4.4xlarge': ['x86_64'],
+    'c4.8xlarge': ['x86_64'],
     'i2.xlarge': ['x86_64'],
     'i2.2xlarge': ['x86_64'],
     'i2.4xlarge': ['x86_64'],
@@ -171,6 +176,9 @@ HI_STORAGE_TYPES = ['hs1.8xlarge']
 M3_COMPUTE_TYPES = ['c3.large', 'c3.xlarge', 'c3.2xlarge', 'c3.4xlarge',
                     'c3.8xlarge']
 
+M4_COMPUTE_TYPES = ['c4.large', 'c4.xlarge', 'c4.2xlarge', 'c4.4xlarge',
+                    'c4.8xlarge']
+
 I2_STORAGE_TYPES = ['i2.xlarge', 'i2.2xlarge', 'i2.4xlarge', 'i2.8xlarge']
 
 HVM_ONLY_TYPES = (CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES +
@@ -178,7 +186,7 @@ HVM_ONLY_TYPES = (CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES +
                   T2_INSTANCE_TYPES)
 
 HVM_TYPES = (HVM_ONLY_TYPES + HI_IO_TYPES + HI_STORAGE_TYPES + SEC_GEN_TYPES +
-             M3_COMPUTE_TYPES)
+             M3_COMPUTE_TYPES + M4_COMPUTE_TYPES)
 
 EBS_ONLY_TYPES = T1_INSTANCE_TYPES + T2_INSTANCE_TYPES
 
@@ -187,8 +195,8 @@ EBS_ONLY_TYPES = T1_INSTANCE_TYPES + T2_INSTANCE_TYPES
 # StarCluster additionally adds cc1.4xlarge to the list - EC2 is slowly
 # migrating folks away from this type in favor of cc2.8xlarge but the type
 # still works for some older accounts.
-PLACEMENT_GROUP_TYPES = (M3_COMPUTE_TYPES + HVM_ONLY_TYPES + HI_IO_TYPES +
-                         HI_STORAGE_TYPES)
+PLACEMENT_GROUP_TYPES = (M3_COMPUTE_TYPES + M4_COMPUTE_TYPES + HVM_ONLY_TYPES +
+                         HI_IO_TYPES + HI_STORAGE_TYPES)
 # T2 instances are HVM_ONLY_TYPES however they're not compatible with placement
 # groups so remove them from the list
 for itype in T2_INSTANCE_TYPES:
