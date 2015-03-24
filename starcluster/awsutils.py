@@ -1626,7 +1626,7 @@ class EasyEC2(EasyAWS):
         else:
             log.info("No console output available...")
 
-    def get_spot_cheapest_zone(self, instance_type, zone_filter):
+    def get_spot_cheapest_zone(self, instance_type, zone_filter, vpc=False):
         """
         Find cheapest zone.
 
@@ -1643,7 +1643,7 @@ class EasyEC2(EasyAWS):
             try:
                 price = self.get_spot_history(instance_type,
                                               zone=zone_name,
-                                              mute=True)
+                                              mute=True, vpc=vpc)
                 price = price[0][1]
             except exception.SpotHistoryError as err:
                 log.warning(str(err))  # can be normal when amazon adds zones

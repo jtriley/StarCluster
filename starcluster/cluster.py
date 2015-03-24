@@ -1083,8 +1083,9 @@ class Cluster(object):
                 zones_filter = [s_net.availability_zone
                                 for s_net in self.subnets_mapping.values()]
 
-            zone, price = self.ec2.get_spot_cheapest_zone(instance_type,
-                                                          zones_filter)
+            zone, price = self.ec2.get_spot_cheapest_zone(
+                instance_type, zones_filter,
+                vpc=self.vpc_id is not None)
             log.info("Min price of %f found in zone %s", price, zone)
             if price > spot_bid:
                 # Let amazon pick the first zone where the prices goes
