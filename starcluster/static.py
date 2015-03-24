@@ -110,6 +110,9 @@ VOLUME_ATTACH_STATUS = ['attaching', 'attached', 'detaching', 'detached']
 
 INSTANCE_TYPES = {
     't1.micro': ['i386', 'x86_64'],
+    't2.micro': ['i386', 'x86_64'],
+    't2.small': ['i386', 'x86_64'],
+    't2.medium': ['i386', 'x86_64'],
     'm1.small': ['i386', 'x86_64'],
     'm1.medium': ['i386', 'x86_64'],
     'm1.large': ['x86_64'],
@@ -146,7 +149,9 @@ INSTANCE_TYPES = {
     'i2.8xlarge': ['x86_64'],
 }
 
-MICRO_INSTANCE_TYPES = ['t1.micro']
+T1_INSTANCE_TYPES = ['t1.micro']
+
+T2_INSTANCE_TYPES = ['t2.micro', 't2.small', 't2.medium']
 
 SEC_GEN_TYPES = ['m3.medium', 'm3.large', 'm3.xlarge', 'm3.2xlarge']
 
@@ -169,12 +174,13 @@ M3_COMPUTE_TYPES = ['c3.large', 'c3.xlarge', 'c3.2xlarge', 'c3.4xlarge',
 I2_STORAGE_TYPES = ['i2.xlarge', 'i2.2xlarge', 'i2.4xlarge', 'i2.8xlarge']
 
 HVM_ONLY_TYPES = (CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES +
-                  CLUSTER_HIMEM_TYPES + I2_STORAGE_TYPES + HIMEM_TYPES)
+                  CLUSTER_HIMEM_TYPES + I2_STORAGE_TYPES + HIMEM_TYPES +
+                  T2_INSTANCE_TYPES)
 
 HVM_TYPES = (HVM_ONLY_TYPES + HI_IO_TYPES + HI_STORAGE_TYPES + SEC_GEN_TYPES +
              M3_COMPUTE_TYPES)
 
-EBS_ONLY_TYPES = MICRO_INSTANCE_TYPES
+EBS_ONLY_TYPES = (T1_INSTANCE_TYPES + T2_INSTANCE_TYPES)
 
 # Always make sure these match instances listed here:
 # http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html

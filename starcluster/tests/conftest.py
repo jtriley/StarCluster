@@ -16,6 +16,7 @@
 # along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
 
 import pytest
+from pytest_cov import CovPlugin
 
 from starcluster import static
 from starcluster import config as sconfig
@@ -41,6 +42,8 @@ def pytest_configure(config):
     if config.getoption("--coverage"):
         config.option.cov_source = ['starcluster']
         config.option.cov_report = ['term-missing']
+        plugin = CovPlugin(config.option, config.pluginmanager)
+        config.pluginmanager.register(plugin, '_cov')
 
 
 @pytest.fixture(scope="module")
