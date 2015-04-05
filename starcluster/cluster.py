@@ -1665,7 +1665,7 @@ class Cluster(object):
         Runs the default StarCluster setup routines followed by any additional
         plugin setup routines. Does not wait for nodes to come up.
         """
-        log.info("The master node is %s" % self.master_node.dns_name)
+        log.info("The master node is %s" % self.master_node.private_id_address)
         log.info("Configuring cluster...")
         if self.volumes:
             self.attach_volumes_to_master()
