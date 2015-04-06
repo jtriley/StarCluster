@@ -27,3 +27,4 @@ lvcreate -l $SIZE vg_ephemeral -n ephemerallv
 mkfs.ext3 /dev/mapper/vg_ephemeral-ephemerallv
 mkdir /scratch
 mount /dev/mapper/vg_ephemeral-ephemerallv /scratch
+chmod 1777 /scratch
