@@ -467,7 +467,7 @@ class EasyEC2(EasyAWS):
                           availability_zone_group=None, placement=None,
                           user_data=None, placement_group=None,
                           block_device_map=None, subnet_id=None,
-                          network_interfaces=None):
+                          network_interfaces=None, iam_profile=None):
         """
         Convenience method for running spot or flat-rate instances
         """
@@ -511,7 +511,8 @@ class EasyEC2(EasyAWS):
                              placement_group=placement_group,
                              user_data=user_data,
                              block_device_map=block_device_map,
-                             network_interfaces=network_interfaces)
+                             network_interfaces=network_interfaces,
+                             iam_profile=iam_profile)
         if price:
             return self.request_spot_instances(
                 price, image_id,
@@ -532,7 +533,7 @@ class EasyEC2(EasyAWS):
                                security_group_ids=None, subnet_id=None,
                                placement=None, placement_group=None,
                                user_data=None, block_device_map=None,
-                               network_interfaces=None):
+                               network_interfaces=None, iam_profile=None):
         kwargs = locals()
         kwargs.pop('self')
         return self.conn.request_spot_instances(**kwargs)
@@ -605,7 +606,7 @@ class EasyEC2(EasyAWS):
                       max_count=1, key_name=None, security_groups=None,
                       placement=None, user_data=None, placement_group=None,
                       block_device_map=None, subnet_id=None,
-                      network_interfaces=None):
+                      network_interfaces=None, iam_profile=None):
         kwargs = dict(
             instance_type=instance_type,
             min_count=min_count,
@@ -616,7 +617,8 @@ class EasyEC2(EasyAWS):
             user_data=user_data,
             placement_group=placement_group,
             block_device_map=block_device_map,
-            network_interfaces=network_interfaces
+            network_interfaces=network_interfaces,
+            iam_profile=iam_profile
         )
         if subnet_id:
             kwargs.update(

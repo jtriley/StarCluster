@@ -187,6 +187,14 @@ class Node(object):
         payload = volstxt.split('\n', 2)[2]
         return utils.decode_uncompress_load(payload)
 
+    def get_iam_profile(self):
+        if self.instance.instance_profile:
+            arn = self.instance.instance_profile['arn']
+            match = re.match(r'arn:aws:iam::\d{12}:instance-profile/(\S+)', arn)
+            return match.group(1)
+        else:
+            return None
+
     def _remove_all_tags(self):
         tags = self.tags.keys()[:]
         for t in tags:
@@ -236,6 +244,10 @@ class Node(object):
                 self.ssh.execute(
                     "free -m | grep -i mem | awk '{print $2}'")[0])
         return self._memory
+
+    @property
+    def instance_profile(self):
+        return self.instance.instance_profile
 
     @property
     def ip_address(self):
