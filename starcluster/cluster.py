@@ -703,7 +703,8 @@ class Cluster(object):
                              disable_cloudinit=self.disable_cloudinit)
         user_settings = dict(cluster_user=self.cluster_user,
                              cluster_shell=self.cluster_shell,
-                             keyname=self.keyname, spot_bid=self.spot_bid)
+                             keyname=self.keyname, spot_bid=self.spot_bid,
+                             userdata_scripts=self.userdata_scripts)
         core = utils.dump_compress_encode(core_settings, use_json=True,
                                           chunk_size=static.MAX_TAG_LEN)
         self._add_chunked_tags(sg, core, static.CORE_TAG)
