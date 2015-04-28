@@ -232,6 +232,7 @@ class StarClusterConfig(object):
     plugin_settings = static.PLUGIN_SETTINGS
     cluster_settings = static.CLUSTER_SETTINGS
     permission_settings = static.PERMISSION_SETTINGS
+    node_settings = static.NODE_SETTINGS
 
     # until i can find a way to query AWS for instance types...
     instance_types = static.INSTANCE_TYPES
@@ -610,6 +611,15 @@ class StarClusterConfig(object):
                                       type=itype)
             itypes.append(itype_dic)
 
+    def _load_instance_array(self, store):
+        cluster_section = store
+        instance_array = cluster_section.get('node_instance_array')
+        result = []
+        for name in instance_array:
+            result.append(self._load_section('node ' + name,
+                                             self.node_settings))
+        cluster_section['node_instance_array'] = result
+
     def _load_section(self, section_name, section_settings,
                       filter_settings=True):
         """
@@ -696,6 +706,19 @@ class StarClusterConfig(object):
             self._load_plugins(cluster_store[name])
             self._load_permissions(cluster_store[name])
             self._load_instance_types(cluster_store[name])
+            self._load_instance_array(cluster_store[name])
+
+            # checks caused by mutual exclusivity of node_instance_type/array
+            if cluster_store[name]['node_instance_type'] is not None and \
+                    len(cluster_store[name]['node_instance_array']) > 0:
+                raise exception.ConfigError(
+                    "Cannot define both node_instance_type and "
+                    "node_instance_array at cluster " + name)
+            if cluster_store[name]['node_instance_type'] is not None and \
+                    not bool(cluster_store[name]['node_image_id']):
+                raise exception.ConfigError(
+                    "You must define node_imagge_id at cluster " + name)
+
             self._check_required(cl, self.cluster_settings,
                                  cluster_store[name])
         return cluster_store

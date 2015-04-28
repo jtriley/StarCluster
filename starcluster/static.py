@@ -289,8 +289,9 @@ CLUSTER_SETTINGS = {
     'public_ips': (bool, False, None, None, None),
     'master_image_id': (str, False, None, None, None),
     'master_instance_type': (str, False, None, INSTANCE_TYPES.keys(), None),
-    'node_image_id': (str, True, None, None, None),
-    'node_instance_type': (list, True, [], None, None),
+    'node_image_id': (str, False, None, None, None),
+    'node_instance_type': (list, False, [], None, None),
+    'node_instance_array': (list, False, [], None, None),
     'availability_zone': (str, False, None, None, None),
     'keyname': (str, True, None, None, None),
     'extends': (str, False, None, None, None),
@@ -303,6 +304,13 @@ CLUSTER_SETTINGS = {
     'disable_cloudinit': (bool, False, False, None, None),
     'dns_prefix': (bool, False, False, None, None),
     'subnet_ids': (list, False, [], None, None),
+}
+
+NODE_SETTINGS = {
+    'spot_bid': (float, True, None, None, None),
+    'image_id': (str, True, None, None, None),
+    'instance_type': (str, True, None, INSTANCE_TYPES.keys(), None),
+    'selection_factor': (float, False, 1, None, None)
 }
 
 MASTER_CFG_FILE = '/etc/starcluster'  # vanilla improvements
