@@ -47,14 +47,13 @@ class StreamingNodeAdd(object):
         self.reboot_interval = reboot_interval
         self.n_reboot_restart = n_reboot_restart
         self.instances_nrm = {}
-        self.ready_instances = []
 
     def stream_unpropagated_spots(self):
         if not self.unpropagated_spots:
             return
 
-        propagated_spot_ids, _ = self.cluster.ec2.check_for_propagation(
-            spot_ids=[s.id for s in self.unpropagated_spots])
+        propagated_spot_ids = self.cluster.ec2.get_propagated_spots(
+            [s.id for s in self.unpropagated_spots])
         self.unpropagated_spots = utils.filter_move(
             lambda s: s.id not in propagated_spot_ids,
             self.unpropagated_spots, self.spots)
@@ -86,8 +85,8 @@ class StreamingNodeAdd(object):
         if not self.unpropagated_instances:
             return
 
-        _, propagated_instance_ids = self.cluster.ec2.check_for_propagation(
-            instance_ids=[s.id for s in self. unpropagated_instances])
+        propagated_instance_ids = self.cluster.ec2.get_propagated_instances(
+            [s.id for s in self. unpropagated_instances])
         self.unpropagated_instances = utils.filter_move(
             lambda i: i.id not in propagated_instance_ids,
             self.unpropagated_instances, self.instances)
@@ -108,14 +107,14 @@ class StreamingNodeAdd(object):
                     nrm = nrm_cls(Node(instance, self.cluster.key_location))
                 self.instances_nrm[instance.id] = nrm
 
-    def stream_instances(self):
+    def stream_instances(self, ready_instances):
         if not self.instances:
             return
 
         ssh_up = self.cluster.pool.map(lambda i: i.is_up(), self.instances)
         zip_instances = utils.filter_move(
             lambda i: i[0].state != 'running' or not i[1],
-            zip(self.instances, ssh_up), self.ready_instances,
+            zip(self.instances, ssh_up), ready_instances,
             lambda i: i[0])
         self.instances = [i[0] for i in zip_instances]
         if self.instances:
@@ -129,8 +128,8 @@ class StreamingNodeAdd(object):
         for instance in dead_instances:
             del self.instances_nrm[instance.id]
 
-    def stream_ready_instances(self):
-        for ready_instance in self.ready_instances:
+    def stream_ready_instances(self, ready_instances):
+        for ready_instance in ready_instances:
             log.info("Adding node: %s" % ready_instance.alias)
             up_nodes = filter(lambda n: n.is_up(), self.cluster.nodes)
             try:
@@ -156,27 +155,23 @@ class StreamingNodeAdd(object):
         log.info("Waiting for one of the new nodes to be up "
                  "(updating every {}s)".format(interval))
 
-        while True:
-            self.ready_instances = []
+        while any([self.unpropagated_spots, self.spots,
+                   self.unpropagated_instances, self.instances]):
+            ready_instances = []
             self.stream_unpropagated_spots()
             self.stream_spots()
             self.stream_unpropagated_instances()
             self.stream_update_nrm()
-            self.stream_instances()
+            self.stream_instances(ready_instances)
             self.stream_manage_reboots()
-            self.stream_ready_instances()
-
-            if any([self.unpropagated_spots, self.spots,
-                    self.unpropagated_instances, self.instances]):
-                if self.ready_instances:
-                    # ready_instances means nodes were added, that took
-                    # time so we should loop again now
-                    continue
-                log.info("{} Sleeping for {} seconds"
-                         .format(utils.get_utc_now(), interval))
-                time.sleep(interval)
-            else:
-                break
+            self.stream_ready_instances(ready_instances)
+            if ready_instances:
+                # ready_instances means nodes were added, that took
+                # time so we should loop again now
+                continue
+            log.info("{} Sleeping for {} seconds"
+                     .format(utils.get_utc_now(), interval))
+            time.sleep(interval)
 
 
 class UnpropagatedInstance(object):
