@@ -550,6 +550,9 @@ StarCluster.
 4. StarCluster was interrupted very early on when first creating the \
 cluster's security group.
 
+5. The configuration you are loading is incorrect. Check the debug log for \
+more details.
+
 In any case '%(tag)s' and its nodes cannot be used with this version of \
 StarCluster (%(version)s).
 

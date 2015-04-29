@@ -615,9 +615,24 @@ class StarClusterConfig(object):
         cluster_section = store
         instance_array = cluster_section.get('node_instance_array')
         result = []
+        spot = -1  # -1 unknown, 0 false, 1 true
         for name in instance_array:
-            result.append(self._load_section('node ' + name,
-                                             self.node_settings))
+            node_settings = self._load_section('node ' + name,
+                                               self.node_settings)
+            if spot == -1:
+                if node_settings['spot_bid'] is None:
+                    spot = 0
+                else:
+                    spot = 1
+            elif spot == 0:
+                if node_settings['spot_bid'] is not None:
+                    raise exception.ConfigError("spot_bid presence must be "
+                                                "the same for all nodes")
+            else:
+                if node_settings['spot_bid'] is None:
+                    raise exception.ConfigError("spot_bid presence must be "
+                                                "the same for all nodes")
+            result.append(node_settings)
         cluster_section['node_instance_array'] = result
 
     def _load_section(self, section_name, section_settings,

@@ -416,7 +416,6 @@ class Cluster(object):
                  master_instance_type=None,
                  node_image_id=None,
                  node_instance_type=None,
-                 node_instance_types=[],
                  availability_zone=None,
                  keyname=None,
                  key_location=None,
@@ -436,11 +435,13 @@ class Cluster(object):
                  plugins_order=[],
                  config_on_master=False,
                  dns_sufix=None,
+                 node_instance_array=[],
                  **kwargs):
         # update class vars with given vars
         _vars = locals().copy()
-        del _vars['cluster_group']
-        del _vars['ec2_conn']
+        for k in ['cluster_group', 'ec2_conn', 'node_image_id',
+                  'node_instance_type', 'spot_bid']:
+            del _vars[k]
         self.__dict__.update(_vars)
 
         # more configuration
@@ -463,7 +464,17 @@ class Cluster(object):
         self.disable_cloudinit = disable_cloudinit
         self.plugins_order = plugins_order
         self.dns_sufix = dns_sufix and cluster_tag
-
+        if node_instance_array:
+            try:
+                assert node_image_id is None
+                assert node_instance_type is None
+            except Exception as e:
+                log.error("Cannot have both node_instance_array and node "
+                          "details defined", exc_info=True)
+                raise e
+        else:
+            self.set_default_node_instance_array(node_image_id,
+                                                 node_instance_type, spot_bid)
         self._cluster_group = None
         self._placement_group = None
         self._zone = None
@@ -479,6 +490,28 @@ class Cluster(object):
     def __repr__(self):
         return '<Cluster: %s (%s-node)>' % (self.cluster_tag,
                                             self.cluster_size)
+
+    def set_default_node_instance_array(self, image_id, instance_type,
+                                        spot_bid):
+        self.node_instance_array = [{
+            'image_id': image_id,
+            'instance_type': instance_type,
+            'spot_bid': spot_bid,
+            'selection_factor': 1,
+            'size': 0
+        }]
+
+    @property
+    def node_image_id(self):
+        return self.node_instance_array[0]['image_id']
+
+    @property
+    def node_instance_type(self):
+        return self.node_instance_array[0]['instance_type']
+
+    @property
+    def spot_bid(self):
+        return self.node_instance_array[0].get('spot_bid', None)
 
     @property
     def zone(self):
@@ -593,6 +626,12 @@ class Cluster(object):
         return volumes
 
     def update(self, kwargs):
+        if 'node_instance_array' not in kwargs and 'node_image_id' in kwargs:
+            self.set_default_node_instance_array(kwargs['node_image_id'],
+                                                 kwargs['node_instance_type'],
+                                                 kwargs['spot_bid'])
+            for k in ['node_image_id', 'node_instance_type', 'spot_bid']:
+                del kwargs[k]
         for key in kwargs.keys():
             if hasattr(self, key):
                 self.__dict__[key] = kwargs[key]
@@ -749,8 +788,7 @@ class Cluster(object):
         core_settings = dict(cluster_size=self.cluster_size,
                              master_image_id=self.master_image_id,
                              master_instance_type=self.master_instance_type,
-                             node_image_id=self.node_image_id,
-                             node_instance_type=self.node_instance_type,
+                             node_instance_array=self.node_instance_array,
                              availability_zone=self.availability_zone,
                              dns_prefix=self.dns_prefix,
                              subnet_ids=self.subnet_ids,
@@ -761,7 +799,7 @@ class Cluster(object):
                              dns_sufix=self.dns_sufix)
         user_settings = dict(cluster_user=self.cluster_user,
                              cluster_shell=self.cluster_shell,
-                             keyname=self.keyname, spot_bid=self.spot_bid)
+                             keyname=self.keyname)
         return core_settings, user_settings
 
     def _add_tags_to_sg(self, sg):
@@ -1047,6 +1085,33 @@ class Cluster(object):
         log.debug('Userdata size in KB: %.2f' % utils.size_in_kb(udata))
         return udata
 
+    def select_instance_and_zone(self):
+        selection = None
+        for i in self.node_instance_array:
+            zones_filter = None
+            if self.subnet_ids:
+                zones_filter = [s_net.availability_zone
+                                for s_net in self.subnets_mapping.values()]
+
+            zone, price = self.ec2.get_spot_cheapest_zone(
+                i['instance_type'], zones_filter,
+                vpc=self.vpc_id is not None)
+            log.debug("%s %s: %f", i['instance_type'], zone, price)
+            if selection is None or (
+                    price < i['spot_bid'] and
+                    selection['price'] * selection['selection_factor']
+                    > price * i.get('selection_factor', 1)):
+                selection = {
+                    'zone': zone,
+                    'price': price,
+                    'instance_type': i['instance_type'],
+                    'image_id': i['image_id'],
+                    'spot_bid': i['spot_bid'],
+                    'selection_factor': i.get('selection_factor', 1)
+                }
+        assert selection is not None
+        return selection
+
     def create_nodes(self, aliases, image_id=None, instance_type=None,
                      zone=None, placement_group=None, spot_bid=None,
                      force_flat=False):
@@ -1060,6 +1125,7 @@ class Cluster(object):
         if force_flat:
             spot_bid = None
         cluster_sg = self.cluster_group.name
+        auto_select_instance_type = instance_type is None
         instance_type = instance_type or self.node_instance_type
         if placement_group or instance_type in static.PLACEMENT_GROUP_TYPES:
             region = self.ec2.region.name
@@ -1078,15 +1144,23 @@ class Cluster(object):
         launch_group = availability_zone_group
 
         if spot_bid and not placement_group and zone is None:
-            zones_filter = None
-            if self.subnet_ids:
-                zones_filter = [s_net.availability_zone
-                                for s_net in self.subnets_mapping.values()]
-
-            zone, price = self.ec2.get_spot_cheapest_zone(
-                instance_type, zones_filter,
-                vpc=self.vpc_id is not None)
-            log.info("Min price of %f found in zone %s", price, zone)
+            if auto_select_instance_type:
+                selection = self.select_instance_and_zone()
+                zone = selection['zone']
+                price = selection['price']
+                instance_type = selection['instance_type']
+                log.info("Selected instance type %s with minimal price of %f "
+                         "in zone %s", instance_type, selection['price'],
+                         zone)
+            else:
+                zones_filter = None
+                if self.subnet_ids:
+                    zones_filter = [s_net.availability_zone
+                                    for s_net in self.subnets_mapping.values()]
+                zone, price = self.ec2.get_spot_cheapest_zone(
+                    instance_type, zones_filter,
+                    vpc=self.vpc_id is not None)
+                log.info("Min price of %f found in zone %s", price, zone)
             if price > spot_bid:
                 # Let amazon pick the first zone where the prices goes
                 # bellow the spot_bid
@@ -1323,8 +1397,10 @@ class Cluster(object):
         mimage = self.master_image_id or self.node_image_id
         lmap[(mtype, mimage)] = [self._make_alias(master=True)]
         id_start = 1
-        for itype in self.node_instance_types:
-            count = itype['size']
+        for itype in self.node_instance_array:
+            count = itype.get('size', 0)
+            if not count:
+                continue
             image_id = itype['image'] or self.node_image_id
             type = itype['type'] or self.node_instance_type
             if not (type, image_id) in lmap:
@@ -2195,12 +2271,23 @@ class ClusterValidator(validators.Validator):
     def validate_spot_bid(self):
         cluster = self.cluster
         if cluster.spot_bid is not None:
-            if type(cluster.spot_bid) not in [int, float]:
-                raise exception.ClusterValidationError(
-                    'spot_bid must be integer or float')
-            if cluster.spot_bid <= 0:
-                raise exception.ClusterValidationError(
-                    'spot_bid must be an integer or float > 0')
+            for i in cluster.node_instance_array:
+                spot_bid = i.get('spot_bid', None)
+                if spot_bid is None:
+                    raise exception.ClusterValidationError(
+                        'Either all or no nodes must specify a spot_bid.')
+                if type(spot_bid) not in [int, float]:
+                    raise exception.ClusterValidationError(
+                        'spot_bid must be integer or float')
+                if spot_bid <= 0:
+                    raise exception.ClusterValidationError(
+                        'spot_bid must be an integer or float > 0')
+        else:
+            for i in cluster.node_instance_array:
+                spot_bid = i.get('spot_bid', None)
+                if spot_bid is not None:
+                    raise exception.ClusterValidationError(
+                        'Either all or no nodes must specify a spot_bid.')
         return True
 
     def validate_cluster_size(self):
@@ -2212,8 +2299,8 @@ class ClusterValidator(validators.Validator):
         except (ValueError, TypeError):
             raise exception.ClusterValidationError(
                 'cluster_size must be an integer >= 1')
-        num_itypes = sum([i.get('size') for i in
-                          cluster.node_instance_types])
+        num_itypes = sum([i.getattr('size', 0) for i in
+                          cluster.node_instance_array])
         num_nodes = cluster.cluster_size - 1
         if num_itypes > num_nodes:
             raise exception.ClusterValidationError(
@@ -2235,26 +2322,24 @@ class ClusterValidator(validators.Validator):
                 ' '.join(static.AVAILABLE_SHELLS.keys()))
         return True
 
+    def _check_image_available(self, image_id, name):
+        image = self.cluster.ec2.get_image_or_none(image_id)
+        if not image or image.id != image_id:
+            raise exception.ClusterValidationError(
+                '%s %s does not exist' % (name, image_id))
+        if image.state != 'available':
+            raise exception.ClusterValidationError(
+                '%s %s is not available' % (name, image_id))
+
     def validate_image_settings(self):
         cluster = self.cluster
         master_image_id = cluster.master_image_id
-        node_image_id = cluster.node_image_id
-        conn = cluster.ec2
-        image = conn.get_image_or_none(node_image_id)
-        if not image or image.id != node_image_id:
-            raise exception.ClusterValidationError(
-                'node_image_id %s does not exist' % node_image_id)
-        if image.state != 'available':
-            raise exception.ClusterValidationError(
-                'node_image_id %s is not available' % node_image_id)
         if master_image_id:
-            master_image = conn.get_image_or_none(master_image_id)
-            if not master_image or master_image.id != master_image_id:
-                raise exception.ClusterValidationError(
-                    'master_image_id %s does not exist' % master_image_id)
-            if master_image.state != 'available':
-                raise exception.ClusterValidationError(
-                    'master_image_id %s is not available' % master_image_id)
+            self._check_image_available(master_image_id, 'master_image_id')
+        node_instance_array = cluster.node_instance_array
+        image_ids = {item['image_id'] for item in node_instance_array}
+        for image_id in image_ids:
+            self._check_image_available(image_id, 'node_image_id')
         return True
 
     def validate_zone(self):
@@ -2313,64 +2398,51 @@ class ClusterValidator(validators.Validator):
             raise exception.ClusterValidationError(error_msg)
         return True
 
+    def _check_instance_type(self, instance_type, name):
+        instance_types = static.INSTANCE_TYPES
+        if instance_type not in instance_types:
+            instance_type_list = ', '.join(instance_types.keys())
+            raise exception.ClusterValidationError(
+                "You specified an invalid %s %s\n"
+                "Possible options are:\n%s" %
+                (name, instance_type, instance_type_list))
+
+    def _check_platform(self, image_id_pair, instance_type_pair):
+        try:
+            self.__check_platform(image_id_pair[1], instance_type_pair[1])
+        except exception.ClusterValidationError as e:
+            raise exception.ClusterValidationError(
+                'Incompatible %s and %s:\n' + image_id_pair[0],
+                instance_type_pair[0], e.msg)
+
     def validate_instance_types(self):
         cluster = self.cluster
         master_image_id = cluster.master_image_id
         node_image_id = cluster.node_image_id
         master_instance_type = cluster.master_instance_type
         node_instance_type = cluster.node_instance_type
-        instance_types = static.INSTANCE_TYPES
-        instance_type_list = ', '.join(instance_types.keys())
-        if node_instance_type not in instance_types:
-            raise exception.ClusterValidationError(
-                "You specified an invalid node_instance_type %s\n"
-                "Possible options are:\n%s" %
-                (node_instance_type, instance_type_list))
-        elif master_instance_type:
-            if master_instance_type not in instance_types:
-                raise exception.ClusterValidationError(
-                    "You specified an invalid master_instance_type %s\n"
-                    "Possible options are:\n%s" %
-                    (master_instance_type, instance_type_list))
-        try:
-            self.__check_platform(node_image_id, node_instance_type)
-        except exception.ClusterValidationError as e:
-            raise exception.ClusterValidationError(
-                'Incompatible node_image_id and node_instance_type:\n' + e.msg)
+        if master_instance_type:
+            self._check_instance_type(master_instance_type,
+                                      'master_instance_type')
+        node_instance_array = cluster.node_instance_array
+        instance_types = \
+            [item['instance_type'] for item in node_instance_array]
+        image_ids = [item['image_id'] for item in node_instance_array]
+        for instance_type, image_id in zip(instance_types, image_ids):
+            self._check_instance_type(instance_type, 'instance_type')
+            self._check_platform(('node_image_id', image_id),
+                                 ('node_instance_type', instance_type))
         if master_image_id and not master_instance_type:
-            try:
-                self.__check_platform(master_image_id, node_instance_type)
-            except exception.ClusterValidationError as e:
-                raise exception.ClusterValidationError(
-                    'Incompatible master_image_id and node_instance_type\n' +
-                    e.msg)
+            self._check_platform(('master_image_id', master_image_id),
+                                 ('node_instance_type', node_instance_type))
         elif master_image_id and master_instance_type:
-            try:
-                self.__check_platform(master_image_id, master_instance_type)
-            except exception.ClusterValidationError as e:
-                raise exception.ClusterValidationError(
-                    'Incompatible master_image_id and master_instance_type\n' +
-                    e.msg)
+            self._check_platform(
+                ('master_image_id', master_image_id),
+                ('master_instance_type', master_instance_type))
         elif master_instance_type and not master_image_id:
-            try:
-                self.__check_platform(node_image_id, master_instance_type)
-            except exception.ClusterValidationError as e:
-                raise exception.ClusterValidationError(
-                    'Incompatible node_image_id and master_instance_type\n' +
-                    e.msg)
-        for itype in cluster.node_instance_types:
-            type = itype.get('type')
-            img = itype.get('image') or node_image_id
-            if type not in instance_types:
-                raise exception.ClusterValidationError(
-                    "You specified an invalid instance type %s\n"
-                    "Possible options are:\n%s" % (type, instance_type_list))
-            try:
-                self.__check_platform(img, type)
-            except exception.ClusterValidationError as e:
-                raise exception.ClusterValidationError(
-                    "Invalid settings for node_instance_type %s: %s" %
-                    (type, e.msg))
+            self._check_platform(
+                ('node_image_id', node_image_id),
+                ('master_instance_type', master_instance_type))
         return True
 
     def validate_permission_settings(self):
