@@ -2299,7 +2299,7 @@ class ClusterValidator(validators.Validator):
         except (ValueError, TypeError):
             raise exception.ClusterValidationError(
                 'cluster_size must be an integer >= 1')
-        num_itypes = sum([i.getattr('size', 0) for i in
+        num_itypes = sum([i.get('size', 0) for i in
                           cluster.node_instance_array])
         num_nodes = cluster.cluster_size - 1
         if num_itypes > num_nodes:
