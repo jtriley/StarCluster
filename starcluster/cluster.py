@@ -1087,15 +1087,14 @@ class Cluster(object):
 
     def select_instance_and_zone(self):
         selection = None
-        for i in self.node_instance_array:
-            zones_filter = None
-            if self.subnet_ids:
-                zones_filter = [s_net.availability_zone
-                                for s_net in self.subnets_mapping.values()]
+        zones_filter = None
+        if self.subnet_ids:
+            zones_filter = [s_net.availability_zone
+                            for s_net in self.subnets_mapping.values()]
 
+        for i in self.node_instance_array:
             zone, price = self.ec2.get_spot_cheapest_zone(
-                i['instance_type'], zones_filter,
-                vpc=self.vpc_id is not None)
+                i['instance_type'], zones_filter, vpc=self.vpc_id is not None)
             log.debug("%s %s: %f", i['instance_type'], zone, price)
             if selection is None or (
                     price < i['spot_bid'] and
