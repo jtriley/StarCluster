@@ -5,7 +5,8 @@ vanilla_improvements notes are at the bottom.
 
 :StarCluster: Cluster Computing Toolkit for the Cloud
 :Version: 0.95.6
-:Author: Justin Riley <justin.t.riley@gmail.com>
+:Author (trunk): Justin Riley <justin.t.riley@gmail.com>
+:Author (vanilla improvements): François-Michel L'Heureux <fmlheureux@datacratic.com>
 :Team: Software Tools for Academics and Researchers (http://star.mit.edu)
 :Homepage: http://star.mit.edu/cluster
 :License: LGPL
