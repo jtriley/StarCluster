@@ -55,7 +55,7 @@ def create_sc_config_dirs():
     __makedirs(STARCLUSTER_LOG_DIR)
 
 
-VERSION = "0.95.5"
+VERSION = "0.95.6"
 PID = os.getpid()
 TMP_DIR = tempfile.gettempdir()
 if os.path.exists("/tmp"):
@@ -135,6 +135,7 @@ INSTANCE_TYPES = {
     'cc2.8xlarge': ['x86_64'],
     'cg1.4xlarge': ['x86_64'],
     'g2.2xlarge': ['x86_64'],
+    'g2.8xlarge': ['x86_64'],
     'cr1.8xlarge': ['x86_64'],
     'hi1.4xlarge': ['x86_64'],
     'hs1.8xlarge': ['x86_64'],
@@ -143,10 +144,19 @@ INSTANCE_TYPES = {
     'c3.2xlarge': ['x86_64'],
     'c3.4xlarge': ['x86_64'],
     'c3.8xlarge': ['x86_64'],
+    'c4.large': ['x86_64'],
+    'c4.xlarge': ['x86_64'],
+    'c4.2xlarge': ['x86_64'],
+    'c4.4xlarge': ['x86_64'],
+    'c4.8xlarge': ['x86_64'],
     'i2.xlarge': ['x86_64'],
     'i2.2xlarge': ['x86_64'],
     'i2.4xlarge': ['x86_64'],
     'i2.8xlarge': ['x86_64'],
+    'd2.xlarge': ['x86_64'],
+    'd2.2xlarge': ['x86_64'],
+    'd2.4xlarge': ['x86_64'],
+    'd2.8xlarge': ['x86_64']
 }
 
 T1_INSTANCE_TYPES = ['t1.micro']
@@ -157,7 +167,7 @@ SEC_GEN_TYPES = ['m3.medium', 'm3.large', 'm3.xlarge', 'm3.2xlarge']
 
 CLUSTER_COMPUTE_TYPES = ['cc1.4xlarge', 'cc2.8xlarge']
 
-CLUSTER_GPU_TYPES = ['g2.2xlarge', 'cg1.4xlarge']
+CLUSTER_GPU_TYPES = ['g2.2xlarge', 'g2.8xlarge', 'cg1.4xlarge']
 
 CLUSTER_HIMEM_TYPES = ['cr1.8xlarge']
 
@@ -171,24 +181,33 @@ HI_STORAGE_TYPES = ['hs1.8xlarge']
 M3_COMPUTE_TYPES = ['c3.large', 'c3.xlarge', 'c3.2xlarge', 'c3.4xlarge',
                     'c3.8xlarge']
 
+M4_COMPUTE_TYPES = ['c4.large', 'c4.xlarge', 'c4.2xlarge', 'c4.4xlarge',
+                    'c4.8xlarge']
+
 I2_STORAGE_TYPES = ['i2.xlarge', 'i2.2xlarge', 'i2.4xlarge', 'i2.8xlarge']
+
+DENSE_STORAGE_TYPES = ['d2.xlarge', 'd2.2xlarge', 'd2.4xlarge', 'd2.8xlarge']
 
 HVM_ONLY_TYPES = (CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES +
                   CLUSTER_HIMEM_TYPES + I2_STORAGE_TYPES + HIMEM_TYPES +
-                  T2_INSTANCE_TYPES)
+                  T2_INSTANCE_TYPES + DENSE_STORAGE_TYPES)
 
 HVM_TYPES = (HVM_ONLY_TYPES + HI_IO_TYPES + HI_STORAGE_TYPES + SEC_GEN_TYPES +
-             M3_COMPUTE_TYPES)
+             M3_COMPUTE_TYPES + M4_COMPUTE_TYPES)
 
-EBS_ONLY_TYPES = (T1_INSTANCE_TYPES + T2_INSTANCE_TYPES)
+EBS_ONLY_TYPES = T1_INSTANCE_TYPES + T2_INSTANCE_TYPES
 
 # Always make sure these match instances listed here:
 # http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html
 # StarCluster additionally adds cc1.4xlarge to the list - EC2 is slowly
 # migrating folks away from this type in favor of cc2.8xlarge but the type
 # still works for some older accounts.
-PLACEMENT_GROUP_TYPES = (M3_COMPUTE_TYPES + HVM_ONLY_TYPES + HI_IO_TYPES +
-                         HI_STORAGE_TYPES)
+PLACEMENT_GROUP_TYPES = (M3_COMPUTE_TYPES + M4_COMPUTE_TYPES + HVM_ONLY_TYPES +
+                         HI_IO_TYPES + HI_STORAGE_TYPES)
+# T2 instances are HVM_ONLY_TYPES however they're not compatible with placement
+# groups so remove them from the list
+for itype in T2_INSTANCE_TYPES:
+    PLACEMENT_GROUP_TYPES.remove(itype)
 
 # Only add a region to this list after testing that you can create and delete a
 # placement group there.

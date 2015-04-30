@@ -203,7 +203,7 @@ class SGEStats(object):
         """
         queued = []
         for j in self.jobs:
-            if j['job_state'] == u'pending':
+            if j['job_state'] == u'pending' and j['state'] == u'qw':
                 queued.append(j)
         return queued
 
@@ -245,10 +245,11 @@ class SGEStats(object):
 
     def oldest_queued_job_age(self):
         """
-        This returns the age of the oldest job in the queue
+        This returns the age of the oldest job in the queue in normal waiting
+        state
         """
         for j in self.jobs:
-            if 'JB_submission_time' in j:
+            if 'JB_submission_time' in j and j['state'] == 'qw':
                 st = j['JB_submission_time']
                 dt = utils.iso_to_datetime_tuple(st)
                 return dt.replace(tzinfo=self.remote_tzinfo)
@@ -310,9 +311,16 @@ class SGEStats(object):
         """
         loads = []
         for h in self.hosts:
-            if h['load_avg'] == '-':
-                h['load_avg'] = 0
-            loads.append(h['load_avg'])
+            load_avg = h['load_avg']
+            try:
+                if load_avg == "-":
+                    load_avg = 0
+                elif load_avg[-1] == 'K':
+                    load_avg = float(load_avg[:-1]) * 1000
+            except TypeError:
+                # load_avg was already a number
+                pass
+            loads.append(load_avg)
         return loads
 
     def _add(self, x, y):

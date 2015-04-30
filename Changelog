@@ -5,6 +5,41 @@ Version History
 .. contents::
     :local:
 
+.. _version-0.95.6:
+
+0.95.6
+======
+
+.. _v0956-news:
+
+News
+----
+Version 0.95.6 of StarCluster is a bug fix release. The biggest fix is for a
+change in recent versions of boto that prevents launching all clusters (#455).
+The sections below contain the full list of changes. This version is *not*
+compatible with clusters started with older versions of StarCluster. Please
+terminate all clusters before upgrading to 0.95.6.
+
+.. _v0956-features:
+
+Features
+--------
+* Add support for T2 instance types (#407)
+
+.. _v0956-fixes:
+
+Bug Fixes
+---------
+* awsutils: set encrypted flag to None in custom block device mappings (#455)
+* tests: include pytest.ini in MANIFEST file (#454)
+* tests: fix for pytest coverage plugin
+* sshutils: pass socket timeout down to SCPClient
+
+.. _v0956-enhancements:
+
+Enhancements
+------------
+* node: dont crash on socket.errors (#465)
 
 .. _version-0.95.5:
 
