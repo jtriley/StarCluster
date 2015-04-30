@@ -232,7 +232,7 @@ Note that all the listed commits are only there for references and may contain i
   - Streaming the process by adding nodes as soon as they are ready instead of waiting for all of them. (`Pull Request 434`_)
   - Removed some remote read/writes (very slow) and replaced them get/edit/push.
   - Cancels spot instances requests going to state "bid-too-low" or "capacity-oversubscribed", which avoids StarCluster to look frozen while waiting endlessly for them to become active. (`Commit f4c4d0`_)
-  - Ability to configure various node instance types with a "selection factor". The call to add node will then pick the type to use in function of the spot market prices and the "selection factor". See the wiki page `Various Nodes Type Support`_ for instructions. (`Pull Request 18`_)
+  - Ability to configure various node instance types with a "selection factor". The call to add node will then pick the type to use in function of the spot market prices and the "selection factor". See the wiki page `Various Node Types Support`_ for instructions. (`Pull Request 18`_)
 * Support for multiple subnets - Via the cluster template, allows to get spot instances in the cheapest zone.
   Dropped the --subnet-id start command flag. (`Commit 0824e3`_)
 * Adds a mode where the cluster configuration is written to master:/etc/starcluster. To activate, simply add flag 
@@ -255,4 +255,4 @@ Note that all the listed commits are only there for references and may contain i
 .. _Commit f4c4d0: https://github.com/datacratic/StarCluster/commit/f4c4d05cb48f7395ca41332c12188050122eb308
 .. _Commit c58253: https://github.com/datacratic/StarCluster/commit/c58253a0a05e6209ab82232ebdd151c771389238
 .. _Pull Request 18: https://github.com/datacratic/StarCluster/pull/18
-.. _Various Nodes Type Support: https://github.com/datacratic/StarCluster/wiki/Various-Node-Types-Support
+.. _Various Node Types Support: https://github.com/datacratic/StarCluster/wiki/Various-Node-Types-Support
