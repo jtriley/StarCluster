@@ -726,7 +726,7 @@ class SGELoadBalancer(LoadBalancer):
             log.warn("Adding %d nodes at %s" %
                      (need_to_add, str(utils.get_utc_now())))
             try:
-                self._cluster.add_nodes(need_to_add,spot_bid=self.spot_bid)
+                self._cluster.add_nodes(need_to_add, spot_bid=self.spot_bid)
                 self.__last_cluster_mod_time = utils.get_utc_now()
                 log.info("Done adding nodes at %s" %
                          str(self.__last_cluster_mod_time))

@@ -106,7 +106,7 @@ class CmdLoadBalance(ClusterCompleter):
         parser.add_option("-b", "--bid", dest="spot_bid",
                           action="callback", type="float", default=None,
                           callback=self._positive_int,
-                          help="max bid for spot requests, not used by default")
+                          help="max bid for spot nodes, not used by default")
 
     def execute(self, args):
         if not self.cfg.globals.enable_experimental:
