@@ -438,7 +438,7 @@ class SGELoadBalancer(LoadBalancer):
         self.stats_file = stats_file
         self.plot_stats = plot_stats
         self.plot_output_dir = plot_output_dir
-	self.spot_bit = spot_bid
+        self.spot_bit = spot_bid
         if plot_stats:
             assert self.visualizer is not None
 
