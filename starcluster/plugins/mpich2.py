@@ -33,12 +33,12 @@ class MPICH2Setup(clustersetup.DefaultClusterSetup):
         mpirun_choices = node.ssh.execute("update-alternatives --list mpirun")
         mpipath = None
         for choice in mpi_choices:
-            if 'mpich2' in choice:
+            if 'mpich' in choice:
                 mpipath = choice
                 break
         mpirunpath = None
         for choice in mpirun_choices:
-            if 'mpich2' in choice:
+            if 'mpich' in choice:
                 mpirunpath = choice
                 break
         node.ssh.execute("update-alternatives --set mpi %s" % mpipath)

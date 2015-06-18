@@ -173,6 +173,7 @@ class ThreadPool(workerpool.WorkerPool):
         exc_queue = self._exception_queue
         if exc_queue.qsize() > 0:
             excs = [exc_queue.get() for i in range(exc_queue.qsize())]
+            print '\n'.join(excs)
             raise exception.ThreadPoolException(
                 "An error occurred in ThreadPool", excs)
         if return_results:
