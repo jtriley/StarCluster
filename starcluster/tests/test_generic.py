@@ -20,6 +20,7 @@ logging.disable(logging.WARN)
 
 from starcluster import tests
 from starcluster.node import Node
+from starcluster.cluster import Cluster
 
 
 class FooNode(Node):
@@ -51,3 +52,22 @@ class TestStarClusterGeneric(tests.StarClusterTest):
         assert len(rejected) == 2
         assert rejected[0] == lines[1]
         assert rejected[1] == lines[2]
+
+    def test_get_free_node_nums(self):
+        res = Cluster.get_free_ids_among_nodes(0, [])
+        assert res == []
+
+        node001 = FooNode("node001", "1.2.3.4")
+        res = Cluster.get_free_ids_among_nodes(1, [node001])
+        assert res == [2]
+
+        res = Cluster.get_free_ids_among_nodes(3, [node001])
+        assert res == [2, 3, 4]
+
+        node003 = FooNode("node003", "1.2.3.4")
+        node005 = FooNode("node005", "1.2.3.4")
+        node006 = FooNode("node006", "1.2.3.4")
+        node106 = FooNode("node106", "1.2.3.4")
+        res = Cluster.get_free_ids_among_nodes(5, [node001, node003, node005,
+                                                   node006, node106])
+        assert res == [2, 4, 7, 8, 9]

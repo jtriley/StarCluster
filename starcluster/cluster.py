@@ -1213,20 +1213,29 @@ class Cluster(object):
             log.info(str(resv), extra=dict(__raw__=True))
         return resvs
 
-    def _get_next_node_num(self):
+    @classmethod
+    def get_free_ids_among_nodes(cls, count, nodes):
+        result = []
+        if count == 0:
+            return result
+        ids = [int(re.search('node(\d{3})', n.alias).group(1)) for n in nodes]
+        remaining = count
+        for i in xrange(1, 1000):
+            if i not in ids:
+                result.append(i)
+                remaining -= 1
+            if remaining == 0:
+                break
+        assert len(result) == count
+        return result
+
+    def _get_free_node_nums(self, count):
+        """
+        Returns unused node ids
+        """
         nodes = self._nodes_in_states(['pending', 'running'])
         nodes = filter(lambda x: not x.is_master(), nodes)
-        highest = 0
-        for n in nodes:
-            match = re.search('node(\d{3})', n.alias)
-            try:
-                _possible_highest = match.group(1)
-            except AttributeError:
-                continue
-            highest = max(int(_possible_highest), highest)
-        next = int(highest) + 1
-        log.debug("Highest node number is %d. choosing %d." % (highest, next))
-        return next
+        return self.get_free_ids_among_nodes(count, nodes)
 
     def add_node(self, alias=None, no_create=False, image_id=None,
                  instance_type=None, zone=None, placement_group=None,
@@ -1256,8 +1265,7 @@ class Cluster(object):
         running_pending = self._nodes_in_states(['pending', 'running'])
         aliases = aliases or []
         if not aliases:
-            next_node_id = self._get_next_node_num()
-            for i in range(next_node_id, next_node_id + num_nodes):
+            for i in self._get_free_node_nums(num_nodes):
                 alias = self._make_alias(i)
                 aliases.append(alias)
         assert len(aliases) == num_nodes
@@ -2098,7 +2106,8 @@ class Cluster(object):
                 if node.alias != alias:
                     continue
                 if node.private_ip_address != ip:
-                    new_alias = self._make_alias(self._get_next_node_num())
+                    new_alias = self._make_alias(
+                        self._get_free_node_nums(1)[0])
                     log.info("Renaming {} from {} to {}"
                              .format(node, node.alias, new_alias))
                     node.rename(new_alias)
