@@ -43,7 +43,7 @@ class VolumeCreator(cluster.Cluster):
     """
     def __init__(self, ec2_conn, spot_bid=None, keypair=None,
                  key_location=None, host_instance=None, device='/dev/sdz',
-                 image_id=static.BASE_AMI_32, instance_type="t1.micro",
+                 image_id=static.BASE_AMI_32, instance_type="t2.micro",
                  shutdown_instance=False, detach_vol=False,
                  mkfs_cmd='mkfs.ext3 -F', resizefs_cmd='resize2fs', **kwargs):
         self._host_instance = host_instance
