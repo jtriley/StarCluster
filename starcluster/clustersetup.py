@@ -409,8 +409,8 @@ class DefaultClusterSetup(ClusterSetup):
         master.remove_from_known_hosts(self._user, [node])
 
         user_homedir = os.path.expanduser('~' + self._user)
-        targets = [posixpath.join('/root', '.ssh','known_hosts'),
-                   posixpath.join(user_homedir, '.ssh','known_hosts'),]
+        targets = [posixpath.join('/root', '.ssh', 'known_hosts'),
+                   posixpath.join(user_homedir, '.ssh', 'known_hosts'), ]
 
         for target in targets:
             master.copy_remote_file_to_nodes(target, nodes)
