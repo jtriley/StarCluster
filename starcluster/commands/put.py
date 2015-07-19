@@ -68,7 +68,7 @@ class CmdPut(ClusterCompleter):
         parser.add_option("-n", "--node", dest="node", default="master",
                           help="Transfer files to NODE (defaults to master)")
         parser.add_option("-m", "--multi", dest="multi", default=None,
-                          help="Transfer files to multiple NODEs (defaults to"
+                          help="Transfer files to multiple NODEs (defaults to "
                           + "master)")
 
     def put(self, node, rpath, lpaths):
