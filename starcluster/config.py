@@ -16,6 +16,7 @@
 # along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import glob
 import urllib
 import StringIO
 import ConfigParser
@@ -228,8 +229,9 @@ class StarClusterConfig(object):
                     include = os.path.expanduser(include)
                     include = os.path.expandvars(include)
                     try:
-                        contents = self._get_cfg_fp(include).read()
-                        mashup.write(contents + '\n')
+                        for inc_file in glob.glob(include):
+                            contents = self._get_cfg_fp(inc_file).read()
+                            mashup.write(contents + '\n')
                     except exception.ConfigNotFound:
                         raise exception.ConfigError("include %s not found" %
                                                     include)
