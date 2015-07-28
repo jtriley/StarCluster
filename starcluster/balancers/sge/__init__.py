@@ -234,6 +234,7 @@ class SGEStats(object):
         if total == 0:
             return total
         single = 0
+        master = 1
         for q in self.queues:
             # The 'master' is allowed to have a different instance type
             # than the others and therefore this should be accounted for.
