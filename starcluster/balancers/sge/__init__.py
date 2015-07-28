@@ -235,10 +235,17 @@ class SGEStats(object):
             return total
         single = 0
         for q in self.queues:
-            if q.startswith('all.q@'):
+            # The 'master' is allowed to have a different instance type
+            # than the others and therefore this should be accounted for.
+            if q == 'all.q@master':
+                master = self.queues[q]['slots']
+            elif q.startswith('all.q@'):
                 single = self.queues.get(q).get('slots')
                 break
-        if (total != (single * len(self.hosts))):
+        else:
+            log.warning('No [non-master] queue found')
+            return -1
+        if total != (master + single * (len(self.hosts) - 1)):
             raise exception.BaseException(
                 "ERROR: Number of slots not consistent across cluster")
         return single
