@@ -340,16 +340,20 @@ class StarClusterConfig(object):
         if DEBUG_CONFIG:
             log.debug('%s extends %s' % (section_name, extends))
         extensions = [section]
+        print "Extensions1 ", extensions
         while extends is not None:
             try:
                 section = store[extends]
                 if section in extensions:
+                    print "Extensions2 ", section
                     exts = ', '.join([self._get_section_name(x['__name__'])
                                       for x in extensions])
                     raise exception.ConfigError(
                         "Cyclical dependency between sections %s. "
                         "Check your EXTENDS settings." % exts)
+                print "Section: ", section
                 extensions.insert(0, section)
+                print "Extensions2", extensions
             except KeyError:
                 raise exception.ConfigError(
                     "%s can't extend non-existent section %s" %
@@ -358,6 +362,7 @@ class StarClusterConfig(object):
         transform = AttributeDict()
         for extension in extensions:
             transform.update(extension)
+        print "Transform", transform
         store[section_name] = transform
 
     def _load_keypairs(self, store):
@@ -531,6 +536,11 @@ class StarClusterConfig(object):
         sections_store = AttributeDict()
         for sec in sections:
             name = self._get_section_name(sec)
+            sections_store[name] = AttributeDict()
+            self._load_settings(sec, section_settings, sections_store[name])
+        for sec in sections:
+            name = self._get_section_name(sec)
+            self._load_extends_settings(name, sections_store)
             sections_store[name] = self._load_section(sec, section_settings,
                                                       filter_settings)
         return sections_store
