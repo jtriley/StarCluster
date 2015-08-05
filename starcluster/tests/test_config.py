@@ -196,6 +196,7 @@ class TestStarClusterConfig(tests.StarClusterTest):
         assert p3.my_other_arg == 'jour'
         assert p3.my_other_other_arg == 'monsignour'
         # Test that p4 inherits from p3
+        assert p4_name == 'p4'
         assert p4_class == setup_class3
         assert p4.my_arg == 'bon'
         assert p4.my_other_arg == 'jour'
