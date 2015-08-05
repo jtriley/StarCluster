@@ -317,6 +317,18 @@ NODE_INSTANCE_TYPE = m1.small
 # # Set a custom packer. Must be one of 'json', 'pickle', or 'msgpack'
 # # This is optional.
 # PACKER = pickle
+# # MASTER_ENGINES = 0 # Avoid calculations on master if you are worried about memory/resources 
+# 
+# # [plugin ipcluster-joblib]
+# # EXTENDS = ipcluster
+# # NODE_ENGINES = 1
+# 
+# # [plugin ipclusterrestart]
+# # SETUP_CLASS = starcluster.plugins.ipcluster.IPClusterRestartEngines
+# 
+# # [plugin ipclusterrestart-joblib]
+# # SETUP_CLASS = starcluster.plugins.ipcluster.IPClusterRestartEngines
+# # EXTENDS = ipcluster-joblib
 #
 # Use this plugin to create a cluster SSH "dashboard" using tmux. The plugin
 # creates a tmux session on the master node that automatically connects to all
