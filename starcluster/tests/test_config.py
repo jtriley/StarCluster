@@ -169,15 +169,17 @@ class TestStarClusterConfig(tests.StarClusterTest):
     def test_plugins(self):
         c1 = self.config.get_cluster_template('c1')
         plugs = c1.plugins
-        assert len(plugs) == 3
+        assert len(plugs) == 4
         # test that order is preserved
-        p1, p2, p3 = plugs
+        p1, p2, p3, p4 = plugs
         p1_name = p1.__name__
         p1_class = utils.get_fq_class_name(p1)
         p2_name = p2.__name__
         p2_class = utils.get_fq_class_name(p2)
         p3_name = p3.__name__
         p3_class = utils.get_fq_class_name(p3)
+        p4_name = p4.__name__
+        p4_class = utils.get_fq_class_name(p4)
         assert p1_name == 'p1'
         assert p1_class == 'starcluster.tests.mytestplugin.SetupClass'
         assert p1.my_arg == '23'
@@ -193,6 +195,12 @@ class TestStarClusterConfig(tests.StarClusterTest):
         assert p3.my_arg == 'bon'
         assert p3.my_other_arg == 'jour'
         assert p3.my_other_other_arg == 'monsignour'
+        # Test that p4 inherits from p3
+        assert p4_class == setup_class3
+        assert p4.my_arg == 'bon'
+        assert p4.my_other_arg == 'jour'
+        # And test that the p4 argument overides the p3 default
+        assert p4.my_other_other_arg == 'oui'
 
     def test_plugin_not_defined(self):
         try:

@@ -72,7 +72,7 @@ default_config = {
     'c1_master_type': 'm1.small',
     'c1_node_type': 'm1.small',
     'c1_vols': 'v1,v2,v3',
-    'c1_plugs': 'p1,p2,p3',
+    'c1_plugs': 'p1,p2,p3,p4',
     'c1_zone': 'us-east-1c',
     'c2_extends': 'c1',
     'c2_keyname': 'k2',
