@@ -368,7 +368,7 @@ class IPClusterStop(DefaultClusterSetup):
         raise NotImplementedError("on_remove_node method not implemented")
 
 
-class IPClusterRestartEngines(DefaultClusterSetup):
+class IPClusterRestartEngines(IPCluster):
     """Plugin to kill and restart all engines of an IPython cluster
 
     This plugin can be useful to hard-reset the all the engines, for instance
@@ -379,14 +379,18 @@ class IPClusterRestartEngines(DefaultClusterSetup):
 
       starcluster runplugin plugin_conf_name cluster_name
     """
-    # XXX TODO have RestartEngines respect the 
-    # number of nodes we've enforced above
     def run(self, nodes, master, user, user_shell, volumes):
         n_total = 0
         for node in nodes:
-            n_engines = node.num_processors
-            if node.is_master() and n_engines > 2:
-                n_engines -= 1
+            if node.is_master() and self.master_engines:
+                n_engines = int(self.master_engines)
+            elif self.node_engines: 
+                n_engines = int(self.node_engines)
+            elif node.is_master():
+                # and n_engines > 2: # XXX I'm not sure I understand this logic yet. 
+                n_engines = node.num_processors - 1 
+            else: 
+                n_engines = node.num_processors
             self.pool.simple_job(
                 _start_engines, (node, user, n_engines, True),
                 jobid=node.alias)
