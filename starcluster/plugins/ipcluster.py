@@ -165,10 +165,11 @@ class IPCluster(DefaultClusterSetup):
         f.close()
 
     def _start_cluster(self, master, profile_dir):
-        if not self.master_engines: 
+        if self.master_engines is None: 
             n_engines = max(1, master.num_processors - 1)
         else: 
             n_engines = int(self.master_engines)
+            print "Setting master engines to '%s'" % self.master_engines
         log.info("Starting the IPython controller and %i engines on master"
                  % n_engines)
         # cleanup existing connection files, to prevent their use
@@ -294,17 +295,16 @@ class IPCluster(DefaultClusterSetup):
         cfile, n_engines_master = self._start_cluster(master, profile_dir)
         # Start engines on each of the non-master nodes
         non_master_nodes = [node for node in nodes if not node.is_master()]
+        n_engines_non_master = 0
         for node in non_master_nodes:
-            if not self.node_engines: 
+            if self.node_engines is None: 
                 n_engines = node.num_processors
             else:
                 n_engines = int(self.node_engines)
             self.pool.simple_job(
                 _start_engines, (node, user, n_engines),
                 jobid=node.alias)
-        n_engines_non_master = 0
-        n_engines_non_master += sum(node.num_processors if not self.node_engines else int(self.node_engines)
-                                   for node in non_master_nodes)
+            n_engines_non_master += n_engines
         if len(non_master_nodes) > 0:
             log.info("Adding %d engines on %d nodes",
                      n_engines_non_master, len(non_master_nodes))
@@ -321,7 +321,7 @@ class IPCluster(DefaultClusterSetup):
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         self._check_ipython_installed(node)
-        if not self.node_engines: 
+        if self.node_engines is None: 
             n_engines = node.num_processors
         else:
             n_engines = int(self.node_engines)
@@ -382,9 +382,9 @@ class IPClusterRestartEngines(IPCluster):
     def run(self, nodes, master, user, user_shell, volumes):
         n_total = 0
         for node in nodes:
-            if node.is_master() and self.master_engines:
+            if node.is_master() and (self.master_engines is not None):
                 n_engines = int(self.master_engines)
-            elif self.node_engines: 
+            elif self.node_engines is not None: 
                 n_engines = int(self.node_engines)
             elif node.is_master():
                 # and n_engines > 2: # XXX I'm not sure I understand this logic yet. 
