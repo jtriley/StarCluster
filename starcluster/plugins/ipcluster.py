@@ -324,9 +324,9 @@ class IPCluster(DefaultClusterSetup):
         if not self.node_engines: 
             n_engines = node.num_processors
         else:
-            n_engines = self.node_engines
+            n_engines = int(self.node_engines)
         log.info("Adding %d engines on %s", n_engines, node.alias)
-        _start_engines(node, user)
+        _start_engines(node, user, n_engines)
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         raise NotImplementedError("on_remove_node method not implemented")
