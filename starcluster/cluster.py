@@ -2420,8 +2420,8 @@ class ClusterValidator(validators.Validator):
             self.__check_platform(image_id_pair[1], instance_type_pair[1])
         except exception.ClusterValidationError as e:
             raise exception.ClusterValidationError(
-                'Incompatible %s and %s:\n' + image_id_pair[0],
-                instance_type_pair[0], e.msg)
+                'Incompatible %s and %s:\n%s' % (image_id_pair[0],
+                instance_type_pair[0], e.msg))
 
     def validate_instance_types(self):
         cluster = self.cluster
