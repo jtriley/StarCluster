@@ -259,3 +259,9 @@ Note that all the listed commits are only there for references and may contain i
 .. _Pull Request 18: https://github.com/datacratic/StarCluster/pull/18
 .. _Various Node Types Support: https://github.com/datacratic/StarCluster/wiki/Various-Node-Types-Support
 .. _Commit a86c5a: https://github.com/datacratic/StarCluster/commit/a86c5a8bce6fbe2ff4384c031853041a89bbdbb5
+
+Running the tests
+=============
+Once StarCluster is installed, run::
+
+    python setup.py test --coverage
