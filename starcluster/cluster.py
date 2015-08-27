@@ -436,6 +436,7 @@ class Cluster(object):
                  config_on_master=False,
                  dns_sufix=None,
                  node_instance_array=[],
+                 impaired_threshold_sec=120,
                  **kwargs):
         # update class vars with given vars
         _vars = locals().copy()
@@ -486,6 +487,8 @@ class Cluster(object):
         self.__sge_plugin = None
         self._vpc_id = None
         self._subnet_zones_mapping = None
+        self._impaired_nodes = {}
+        self._impaired_threshold_sec = impaired_threshold_sec
 
     def __repr__(self):
         return '<Cluster: %s (%s-node)>' % (self.cluster_tag,
@@ -2067,16 +2070,48 @@ class Cluster(object):
         impaired_nodes_ids = [impaired.id for impaired in impaired_statuses]
         return [node for node in self.nodes if node.id in impaired_nodes_ids]
 
-    def clean(self):
+    def clean_impaired(self):
         impaired_nodes = self.get_impaired_nodes()
-        if impaired_nodes:
-            log.info("Impaired nodes will be handled:" + str(impaired_nodes))
-            for node in impaired_nodes:
-                if node.is_master():
-                    log.error("Master appears to be impaired but will not be"
-                              "handled")
+        previously_impaired_nodes = self._impaired_nodes
+        now = utils.get_utc_now()
+        self._impaired_nodes = {}
+
+        for node in impaired_nodes:
+            # set _impaired_nodes dict as if everything was since now
+            self._impaired_nodes[node.alias] = {
+                'since': now,
+                'node': node
+            }
+
+        if not self._impaired_nodes:
+            # nothing to do
+            return
+
+        configurable_threshold = self._impaired_threshold_sec
+        threshold = now - datetime.timedelta(seconds=configurable_threshold)
+        for alias, data in self._impaired_nodes.iteritems():
+            if alias in previously_impaired_nodes:
+                # if the node was already impaired, update _impaired_nodes
+                data['since'] = previously_impaired_nodes[alias]['since']
+            log.info("Node {node.alias} impaired since {since}".format(**data))
+
+            # if is impaired for longer than threshold, handle it
+            if data['since'] <= threshold:
+                msg = "Handling node {}, impaired since {}, longer than " \
+                      "configured threshold of {} seconds" \
+                      .format(alias, data['since'], configurable_threshold)
+                log.warn(msg)
+
+                if data['node'].is_master():
+                    log.error("Master appears to be impaired but will not "
+                              "be handled")
                     continue
-                node.handle_irresponsive_node()
+
+                data['node'].handle_irresponsive_node()
+
+    def clean(self):
+        self.clean_impaired()
+
         if not self.disable_queue:
             # clean sge
             sge_plugin = sge.SGEPlugin()
