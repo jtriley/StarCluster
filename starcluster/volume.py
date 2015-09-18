@@ -58,6 +58,7 @@ class VolumeCreator(cluster.Cluster):
         self._mkfs_cmd = mkfs_cmd
         self._resizefs_cmd = resizefs_cmd
         self._alias_tmpl = "volhost-%s"
+        self._snapshot = None
         super(VolumeCreator, self).__init__(
             ec2_conn=ec2_conn, spot_bid=spot_bid, keyname=keypair,
             key_location=key_location, cluster_tag=static.VOLUME_GROUP_NAME,
