@@ -618,7 +618,7 @@ class EasyEC2(EasyAWS):
             placement_group=placement_group,
             block_device_map=block_device_map,
             network_interfaces=network_interfaces,
-            iam_profile=iam_profile
+            instance_profile_name=iam_profile
         )
         if subnet_id:
             kwargs.update(
