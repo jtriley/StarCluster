@@ -129,7 +129,7 @@ def is_valid_device(dev):
     Checks that dev matches the following regular expression:
     /dev/sd[a-z]$
     """
-    #regex = re.compile('/dev/sd[a-z]$')
+    # regex = re.compile('/dev/sd[a-z]$')
     regex = re.compile('/dev/xvdb[a-z]$')
     try:
         return regex.match(dev) is not None
