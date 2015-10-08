@@ -434,7 +434,7 @@ class Cluster(object):
                  public_ips=None,
                  plugins_order=[],
                  config_on_master=False,
-                 dns_sufix=None,
+                 dns_suffix=None,
                  node_instance_array=[],
                  impaired_threshold_sec=120,
                  **kwargs):
@@ -464,7 +464,7 @@ class Cluster(object):
         self.force_spot_master = force_spot_master
         self.disable_cloudinit = disable_cloudinit
         self.plugins_order = plugins_order
-        self.dns_sufix = dns_sufix and cluster_tag
+        self.dns_suffix = dns_suffix
         if node_instance_array:
             try:
                 assert node_image_id is None
@@ -799,7 +799,7 @@ class Cluster(object):
                              disable_queue=self.disable_queue,
                              disable_cloudinit=self.disable_cloudinit,
                              plugins_order=self.plugins_order,
-                             dns_sufix=self.dns_sufix)
+                             dns_suffix=self.dns_suffix)
         user_settings = dict(cluster_user=self.cluster_user,
                              cluster_shell=self.cluster_shell,
                              keyname=self.keyname)
@@ -1028,8 +1028,8 @@ class Cluster(object):
 
         if self.dns_prefix:
             alias = "{}-{}".format(self.dns_prefix, alias)
-        if self.dns_sufix:
-            alias = "{}.{}".format(alias, self.dns_sufix)
+        if self.dns_suffix:
+            alias = "{}.{}".format(alias, self.dns_suffix)
         return alias
 
     @property
@@ -2248,7 +2248,7 @@ class ClusterValidator(validators.Validator):
             self.validate_required_settings()
             self.validate_vpc()
             self.validate_dns_prefix()
-            self.validate_dns_sufix()
+            self.validate_dns_suffix()
             self.validate_spot_bid()
             self.validate_cluster_size()
             self.validate_cluster_user()
@@ -2295,20 +2295,20 @@ class ClusterValidator(validators.Validator):
                     dns_prefix=self.cluster.dns_prefix))
         return True
 
-    def validate_dns_sufix(self):
-        if not self.cluster.dns_sufix:
+    def validate_dns_suffix(self):
+        if not self.cluster.dns_suffix:
             return True
 
         # check that the dns prefix is a valid hostname
-        is_valid = utils.is_valid_hostname(self.cluster.dns_sufix)
+        is_valid = utils.is_valid_hostname(self.cluster.dns_suffix)
         if not is_valid:
             raise exception.ClusterValidationError(
-                "The cluster name you chose, {dns_prefix}, is"
+                "The cluster name you chose, {dns_suffix}, is"
                 " not a valid dns name. "
-                " Since you have chosen to prepend the hostnames"
-                " via the dns_prefix option, {dns_prefix} should only have"
+                " Since you have chosen to append to the hostnames"
+                " via the dns_suffix option, {dns_suffix} should only have"
                 " alphanumeric characters and a '-' or '.'".format(
-                    dns_prefix=self.cluster.dns_sufix))
+                    dns_suffix=self.cluster.dns_suffix))
         return True
 
     def validate_spot_bid(self):
