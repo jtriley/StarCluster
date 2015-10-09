@@ -464,7 +464,7 @@ class Cluster(object):
         self.force_spot_master = force_spot_master
         self.disable_cloudinit = disable_cloudinit
         self.plugins_order = plugins_order
-        self.dns_suffix = dns_suffix
+        self.dns_suffix = dns_suffix and cluster_tag
         if node_instance_array:
             try:
                 assert node_image_id is None
