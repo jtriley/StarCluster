@@ -187,7 +187,7 @@ class CmdStart(ClusterCompleter):
                           action='store_true', help="Store the config on the "
                           "master node rather than into the security group "
                           "tags")
-        parser.add_option("--dns-suffix", action="store_true", 
+        parser.add_option("--dns-suffix", action="store_true",
                           dest="dns_suffix", help="Suffix dns names of all "
                           " nodes in the cluster with the cluster tag.")
 
