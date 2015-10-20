@@ -411,12 +411,15 @@ class DefaultClusterSetup(ClusterSetup):
         master.remove_from_known_hosts('root', [node])
         master.remove_from_known_hosts(self._user, [node])
 
-        user_homedir = os.path.expanduser('~' + self._user)
-        targets = [posixpath.join('/root', '.ssh', 'known_hosts'),
-                   posixpath.join(user_homedir, '.ssh', 'known_hosts')]
+        target = posixpath.join('/root', '.ssh', 'known_hosts')
+        master.copy_remote_file_to_nodes(target, nodes)
 
-        for target in targets:
+        user_homedir = os.path.expanduser('~' + self._user)
+        target = posixpath.join(user_homedir, '.ssh', 'known_hosts')
+        try:
             master.copy_remote_file_to_nodes(target, nodes)
+        except IOError:
+            log.warning("Failed to copy file " + target)
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
