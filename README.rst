@@ -244,7 +244,7 @@ Note that all the listed commits are only there for references and may contain i
       + No more obscure update config compressed/hashed data in metadata/tags and other "obscure" places.
   - Cons
       + No longer possible to start a stopped cluster via StarCluster. (This is technically fixable, but not planned at the moment.)
-* Adds a --dns-sufix flag to the start command. (`Commit 72f3bc`_)
+* Adds a --dns-suffix flag to the start command. (`Commit 72f3bc`_)
 * The runplugin command supports additional arguments. Useful to create StarCluster related tools. (`Commit c3e097`_)
 * Reuse node ids when adding nodes to avoid growing over 999 and crashing. (`Commit a86c5a`_)
 .. _robbyt: https://github.com/robbyt 

@@ -310,6 +310,7 @@ CLUSTER_SETTINGS = {
     'force_spot_master': (bool, False, False, None, None),
     'disable_cloudinit': (bool, False, False, None, None),
     'dns_prefix': (bool, False, False, None, None),
+    'dns_suffix': (bool, False, False, None, None),
     'subnet_ids': (list, False, [], None, None),
     'impaired_threshold_sec': (int, False, 120, None, None)
 }
