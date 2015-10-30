@@ -1829,7 +1829,7 @@ class Cluster(object):
         sleep = 20
         log.info("Sleeping for %d seconds..." % sleep)
         time.sleep(sleep)
-        self.setup_cluster()
+        self.setup_cluster(False)
 
     def stop_cluster(self, terminate_unstoppable=False, force=False):
         """
