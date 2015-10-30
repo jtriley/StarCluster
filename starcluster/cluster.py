@@ -420,7 +420,7 @@ class Cluster(object):
                  keyname=None,
                  key_location=None,
                  volumes=[],
-                 plugins=[],
+                 plugins=None,
                  permissions=[],
                  userdata_scripts=[],
                  refresh_interval=30,
