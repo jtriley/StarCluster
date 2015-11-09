@@ -327,7 +327,7 @@ def warn_debug_file_moved():
 
 def sigterm_handler(signum, stack_frame):
     log.info("Received SIGTERM")
-    sys.exit(143)
+    sys.exit(signal.SIGTERM + 128)
 
 
 def main():
