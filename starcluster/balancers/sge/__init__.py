@@ -690,9 +690,6 @@ class SGELoadBalancer(LoadBalancer):
             if not skip_sleep:
                 log.info("Sleeping...(looping again in %d secs)\n" %
                          self.polling_interval)
-                log.info("Sleeping, it's " + utils.get_utc_now().isoformat())
-                time.sleep(self.polling_interval)
-                log.info("Waking up, it's " + utils.get_utc_now().isoformat())
 
     def has_cluster_stabilized(self):
         now = utils.get_utc_now()
