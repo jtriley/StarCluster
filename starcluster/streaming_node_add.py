@@ -172,8 +172,7 @@ class StreamingNodeAdd(object):
                     # ready_instances means nodes were added, that took
                     # time so we should loop again now
                     continue
-                log.info("{} Sleeping for {} seconds"
-                         .format(utils.get_utc_now(), interval))
+                log.info("Sleeping for {} seconds".format(interval))
                 time.sleep(interval)
             else:
                 break
