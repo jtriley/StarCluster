@@ -126,6 +126,7 @@ INSTANCE_TYPES = {
     'm3.large': ['x86_64'],
     'm3.xlarge': ['x86_64'],
     'm3.2xlarge': ['x86_64'],
+    'm4.10xlarge': ['x86_64'],
     'r3.large': ['x86_64'],
     'r3.xlarge': ['x86_64'],
     'r3.2xlarge': ['x86_64'],
