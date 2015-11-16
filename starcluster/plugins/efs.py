@@ -123,7 +123,7 @@ class EFSPlugin(clustersetup.DefaultClusterSetup):
                     )
                     successfully_reassigned = True
                     break
-                except botocore.exceptions.ClientError, e:
+                except botocore.exceptions.ClientError:
                     # couldn't reassociate, probably in wrong vpc
                     pass
             return successfully_reassigned
