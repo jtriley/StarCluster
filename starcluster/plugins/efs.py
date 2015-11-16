@@ -2,7 +2,7 @@
 #
 # This file is a plugin for StarCluster.
 #
-# This EFS plugin is free software: you can redistribute it and/or modify it under
+# This plugin is free software: you can redistribute it and/or modify it under
 # the terms of the GNU Lesser General Public License as published by the Free
 # Software Foundation, either version 3 of the License, or (at your option) any
 # later version.
@@ -19,6 +19,7 @@ from starcluster import clustersetup
 from starcluster.logger import log
 import boto3
 import botocore.exceptions
+
 
 class EFSPlugin(clustersetup.DefaultClusterSetup):
     """Add EFS support
@@ -85,7 +86,8 @@ class EFSPlugin(clustersetup.DefaultClusterSetup):
         # default groups here, and try each and stop when we find one
         # that works.
 
-        default_security_groups = master.ec2.get_security_groups(filters={'group-name': 'default'})
+        default_security_groups = master.ec2.get_security_groups(filters={
+            'group-name': 'default'})
 
         # this is dependent on the config file using a dns, instead of
         # an IP. a future version should be robust for both forms
@@ -113,7 +115,8 @@ class EFSPlugin(clustersetup.DefaultClusterSetup):
         # we now have our MountTargetId, try to assign it to each of
         # the default security groups, and stop when one of them works
         if mount_target_id:
-            log.info('Deauthorizing EFS security group, by reassociating with default')
+            log.info('Deauthorize EFS security group, associate with default')
+
             successfully_reassigned = None
             for a_default_sg in default_security_groups:
                 try:
@@ -128,8 +131,6 @@ class EFSPlugin(clustersetup.DefaultClusterSetup):
                     pass
             return successfully_reassigned
         return True
-
-
 
     def _authorize_efs(self, master):
 
@@ -170,7 +171,7 @@ class EFSPlugin(clustersetup.DefaultClusterSetup):
 
         # in theory this is needed, but in practice it is already installed
         # and running this apt_install causes a crash
-        #node.apt_install('nfs-common')
+        # node.apt_install('nfs-common')
 
         if not node.ssh.isdir(self.mount_point):
             node.ssh.mkdir(self.mount_point)
