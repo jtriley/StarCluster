@@ -787,8 +787,8 @@ class EasyEC2(EasyAWS):
                 # handles a case where amazon returns an error based on
                 # instance_ids filtering even though no instance_ids were
                 # provided
-                log.error("Amazon had a problem processing the request. "
-                          "Trying again in 1 second.")
+                log.exception("Amazon had a problem processing the request. "
+                              "Trying again in 1 second.")
                 time.sleep(1)
         else:
             log.error("Amazon still replying an error after 5 attempts.")
