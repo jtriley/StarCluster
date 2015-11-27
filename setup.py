@@ -62,8 +62,8 @@ try:
 
     console_scripts = ['starcluster = starcluster.cli:main']
     extra = dict(test_suite="starcluster.tests",
-                 tests_require= ["pytest-cov==1.8", "pytest-pep8",
-                                 "pytest-flakes", "pytest"],
+                 tests_require= ["pytest-cov==1.8", "pytest-pep8==1.0.5",
+                                 "pytest-flakes==0.2", "pytest==2.6.4"],
                  cmdclass={"test": PyTest},
                  install_requires=["paramiko>=1.15.1", "boto>=2.32.1",
                                    "workerpool>=0.9.2", "Jinja2>=2.7",
