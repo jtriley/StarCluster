@@ -563,7 +563,7 @@ class StarClusterConfig(object):
         if isinstance(instance_types, basestring):
             return
         itypes = []
-        cluster_section['node_instance_types'] = itypes
+        cluster_section['node_instance_type'] = itypes
         total_num_nodes = 0
         choices_string = ', '.join(static.INSTANCE_TYPES.keys())
         try:
@@ -807,6 +807,8 @@ class StarClusterConfig(object):
             if not ec2_conn:
                 ec2_conn = self.get_easy_ec2()
 
+            del kwargs['__name__']
+            del kwargs['extends']
             clust = Cluster(ec2_conn, **kwargs)
             return clust
         except KeyError:
