@@ -247,6 +247,7 @@ Note that all the listed commits are only there for references and may contain i
 * Adds a --dns-suffix flag to the start command. (`Commit 72f3bc`_)
 * The runplugin command supports additional arguments. Useful to create StarCluster related tools. (`Commit c3e097`_)
 * Reuse node ids when adding nodes to avoid growing over 999 and crashing. (`Commit a86c5a`_)
+* Reject unrecognized config parameters. (`Commit 0fd2cb`_)
 .. _robbyt: https://github.com/robbyt 
 .. _pull request: https://github.com/jtriley/StarCluster/pull/123
 .. _Commit 0824e3: https://github.com/datacratic/StarCluster/commit/0824e39c5d1fd6f5379a433cba575d808daee471
@@ -259,6 +260,7 @@ Note that all the listed commits are only there for references and may contain i
 .. _Pull Request 18: https://github.com/datacratic/StarCluster/pull/18
 .. _Various Node Types Support: https://github.com/datacratic/StarCluster/wiki/Various-Node-Types-Support
 .. _Commit a86c5a: https://github.com/datacratic/StarCluster/commit/a86c5a8bce6fbe2ff4384c031853041a89bbdbb5
+.. _Commit 0fd2cb: https://github.com/datacratic/StarCluster/commit/0fd2cb2879991ca3b3c8d57ddc89efb79ab2f3da
 
 Running the tests
 =============
