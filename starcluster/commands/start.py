@@ -245,7 +245,7 @@ class CmdStart(ClusterCompleter):
                     raise e
                 log.info("Using default cluster template: %s" % template)
             scluster = self.cm.get_cluster_template(template, tag)
-        scluster.update(self.specified_options_dict)
+        scluster.update(self.specified_options_dict, True)
         if self.opts.keyname and not self.opts.key_location:
             key = self.cfg.get_key(self.opts.keyname)
             scluster.key_location = key.key_location

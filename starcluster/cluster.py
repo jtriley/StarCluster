@@ -627,7 +627,7 @@ class Cluster(object):
                 v['partition'] = partition
         return volumes
 
-    def update(self, kwargs):
+    def update(self, kwargs, ignore_unknown=False):
         if 'node_instance_array' not in kwargs and 'node_image_id' in kwargs:
             self.set_default_node_instance_array(kwargs['node_image_id'],
                                                  kwargs['node_instance_type'],
@@ -637,7 +637,7 @@ class Cluster(object):
         for key in kwargs.keys():
             if hasattr(self, key):
                 self.__dict__[key] = kwargs[key]
-            else:
+            elif not ignore_unknown:
                 msg = "Unknown configuration key: " + key
                 log.error(msg)
                 raise Exception("Unknown configuration key: " + key)
