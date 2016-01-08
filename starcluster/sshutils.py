@@ -63,7 +63,7 @@ class SSHClient(object):
                  private_key_pass=None,
                  compress=False,
                  port=22,
-                 timeout=30):
+                 timeout=60):
         self._host = host
         self._port = port
         self._pkey = None
@@ -99,13 +99,14 @@ class SSHClient(object):
         return pkey
 
     def connect(self, host=None, username=None, password=None,
-                private_key=None, private_key_pass=None, port=None, timeout=30,
-                compress=None):
+                private_key=None, private_key_pass=None, port=None,
+                timeout=None, compress=None):
         host = host or self._host
         username = username or self._username
         password = password or self._password
         compress = compress or self._compress
         port = port if port is not None else self._port
+        timeout = timeout or self._timeout
         pkey = self._pkey
         if private_key:
             pkey = self.load_private_key(private_key, private_key_pass)
