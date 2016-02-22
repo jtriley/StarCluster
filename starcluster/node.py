@@ -1117,7 +1117,7 @@ class Node(object):
         time.sleep(10)
         while self.update() != "stopped":
             log.info("Waiting for node " + self.alias +
-                     "to be in a stopped state.")
+                     " to be in a stopped state.")
             time.sleep(10)
         self.start()
         return False
