@@ -73,10 +73,10 @@ class EFSPlugin(clustersetup.DefaultClusterSetup):
     def _get_efs_client(self):
         creds = self._master.ec2.__dict__
         b3client = boto3.client('efs',
-                                aws_access_key_id=creds.get('aws_access_key_id'),
-                                aws_secret_access_key=creds.get('aws_secret_access_key'),
-                                region_name=creds.get('_conn').region.name,
-        )
+            aws_access_key_id=creds.get('aws_access_key_id'),
+            aws_secret_access_key=creds.get('aws_secret_access_key'),
+            region_name=creds.get('_conn').region.name,
+            )
         return b3client
 
     def _authorize_efs(self):
@@ -146,8 +146,7 @@ class EFSPlugin(clustersetup.DefaultClusterSetup):
         node.ssh.makedirs(self.mount_point, mode=0755)
 
         parts = self.dns_name.split('.')
-        cmd = 'mount -t nfs4 -ominorversion=1 $(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone).%s:/ %s' % (
-            '.'.join(parts[1:]), self.mount_point)
-        #log.info("run: %s" % cmd)
+        get_az_url = 'http://169.254.169.254/latest/meta-data/placement/availability-zone'
+        cmd = 'mount -t nfs4 -ominorversion=1 $(curl -s %s).%s:/ %s' % (
+            get_az_url, '.'.join(parts[1:]), self.mount_point)
         node.ssh.execute(cmd)
-
