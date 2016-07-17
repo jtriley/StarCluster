@@ -72,7 +72,8 @@ class EFSPlugin(clustersetup.DefaultClusterSetup):
 
     def _get_efs_client(self):
         creds = self._master.ec2.__dict__
-        b3client = boto3.client('efs',
+        b3client = boto3.client(
+            'efs',
             aws_access_key_id=creds.get('aws_access_key_id'),
             aws_secret_access_key=creds.get('aws_secret_access_key'),
             region_name=creds.get('_conn').region.name,
@@ -134,10 +135,14 @@ class EFSPlugin(clustersetup.DefaultClusterSetup):
                     MountTargetId=targetinfo.get('MountTargetId'),
                     SecurityGroups=groups,
                 )
-                log.info('Disassociated EFS security group %s' % self._new_security_group)
+                msg = 'Disassociated EFS security group %s' % (
+                    self._new_security_group
+                    )
+                log.info(msg)
 
     def _get_mount_targets(self, filesystem):
-        mtresponse = self._b3client.describe_mount_targets(FileSystemId=filesystem)
+        mtresponse = self._b3client.describe_mount_targets(
+            FileSystemId=filesystem)
         mts = mtresponse.get('MountTargets')
         return mts
 
@@ -146,7 +151,8 @@ class EFSPlugin(clustersetup.DefaultClusterSetup):
         node.ssh.makedirs(self.mount_point, mode=0755)
 
         parts = self.dns_name.split('.')
-        get_az_url = 'http://169.254.169.254/latest/meta-data/placement/availability-zone'
+        get_info_url = 'http://169.254.169.254/latest/meta-data/'
+        get_az_url = '%splacement/availability-zone' % get_info_url
         cmd = 'mount -t nfs4 -ominorversion=1 $(curl -s %s).%s:/ %s' % (
             get_az_url, '.'.join(parts[1:]), self.mount_point)
         node.ssh.execute(cmd)
