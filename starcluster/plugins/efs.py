@@ -40,141 +40,114 @@ class EFSPlugin(clustersetup.DefaultClusterSetup):
         super(EFSPlugin, self).__init__(**kwargs)
 
     def run(self, nodes, master, user, user_shell, volumes):
-        self._nodes = nodes
         self._master = master
-        self._user = user
-        self._user_shell = user_shell
-        self._volumes = volumes
-        log.info("Configuring EFS...")
-        if self._authorize_efs(master):
-            log.info("Installing nfs on all nodes")
-            for node in nodes:
-                self._install_efs_on_node(node)
+        self._new_security_group = master.cluster_groups[0].id
+
+        log.info("Configuring EFS for %s" % self._new_security_group)
+        self._authorize_efs()
+        log.info("Installing nfs on all nodes")
+        for node in nodes:
+            log.info("  Installing nfs on %s" % node)
+            self._install_efs_on_node(node)
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
-        self._nodes = nodes
         self._master = master
-        self._user = user
-        self._user_shell = user_shell
-        self._volumes = volumes
+        self._new_security_group = node.cluster_groups[0].id
+
         log.info("Adding %s to EFS" % node.alias)
         self._install_efs_on_node(node)
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
-        self._nodes = nodes
         self._master = master
-        self._user = user
-        self._user_shell = user_shell
-        self._volumes = volumes
         log.info("No need to remove %s from EFS" % node.alias)
 
     def on_shutdown(self, nodes, master, user, user_shell, volumes):
         """
         This method gets executed before shutting down the cluster
         """
-        self._nodes = nodes
         self._master = master
-        self._user = user
-        self._user_shell = user_shell
-        self._volumes = volumes
+        self._new_security_group = master.cluster_groups[0].id
 
-        # I'd like to modify_mount_target_security_groups() with an
-        # empty list, but that doesn't seem to be allowed.  instead
-        # we'll associate with one of the default groups.  however
-        # there will probably be more than one, and I don't have the
-        # VPC ID handy to pick the right one. So I'll get all of the
-        # default groups here, and try each and stop when we find one
-        # that works.
+        self._deauthorize_efs()
 
-        default_security_groups = master.ec2.get_security_groups(filters={
-            'group-name': 'default'})
+    def _get_efs_client(self):
+        creds = self._master.ec2.__dict__
+        b3client = boto3.client('efs',
+                                aws_access_key_id=creds.get('aws_access_key_id'),
+                                aws_secret_access_key=creds.get('aws_secret_access_key'),
+                                region_name=creds.get('_conn').region.name,
+        )
+        return b3client
 
-        # this is dependent on the config file using a dns, instead of
-        # an IP. a future version should be robust for both forms
-        parts = self.dns_name.split('.')
-        filesystem = parts[1]
-
-        b3client = boto3.client('efs')
-
-        # we need a MountTargetId later, use this to determine it.
-        # notice this is copy and pasted with the same logic found in
-        # _authorize_efs. It would perhaps be better to break it into
-        # a function to be called from both places.
-
-        mount_target_id = None
-        mtresponse = b3client.describe_mount_targets(FileSystemId=filesystem)
-        for mt in mtresponse.get('MountTargets'):
-            subnetid = mt.get('SubnetId')
-            if subnetid == master.subnet_id:
-                mount_target_id = mt.get('MountTargetId')
-                break
-        else:
-            log.info('correct subnet not found')
-            return False
-
-        # we now have our MountTargetId, try to assign it to each of
-        # the default security groups, and stop when one of them works
-        if mount_target_id:
-            log.info('Deauthorize EFS security group, associate with default')
-
-            successfully_reassigned = None
-            for a_default_sg in default_security_groups:
-                try:
-                    b3client.modify_mount_target_security_groups(
-                        MountTargetId=mount_target_id,
-                        SecurityGroups=[a_default_sg.id],
-                    )
-                    successfully_reassigned = True
-                    break
-                except botocore.exceptions.ClientError:
-                    # couldn't reassociate, probably in wrong vpc
-                    pass
-            return successfully_reassigned
-        return True
-
-    def _authorize_efs(self, master):
+    def _authorize_efs(self):
 
         # this is dependent on the config file using a dns, instead of
         # an IP. a future version should be robust for both forms
         parts = self.dns_name.split('.')
         filesystem = parts[1]
 
-        b3client = boto3.client('efs')
+        self._b3client = self._get_efs_client()
 
-        # we need a MountTargetId later, use this to determine it.
-        # notice this is copy and pasted with the same logic found in
-        # _authorize_efs. It would perhaps be better to break it into
-        # a function to be called from both places.
+        mount_targets = self._get_mount_targets(filesystem)
 
-        mount_target_id = None
-        mtresponse = b3client.describe_mount_targets(FileSystemId=filesystem)
-        for mt in mtresponse.get('MountTargets'):
-            subnetid = mt.get('SubnetId')
-            if subnetid == master.subnet_id:
-                mount_target_id = mt.get('MountTargetId')
-                break
-        else:
-            log.info('correct subnet not found')
-            return False
-
-        if mount_target_id:
+        for targetinfo in mount_targets:
             log.info('Authorizing EFS security group')
-            b3client.modify_mount_target_security_groups(
-                MountTargetId=mount_target_id,
-                SecurityGroups=[master.cluster_groups[0].id],
+            resp = self._b3client.describe_mount_target_security_groups(
+                MountTargetId=targetinfo.get('MountTargetId'),
             )
-            return True
-        return False
+            oldgroups = resp['SecurityGroups']
+            oldgroups.append(self._new_security_group)
+            newgroups = list(set(oldgroups))
+
+            self._b3client.modify_mount_target_security_groups(
+                MountTargetId=targetinfo.get('MountTargetId'),
+                SecurityGroups=newgroups,
+            )
+
+    def _deauthorize_efs(self):
+
+        # this is dependent on the config file using a dns, instead of
+        # an IP. a future version should be robust for both forms
+        parts = self.dns_name.split('.')
+        filesystem = parts[1]
+
+        self._b3client = self._get_efs_client()
+
+        mount_targets = self._get_mount_targets(filesystem)
+
+        for targetinfo in mount_targets:
+            log.info('Authorizing EFS security group')
+            resp = self._b3client.describe_mount_target_security_groups(
+                MountTargetId=targetinfo.get('MountTargetId'),
+            )
+            groups = resp['SecurityGroups']
+            found_group = None
+            try:
+                groups.remove(self._new_security_group)
+                found_group = True
+            except ValueError, e:
+                log.info('Expected security group is not currently associated')
+                found_group = False
+
+            if found_group:
+                self._b3client.modify_mount_target_security_groups(
+                    MountTargetId=targetinfo.get('MountTargetId'),
+                    SecurityGroups=groups,
+                )
+                log.info('Disassociated EFS security group %s' % self._new_security_group)
+
+    def _get_mount_targets(self, filesystem):
+        mtresponse = self._b3client.describe_mount_targets(FileSystemId=filesystem)
+        mts = mtresponse.get('MountTargets')
+        return mts
 
     def _install_efs_on_node(self, node):
-        log.info("Installing nfs on %s" % node.alias)
+        node.ssh.switch_user('root')
+        node.ssh.makedirs(self.mount_point, mode=0755)
 
-        # in theory this is needed, but in practice it is already installed
-        # and running this apt_install causes a crash
-        # node.apt_install('nfs-common')
-
-        if not node.ssh.isdir(self.mount_point):
-            node.ssh.mkdir(self.mount_point)
-        cmd = 'mount -t nfs4 %s:/ %s' % (self.dns_name, self.mount_point)
-        log.info("run: %s" % cmd)
+        parts = self.dns_name.split('.')
+        cmd = 'mount -t nfs4 -ominorversion=1 $(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone).%s:/ %s' % (
+            '.'.join(parts[1:]), self.mount_point)
+        #log.info("run: %s" % cmd)
         node.ssh.execute(cmd)
+
