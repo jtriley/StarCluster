@@ -18,7 +18,6 @@
 from starcluster import clustersetup
 from starcluster.logger import log
 import boto3
-import botocore.exceptions
 
 
 class EFSPlugin(clustersetup.DefaultClusterSetup):
@@ -126,7 +125,7 @@ class EFSPlugin(clustersetup.DefaultClusterSetup):
             try:
                 groups.remove(self._new_security_group)
                 found_group = True
-            except ValueError, e:
+            except ValueError:
                 log.info('Expected security group is not currently associated')
                 found_group = False
 
