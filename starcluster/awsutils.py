@@ -29,6 +29,7 @@ import tempfile
 import boto
 import boto.ec2
 import boto.s3.connection
+from boto.exception import EC2ResponseError
 from boto import config as boto_config
 from boto.connection import HAVE_HTTPS_CONNECTION
 
@@ -601,6 +602,32 @@ class EasyEC2(EasyAWS):
                 instance_ids, self.get_all_instances, 'instance-id',
                 'instances', max_retries=max_retries, interval=interval)
 
+    def _check_for_propagation(self, obj_ids, fetch_func, id_filter, obj_name):
+        filters = {id_filter: obj_ids}
+        reqs_ids = []
+        reqs = fetch_func(filters=filters)
+        reqs_ids = [req.id for req in reqs]
+        found = [oid for oid in obj_ids if oid in reqs_ids]
+        return found
+
+    def check_for_propagation(self, instance_ids=None, spot_ids=None):
+        """
+        Check propagated instances. Returns a tuple where the first item is
+        a list of the found instances and the second a list of the found
+        spot requests.
+        """
+        found_instance_ids = []
+        found_spot_ids = []
+        if spot_ids:
+            found_instance_ids = self._check_for_propagation(
+                spot_ids, self.get_all_spot_requests,
+                'spot-instance-request-id', 'spot requests')
+        if instance_ids:
+            found_spot_ids = self._check_for_propagation(
+                instance_ids, self.get_all_instances, 'instance-id',
+                'instances')
+        return found_instance_ids, found_spot_ids
+
     def run_instances(self, image_id, instance_type='m1.small', min_count=1,
                       max_count=1, key_name=None, security_groups=None,
                       placement=None, user_data=None, placement_group=None,
@@ -729,7 +756,11 @@ class EasyEC2(EasyAWS):
                         self.get_all_security_groups(groupnames)])
         return [name_id[gname] for gname in groupnames if gname in name_id]
 
-    def get_all_instances(self, instance_ids=[], filters={}):
+    def get_all_instances(self, instance_ids=None, filters=None):
+        if instance_ids is None:
+            instance_ids = []
+        if filters is None:
+            filters = {}
         # little path to since vpc can't hadle filters with group-name
         # TODO : dev Tue Apr 24 18:25:58 2012
         # should move all code to instance.group-id
@@ -742,8 +773,27 @@ class EasyEC2(EasyAWS):
                 return []  # Haven't created the security group in aws yet
             del filters['group-name']
 
-        reservations = self.conn.get_all_instances(instance_ids,
-                                                   filters=filters)
+        for i in xrange(5):
+            try:
+                reservations = self.conn.get_all_instances(instance_ids,
+                                                           filters=filters)
+                break
+            except EC2ResponseError as e:
+                if instance_ids:
+                    log.error("instance_ids filtering based on: "
+                              + str(instance_ids))
+                    raise e
+
+                # handles a case where amazon returns an error based on
+                # instance_ids filtering even though no instance_ids were
+                # provided
+                log.exception("Amazon had a problem processing the request. "
+                              "Trying again in 1 second.")
+                time.sleep(1)
+        else:
+            log.error("Amazon still replying an error after 5 attempts.")
+            raise e
+
         instances = []
         for res in reservations:
             insts = res.instances
@@ -771,7 +821,9 @@ class EasyEC2(EasyAWS):
                 return False
             raise
 
-    def get_all_spot_requests(self, spot_ids=[], filters=None):
+    def get_all_spot_requests(self, spot_ids=None, filters=None):
+        if spot_ids is None:
+            spot_ids = []
         spots = self.conn.get_all_spot_instance_requests(spot_ids,
                                                          filters=filters)
         return spots
@@ -1507,7 +1559,12 @@ class EasyEC2(EasyAWS):
     def get_spot_history(self, instance_type, start=None, end=None, zone=None,
                          plot=False, plot_server_interface="localhost",
                          plot_launch_browser=True, plot_web_browser=None,
-                         plot_shutdown_server=True, classic=False, vpc=False):
+                         plot_shutdown_server=True, classic=False, vpc=False,
+                         mute=False):
+        def log_info(*args):
+            if not mute:
+                log.info(*args)
+
         if start and not utils.is_iso_time(start):
             raise exception.InvalidIsoDate(start)
         if end and not utils.is_iso_time(end):
@@ -1524,7 +1581,7 @@ class EasyEC2(EasyAWS):
         else:
             pdesc = "Linux/UNIX (Amazon VPC)"
             short_pdesc = "VPC"
-        log.info("Fetching spot history for %s (%s)" %
+        log_info("Fetching spot history for %s (%s)" %
                  (instance_type, short_pdesc))
         hist = self.conn.get_spot_price_history(start_time=start, end_time=end,
                                                 availability_zone=zone,
@@ -1543,9 +1600,9 @@ class EasyEC2(EasyAWS):
             data.append([timestamp, price])
         maximum = max(prices)
         avg = sum(prices) / float(len(prices))
-        log.info("Current price: $%.4f" % prices[0])
-        log.info("Max price: $%.4f" % maximum)
-        log.info("Average price: $%.4f" % avg)
+        log_info("Current price: $%.4f" % prices[0])
+        log_info("Max price: $%.4f" % maximum)
+        log_info("Average price: $%.4f" % avg)
         if plot:
             xaxisrange = dates[-1] - dates[0]
             xpanrange = [dates[0] - xaxisrange / 2.,
@@ -1561,20 +1618,20 @@ class EasyEC2(EasyAWS):
                            shutdown=plot_shutdown_server,
                            xpanrange=xpanrange, ypanrange=ypanrange,
                            xzoomrange=xzoomrange, yzoomrange=yzoomrange)
-            log.info("", extra=dict(__raw__=True))
-            log.info("Starting StarCluster Webserver...")
+            log_info("", extra=dict(__raw__=True))
+            log_info("Starting StarCluster Webserver...")
             s = webtools.get_template_server('web', context=context,
                                              interface=plot_server_interface)
             base_url = "http://%s:%s" % s.server_address
             shutdown_url = '/'.join([base_url, 'shutdown'])
             spot_url = "http://%s:%s/spothistory.html" % s.server_address
-            log.info("Server address is %s" % base_url)
-            log.info("(use CTRL-C or navigate to %s to shutdown server)" %
+            log_info("Server address is %s" % base_url)
+            log_info("(use CTRL-C or navigate to %s to shutdown server)" %
                      shutdown_url)
             if plot_launch_browser:
                 webtools.open_browser(spot_url, plot_web_browser)
             else:
-                log.info("Browse to %s to view the spot history plot" %
+                log_info("Browse to %s to view the spot history plot" %
                          spot_url)
             s.serve_forever()
         return data
@@ -1588,6 +1645,49 @@ class EasyEC2(EasyAWS):
             print console_output
         else:
             log.info("No console output available...")
+
+    def get_spot_cheapest_zone(self, instance_type, zone_filter, vpc=False):
+        """
+        Find cheapest zone.
+
+        zone_filter, if a list, zones to consider, if None, all zones
+            considered
+        """
+        min_price = 9999
+        min_zone = None
+        for zone in self.conn.get_all_zones():
+            zone_name = zone.name
+            if zone_filter is not None and zone_name not in zone_filter:
+                log.debug("Filtered zone {}".format(zone_name))
+                continue
+            try:
+                price = self.get_spot_history(instance_type,
+                                              zone=zone_name,
+                                              mute=True, vpc=vpc)
+                price = price[0][1]
+            except exception.SpotHistoryError as err:
+                log.warning(str(err))  # can be normal when amazon adds zones
+                price = 9999999
+            log.debug("%s: %f", zone_name, price)
+            if price < min_price:
+                min_zone = zone_name
+                min_price = price
+        return min_zone, min_price
+
+    def cancel_stuck_spot_instance_request(self, spots):
+        """
+        SIR in state "price-too-low or in state "capacity-oversubscribed" can
+        somewhat freeze StarCluster in a waiting state that can last a long
+        time. Cancels them.
+        """
+        def filter_fct(sir):
+            if sir.status.code in ['price-too-low', 'capacity-oversubscribed']:
+                log.info("Cancelling spot instance {}: {}"
+                         .format(sir.id, sir.status.message))
+                sir.cancel()
+                return False
+            return True
+        return filter(filter_fct, spots)
 
 
 class EasyS3(EasyAWS):

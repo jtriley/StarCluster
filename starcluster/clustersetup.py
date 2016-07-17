@@ -18,7 +18,9 @@
 """
 clustersetup.py
 """
+import os
 import posixpath
+import datetime
 
 from starcluster import utils
 from starcluster import threadpool
@@ -119,6 +121,7 @@ class DefaultClusterSetup(ClusterSetup):
         """
         nodes = nodes or self._nodes
         log.info("Configuring hostnames...")
+        log.debug("It's " + str(datetime.datetime.utcnow()))
         for node in nodes:
             self.pool.simple_job(node.set_hostname, (), jobid=node.alias)
         self.pool.wait(numtasks=len(nodes))
@@ -246,6 +249,7 @@ class DefaultClusterSetup(ClusterSetup):
         """ Configure /etc/hosts on all StarCluster nodes"""
         log.info("Configuring /etc/hosts on each node")
         nodes = nodes or self._nodes
+        log.debug("Launching jobs " + str(datetime.datetime.utcnow()))
         for node in nodes:
             self.pool.simple_job(node.add_to_etc_hosts, (nodes, ),
                                  jobid=node.alias)
@@ -384,17 +388,38 @@ class DefaultClusterSetup(ClusterSetup):
 
     def _remove_from_etc_hosts(self, node):
         nodes = filter(lambda x: x.id != node.id, self.running_nodes)
+        master = None
+
         for n in nodes:
-            n.remove_from_etc_hosts([node])
+            if n.is_master():
+                master = n
+
+        master.remove_from_etc_hosts([node])
+        master.copy_remote_file_to_nodes('/etc/hosts', nodes)
 
     def _remove_nfs_exports(self, node):
         self._master.stop_exporting_fs_to_nodes([node])
 
     def _remove_from_known_hosts(self, node):
         nodes = filter(lambda x: x.id != node.id, self.running_nodes)
+        master = None
+
         for n in nodes:
-            n.remove_from_known_hosts('root', [node])
-            n.remove_from_known_hosts(self._user, [node])
+            if n.is_master():
+                master = n
+
+        master.remove_from_known_hosts('root', [node])
+        master.remove_from_known_hosts(self._user, [node])
+
+        target = posixpath.join('/root', '.ssh', 'known_hosts')
+        master.copy_remote_file_to_nodes(target, nodes)
+
+        user_homedir = os.path.expanduser('~' + self._user)
+        target = posixpath.join(user_homedir, '.ssh', 'known_hosts')
+        try:
+            master.copy_remote_file_to_nodes(target, nodes)
+        except IOError:
+            log.warning("Failed to copy file " + target)
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
@@ -427,3 +452,9 @@ class DefaultClusterSetup(ClusterSetup):
         self._create_user(node)
         self._setup_scratch(nodes=[node])
         self._setup_passwordless_ssh(nodes=[node])
+
+    def clean_cluster(self, nodes, master, user, user_shell, volumes):
+        pass
+
+    def recover(self, nodes, master, user, user_shell, volumes):
+        pass

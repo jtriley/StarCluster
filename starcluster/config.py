@@ -19,6 +19,7 @@ import os
 import urllib
 import StringIO
 import ConfigParser
+import copy
 
 from starcluster import utils
 from starcluster import static
@@ -68,6 +69,145 @@ def get_config(config_file=None, cache=False):
     return StarClusterConfig(config_file, cache).load()
 
 
+def plugins_config_file_to_json(file_format):
+    result = {}
+    for plugin_name in file_format:
+        part_result = {}
+        for key in file_format[plugin_name]:
+            if key in ['__name__', 'setup_class']:
+                continue
+            part_result[key] = file_format[plugin_name][key]
+        result[file_format[plugin_name]['setup_class']] = part_result
+    return result
+
+
+def plugins_config_stored_to_json(stored_format):
+    result = {}
+    for klass, args, kwargs in stored_format:
+        result[klass] = kwargs
+    return result
+
+
+def plugins_config_json_to_stored(json_format, order):
+    result = []
+    for o in order:
+        for k, v in json_format.iteritems():
+            if k.split(".")[-1] == o:
+                result.append((k, (), v))
+                del json_format[k]
+                break
+    return result
+
+
+def json_diff(old, new):
+    stack = []
+    add = copy.deepcopy(new)
+    current_new_it = new.iteritems()
+    current_old = old
+    current_add = add
+    changed = False
+
+    # add
+    while 1:
+        try:
+            k, v = current_new_it.next()
+            if k in current_old:
+                if type(v) is not dict:
+                    if v == current_old[k]:
+                        del current_add[k]
+                    else:
+                        changed = True
+                elif type(current_old[k]) is not dict:
+                    changed = True
+                elif len(v) == 0 and len(current_old[k]) > 0:
+                    del current_add[k]
+                else:
+                    stack.append((current_new_it, k, current_old, changed,
+                                  current_add))
+                    changed = False
+                    current_new_it = v.iteritems()
+                    current_old = current_old[k]
+                    current_add = current_add[k]
+            else:
+                changed = True
+        except StopIteration:
+            if len(stack) == 0:
+                break
+            current_new_it, k, current_old, i_changed, current_add = \
+                stack.pop()
+            if not changed:
+                del current_add[k]
+            changed = changed or i_changed
+        except:
+            break
+
+    remove = {}
+    current_old_it = old.iteritems()
+    current_new = new
+
+    # remove
+    def setRemove():
+        current_remove = remove
+        for i in range(0, len(stack)):
+            foo1, lk, foo2 = stack[i]
+            if lk not in current_remove:
+                current_remove[lk] = {}
+            current_remove = current_remove[lk]
+        current_remove[k] = None
+
+    while 1:
+        try:
+            k, v = current_old_it.next()
+            if k in current_new:
+                if type(v) is dict and len(current_new[k]) > 0:
+                    stack.append((current_old_it, k, current_new))
+                    current_old_it = v.iteritems()
+                    current_new = current_new[k]
+            else:
+                setRemove()
+        except StopIteration:
+            if len(stack) == 0:
+                break
+            current_old_it, k, current_new = stack.pop()
+
+    return {"+": add, "-": remove}
+
+
+def apply_json_diff(data, diff):
+    stack = []
+    current_data = data
+    current_diff_it = diff["-"].iteritems()
+    while 1:
+        try:
+            k, v = current_diff_it.next()
+            print k
+            if v is None:
+                del current_data[k]
+            else:
+                stack.append((current_diff_it, current_data))
+                current_diff_it = v.iteritems()
+                current_data = current_data[k]
+        except StopIteration:
+            if len(stack) == 0:
+                break
+            current_diff_it, current_data = stack.pop()
+    current_diff_it = diff['+'].iteritems()
+    while 1:
+        try:
+            k, v = current_diff_it.next()
+            if k not in current_data or type(v) is not dict:
+                current_data[k] = copy.deepcopy(v)
+            if type(v) is dict:
+                stack.append((current_diff_it, current_data))
+                current_diff_it = v.iteritems()
+                current_data = current_data[k]
+        except StopIteration:
+            if len(stack) == 0:
+                break
+            current_diff_it, current_data = stack.pop()
+    return data
+
+
 class StarClusterConfig(object):
     """
     Loads StarCluster configuration settings defined in config_file
@@ -92,6 +232,7 @@ class StarClusterConfig(object):
     plugin_settings = static.PLUGIN_SETTINGS
     cluster_settings = static.CLUSTER_SETTINGS
     permission_settings = static.PERMISSION_SETTINGS
+    node_settings = static.NODE_SETTINGS
 
     # until i can find a way to query AWS for instance types...
     instance_types = static.INSTANCE_TYPES
@@ -422,7 +563,7 @@ class StarClusterConfig(object):
         if isinstance(instance_types, basestring):
             return
         itypes = []
-        cluster_section['node_instance_types'] = itypes
+        cluster_section['node_instance_type'] = itypes
         total_num_nodes = 0
         choices_string = ', '.join(static.INSTANCE_TYPES.keys())
         try:
@@ -469,6 +610,30 @@ class StarClusterConfig(object):
             itype_dic = AttributeDict(size=itype_num, image=itype_image,
                                       type=itype)
             itypes.append(itype_dic)
+
+    def _load_instance_array(self, store):
+        cluster_section = store
+        instance_array = cluster_section.get('node_instance_array')
+        result = []
+        spot = -1  # -1 unknown, 0 false, 1 true
+        for name in instance_array:
+            node_settings = self._load_section('node ' + name,
+                                               self.node_settings)
+            if spot == -1:
+                if node_settings['spot_bid'] is None:
+                    spot = 0
+                else:
+                    spot = 1
+            elif spot == 0:
+                if node_settings['spot_bid'] is not None:
+                    raise exception.ConfigError("spot_bid presence must be "
+                                                "the same for all nodes")
+            else:
+                if node_settings['spot_bid'] is None:
+                    raise exception.ConfigError("spot_bid presence must be "
+                                                "the same for all nodes")
+            result.append(node_settings)
+        cluster_section['node_instance_array'] = result
 
     def _load_section(self, section_name, section_settings,
                       filter_settings=True):
@@ -556,6 +721,19 @@ class StarClusterConfig(object):
             self._load_plugins(cluster_store[name])
             self._load_permissions(cluster_store[name])
             self._load_instance_types(cluster_store[name])
+            self._load_instance_array(cluster_store[name])
+
+            # checks caused by mutual exclusivity of node_instance_type/array
+            if cluster_store[name]['node_instance_type'] is not None and \
+                    len(cluster_store[name]['node_instance_array']) > 0:
+                raise exception.ConfigError(
+                    "Cannot define both node_instance_type and "
+                    "node_instance_array at cluster " + name)
+            if cluster_store[name]['node_instance_type'] is not None and \
+                    not bool(cluster_store[name]['node_image_id']):
+                raise exception.ConfigError(
+                    "You must define node_imagge_id at cluster " + name)
+
             self._check_required(cl, self.cluster_settings,
                                  cluster_store[name])
         return cluster_store
@@ -601,7 +779,7 @@ class StarClusterConfig(object):
         return found
 
     def get_cluster_template(self, template_name, tag_name=None,
-                             ec2_conn=None):
+                             ec2_conn=None, load_plugins=True):
         """
         Returns Cluster instance configured with the settings in the
         config file.
@@ -616,11 +794,21 @@ class StarClusterConfig(object):
             kwargs.update(dict(cluster_tag=tag_name))
             kwargs.update(self.clusters[template_name])
             plugs = kwargs.get('plugins')
-            kwargs['plugins'] = deathrow._load_plugins(plugs,
-                                                       debug=DEBUG_CONFIG)
+            plugins_order = []
+            for p in plugs:
+                plugins_order.append(p["setup_class"].split(".")[-1])
+            kwargs['plugins_order'] = plugins_order
+            if load_plugins:
+                kwargs['plugins'] = deathrow._load_plugins(plugs,
+                                                           debug=DEBUG_CONFIG)
+            else:
+                kwargs['plugins'] = []
+
             if not ec2_conn:
                 ec2_conn = self.get_easy_ec2()
 
+            del kwargs['__name__']
+            del kwargs['extends']
             clust = Cluster(ec2_conn, **kwargs)
             return clust
         except KeyError:

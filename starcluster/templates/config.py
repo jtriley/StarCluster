@@ -348,6 +348,7 @@ NODE_INSTANCE_TYPE = m1.small
 # Install and setup an Xvfb server on each cluster node
 # [plugin xvfb]
 # SETUP_CLASS = starcluster.plugins.xvfb.XvfbSetup
+#
 """ % {
     'x86_ami': static.BASE_AMI_32,
     'x86_64_ami': static.BASE_AMI_64,

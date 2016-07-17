@@ -22,7 +22,11 @@ import base64
 import socket
 import posixpath
 import subprocess
+import datetime
+import tempfile
+import os
 
+import config
 from starcluster import utils
 from starcluster import static
 from starcluster import sshutils
@@ -34,6 +38,9 @@ from starcluster.logger import log
 
 
 class NodeManager(managers.Manager):
+
+    nodes_id_ignore = set()
+
     """
     Manager class for Node objects
     """
@@ -127,6 +134,17 @@ class Node(object):
                         "Error occurred unbundling userdata: %s" % e)
         return self._user_data
 
+    def get_aliases(self, index):
+        aliasestxt = self.user_data.get(static.UD_ALIASES_FNAME, '')
+        aliases = aliasestxt.splitlines()[2:]
+        try:
+            alias = aliases[index]
+        except IndexError:
+            alias = None
+            log.debug("invalid aliases file in user_data:\n%s" %
+                      aliasestxt)
+        return alias
+
     @property
     def alias(self):
         """
@@ -137,15 +155,7 @@ class Node(object):
         if not self._alias:
             alias = self.tags.get('alias')
             if not alias:
-                aliasestxt = self.user_data.get(static.UD_ALIASES_FNAME, '')
-                aliases = aliasestxt.splitlines()[2:]
-                index = self.ami_launch_index
-                try:
-                    alias = aliases[index]
-                except IndexError:
-                    alias = None
-                    log.debug("invalid aliases file in user_data:\n%s" %
-                              aliasestxt)
+                alias = self.get_aliases(self.ami_launch_index)
                 if not alias:
                     raise exception.BaseException(
                         "instance %s has no alias" % self.id)
@@ -155,10 +165,48 @@ class Node(object):
             self._alias = alias
         return self._alias
 
-    def get_plugins(self):
+    @property
+    def short_alias(self):
+        return self.alias.split(".", 1)[0]
+
+    def rename(self, new_name):
+        """
+        Used to reset the name and alias when there is a conflict
+        """
+        self.remove_tag("alias")
+        self.remove_tag("Name")
+        self.add_tag("Name", new_name)
+        self.add_tag("alias", new_name)
+        while True:
+            tags = self.tags
+            if tags.get("Name", "") == new_name \
+                    and tags.get("alias", "") == new_name:
+                break
+            log.info("Waiting for new name to propagate")
+            time.sleep(5)
+
+    def get_plugins_org_metadata(self):
         plugstxt = self.user_data.get(static.UD_PLUGINS_FNAME)
         payload = plugstxt.split('\n', 2)[2]
-        plugins_metadata = utils.decode_uncompress_load(payload)
+        return utils.decode_uncompress_load(payload)
+
+    def get_plugins_full_metadata(self, order):
+        plugins_metadata = self.get_plugins_org_metadata()
+        sg = self.parent_cluster
+        if "@sc-plugins" in sg.tags:
+            stored_diff = utils.decode_uncompress_load(
+                sg.tags["@sc-plugins"])
+            plugins_metadata_json = config.plugins_config_stored_to_json(
+                plugins_metadata)
+            config.apply_json_diff(plugins_metadata_json, stored_diff)
+            plugins_metadata = config.plugins_config_json_to_stored(
+                plugins_metadata_json,
+                order)
+        return plugins_metadata
+
+    def get_plugins(self, order, plugins_metadata=None):
+        if plugins_metadata is None:
+            plugins_metadata = self.get_plugins_full_metadata(order)
         plugs = []
         for klass, args, kwargs in plugins_metadata:
             mod_path, klass_name = klass.rsplit('.', 1)
@@ -500,7 +548,7 @@ class Node(object):
         home_folder = user.pw_dir
         ssh_folder = posixpath.join(home_folder, '.ssh')
         if not self.ssh.isdir(ssh_folder):
-            self.ssh.mkdir(ssh_folder)
+            self.ssh.makedirs(ssh_folder)
         self.ssh.chown(user.pw_uid, user.pw_gid, ssh_folder)
         private_key = posixpath.join(ssh_folder, 'id_rsa')
         public_key = private_key + '.pub'
@@ -628,22 +676,24 @@ class Node(object):
         if not dest:
             dest = remote_file
         rf = self.ssh.remote_file(remote_file, 'r')
-        contents = rf.read()
         sts = rf.stat()
         mode = stat.S_IMODE(sts.st_mode)
         uid = sts.st_uid
         gid = sts.st_gid
         rf.close()
-        for node in nodes:
-            if self.id == node.id and remote_file == dest:
-                log.warn("src and destination are the same: %s, skipping" %
-                         remote_file)
-                continue
-            nrf = node.ssh.remote_file(dest, 'w')
-            nrf.write(contents)
-            nrf.chown(uid, gid)
-            nrf.chmod(mode)
-            nrf.close()
+        with tempfile.NamedTemporaryFile(
+                prefix=os.path.basename(remote_file) + "_") as f:
+            self.ssh.get(remote_file, f.name)
+            for node in nodes:
+                if self.id == node.id and remote_file == dest:
+                    log.warn("src and destination are the same: %s, skipping" %
+                             remote_file)
+                    continue
+                node.ssh.put(f.name, dest)
+                nrf = node.ssh.remote_file(dest, 'a')
+                nrf.chown(uid, gid)
+                nrf.chmod(mode)
+                nrf.close()
 
     def remove_user(self, name):
         """
@@ -819,19 +869,46 @@ class Node(object):
         """
         Adds all names for node in nodes arg to this node's /etc/hosts file
         """
-        self.remove_from_etc_hosts(nodes)
-        host_file = self.ssh.remote_file('/etc/hosts', 'a')
-        for node in nodes:
-            print >> host_file, node.get_hosts_entry()
-        host_file.close()
+        host_file_lines = self.remove_from_etc_hosts(nodes, return_lines=True)
 
-    def remove_from_etc_hosts(self, nodes):
+        for node in nodes:
+            host_file_lines.append(node.get_hosts_entry())
+
+        with self.ssh.remote_file('/etc/hosts', 'w') as host_file:
+            print >> host_file, "\n".join(host_file_lines)
+
+    @classmethod
+    def filter_etc_hosts_lines(cls, nodes, lines):
+        to_remove = \
+            [n.short_alias + "|"
+             + "^" + n.private_ip_address.replace(".", "\.") + "\s"
+             for n in nodes]
+        expr = re.compile("|".join(to_remove))
+        rejected_lines = []
+        lines = utils.filter_move(
+            lambda line: bool(line) and not expr.findall(line),
+            lines, rejected_lines)
+
+        if rejected_lines:
+            log.debug("Filtered out: {}".format(rejected_lines))
+        return lines, rejected_lines
+
+    def remove_from_etc_hosts(self, nodes, return_lines=False):
         """
-        Remove all network names for node in nodes arg from this node's
+        Remove all network names and ips for node in nodes arg from this node's
         /etc/hosts file
         """
-        aliases = map(lambda x: x.alias, nodes)
-        self.ssh.remove_lines_from_file('/etc/hosts', '|'.join(aliases))
+        with self.ssh.remote_file('/etc/hosts', 'r') as host_file:
+            lines = host_file.read().split("\n")
+
+        lines, rejected = self.filter_etc_hosts_lines(nodes, lines)
+
+        if return_lines:
+            return lines
+
+        if rejected:
+            with self.ssh.remote_file('/etc/hosts', 'w') as host_file:
+                print >> host_file, "\n".join(lines)
 
     def set_hostname(self, hostname=None):
         """
@@ -862,6 +939,7 @@ class Node(object):
         names['INTERNAL_NAME'] = self.private_dns_name
         names['INTERNAL_NAME_SHORT'] = self.private_dns_name_short
         names['INTERNAL_ALIAS'] = self.alias
+        names['INTERNAL_SHORT_ALIAS'] = self.short_alias
         return names
 
     @property
@@ -918,7 +996,7 @@ class Node(object):
             return spot[0]
 
     def is_master(self):
-        return self.alias == 'master' or self.alias.endswith("-master")
+        return self.alias.find("master") != -1
 
     def is_instance_store(self):
         return self.instance.root_device_type == "instance-store"
@@ -984,7 +1062,11 @@ class Node(object):
         """
         if self.spot_id:
             log.info("Canceling spot request %s" % self.spot_id)
-            self.get_spot_request().cancel()
+            try:
+                self.get_spot_request().cancel()
+            except Exception:
+                log.error("Spot request matching node {} not found"
+                          .format(self.id), exc_info=True)
         log.info("Terminating node: %s (%s)" % (self.alias, self.id))
         return self.instance.terminate()
 
@@ -1004,6 +1086,9 @@ class Node(object):
         Reboot this instance.
         """
         self.instance.reboot()
+        if self._ssh:
+            self._ssh.close()
+            self._ssh = None
 
     def is_ssh_up(self):
         try:
@@ -1015,14 +1100,55 @@ class Node(object):
                         .format(self.alias), exc_info=True)
             return False
 
-    def wait(self, interval=30):
-        while not self.is_up():
+    def is_impaired(self):
+        return bool(self.ec2.conn.get_all_instance_status(
+            instance_ids=[self.id],
+            filters={"instance-status.status": "impaired"}
+        ))
+
+    def handle_irresponsive_node(self):
+        if self.is_spot():
+            log.info(self.alias + " is a spot instance and will "
+                     "be terminated.")
+            self.terminate()
+            return True
+
+        self.stop()
+        time.sleep(10)
+        while self.update() != "stopped":
+            log.info("Waiting for node " + self.alias +
+                     " to be in a stopped state.")
+            time.sleep(10)
+        self.start()
+        return False
+
+    def wait(self, interval=30, reboot_interval=10, n_reboot_restart=False):
+        """
+        Wait for the instance to be up and running.
+        interval           The polling interval in seconds.
+        reboot_interval    The interval between reboots in minutes.
+        n_reboot_restart   The number of reboots before restarting the node
+                           instead of rebooting. Restart means stop/start,
+                           which will possibly make the instance run on
+                           different hardware, but it counts as a new billing
+                           hour. Spot instances cannot be stopped so they will
+                           be terminated instead. Defaults to False.
+        """
+        nrm = NodeRecoveryManager(self, reboot_interval, n_reboot_restart)
+        while not self.is_up() and nrm.check():
             time.sleep(interval)
 
     def is_up(self):
         if self.update() != 'running':
+            log.info(self.alias + " is not running")
             return False
-        if not self.is_ssh_up():
+        try:
+            if not self.is_ssh_up():
+                log.info(self.alias + " ssh is not up")
+                return False
+        except socket.error as e:
+            log.warning("Checking is node {} is up encountered exception {}"
+                        .format(self.alias, e), exc_info=True)
             return False
         if self.private_ip_address is None:
             log.debug("instance %s has no private_ip_address" % self.id)
@@ -1038,13 +1164,19 @@ class Node(object):
                 self.instance.private_ip_address = private_ip
             except Exception, e:
                 print e
+                log.info(self.alias + " encountered an exception")
                 return False
         return True
 
     def update(self):
         res = self.ec2.get_all_instances(filters={'instance-id': self.id})
-        self.instance = res[0]
-        return self.state
+        try:
+            self.instance = res[0]
+            return self.state
+        except IndexError:
+            log.error("Failed to update instance-id {}".format(self.id),
+                      exc_info=True)
+        return "unknown"
 
     @property
     def addr(self):
@@ -1128,7 +1260,8 @@ class Node(object):
 
     def get_hosts_entry(self):
         """ Returns /etc/hosts entry for this node """
-        etc_hosts_line = "%(INTERNAL_IP)s %(INTERNAL_ALIAS)s"
+        etc_hosts_line = \
+            "%(INTERNAL_IP)s %(INTERNAL_ALIAS)s %(INTERNAL_SHORT_ALIAS)s"
         etc_hosts_line = etc_hosts_line % self.network_names
         return etc_hosts_line
 
@@ -1195,3 +1328,53 @@ class Node(object):
     def __del__(self):
         if self._ssh:
             self._ssh.close()
+
+
+class NodeRecoveryManager(object):
+    def __init__(self, node, reboot_interval, n_reboot_restart):
+        self.node = node
+        self.reboot_interval = reboot_interval
+        self.n_reboot_restart = n_reboot_restart
+        self._set_next_restart()
+        self._set_next_reboot()
+
+    def _set_next_reboot(self):
+        self._next_reboot = utils.get_utc_now() + \
+            datetime.timedelta(minutes=self.reboot_interval)
+
+    def _set_next_restart(self):
+        self._next_restart = self.n_reboot_restart
+
+    def handle_reboot(self):
+        if self._next_restart == 0:
+            log.debug("Restarting node {}".format(self.node.alias))
+            terminated = self.node.handle_irresponsive_node()
+            if terminated:
+                log.debug("Terminated node {}".format(self.node.alias))
+                return False
+            self._set_next_restart()
+        else:
+            log.debug("Rebooting node {}".format(self.node.alias))
+            self.node.reboot()
+            self._next_restart -= 1
+        self._set_next_reboot()
+        return True
+
+    def check(self):
+        """
+        Manages the reboot/restart/terminate (when spot) of a node.
+        Returns True if the node is still alive, False otherwise.
+        """
+        log.debug("{} next reboot {}"
+                  .format(self.node.alias, self._next_reboot))
+        log.debug("{} next restart {}"
+                  .format(self.node.alias, self._next_restart))
+        if self.node.is_impaired():
+            log.info("{} is impaired".format(self.node.alias))
+            rez = self.handle_reboot()
+            log.debug("{} next restart {}"
+                      .format(self.node.alias, self._next_restart))
+            return rez
+        if utils.get_utc_now() > self._next_reboot:
+            return self.handle_reboot()
+        return True

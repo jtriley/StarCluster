@@ -26,6 +26,7 @@ import shlex
 import socket
 import optparse
 import platform
+import signal
 
 from boto.exception import BotoServerError, EC2ResponseError, S3ResponseError
 
@@ -324,7 +325,13 @@ def warn_debug_file_moved():
         log.warn(stars)
 
 
+def sigterm_handler(signum, stack_frame):
+    log.info("Received SIGTERM")
+    sys.exit(signal.SIGTERM + 128)
+
+
 def main():
+    signal.signal(signal.SIGTERM, sigterm_handler)
     try:
         static.create_sc_config_dirs()
         logger.configure_sc_logging()
