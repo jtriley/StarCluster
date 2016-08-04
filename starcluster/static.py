@@ -308,6 +308,7 @@ CLUSTER_SETTINGS = {
     'userdata_scripts': (list, False, [], None, __expand_all_in_list),
     'disable_queue': (bool, False, False, None, None),
     'force_spot_master': (bool, False, False, None, None),
+    'static_security_groups': (list, False, [], None, None),
     'disable_cloudinit': (bool, False, False, None, None),
     'dns_prefix': (bool, False, False, None, None),
 }

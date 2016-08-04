@@ -75,6 +75,16 @@ class ClusterManager(managers.Manager):
                 if require_keys:
                     raise
                 cl.key_location = ''
+
+            # Treat any security group on the master node that does not begin
+            # with the StarCluster security group prefix as a static
+            # security group of the cluster.
+            nodes = cl.nodes
+            if len(nodes) > 0:
+                master_node = nodes[0]
+                cl.static_security_groups = map(lambda g: g.name,
+                                                master_node.static_groups)
+
             return cl
         except exception.SecurityGroupDoesNotExist:
             raise exception.ClusterDoesNotExist(cluster_name)
@@ -297,15 +307,21 @@ class ClusterManager(managers.Manager):
                           extra=dict(__textwrap__=True))
                 print
                 continue
-            header = '%s (security group: %s)' % (tag, scg.name)
-            print '-' * len(header)
-            print header
-            print '-' * len(header)
+
             nodes = cl.nodes
             try:
                 n = nodes[0]
+                header = '%s (security groups: %s)' % \
+                         (tag, ', '.join(map(lambda x: x.name, n.groups)))
+
             except IndexError:
                 n = None
+                header = "%s" % tag
+
+            print '-' * len(header)
+            print header
+            print '-' * len(header)
+
             state = getattr(n, 'state', None)
             ltime = 'N/A'
             uptime = 'N/A'
@@ -402,6 +418,7 @@ class Cluster(object):
                  volumes=[],
                  plugins=[],
                  permissions=[],
+                 static_security_groups=[],
                  userdata_scripts=[],
                  refresh_interval=30,
                  disable_queue=False,
@@ -431,6 +448,7 @@ class Cluster(object):
         self.plugins = self.load_plugins(plugins)
         self.userdata_scripts = userdata_scripts or []
         self.dns_prefix = dns_prefix and cluster_tag
+        self.static_security_groups = static_security_groups
 
         self._cluster_group = None
         self._placement_group = None
@@ -936,11 +954,12 @@ class Cluster(object):
             elif not placement_group:
                 placement_group = self.placement_group.name
         image_id = image_id or self.node_image_id
+        security_groups = [cluster_sg] + self.static_security_groups
         count = len(aliases) if not spot_bid else 1
         user_data = self._get_cluster_userdata(aliases)
         kwargs = dict(price=spot_bid, instance_type=instance_type,
                       min_count=count, max_count=count, count=count,
-                      key_name=self.keyname,
+                      key_name=self.keyname, security_groups=security_groups,
                       availability_zone_group=cluster_sg,
                       launch_group=cluster_sg,
                       placement=zone or getattr(self.zone, 'name', None),
@@ -953,7 +972,7 @@ class Cluster(object):
             kwargs.update(
                 network_interfaces=self.ec2.get_network_collection(netif))
         else:
-            kwargs.update(security_groups=[cluster_sg])
+            kwargs.update(security_groups=security_groups)
         resvs = []
         if spot_bid:
             security_group_id = self.cluster_group.id
@@ -1795,6 +1814,19 @@ class ClusterValidator(validators.Validator):
                     "%s's key_name (%s) != %s" % (node.alias, node.key_name,
                                                   cluster.keyname))
 
+    def validate_static_groups(self):
+        """
+        Check that the specified security groups actually exist.
+        """
+        for group in self.cluster.static_security_groups:
+            # Throws an exception if the security group does not exist.
+            try:
+                self.cluster.ec2.get_security_groups(
+                    filters={'group-name': group})
+            except:
+                raise exception.ClusterValidationError(
+                    "Security group does not exist: {0}".format(group))
+
     def validate(self):
         """
         Checks that all cluster template settings are valid and raises an
@@ -1817,6 +1849,7 @@ class ClusterValidator(validators.Validator):
             self.validate_ebs_aws_settings()
             self.validate_image_settings()
             self.validate_instance_types()
+            self.validate_static_groups()
             self.validate_userdata()
             log.info('Cluster template settings are valid')
             return True
