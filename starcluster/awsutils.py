@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -498,6 +498,10 @@ class EasyEC2(EasyAWS):
                 # mapping when you dont own the AMI causes an error on launch
                 root.snapshot_id = None
                 root.delete_on_termination = True
+                # AWS API doesn't support any value for this flag for the root
+                # device of a new instance (see: boto#2587)
+                if hasattr(root, 'encrypted'):
+                    root.encrypted = None
                 bdmap[img.root_device_name] = root
             block_device_map = bdmap
         shared_kwargs = dict(instance_type=instance_type,
@@ -722,7 +726,7 @@ class EasyEC2(EasyAWS):
 
     def get_securityids_from_names(self, groupnames):
         name_id = dict([(sec.name, sec.id) for sec in
-                        self.conn.get_all_security_groups()])
+                        self.get_all_security_groups(groupnames)])
         return [name_id[gname] for gname in groupnames if gname in name_id]
 
     def get_all_instances(self, instance_ids=[], filters={}):

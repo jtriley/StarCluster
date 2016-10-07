@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -577,8 +577,6 @@ class Cluster(object):
         Cluster object. Settings are loaded from cluster group tags and the
         master node's user data.
         """
-        if not (load_plugins or load_volumes):
-            return True
         try:
             tags = self.cluster_group.tags
             version = tags.get(static.VERSION_TAG, '')
@@ -589,6 +587,8 @@ class Cluster(object):
                 sep = '*' * 60
                 log.warn('\n'.join([sep, msg, sep]), extra={'__textwrap__': 1})
             self.update(self._get_settings_from_tags())
+            if not (load_plugins or load_volumes):
+                return True
             try:
                 master = self.master_node
             except exception.MasterDoesNotExist:
@@ -871,7 +871,8 @@ class Cluster(object):
         group_id = self.cluster_group.id
         states = ['active', 'open']
         filters = {'state': states}
-        if self.cluster_group.vpc_id:
+        vpc_id = self.cluster_group.vpc_id
+        if vpc_id and self.subnet_id:
             # According to the EC2 API docs this *should* be
             # launch.network-interface.group-id but it doesn't work
             filters['network-interface.group-id'] = group_id
@@ -1187,6 +1188,8 @@ class Cluster(object):
         lmap.pop((itype, image))
         for (itype, image) in lmap:
             aliases = lmap.get((itype, image))
+            if not aliases:
+                continue
             for alias in aliases:
                 log.debug("Launching %s (ami: %s, type: %s)" %
                           (alias, image, itype))
@@ -2044,14 +2047,21 @@ class ClusterValidator(validators.Validator):
             except ValueError:
                 raise exception.InvalidPortRange(
                     from_port, to_port, reason="integer range required")
-            if from_port < 0 or to_port < 0:
-                raise exception.InvalidPortRange(
-                    from_port, to_port,
-                    reason="from/to must be positive integers")
-            if from_port > to_port:
-                raise exception.InvalidPortRange(
-                    from_port, to_port,
-                    reason="'from_port' must be <= 'to_port'")
+            if protocol == 'icmp':
+                if from_port != -1 or to_port != -1:
+                    raise exception.InvalidPortRange(
+                        from_port, to_port,
+                        reason="for icmp protocol from_port "
+                        "and to_port must be -1")
+            else:
+                if from_port < 0 or to_port < 0:
+                    raise exception.InvalidPortRange(
+                        from_port, to_port,
+                        reason="from/to must be positive integers")
+                if from_port > to_port:
+                    raise exception.InvalidPortRange(
+                        from_port, to_port,
+                        reason="'from_port' must be <= 'to_port'")
             cidr_ip = permission.get('cidr_ip')
             if not iptools.ipv4.validate_cidr(cidr_ip):
                 raise exception.InvalidCIDRSpecified(cidr_ip)

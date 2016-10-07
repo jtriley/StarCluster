@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2009-2013 Justin Riley
+# Copyright 2009-2014 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -62,8 +62,8 @@ try:
 
     console_scripts = ['starcluster = starcluster.cli:main']
     extra = dict(test_suite="starcluster.tests",
-                 tests_require= ["pytest-cov", "pytest-pep8", "pytest-flakes",
-                                 "pytest"],
+                 tests_require= ["pytest-cov==1.8", "pytest-pep8",
+                                 "pytest-flakes", "pytest"],
                  cmdclass={"test": PyTest},
                  install_requires=["paramiko>=1.12.1", "boto>=2.23.0",
                                    "workerpool>=0.9.2", "Jinja2>=2.7",

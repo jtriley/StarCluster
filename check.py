@@ -126,7 +126,8 @@ def check_pyflakes(files):
 
 def check_pep8(files):
     print(">>> Running pep8...")
-    sg = pep8.StyleGuide(parse_argv=False, config_file=False)
+    sg = pep8.StyleGuide(parse_argv=False, config_file=False,
+                         ignore="W503,E402,E241")
     sg.options.repeat = True
     sg.options.show_pep8 = True
     report = sg.check_files(files)

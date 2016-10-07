@@ -5,6 +5,115 @@ Version History
 .. contents::
     :local:
 
+.. _version-0.95.6:
+
+0.95.6
+======
+
+.. _v0956-news:
+
+News
+----
+Version 0.95.6 of StarCluster is a bug fix release. The biggest fix is for a
+change in recent versions of boto that prevents launching all clusters (#455).
+The sections below contain the full list of changes. This version is *not*
+compatible with clusters started with older versions of StarCluster. Please
+terminate all clusters before upgrading to 0.95.6.
+
+.. _v0956-features:
+
+Features
+--------
+* Add support for T2 instance types (#407)
+
+.. _v0956-fixes:
+
+Bug Fixes
+---------
+* awsutils: set encrypted flag to None in custom block device mappings (#455)
+* tests: include pytest.ini in MANIFEST file (#454)
+* tests: fix for pytest coverage plugin
+* sshutils: pass socket timeout down to SCPClient
+
+.. _v0956-enhancements:
+
+Enhancements
+------------
+* node: dont crash on socket.errors (#465)
+
+.. _version-0.95.5:
+
+0.95.5
+======
+
+.. _v0955-news:
+
+News
+----
+Version 0.95.5 of StarCluster is a bug fix release. The sections below contain
+the full list of changes. This version is *not* compatible with clusters
+started with older versions of StarCluster. Please terminate all clusters
+before upgrading to 0.95.5.
+
+Features
+--------
+* Add support for R3 instance types (#392, #393)
+
+.. _v0955-fixes:
+
+Bug Fixes
+---------
+* cluster: fix bug when creating a flat rate cluster with master_instance_type
+  or master_image_id specified
+
+Enhancements
+------------
+* docs: update image host command to use -I,-m options (#388)
+
+.. _version-0.95.4:
+
+0.95.4
+======
+
+.. _v0954-news:
+
+
+News
+----
+.. warning::
+
+    This release fixes a show-stopping issue for users launching spot clusters
+    on a default-VPC account without explicitly specifying a VPC/subnet. It is
+    recommended that you upgrade as soon as possible.
+
+Version 0.95.4 of StarCluster is a bug fix release. The sections below contain
+the full list of changes. This version is *not* compatible with clusters
+started with older versions of StarCluster. Please terminate all clusters
+before upgrading to 0.95.4.
+
+Features
+--------
+* sge: new ``slots_per_host`` setting for specifying a custom number of slots
+  per execution host in the cluster (see :ref:`sge-plugin-sph`)
+
+.. _v0954-fixes:
+
+Bug Fixes
+---------
+* cluster: fix spot_requests property to correctly account for spot clusters
+  that get automatically assigned to the default VPC by EC2. (#377)
+* loadbalance: fetch and use the remote time zone from the master node rather
+  than assuming the timezone is always set to UTC. (#385)
+* sge: fix parallel environment slot allocation to respect both
+  the ``master_is_exec_host`` and the new ``slots_per_host`` setting.
+
+Enhancements
+------------
+* awsutils: show progress bar when waiting for spot requests/instances to
+  propagate
+* listspots: show detailed status and status message
+* sge: remove redundant admin/submit host setup
+
 .. _version-0.95.3:
 
 0.95.3
@@ -38,17 +147,17 @@ Please note that this version is *not* compatible with clusters started with
 older versions of StarCluster. Please terminate all clusters before upgrading
 to 0.95.3.
 
-.. _v0953-fixes:
-
 Features
 --------
 * start: add -Q, -p, and --no-spot-master options
 * cluster: update 'Creating cluster' log msg to indicate VPC
 
+.. _v0953-fixes:
+
 Bug Fixes
 ---------
-* users: pass -n to echo to avoid trailing newlines (gh-375)
-* cluster: do not use public IPs with VPC by default (gh-372)
+* users: pass -n to echo to avoid trailing newlines (#375)
+* cluster: do not use public IPs with VPC by default (#372)
 * cluster: fix VPC public IPs validation
 
 .. _version-0.95.2:
@@ -68,8 +177,8 @@ StarCluster. Please terminate all clusters before upgrading to 0.95.2.
 
 Bug Fixes
 ---------
-* cluster: sort chunked cluster tags before loading (gh-371)
-* config: set public_ip setting type to boolean (gh-366)
+* cluster: sort chunked cluster tags before loading (#371)
+* config: set public_ip setting type to boolean (#366)
 
 .. _version-0.95.1:
 
@@ -88,9 +197,9 @@ StarCluster. Please terminate all clusters before upgrading to 0.95.1.
 
 Bug Fixes
 ---------
-* cluster: fix max length error when applying cluster tags (gh-348)
-* start: fix default value for ``--no-public-ips`` option (gh-366)
-* cluster: fix for custom security group permissions (gh-356)
+* cluster: fix max length error when applying cluster tags (#348)
+* start: fix default value for ``--no-public-ips`` option (#366)
+* cluster: fix for custom security group permissions (#356)
 
 .. _version-0.95:
 
