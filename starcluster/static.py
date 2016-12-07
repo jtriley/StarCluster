@@ -110,6 +110,7 @@ VOLUME_ATTACH_STATUS = ['attaching', 'attached', 'detaching', 'detached']
 
 INSTANCE_TYPES = {
     't1.micro': ['i386', 'x86_64'],
+    't2.nano': ['i386', 'x86_64'],
     't2.micro': ['i386', 'x86_64'],
     't2.small': ['i386', 'x86_64'],
     't2.medium': ['i386', 'x86_64'],
@@ -166,7 +167,7 @@ INSTANCE_TYPES = {
 
 T1_INSTANCE_TYPES = ['t1.micro']
 
-T2_INSTANCE_TYPES = ['t2.micro', 't2.small', 't2.medium']
+T2_INSTANCE_TYPES = ['t2.nano', 't2.micro', 't2.small', 't2.medium']
 
 SEC_GEN_TYPES = ['m3.medium', 'm3.large', 'm3.xlarge', 'm3.2xlarge']
 
