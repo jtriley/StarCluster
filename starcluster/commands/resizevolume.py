@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
 
+import re
+
 from starcluster import node
 from starcluster import volume
 from starcluster import static
@@ -96,6 +98,9 @@ class CmdResizeVolume(CmdCreateVolume):
         kwargs = self.specified_options_dict
         kwargs.update(dict(keypair=keypair, key_location=key_location,
                            host_instance=host_instance))
+        if 'image_id' not in kwargs.keys():
+            zone_short = re.match(".+-.+-[1-9]+", zone).group()
+            kwargs['image_id'] = static.BASE_AMI_64[zone_short]
         vc = volume.VolumeCreator(self.ec2, **kwargs)
         if host_instance:
             vc._validate_host_instance(host_instance, zone)
