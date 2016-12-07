@@ -24,6 +24,12 @@ class MPICH2Setup(clustersetup.DefaultClusterSetup):
     MPICH2_HOSTS = '/home/mpich2.hosts'
     MPICH2_PROFILE = '/etc/profile.d/mpich2.sh'
 
+    def __init__(self, slots_per_host=None):
+        super(MPICH2Setup, self).__init__()
+        self.slots_per_host = None
+        if slots_per_host is not None:
+            self.slots_per_host = int(slots_per_host)
+
     def _configure_profile(self, node, aliases):
         mpich2_profile = node.ssh.remote_file(self.MPICH2_PROFILE, 'w')
         mpich2_profile.write("export HYDRA_HOST_FILE=%s" % self.MPICH2_HOSTS)
@@ -48,7 +54,11 @@ class MPICH2Setup(clustersetup.DefaultClusterSetup):
         log.info("Creating MPICH2 hosts file")
         aliases = [n.alias for n in nodes]
         mpich2_hosts = master.ssh.remote_file(self.MPICH2_HOSTS, 'w')
-        mpich2_hosts.write('\n'.join(aliases) + '\n')
+        hosts = aliases
+        if self.slots_per_host:
+            log.info("Configuring %d slots per host" % self.slots_per_host)
+            hosts = ['%s:%d' % (host, self.slots_per_host) for host in hosts]
+        mpich2_hosts.write('\n'.join(hosts) + '\n')
         mpich2_hosts.close()
         log.info("Configuring MPICH2 profile")
         for node in nodes:
