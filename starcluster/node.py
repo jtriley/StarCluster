@@ -891,6 +891,19 @@ class Node(object):
             if vol.status not in ['available', 'detaching']:
                 vol.detach()
 
+    def detach_shared_volumes(self):
+        """
+        Detaches all shared volumes (i.e. from the master) returned by self.get_volumes
+        """
+        if self.is_master():
+            block_devs = self.get_volumes().values()
+            for dev in block_devs:
+                vol_id = dev.volume_id
+                vol = self.ec2.get_volume(vol_id)
+                log.info("Detaching volume %s from %s" % (vol.id, self.alias))
+                if vol.status not in ['available', 'detaching']:
+                    vol.detach()
+
     def delete_root_volume(self):
         """
         Detach and destroy EBS root volume (EBS-backed node only)

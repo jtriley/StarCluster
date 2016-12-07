@@ -17,6 +17,7 @@
 
 import os
 import posixpath
+from datetime import datetime
 
 from starcluster import utils
 from starcluster import static
@@ -66,8 +67,10 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
         self._user_shell = user_shell
         self._volumes = volumes
         log.info("Creating %d cluster users" % self._num_users)
+        log.info("Usernames listing %s " % self._usernames)
         newusers = self._get_newusers_batch_file(master, self._usernames,
                                                  user_shell)
+        log.info("newuser_names listing %s " % newusers)
         for node in nodes:
             self.pool.simple_job(node.ssh.execute,
                                  ("echo -n '%s' | newusers" % newusers),
@@ -111,20 +114,25 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
 
     def _get_newusers_batch_file(self, master, usernames, shell,
                                  batch_file=None):
+        bfilecontents = ''
         batch_file = batch_file or self.BATCH_USER_FILE
         if master.ssh.isfile(batch_file):
             bfile = master.ssh.remote_file(batch_file, 'r')
             bfilecontents = bfile.read()
             bfile.close()
-            return bfilecontents
-        bfilecontents = ''
+            # return bfilecontents
         tmpl = "%(username)s:%(password)s:%(uid)d:%(gid)d:"
         tmpl += "Cluster user account %(username)s:"
         tmpl += "/home/%(username)s:%(shell)s\n"
         shpath = master.ssh.which(shell)[0]
         ctx = dict(shell=shpath)
         base_uid, base_gid = self._get_max_unused_user_id()
+        found_newuser = False
         for user in usernames:
+            if user in bfilecontents:
+	        log.info ("Skipping %s user previously created" % user)
+                continue	
+            found_newuser = True
             home_folder = '/home/%s' % user
             if master.ssh.path_exists(home_folder):
                 s = master.ssh.stat(home_folder)
@@ -141,9 +149,13 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
         pardir = posixpath.dirname(batch_file)
         if not master.ssh.isdir(pardir):
             master.ssh.makedirs(pardir)
-        bfile = master.ssh.remote_file(batch_file, 'w')
-        bfile.write(bfilecontents)
-        bfile.close()
+        if master.ssh.isfile(batch_file) and found_newuser:
+            d=datetime.now().isoformat('T')
+            master.ssh.rename(batch_file, batch_file+"."+d+".bk")
+        if not master.ssh.isfile(batch_file):
+            bfile = master.ssh.remote_file(batch_file, 'w')
+            bfile.write(bfilecontents)
+            bfile.close()
         return bfilecontents
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
