@@ -531,8 +531,13 @@ class StarClusterConfig(object):
         sections_store = AttributeDict()
         for sec in sections:
             name = self._get_section_name(sec)
-            sections_store[name] = self._load_section(sec, section_settings,
-                                                      filter_settings)
+            sections_store[name] = AttributeDict()
+            self._load_settings(sec, section_settings, sections_store[name], filter_settings)
+        for sec in sections:
+            name = self._get_section_name(sec)
+            self._load_extends_settings(name, sections_store)
+            self._load_defaults(section_settings, sections_store[name])
+            self._check_required(name, section_settings, sections_store[name])
         return sections_store
 
     def _load_cluster_sections(self, cluster_sections):

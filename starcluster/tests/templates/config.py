@@ -52,6 +52,7 @@ default_config = {
     'p3_param1': 'bon',
     'p3_param2': 'jour',
     'p3_param3': 'monsignour',
+    'p4_param1': 'oui',
     's1_protocol': 'udp',
     's1_from_port': 20,
     's1_to_port': 20,
@@ -71,7 +72,7 @@ default_config = {
     'c1_master_type': 'm1.small',
     'c1_node_type': 'm1.small',
     'c1_vols': 'v1,v2,v3',
-    'c1_plugs': 'p1,p2,p3',
+    'c1_plugs': 'p1,p2,p3,p4',
     'c1_zone': 'us-east-1c',
     'c2_extends': 'c1',
     'c2_keyname': 'k2',
@@ -149,6 +150,10 @@ SETUP_CLASS = %(p3_class)s
 MY_ARG = %(p3_param1)s
 MY_OTHER_ARG = %(p3_param2)s
 MY_OTHER_OTHER_ARG = %(p3_param3)s
+
+[plugin p4]
+EXTENDS = p3
+MY_OTHER_OTHER_ARG = %(p4_param1)s
 
 [permission s1]
 protocol = %(s1_protocol)s

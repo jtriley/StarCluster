@@ -279,6 +279,7 @@ EBS_VOLUME_SETTINGS = {
 
 PLUGIN_SETTINGS = {
     'setup_class': (str, True, None, None, None),
+    'extends': (str, False, None, None, None),
 }
 
 PERMISSION_SETTINGS = {
@@ -295,6 +296,7 @@ PERMISSION_SETTINGS = {
     # 'source_group_owner': (int, False, None),
 }
 
+# func, required, default, options, callback
 CLUSTER_SETTINGS = {
     'spot_bid': (float, False, None, None, None),
     'cluster_size': (int, True, None, None, None),
