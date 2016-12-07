@@ -1107,7 +1107,7 @@ class Node(object):
                 command = "'source /etc/profile && %s'" % command
                 ssh_cmd = ' '.join([ssh_cmd, command])
             log.debug("ssh_cmd: %s" % ssh_cmd)
-            return subprocess.call(ssh_cmd, shell=True)
+            return subprocess.call(ssh_cmd, shell=True, executable='/bin/bash')
         else:
             log.debug("Using Pure-Python SSH client")
             if forward_x11:
