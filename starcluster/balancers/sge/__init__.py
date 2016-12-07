@@ -418,7 +418,8 @@ class SGELoadBalancer(LoadBalancer):
     def __init__(self, interval=60, max_nodes=None, wait_time=900,
                  add_pi=1, kill_after=45, stab=180, lookback_win=3,
                  min_nodes=None, kill_cluster=False, plot_stats=False,
-                 plot_output_dir=None, dump_stats=False, stats_file=None):
+                 plot_output_dir=None, dump_stats=False, stats_file=None,
+                 spot_bid=None):
         self._cluster = None
         self._keep_polling = True
         self._visualizer = None
@@ -437,6 +438,7 @@ class SGELoadBalancer(LoadBalancer):
         self.stats_file = stats_file
         self.plot_stats = plot_stats
         self.plot_output_dir = plot_output_dir
+        self.spot_bit = spot_bid
         if plot_stats:
             assert self.visualizer is not None
 
@@ -724,7 +726,7 @@ class SGELoadBalancer(LoadBalancer):
             log.warn("Adding %d nodes at %s" %
                      (need_to_add, str(utils.get_utc_now())))
             try:
-                self._cluster.add_nodes(need_to_add)
+                self._cluster.add_nodes(need_to_add, spot_bid=self.spot_bid)
                 self.__last_cluster_mod_time = utils.get_utc_now()
                 log.info("Done adding nodes at %s" %
                          str(self.__last_cluster_mod_time))
