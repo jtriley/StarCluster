@@ -127,6 +127,10 @@ For example, the *smallcluster* template would be updated to look like::
     [cluster smallcluster]
     keyname = mykey
 
+It is worth noting that `keyname` needs to be the same name as the .rsa
+file. `keyname` is not just a pointer to the [key mykey] section, but
+is used to determine the AWS key.
+
 Now that the config file has been set up we're ready to start using
 StarCluster. Next we start a cluster named "mycluster" using the default
 cluster template *smallcluster* in the example config::
