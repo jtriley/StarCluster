@@ -74,6 +74,9 @@ class CmdStart(ClusterCompleter):
         parser.add_option("-q", "--disable-queue", dest="disable_queue",
                           action="store_true", default=None,
                           help="do not configure a queueing system (SGE)")
+        parser.add_option("--disable-default", dest="disable_default",
+                          action="store_true", default=None,
+                          help="do not configure default plugin")
         parser.add_option("-Q", "--enable-queue", dest="disable_queue",
                           action="store_false", default=None,
                           help="configure a queueing system (SGE) (default)")

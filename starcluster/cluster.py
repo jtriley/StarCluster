@@ -405,6 +405,7 @@ class Cluster(object):
                  userdata_scripts=[],
                  refresh_interval=30,
                  disable_queue=False,
+                 disable_default=False,
                  num_threads=20,
                  disable_threads=False,
                  cluster_group=None,
@@ -699,6 +700,7 @@ class Cluster(object):
                              subnet_id=self.subnet_id,
                              public_ips=self.public_ips,
                              disable_queue=self.disable_queue,
+                             disable_default=self.disable_default,
                              disable_cloudinit=self.disable_cloudinit)
         user_settings = dict(cluster_user=self.cluster_user,
                              cluster_shell=self.cluster_shell,
@@ -1671,6 +1673,15 @@ class Cluster(object):
             self.attach_volumes_to_master()
         self.run_plugins()
 
+    def get_all_plugins(self, plugins=None):
+        plugs = []
+        if not self.disable_default:
+            plugs.append(self._default_plugin)
+        if not self.disable_queue:
+            plugs.append(self._sge_plugin)
+        plugs += (plugins or self.plugins)[:]
+        return plugs
+
     def run_plugins(self, plugins=None, method_name="run", node=None,
                     reverse=False):
         """
@@ -1680,10 +1691,8 @@ class Cluster(object):
         plugins must be a tuple: the first element is the plugin's name, the
         second element is the plugin object (a subclass of ClusterSetup)
         """
-        plugs = [self._default_plugin]
-        if not self.disable_queue:
-            plugs.append(self._sge_plugin)
-        plugs += (plugins or self.plugins)[:]
+        plugs = self.get_all_plugins(plugins=plugins)
+
         if reverse:
             plugs.reverse()
         for plug in plugs:

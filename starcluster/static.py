@@ -314,6 +314,7 @@ CLUSTER_SETTINGS = {
     'permissions': (list, False, [], None, None),
     'userdata_scripts': (list, False, [], None, __expand_all_in_list),
     'disable_queue': (bool, False, False, None, None),
+    'disable_default': (bool, False, False, None, None),
     'force_spot_master': (bool, False, False, None, None),
     'disable_cloudinit': (bool, False, False, None, None),
     'dns_prefix': (bool, False, False, None, None),
