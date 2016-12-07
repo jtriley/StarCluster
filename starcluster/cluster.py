@@ -935,6 +935,24 @@ class Cluster(object):
                 placement_group = None
             elif not placement_group:
                 placement_group = self.placement_group.name
+
+        if spot_bid and not placement_group and zone is None:
+            zones_filter = None
+            if self.subnet_ids:
+                zones_filter = [s_net.availability_zone
+                                for s_net in self.subnets_mapping.values()]
+
+            zone, price = self.ec2.get_spot_cheapest_zone(
+                instance_type, zones_filter,
+                vpc=self.vpc_id is not None)
+            log.info("Min price of %f found in zone %s", price, zone)
+            if price > spot_bid:
+                # Let amazon pick the first zone where the prices goes
+                # bellow the spot_bid
+                log.info("Reverting to \"no zone\" as the min price is "
+                         "above the spot bid.")
+                zone = None
+
         image_id = image_id or self.node_image_id
         count = len(aliases) if not spot_bid else 1
         user_data = self._get_cluster_userdata(aliases)
@@ -943,7 +961,7 @@ class Cluster(object):
                       key_name=self.keyname,
                       availability_zone_group=cluster_sg,
                       launch_group=cluster_sg,
-                      placement=zone or getattr(self.zone, 'name', None),
+                      placement=zone,
                       user_data=user_data,
                       placement_group=placement_group)
         if self.subnet_id:

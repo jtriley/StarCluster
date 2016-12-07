@@ -1589,6 +1589,34 @@ class EasyEC2(EasyAWS):
         else:
             log.info("No console output available...")
 
+    def get_spot_cheapest_zone(self, instance_type, zone_filter, vpc=False):
+        """
+        Find cheapest zone.
+
+        zone_filter, if a list, zones to consider, if None, all zones
+            considered
+        """
+        min_price = 9999
+        min_zone = None
+        for zone in self.conn.get_all_zones():
+            zone_name = zone.name
+            if zone_filter is not None and zone_name not in zone_filter:
+                log.debug("Filtered zone {}".format(zone_name))
+                continue
+            try:
+                price = self.get_spot_history(instance_type,
+                                              zone=zone_name,
+                                              mute=True, vpc=vpc)
+                price = price[0][1]
+            except exception.SpotHistoryError as err:
+                log.warning(str(err))  # can be normal when amazon adds zones
+                price = 9999999
+            log.debug("%s: %f", zone_name, price)
+            if price < min_price:
+                min_zone = zone
+                min_price = price
+        return min_zone, min_price
+
 
 class EasyS3(EasyAWS):
     DefaultHost = 's3.amazonaws.com'
