@@ -127,6 +127,7 @@ INSTANCE_TYPES = {
     'm3.large': ['x86_64'],
     'm3.xlarge': ['x86_64'],
     'm3.2xlarge': ['x86_64'],
+    'm4.large': ['x86_64'],
     'm4.xlarge': ['x86_64'],
     'm4.2xlarge': ['x86_64'],
     'm4.4xlarge': ['x86_64'],
@@ -188,8 +189,8 @@ M3_COMPUTE_TYPES = ['c3.large', 'c3.xlarge', 'c3.2xlarge', 'c3.4xlarge',
                     'c3.8xlarge']
 
 M4_COMPUTE_TYPES = ['c4.large', 'c4.xlarge', 'c4.2xlarge', 'c4.4xlarge',
-                    'c4.8xlarge', 'm4.xlarge', 'm4.2xlarge', 'm4.4xlarge',
-                    'm4.10xlarge', 'm4.16xlarge']
+                    'c4.8xlarge', 'm4.large', 'm4.xlarge', 'm4.2xlarge',
+                    'm4.4xlarge', 'm4.10xlarge', 'm4.16xlarge']
 
 I2_STORAGE_TYPES = ['i2.xlarge', 'i2.2xlarge', 'i2.4xlarge', 'i2.8xlarge']
 
