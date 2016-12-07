@@ -64,7 +64,8 @@ CLOUD_CFG_FILE = '/etc/cloud/cloud.cfg'
 GRID_SCHEDULER_GIT = 'git://github.com/jtriley/gridscheduler.git'
 CLOUDERA_ARCHIVE_KEY = 'http://archive.cloudera.com/debian/archive.key'
 CLOUDERA_APT = 'http://archive.cloudera.com/debian maverick-cdh3u5 contrib'
-CONDOR_APT = 'http://www.cs.wisc.edu/condor/debian/development lenny contrib'
+CONDOR_ARCHIVE_KEY = 'http://research.cs.wisc.edu/htcondor/debian/HTCondor-Release.gpg.key'
+CONDOR_APT = 'http://research.cs.wisc.edu/htcondor/debian/stable lenny contrib'
 NUMPY_SCIPY_SITE_CFG = """\
 [DEFAULT]
 library_dirs = /usr/lib
@@ -249,6 +250,7 @@ def configure_apt_sources():
     run_command('add-apt-repository ppa:staticfloat/julia-deps -y')
     run_command('gpg --keyserver keyserver.ubuntu.com --recv-keys 0F932C9C')
     run_command('curl -s %s | sudo apt-key add -' % CLOUDERA_ARCHIVE_KEY)
+    run_command('curl -s %s | sudo apt-key add -' % CONDOR_ARCHIVE_KEY)
     apt_install('debian-archive-keyring')
 
 
