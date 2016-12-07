@@ -669,7 +669,7 @@ class Node(object):
         self.stop_exporting_fs_to_nodes(nodes, paths=export_paths)
         log.info("Configuring NFS exports path(s):\n%s" %
                  ' '.join(export_paths))
-        nfs_export_settings = "(async,no_root_squash,no_subtree_check,rw)"
+        #nfs_export_settings = "(async,no_root_squash,no_subtree_check,rw)"
         etc_exports = self.ssh.remote_file('/etc/exports', 'r')
         contents = etc_exports.read()
         etc_exports.close()
@@ -703,6 +703,7 @@ class Node(object):
     def start_nfs_server(self):
         log.info("Starting NFS server on %s" % self.alias)
         self.ssh.execute('/etc/init.d/portmap start', ignore_exit_status=True)
+        #self.ssh.execute('service rpcbind start', ignore_exit_status=True)
         self.ssh.execute('mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs/',
                          ignore_exit_status=True)
         EXPORTSD = '/etc/exports.d'
@@ -729,6 +730,7 @@ class Node(object):
         remote_paths - list of remote paths to mount from server_node
         """
         self.ssh.execute('/etc/init.d/portmap start')
+        #self.ssh.execute('service rpcbind start')
         # TODO: move this fix for xterm somewhere else
         self.ssh.execute('mount -t devpts none /dev/pts',
                          ignore_exit_status=True)
