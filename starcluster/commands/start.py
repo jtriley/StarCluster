@@ -22,6 +22,7 @@ from starcluster import exception
 from starcluster import completion
 from starcluster.templates import user_msgs
 from starcluster.logger import log
+from starcluster.utils import AttributeDict
 
 from completers import ClusterCompleter
 
@@ -180,6 +181,9 @@ class CmdStart(ClusterCompleter):
         parser.add_option("-N", "--subnet-id", dest="subnet_id",
                           action="store", type="string",
                           help=("Launch cluster into a VPC subnet"))
+        parser.add_option("--volumes", dest="volumes",
+                          action="append", default=None,
+                          help="Specify the volumes to use with cluster")
 
     def execute(self, args):
         if len(args) != 1:
@@ -223,6 +227,17 @@ class CmdStart(ClusterCompleter):
                     raise e
                 log.info("Using default cluster template: %s" % template)
             scluster = self.cm.get_cluster_template(template, tag)
+
+        if self.opts.volumes is not None:
+            volumes_orig = [x for x in (y.strip()
+                                        for y in self.opts.volumes)
+                            if x]
+            self.opts.volumes = AttributeDict()
+            for key in volumes_orig:
+                self.opts.volumes[key] = vol = self.cfg.vols.get(key).copy()
+                del vol['__name__']
+                self.opts.volumes = scluster.load_volumes(self.opts.volumes)
+
         scluster.update(self.specified_options_dict)
         if self.opts.keyname and not self.opts.key_location:
             key = self.cfg.get_key(self.opts.keyname)
