@@ -738,6 +738,7 @@ class Cluster(object):
             for node in self.nodes:
                 if node.is_master():
                     self._master = node
+                    break
             if not self._master:
                 raise exception.MasterDoesNotExist()
         self._master.key_location = self.key_location
