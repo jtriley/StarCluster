@@ -27,4 +27,5 @@ __all__ = [
     'pypkginstaller',
     'xvfb',
     'mpich2',
+    's3cmd',
 ]

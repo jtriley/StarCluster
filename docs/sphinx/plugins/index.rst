@@ -13,6 +13,7 @@ The links below are for plugin-specific docs. Please see the :ref:`plugin guide
    users
    ipython
    boto
+   s3cmd
    tmux
    condor
    hadoop
