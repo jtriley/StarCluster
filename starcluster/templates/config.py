@@ -46,6 +46,8 @@ AWS_ACCESS_KEY_ID = #your_aws_access_key_id
 AWS_SECRET_ACCESS_KEY = #your_secret_access_key
 # replace this with your account number
 AWS_USER_ID= #your userid
+# Uncomment to specify a STS security token  (OPTIONAL)
+#AWS_SECURITY_TOKEN = #your_security_token
 # Uncomment to specify a different Amazon AWS region  (OPTIONAL)
 # (defaults to us-east-1 if not specified)
 # NOTE: AMIs have to be migrated!

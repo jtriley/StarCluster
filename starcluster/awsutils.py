@@ -98,6 +98,7 @@ class EasyAWS(object):
 
 class EasyEC2(EasyAWS):
     def __init__(self, aws_access_key_id, aws_secret_access_key,
+                 aws_security_token=None,
                  aws_ec2_path='/', aws_s3_host=None, aws_s3_path='/',
                  aws_port=None, aws_region_name=None, aws_is_secure=True,
                  aws_region_host=None, aws_proxy=None, aws_proxy_port=None,
@@ -111,7 +112,8 @@ class EasyEC2(EasyAWS):
                     path=aws_ec2_path, proxy=aws_proxy,
                     proxy_port=aws_proxy_port, proxy_user=aws_proxy_user,
                     proxy_pass=aws_proxy_pass,
-                    validate_certs=aws_validate_certs)
+                    validate_certs=aws_validate_certs,
+                    security_token=aws_security_token)
         super(EasyEC2, self).__init__(aws_access_key_id, aws_secret_access_key,
                                       boto.connect_vpc, **kwds)
         self._conn = kwargs.get('connection')
@@ -120,7 +122,8 @@ class EasyEC2(EasyAWS):
                     aws_proxy=aws_proxy, aws_proxy_port=aws_proxy_port,
                     aws_proxy_user=aws_proxy_user,
                     aws_proxy_pass=aws_proxy_pass,
-                    aws_validate_certs=aws_validate_certs)
+                    aws_validate_certs=aws_validate_certs,
+                    security_token=aws_security_token)
         self.s3 = EasyS3(aws_access_key_id, aws_secret_access_key, **kwds)
         self._regions = None
         self._account_attrs = None
