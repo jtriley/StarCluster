@@ -22,6 +22,7 @@ import string
 import pprint
 import warnings
 import datetime
+import json
 
 import iptools
 
@@ -62,6 +63,11 @@ class ClusterManager(managers.Manager):
                 group = self.ec2.get_security_group(clname)
             cl = Cluster(ec2_conn=self.ec2, cluster_tag=cltag,
                          cluster_group=group)
+
+            # Useful when config is on master node
+            cl.key_location = \
+                self.cfg.get_key(cl.master_node.key_name).get('key_location')
+
             if load_receipt:
                 cl.load_receipt(load_plugins=load_plugins,
                                 load_volumes=load_volumes)
@@ -412,6 +418,8 @@ class Cluster(object):
                  disable_cloudinit=False,
                  subnet_id=None,
                  public_ips=None,
+                 plugins_order=[],
+                 config_on_master=False,
                  **kwargs):
         # update class vars with given vars
         _vars = locals().copy()
@@ -587,6 +595,8 @@ class Cluster(object):
                 sep = '*' * 60
                 log.warn('\n'.join([sep, msg, sep]), extra={'__textwrap__': 1})
             self.update(self._get_settings_from_tags())
+            if self.config_on_master:
+                self._load_config_from_master()
             if not (load_plugins or load_volumes):
                 return True
             try:
@@ -599,8 +609,9 @@ class Cluster(object):
                     master = self.master_node
                 else:
                     raise
-            if load_plugins:
-                self.plugins = self.load_plugins(master.get_plugins())
+            if load_plugins and self.plugins is None:
+                self.plugins = self.load_plugins(
+                    master.get_plugins(self.plugins_order))
             if load_volumes:
                 self.volumes = master.get_volumes()
         except exception.PluginError:
@@ -686,9 +697,10 @@ class Cluster(object):
             if tag not in sg.tags:
                 sg.add_tag(tag, chunk)
 
-    def _add_tags_to_sg(self, sg):
-        if static.VERSION_TAG not in sg.tags:
-            sg.add_tag(static.VERSION_TAG, str(static.VERSION))
+    def _get_settings(self):
+        """
+        The settings to save
+        """
         core_settings = dict(cluster_size=self.cluster_size,
                              master_image_id=self.master_image_id,
                              master_instance_type=self.master_instance_type,
@@ -699,16 +711,30 @@ class Cluster(object):
                              subnet_id=self.subnet_id,
                              public_ips=self.public_ips,
                              disable_queue=self.disable_queue,
-                             disable_cloudinit=self.disable_cloudinit)
+                             disable_cloudinit=self.disable_cloudinit,
+                             plugins_order=self.plugins_order)
         user_settings = dict(cluster_user=self.cluster_user,
                              cluster_shell=self.cluster_shell,
                              keyname=self.keyname, spot_bid=self.spot_bid)
-        core = utils.dump_compress_encode(core_settings, use_json=True,
-                                          chunk_size=static.MAX_TAG_LEN)
-        self._add_chunked_tags(sg, core, static.CORE_TAG)
-        user = utils.dump_compress_encode(user_settings, use_json=True,
-                                          chunk_size=static.MAX_TAG_LEN)
-        self._add_chunked_tags(sg, user, static.USER_TAG)
+        return core_settings, user_settings
+
+    def _add_tags_to_sg(self, sg):
+        if static.VERSION_TAG not in sg.tags:
+            sg.add_tag(static.VERSION_TAG, str(static.VERSION))
+        if self.config_on_master:
+            # the only info we store is the fact that config is on master
+            core = utils.dump_compress_encode(
+                dict(config_on_master=self.config_on_master),
+                use_json=True, chunk_size=static.MAX_TAG_LEN)
+            self._add_chunked_tags(sg, core, static.CORE_TAG)
+        else:
+            core_settings, user_settings = self._get_settings()
+            core = utils.dump_compress_encode(core_settings, use_json=True,
+                                              chunk_size=static.MAX_TAG_LEN)
+            self._add_chunked_tags(sg, core, static.CORE_TAG)
+            user = utils.dump_compress_encode(user_settings, use_json=True,
+                                              chunk_size=static.MAX_TAG_LEN)
+            self._add_chunked_tags(sg, user, static.USER_TAG)
 
     def _load_chunked_tags(self, sg, base_tag_name):
         tags = [i for i in sg.tags if i.startswith(base_tag_name)]
@@ -724,6 +750,35 @@ class Cluster(object):
         if static.USER_TAG in sg.tags:
             cluster.update(self._load_chunked_tags(sg, static.USER_TAG))
         return cluster
+
+    def save_config_on_master(self):
+        """
+        Vanilla Improvements function - save the config on the master node.
+        For cluster saving their config on the master node rather than in
+        the security group tags. No more chunk/hashing/splitting headaches.
+        """
+        log.info("Saving config on master")
+        settings, user_settings = self._get_settings()
+        settings.update(user_settings)
+        settings["plugins"] = self._plugins
+        config = self.master_node.ssh.remote_file(static.MASTER_CFG_FILE, 'wt')
+        json.dump(settings, config, indent=4, separators=(',', ': '),
+                  sort_keys=True)
+        config.close()
+
+    def _load_config_from_master(self):
+        """
+        Vanilla Improvements function - loads the config on the master node.
+        """
+        config = self.master_node.ssh.remote_file(static.MASTER_CFG_FILE, 'rt')
+        loaded_config = json.load(config)
+        self.plugins_order = loaded_config["plugins"]
+        self.update(loaded_config)
+        config.close()
+        master = self.master_node
+        self.plugins = self.load_plugins(
+            master.get_plugins(self.plugins_order, loaded_config["plugins"]))
+        self.validate()
 
     @property
     def placement_group(self):
@@ -1594,7 +1649,8 @@ class Cluster(object):
             self.ec2.delete_group(sg)
 
     def start(self, create=True, create_only=False, validate=True,
-              validate_only=False, validate_running=False):
+              validate_only=False, validate_running=False,
+              save_config_on_master=False):
         """
         Creates and configures a cluster from this cluster template's settings.
 
@@ -1625,10 +1681,12 @@ class Cluster(object):
                 return
         else:
             log.warn("SKIPPING VALIDATION - USE AT YOUR OWN RISK")
-        return self._start(create=create, create_only=create_only)
+        return self._start(create=create, create_only=create_only,
+                           save_config_on_master=save_config_on_master)
 
     @print_timing("Starting cluster")
-    def _start(self, create=True, create_only=False):
+    def _start(self, create=True, create_only=False,
+               save_config_on_master=False):
         """
         Create and configure a cluster from this cluster template's settings
         (Does not attempt to validate before running)
@@ -1648,25 +1706,27 @@ class Cluster(object):
                 node.start()
         if create_only:
             return
-        self.setup_cluster()
+        self.setup_cluster(save_config_on_master)
 
-    def setup_cluster(self):
+    def setup_cluster(self, save_config_on_master):
         """
         Waits for all nodes to come up and then runs the default
         StarCluster setup routines followed by any additional plugin setup
         routines
         """
         self.wait_for_cluster()
-        self._setup_cluster()
+        self._setup_cluster(save_config_on_master)
 
     @print_timing("Configuring cluster")
-    def _setup_cluster(self):
+    def _setup_cluster(self, save_config_on_master):
         """
         Runs the default StarCluster setup routines followed by any additional
         plugin setup routines. Does not wait for nodes to come up.
         """
         log.info("The master node is %s" % self.master_node.dns_name)
         log.info("Configuring cluster...")
+        if save_config_on_master:
+            self.save_config_on_master()
         if self.volumes:
             self.attach_volumes_to_master()
         self.run_plugins()

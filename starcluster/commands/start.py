@@ -180,6 +180,10 @@ class CmdStart(ClusterCompleter):
         parser.add_option("-N", "--subnet-id", dest="subnet_id",
                           action="store", type="string",
                           help=("Launch cluster into a VPC subnet"))
+        parser.add_option("--config-on-master", default=False,
+                          action='store_true', help="Store the config on the "
+                          "master node rather than into the security group "
+                          "tags")
 
     def execute(self, args):
         if len(args) != 1:
@@ -203,9 +207,16 @@ class CmdStart(ClusterCompleter):
         validate = self.opts.validate
         validate_running = self.opts.no_create
         validate_only = self.opts.validate_only
+        config_on_master = self.opts.config_on_master
+
         if scluster:
-            scluster = self.cm.get_cluster(tag, group=scluster)
-            validate_running = True
+            if config_on_master:
+                scluster = self.cm.get_cluster(tag, group=scluster,
+                                               load_receipt=False)
+                validate_running = False
+            else:
+                scluster = self.cm.get_cluster(tag, group=scluster)
+                validate_running = True
         else:
             template = self.opts.cluster_template
             if not template:
@@ -238,10 +249,20 @@ class CmdStart(ClusterCompleter):
                 self.warn_experimental(msg, num_secs=5)
         if self.opts.dns_prefix:
             scluster.dns_prefix = tag
+        if config_on_master:
+            scluster.config_on_master = True
+            if self.opts.no_create:
+                validate = False
+                log.warning("Cannot start a cluster when its config is "
+                            "stored on the master node using StarCluster. "
+                            "You should start it manually and then use "
+                            "the recovery options.")
+                return
         try:
             scluster.start(create=create, create_only=create_only,
                            validate=validate, validate_only=validate_only,
-                           validate_running=validate_running)
+                           validate_running=validate_running,
+                           save_config_on_master=self.opts.config_on_master)
         except KeyboardInterrupt:
             if validate_only:
                 raise
