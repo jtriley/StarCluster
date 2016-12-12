@@ -39,6 +39,22 @@ perform StarCluster's default setup routines. The DefaultClusterSetup class
 should provide you with a more complete example of the plugin API and the types
 of things you can do with the arguments passed to a plugin's *run* method.
 
+The *run* method is used when you start a cluster. If you use the ``addnode`` or
+``removenode`` commands the *run* method is not executed, instead you need to
+use *on_add_node* and *on_remove_node* methods. Extending the above example here is a
+sample *on_add_node* method. In this example *on_remove_node* is not required (you do
+not need to uninstall packages when you remove a node).
+
+.. code-block:: python
+
+    from starcluster.clustersetup import ClusterSetup
+    from starcluster.logger import log
+
+    class PackageInstaller(ClusterSetup):
+         ...
+         def on_add_node(self, node, nodes, master, user, user_shell, volumes):
+               node.ssh.execute('apt-get -y install %s' % self.pkg_to_install)
+
 Using the Logging System
 ------------------------
 When writing plugins it's better to use StarCluster's logging system rather
