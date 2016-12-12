@@ -22,6 +22,8 @@ import base64
 import socket
 import posixpath
 import subprocess
+import tempfile
+import os
 
 from starcluster import utils
 from starcluster import static
@@ -628,22 +630,24 @@ class Node(object):
         if not dest:
             dest = remote_file
         rf = self.ssh.remote_file(remote_file, 'r')
-        contents = rf.read()
         sts = rf.stat()
         mode = stat.S_IMODE(sts.st_mode)
         uid = sts.st_uid
         gid = sts.st_gid
         rf.close()
-        for node in nodes:
-            if self.id == node.id and remote_file == dest:
-                log.warn("src and destination are the same: %s, skipping" %
-                         remote_file)
-                continue
-            nrf = node.ssh.remote_file(dest, 'w')
-            nrf.write(contents)
-            nrf.chown(uid, gid)
-            nrf.chmod(mode)
-            nrf.close()
+        with tempfile.NamedTemporaryFile(
+                prefix=os.path.basename(remote_file) + "_") as f:
+            self.ssh.get(remote_file, f.name)
+            for node in nodes:
+                if self.id == node.id and remote_file == dest:
+                    log.warn("src and destination are the same: %s, skipping" %
+                             remote_file)
+                    continue
+                node.ssh.put(f.name, dest)
+                nrf = node.ssh.remote_file(dest, 'a')
+                nrf.chown(uid, gid)
+                nrf.chmod(mode)
+                nrf.close()
 
     def remove_user(self, name):
         """
