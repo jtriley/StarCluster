@@ -113,6 +113,11 @@ class CmdStart(ClusterCompleter):
                           help="requests spot instances instead of flat "
                           "rate instances. Uses SPOT_BID as max bid for "
                           "the request.")
+        parser.add_option("--bid-master", dest="spot_bid_master",
+                          action="store", type="float", default=None,
+                          help="requests spot instances instead of flat "
+                          "rate instances. Uses SPOT_BID as max bid for "
+                          "the request only for master.")
         parser.add_option("-d", "--description", dest="cluster_description",
                           action="store", type="string",
                           default="Cluster requested at %s" %
