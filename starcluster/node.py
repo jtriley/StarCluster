@@ -1195,3 +1195,19 @@ class Node(object):
     def __del__(self):
         if self._ssh:
             self._ssh.close()
+
+    def rename(self, new_name):
+        """
+        Used to reset the name and alias when there is a conflict
+        """
+        self.remove_tag("alias")
+        self.remove_tag("Name")
+        self.add_tag("Name", new_name)
+        self.add_tag("alias", new_name)
+        while True:
+            tags = self.tags
+            if tags.get("Name", "") == new_name \
+                    and tags.get("alias", "") == new_name:
+                break
+            log.info("Waiting for new name to propagate")
+            time.sleep(5)

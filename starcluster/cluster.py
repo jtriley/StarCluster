@@ -25,6 +25,8 @@ import datetime
 
 import iptools
 
+from collections import Counter
+
 from starcluster import utils
 from starcluster import static
 from starcluster import sshutils
@@ -1738,6 +1740,39 @@ class Cluster(object):
                           forward_agent=forward_agent,
                           pseudo_tty=pseudo_tty,
                           command=command)
+
+    def _get_duplicate_aliases(self):
+        aliases = [_n.alias for _n in self.nodes]
+        tmp_aliases = Counter(aliases)
+        return filter(lambda k: tmp_aliases[k] > 1, tmp_aliases)
+
+    def _recover_duplicate_aliases(self):
+        aliases = self._get_duplicate_aliases()
+        if not aliases:
+            return
+
+        log.error("Nodes with same alias detected! {}".format(aliases))
+        etc_hosts = self._master.ssh.get_remote_file_lines('/etc/hosts')
+        for alias in aliases:
+            ip = None
+            for line in etc_hosts:
+                if re.findall(alias, line):
+                    ip, _ = line.split(" ", 1)
+                    log.debug("Found ip: " + ip)
+                    break
+            else:
+                log.debug("No ip found")
+            for node in self.nodes:
+                if node.alias != alias:
+                    continue
+                if node.private_ip_address != ip:
+                    new_alias = self._make_alias(self._get_next_node_num())
+                    log.info("Renaming {} from {} to {}"
+                             .format(node, node.alias, new_alias))
+                    node.rename(new_alias)
+                    # force a memory refresh
+                    self._nodes = []
+                    self.nodes
 
 
 class ClusterValidator(validators.Validator):
