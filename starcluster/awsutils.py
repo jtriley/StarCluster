@@ -1413,14 +1413,14 @@ class EasyEC2(EasyAWS):
             self.wait_for_snapshot(snap, refresh_interval)
         return snap
 
-    def get_snapshots(self, volume_ids=[], filters=None, owner='self'):
+    def get_snapshots(self, snapshot_ids=None, volume_ids=[], filters=None, owner='self'):
         """
         Returns a list of all EBS volume snapshots
         """
         filters = filters or {}
         if volume_ids:
             filters['volume-id'] = volume_ids
-        return self.conn.get_all_snapshots(owner=owner, filters=filters)
+        return self.conn.get_all_snapshots(snapshot_ids=snapshot_ids, owner=owner, filters=filters)
 
     def get_snapshot(self, snapshot_id, owner='self'):
         """
@@ -1429,7 +1429,7 @@ class EasyEC2(EasyAWS):
         Raises exception.SnapshotDoesNotExist if unsuccessful
         """
         try:
-            return self.get_snapshots(filters={'snapshot-id': snapshot_id},
+            return self.get_snapshots(snapshot_ids=[snapshot_id],
                                       owner=owner)[0]
         except boto.exception.EC2ResponseError as e:
             if e.error_code == "InvalidSnapshot.NotFound":
@@ -1503,6 +1503,58 @@ class EasyEC2(EasyAWS):
                     print "tags: %s" % ', '.join(tags)
                 print
         print 'Total: %s' % len(vols)
+
+    def list_snapshots(self, snapshot_id=None, volume_id=None, status=None,
+                       tags=None, name=None, owner=None):
+        """
+        Print a list of snapshots to the screen
+        """
+        filters = {}
+        snapshot_ids = None
+        if status:
+            filters['status'] = status
+        else:
+            filters['status'] = ['pending', 'completed', 'error']
+        if snapshot_id:
+            snapshot_ids = [snapshot_id]
+        if volume_id:
+            filters['volume-id'] = volume_id
+        if tags:
+            tagkeys = []
+            for tag in tags:
+                val = tags.get(tag)
+                if val:
+                    filters["tag:%s" % tag] = val
+                elif tag:
+                    tagkeys.append(tag)
+            if tagkeys:
+                filters['tag-key'] = tagkeys
+        if name:
+            filters['tag:Name'] = name
+        snaps = self.get_snapshots(snapshot_ids=snapshot_ids, filters=filters, owner=owner)
+        snaps.sort(key=lambda x: x.start_time)
+        if snaps:
+            for snap in snaps:
+                print "snapshot_id: %s" % snap.id
+                print "description: %s" % snap.description
+                print "region: %s" % snap.region.name
+                print "status: %s" % snap.status
+                print "progress: %s" % snap.progress
+                print ("start_time: %s"
+                       % utils.iso_to_localtime_tuple(snap.start_time))
+                print "volume_id: %s" % snap.volume_id
+                print "volume_size: %sGB" % snap.volume_size
+                tags = []
+                for tag in snap.tags:
+                    val = snap.tags.get(tag)
+                    if val:
+                        tags.append("%s=%s" % (tag, val))
+                    else:
+                        tags.append(tag)
+                if tags:
+                    print "tags: %s" % ', '.join(tags)
+                print
+        print 'Total: %s' % len(snaps)
 
     def get_spot_history(self, instance_type, start=None, end=None, zone=None,
                          plot=False, plot_server_interface="localhost",

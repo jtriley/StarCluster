@@ -108,6 +108,8 @@ VOLUME_STATUS = ['creating', 'available', 'in-use',
                  'deleting', 'deleted', 'error']
 VOLUME_ATTACH_STATUS = ['attaching', 'attached', 'detaching', 'detached']
 
+SNAPSHOT_STATUS = ['pending', 'completed', 'error']
+
 INSTANCE_TYPES = {
     't1.micro': ['i386', 'x86_64'],
     't2.nano': ['i386', 'x86_64'],

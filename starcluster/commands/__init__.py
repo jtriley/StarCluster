@@ -29,6 +29,7 @@ from s3image import CmdS3Image
 from ebsimage import CmdEbsImage
 from downloadimage import CmdDownloadImage
 from createvolume import CmdCreateVolume
+from createsnapshot import CmdCreateSnapshot
 from resizevolume import CmdResizeVolume
 from listkeypairs import CmdListKeyPairs
 from listzones import CmdListZones
@@ -38,11 +39,13 @@ from listbuckets import CmdListBuckets
 from showimage import CmdShowImage
 from showbucket import CmdShowBucket
 from removevolume import CmdRemoveVolume
+from removesnapshot import CmdRemoveSnapshot
 from removeimage import CmdRemoveImage
 from listinstances import CmdListInstances
 from listspots import CmdListSpots
 from showconsole import CmdShowConsole
 from listvolumes import CmdListVolumes
+from listsnapshots import CmdListSnapshots
 from listpublic import CmdListPublic
 from runplugin import CmdRunPlugin
 from spothistory import CmdSpotHistory
@@ -84,6 +87,9 @@ all_cmds = [
     CmdListVolumes(),
     CmdResizeVolume(),
     CmdRemoveVolume(),
+    CmdCreateSnapshot(),
+    CmdListSnapshots(),
+    CmdRemoveSnapshot(),
     CmdSpotHistory(),
     CmdShowConsole(),
     CmdListRegions(),
