@@ -749,6 +749,12 @@ class Cluster(object):
         filters = {'instance-state-name': states,
                    'instance.group-name': self._security_group}
         nodes = self.ec2.get_all_instances(filters=filters)
+
+        def filterFct(n):
+            return n.spot_instance_request_id is None or \
+                n.state in ["running", "pending"]
+
+        nodes = filter(filterFct, nodes)  # filter stopping/stopped spot
         # remove any cached nodes not in the current node list from EC2
         current_ids = [n.id for n in nodes]
         remove_nodes = [n for n in self._nodes if n.id not in current_ids]
