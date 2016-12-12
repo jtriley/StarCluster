@@ -487,11 +487,15 @@ class SSHClient(object):
     def get_last_status(self):
         return self.__last_status
 
-    def get_status(self, command, source_profile=True):
+    def get_status(self, command, source_profile=True,
+                   forward_ssh_agent=False):
         """
         Execute a remote command and return the exit status
         """
         channel = self.transport.open_session()
+        if forward_ssh_agent:
+            paramiko.agent.AgentRequestHandler(channel)
+
         if source_profile:
             command = "source /etc/profile && %s" % command
         channel.exec_command(command)
@@ -529,7 +533,8 @@ class SSHClient(object):
 
     def execute(self, command, silent=True, only_printable=False,
                 ignore_exit_status=False, log_output=True, detach=False,
-                source_profile=True, raise_on_failure=True):
+                source_profile=True, raise_on_failure=True,
+                forward_ssh_agent=False):
         """
         Execute a remote command and return stdout/stderr
 
@@ -546,9 +551,15 @@ class SSHClient(object):
                  check for non-zero exit status if detach=True)
         source_profile - if True prefix the command with "source /etc/profile"
         raise_on_failure - raise exception.SSHError if command fails
+        forward_ssh_agent- Turn on SSH agent forwarding
+                equivalent to `ssh -A` from the `ssh` command line utility.
+                Defaults to False if not set.
         returns List of output lines
         """
         channel = self.transport.open_session()
+        if forward_ssh_agent:
+            paramiko.agent.AgentRequestHandler(channel)
+
         if detach:
             command = "nohup %s &" % command
             if source_profile:
