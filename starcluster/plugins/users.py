@@ -17,6 +17,7 @@
 
 import os
 import posixpath
+import copy
 
 from starcluster import utils
 from starcluster import static
@@ -37,6 +38,7 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
                  download_keys_dir=None):
         if usernames:
             usernames = [user.strip() for user in usernames.split(',')]
+
         if num_users:
             try:
                 num_users = int(num_users)
@@ -65,16 +67,45 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
         self._user = user
         self._user_shell = user_shell
         self._volumes = volumes
+
         log.info("Creating %d cluster users" % self._num_users)
-        newusers = self._get_newusers_batch_file(master, self._usernames,
-                                                 user_shell)
-        for node in nodes:
-            self.pool.simple_job(node.ssh.execute,
-                                 ("echo -n '%s' | newusers" % newusers),
-                                 jobid=node.alias)
-        self.pool.wait(numtasks=len(nodes))
-        log.info("Configuring passwordless ssh for %d cluster users" %
-                 self._num_users)
+        current_batch_file_users = \
+            self._get_newusers_batch_file(master, self._usernames, user_shell)
+        new_users = self._usernames
+        # Copy the user list before manipulating it
+        copy_new_users = copy.deepcopy(new_users)
+        # Get user map here of /etc/passwd
+        current_user_map = master.get_user_map()
+        for user in new_users:
+            if user in current_user_map:
+                if user == current_user_map[user][0]:
+                    copy_new_users.remove(user)
+            else:
+                print "Adding User: %s" % user
+        new_users = copy_new_users
+        if len(new_users) == 0:
+            print "No new users to add"
+            exit(0)
+        # Compare current batch file users to new the users, then
+        # APPEND to /root/.users/users.txt
+        batchfile_new_users = copy.deepcopy(new_users)
+        current_batch_file_users_list = current_batch_file_users.splitlines()
+        for current_batch_file_line in current_batch_file_users_list:
+                current_batch_file_user = current_batch_file_line.split(':')[0]
+                if current_batch_file_user in new_users:
+                        batchfile_new_users.remove(current_batch_file_user)
+        new_batch_file = \
+            self._get_newusers_batch_file(master, batchfile_new_users,
+                                          user_shell, add_new_users=True)
+        if new_batch_file:
+            log.info("User batch file updated")
+        new_uid, new_gid = self._get_max_unused_user_id()
+        for user in new_users:
+            for node in nodes:
+                node.add_user(user, uid=new_uid)
+            new_uid = new_uid + 1
+        log.info("Configuring passwordless ssh for %d cluster users"
+                 % self._num_users)
         pbar = self.pool.progress_bar.reset()
         pbar.maxval = self._num_users
         for i, user in enumerate(self._usernames):
@@ -110,9 +141,9 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
         master.ssh.unlink(tarfile)
 
     def _get_newusers_batch_file(self, master, usernames, shell,
-                                 batch_file=None):
+                                 batch_file=None, add_new_users=False):
         batch_file = batch_file or self.BATCH_USER_FILE
-        if master.ssh.isfile(batch_file):
+        if master.ssh.isfile(batch_file) and not add_new_users:
             bfile = master.ssh.remote_file(batch_file, 'r')
             bfilecontents = bfile.read()
             bfile.close()
@@ -141,30 +172,48 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
         pardir = posixpath.dirname(batch_file)
         if not master.ssh.isdir(pardir):
             master.ssh.makedirs(pardir)
-        bfile = master.ssh.remote_file(batch_file, 'w')
+        if add_new_users:
+            bfile = master.ssh.remote_file(batch_file, 'a')
+        else:
+            bfile = master.ssh.remote_file(batch_file, 'w')
         bfile.write(bfilecontents)
         bfile.close()
         return bfilecontents
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
-        self._nodes = nodes
-        self._master = master
-        self._user = user
-        self._user_shell = user_shell
-        self._volumes = volumes
-        log.info("Creating %d users on %s" % (self._num_users, node.alias))
+        try:
+                batch_user_list = []
+                current_user_map = master.get_user_map()
+                for user, username in current_user_map.iteritems():
+                        batch_user_list.append(username)
+
+                usernames = batch_user_list
+        except:
+                if usernames:
+                        usernames = [user.strip() for user in
+                                     usernames.split(',')]
+        self._usernames = usernames
         newusers = self._get_newusers_batch_file(master, self._usernames,
                                                  user_shell)
+        newusers_list = []
+        # populate list
+        for user in newusers.splitlines():
+            line = user.split(':')
+            newusers_list.append(line[0])
+
+        self._num_users = len(newusers_list)
+        log.info("Creating %d users on %s" % (self._num_users, node.alias))
         node.ssh.execute("echo -n '%s' | newusers" % newusers)
         log.info("Adding %s to known_hosts for %d users" %
                  (node.alias, self._num_users))
+
         pbar = self.pool.progress_bar.reset()
         pbar.maxval = self._num_users
-        for i, user in enumerate(self._usernames):
+        for i, user in enumerate(newusers_list):
             master.add_to_known_hosts(user, [node])
             pbar.update(i + 1)
         pbar.finish()
-        self._setup_scratch(nodes=[node], users=self._usernames)
+        self._setup_scratch(nodes=[node], users=newusers_list)
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         raise NotImplementedError('on_remove_node method not implemented')
