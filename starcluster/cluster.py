@@ -152,6 +152,8 @@ class ClusterManager(managers.Manager):
                                    require_keys=False)
         node = cluster.get_node(node_id)
         key_location = self.cfg.get_key(node.key_name).get('key_location')
+        if node.key_location == "":
+            node.key_location = key_location
         cluster.key_location = key_location
         cluster.keyname = node.key_name
         cluster.validator.validate_keypair()
