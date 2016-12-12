@@ -22,6 +22,7 @@ import base64
 import socket
 import posixpath
 import subprocess
+import datetime
 
 from starcluster import utils
 from starcluster import static
@@ -1015,6 +1016,28 @@ class Node(object):
                         .format(self.alias), exc_info=True)
             return False
 
+    def is_impaired(self):
+        return bool(self.ec2.conn.get_all_instance_status(
+            instance_ids=[self.id],
+            filters={"instance-status.status": "impaired"}
+        ))
+
+    def handle_irresponsive_node(self):
+        if self.is_spot():
+            log.info(self.alias + " is a spot instance and will "
+                     "be terminated.")
+            self.terminate()
+            return True
+
+        self.stop()
+        time.sleep(10)
+        while self.update() != "stopped":
+            log.info("Waiting for node " + self.alias +
+                     "to be in a stopped state.")
+            time.sleep(10)
+        self.start()
+        return False
+
     def wait(self, interval=30):
         while not self.is_up():
             time.sleep(interval)
@@ -1195,3 +1218,53 @@ class Node(object):
     def __del__(self):
         if self._ssh:
             self._ssh.close()
+
+
+class NodeRecoveryManager(object):
+    def __init__(self, node, reboot_interval, n_reboot_restart):
+        self.node = node
+        self.reboot_interval = reboot_interval
+        self.n_reboot_restart = n_reboot_restart
+        self._set_next_restart()
+        self._set_next_reboot()
+
+    def _set_next_reboot(self):
+        self._next_reboot = utils.get_utc_now() + \
+            datetime.timedelta(minutes=self.reboot_interval)
+
+    def _set_next_restart(self):
+        self._next_restart = self.n_reboot_restart
+
+    def handle_reboot(self):
+        if self._next_restart == 0:
+            log.debug("Restarting node {}".format(self.node.alias))
+            terminated = self.node.handle_irresponsive_node()
+            if terminated:
+                log.debug("Terminated node {}".format(self.node.alias))
+                return False
+            self._set_next_restart()
+        else:
+            log.debug("Rebooting node {}".format(self.node.alias))
+            self.node.reboot()
+            self._next_restart -= 1
+        self._set_next_reboot()
+        return True
+
+    def check(self):
+        """
+        Manages the reboot/restart/terminate (when spot) of a node.
+        Returns True if the node is still alive, False otherwise.
+        """
+        log.debug("{} next reboot {}"
+                  .format(self.node.alias, self._next_reboot))
+        log.debug("{} next restart {}"
+                  .format(self.node.alias, self._next_restart))
+        if self.node.is_impaired():
+            log.info("{} is impaired".format(self.node.alias))
+            rez = self.handle_reboot()
+            log.debug("{} next restart {}"
+                      .format(self.node.alias, self._next_restart))
+            return rez
+        if utils.get_utc_now() > self._next_reboot:
+            return self.handle_reboot()
+        return True

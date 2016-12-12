@@ -41,6 +41,7 @@ from starcluster.plugins import sge
 from starcluster.utils import print_timing
 from starcluster.templates import user_msgs
 from starcluster.logger import log
+from starcluster.streaming_node_add import streaming_add
 
 
 class ClusterManager(managers.Manager):
@@ -775,13 +776,16 @@ class Cluster(object):
         log.debug('returning self._nodes = %s' % self._nodes)
         return self._nodes
 
-    def get_nodes_or_raise(self):
-        nodes = self.nodes
-        if not nodes:
+    def get_nodes_or_raise(self, nodes=None):
+        _nodes = self.nodes
+        if not _nodes:
             filters = {'instance.group-name': self._security_group}
             terminated_nodes = self.ec2.get_all_instances(filters=filters)
             raise exception.NoClusterNodesFound(terminated_nodes)
-        return nodes
+        if nodes:
+            nodes_ids = [n.id for n in nodes]
+            _nodes = filter(lambda n: n.id in nodes_ids, _nodes)
+        return _nodes
 
     def get_node(self, identifier, nodes=None):
         """
@@ -880,11 +884,14 @@ class Cluster(object):
             filters['launch.group-id'] = group_id
         return self.ec2.get_all_spot_requests(filters=filters)
 
-    def get_spot_requests_or_raise(self):
-        spots = self.spot_requests
-        if not spots:
+    def get_spot_requests_or_raise(self, spots):
+        _spots = self.spot_requests
+        if not _spots:
             raise exception.NoClusterSpotRequests
-        return spots
+        if spots:
+            spots_ids = [s.id for s in spots]
+            _spots = filter(lambda s: s.id in spots_ids, _spots)
+        return _spots
 
     def create_node(self, alias, image_id=None, instance_type=None, zone=None,
                     placement_group=None, spot_bid=None, force_flat=False):
@@ -1032,9 +1039,9 @@ class Cluster(object):
                                      placement_group=placement_group,
                                      spot_bid=spot_bid)
             if spot_bid or self.spot_bid:
-                self.ec2.wait_for_propagation(spot_requests=resp)
+                streaming_add(self, spots=resp)
             else:
-                self.ec2.wait_for_propagation(instances=resp[0].instances)
+                streaming_add(self, instances=resp[0].instances)
         self.wait_for_cluster(msg="Waiting for node(s) to come up...")
         log.debug("Adding node(s): %s" % aliases)
         for alias in aliases:
@@ -1386,7 +1393,7 @@ class Cluster(object):
                 pbar.update(len(active_spots))
                 if not pbar.finished:
                     time.sleep(self.refresh_interval)
-                    spots = self.get_spot_requests_or_raise()
+                    spots = self.get_spot_requests_or_raise(spots)
             pbar.reset()
         self.ec2.wait_for_propagation(
             instances=[s.instance_id for s in spots])
@@ -1397,19 +1404,19 @@ class Cluster(object):
         Wait until all cluster nodes are in a 'running' state
         """
         log.info("Waiting for all nodes to be in a 'running' state...")
-        nodes = nodes or self.get_nodes_or_raise()
+        _nodes = nodes or self.get_nodes_or_raise()
         pbar = self.progress_bar.reset()
-        pbar.maxval = len(nodes)
+        pbar.maxval = len(_nodes)
         pbar.update(0)
         now = datetime.datetime.utcnow()
         timeout = now + datetime.timedelta(minutes=kill_pending_after_mins)
         while not pbar.finished:
-            running_nodes = [n for n in nodes if n.state == "running"]
-            pbar.maxval = len(nodes)
+            running_nodes = [n for n in _nodes if n.state == "running"]
+            pbar.maxval = len(_nodes)
             pbar.update(len(running_nodes))
             if not pbar.finished:
                 if datetime.datetime.utcnow() > timeout:
-                    pending = [n for n in nodes if n not in running_nodes]
+                    pending = [n for n in _nodes if n not in running_nodes]
                     log.warn("%d nodes have been pending for >= %d mins "
                              "- terminating" % (len(pending),
                                                 kill_pending_after_mins))
@@ -1417,7 +1424,7 @@ class Cluster(object):
                         node.terminate()
                 else:
                     time.sleep(self.refresh_interval)
-                nodes = self.get_nodes_or_raise()
+                _nodes = self.get_nodes_or_raise(nodes)
         pbar.reset()
 
     def wait_for_ssh(self, nodes=None):

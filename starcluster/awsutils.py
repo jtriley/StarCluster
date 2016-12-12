@@ -601,6 +601,23 @@ class EasyEC2(EasyAWS):
                 instance_ids, self.get_all_instances, 'instance-id',
                 'instances', max_retries=max_retries, interval=interval)
 
+    def _get_propagation(self, obj_ids, fetch_func, id_filter, obj_name):
+        filters = {id_filter: obj_ids}
+        reqs_ids = []
+        reqs = fetch_func(filters=filters)
+        reqs_ids = [req.id for req in reqs]
+        found = [oid for oid in obj_ids if oid in reqs_ids]
+        return found
+
+    def get_propagated_spots(self, spot_ids):
+        return self._get_propagation(spot_ids, self.get_all_spot_requests,
+                                     'spot-instance-request-id',
+                                     'spot requests')
+
+    def get_propagated_instances(self, instance_ids):
+        return self._get_propagation(instance_ids, self.get_all_instances,
+                                     'instance-id', 'instances')
+
     def run_instances(self, image_id, instance_type='m1.small', min_count=1,
                       max_count=1, key_name=None, security_groups=None,
                       placement=None, user_data=None, placement_group=None,
@@ -1588,6 +1605,21 @@ class EasyEC2(EasyAWS):
             print console_output
         else:
             log.info("No console output available...")
+
+    def cancel_stuck_spot_instance_request(self, spots):
+        """
+        SIR in state "price-too-low or in state "capacity-oversubscribed" can
+        somewhat freeze StarCluster in a waiting state that can last a long
+        time. Cancels them.
+        """
+        def filter_fct(sir):
+            if sir.status.code in ['price-too-low', 'capacity-oversubscribed']:
+                log.info("Cancelling spot instance {}: {}"
+                         .format(sir.id, sir.status.message))
+                sir.cancel()
+                return False
+            return True
+        return filter(filter_fct, spots)
 
 
 class EasyS3(EasyAWS):
