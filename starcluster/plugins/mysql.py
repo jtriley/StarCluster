@@ -191,10 +191,10 @@ class MysqlCluster(DefaultClusterSetup):
     2. chown -R mysql:mysql /var/lib/mysql-cluster/
     3. generate ndb-mgmd for master
     4. generate my.cnf for data nodes
-    5. /etc/init.d/mysql-ndb-mgm restart on master
+    5. service mysql-ndb-mgm restart on master
     6. pkill -9 mysql on data nodes
-    7. /etc/init.d/mysql start on data nodes
-    8. /etc/init.d/mysql-ndb restart on data nodes
+    7. service mysql start on data nodes
+    8. service mysql-ndb restart on data nodes
 
     Correction to above, do this:
     1. define plugin section in config named mysql
@@ -279,19 +279,19 @@ class MysqlCluster(DefaultClusterSetup):
         self.pool.wait(len(nodes))
         # Restart mysql-ndb-mgm on master
         log.info('Restarting mysql-ndb-mgm on master node...')
-        mconn.execute('/etc/init.d/mysql-ndb-mgm restart')
+        mconn.execute('service mysql-ndb-mgm restart')
         # Start mysqld-ndb on data nodes
         log.info('Restarting mysql-ndb on all data nodes...')
         for node in self.data_nodes:
             self.pool.simple_job(node.ssh.execute,
-                                 ('/etc/init.d/mysql-ndb restart'),
+                                 ('service mysql-ndb restart'),
                                  jobid=node.alias)
         self.pool.wait(len(self.data_nodes))
         # Start mysql on query nodes
         log.info('Starting mysql on all query nodes')
         for node in self.query_nodes:
             self.pool.simple_job(node.ssh.execute,
-                                 ('/etc/init.d/mysql restart'),
+                                 ('service mysql restart'),
                                  dict(ignore_exit_status=True),
                                  jobid=node.alias)
         self.pool.wait(len(self.query_nodes))
