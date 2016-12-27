@@ -177,14 +177,29 @@ class CmdStart(ClusterCompleter):
                           action='store_false',
                           help="Do NOT prefix dns names of all nodes in the "
                           "cluster with the cluster tag (default)")
-        parser.add_option("-N", "--subnet-id", dest="subnet_id",
-                          action="store", type="string",
-                          help=("Launch cluster into a VPC subnet"))
+        # This option is disabled because we need to use nargs='+' which is
+        # supported by argparse but not optparse. Use cluster template
+        # configuration key SUBNET_IDS instead.
+        # parser.add_option("-N", "--subnet-id", dest="subnet_id",
+        #                   action="store", type="string",
+        #                   help=("Launch cluster into a VPC subnet"))
+        parser.add_option("--config-on-master", default=False,
+                          action='store_true', help="Store the config on the "
+                          "master node rather than into the security group "
+                          "tags")
+        parser.add_option("--dns-suffix", action="store_true",
+                          dest="dns_suffix", help="Suffix dns names of all "
+                          " nodes in the cluster with the cluster tag.")
 
     def execute(self, args):
         if len(args) != 1:
             self.parser.error("please specify a <cluster_tag>")
         tag = args[0]
+        if tag.find("master") > -1:
+            # Because of Node.is_master
+            raise exception.ClusterValidationError("Cluster name cannot "
+                                                   "contain master")
+
         create = not self.opts.no_create
         scluster = self.cm.get_cluster_group_or_none(tag)
         if scluster and create:
@@ -203,9 +218,16 @@ class CmdStart(ClusterCompleter):
         validate = self.opts.validate
         validate_running = self.opts.no_create
         validate_only = self.opts.validate_only
+        config_on_master = self.opts.config_on_master
+
         if scluster:
-            scluster = self.cm.get_cluster(tag, group=scluster)
-            validate_running = True
+            if config_on_master:
+                scluster = self.cm.get_cluster(tag, group=scluster,
+                                               load_receipt=False)
+                validate_running = False
+            else:
+                scluster = self.cm.get_cluster(tag, group=scluster)
+                validate_running = True
         else:
             template = self.opts.cluster_template
             if not template:
@@ -223,7 +245,7 @@ class CmdStart(ClusterCompleter):
                     raise e
                 log.info("Using default cluster template: %s" % template)
             scluster = self.cm.get_cluster_template(template, tag)
-        scluster.update(self.specified_options_dict)
+        scluster.update(self.specified_options_dict, True)
         if self.opts.keyname and not self.opts.key_location:
             key = self.cfg.get_key(self.opts.keyname)
             scluster.key_location = key.key_location
@@ -237,11 +259,27 @@ class CmdStart(ClusterCompleter):
             if not validate_only and not create_only:
                 self.warn_experimental(msg, num_secs=5)
         if self.opts.dns_prefix:
+            if tag.find(".") > -1:
+                raise exception.ClusterValidationError(
+                    "Cannot use --dns-prefix when the cluster tag contains "
+                    "a dot.")
             scluster.dns_prefix = tag
+        if self.opts.dns_suffix:
+            scluster.dns_suffix = tag
+        if config_on_master:
+            scluster.config_on_master = True
+            if self.opts.no_create:
+                validate = False
+                log.warning("Cannot start a cluster when its config is "
+                            "stored on the master node using StarCluster. "
+                            "You should start it manually and then use "
+                            "the recovery options.")
+                return
         try:
             scluster.start(create=create, create_only=create_only,
                            validate=validate, validate_only=validate_only,
-                           validate_running=validate_running)
+                           validate_running=validate_running,
+                           save_config_on_master=self.opts.config_on_master)
         except KeyboardInterrupt:
             if validate_only:
                 raise

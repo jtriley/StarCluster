@@ -15,10 +15,21 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
 import posixpath
+import socket
 
 from starcluster import clustersetup
 from starcluster.templates import sge
 from starcluster.logger import log
+from starcluster.exception import RemoteCommandFailed
+import xml.etree.ElementTree as ET
+import time
+
+
+class DeadNode():
+    alias = None
+
+    def __init__(self, alias):
+        self.alias = alias
 
 
 class SGEPlugin(clustersetup.DefaultClusterSetup):
@@ -157,16 +168,65 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self.pool.wait(numtasks=len(self.nodes))
         self._create_sge_pe()
 
-    def _remove_from_sge(self, node):
+    def _remove_from_sge(self, node, only_clean_master=False):
         master = self._master
         master.ssh.execute('qconf -dattr hostgroup hostlist %s @allhosts' %
                            node.alias)
         master.ssh.execute('qconf -purge queue slots all.q@%s' % node.alias)
         master.ssh.execute('qconf -dconf %s' % node.alias)
         master.ssh.execute('qconf -de %s' % node.alias)
-        node.ssh.execute('pkill -9 sge_execd')
+        if not only_clean_master:
+            node.ssh.execute('pkill -9 sge_execd', ignore_exit_status=True)
         nodes = filter(lambda n: n.alias != node.alias, self._nodes)
         self._create_sge_pe(nodes=nodes)
+
+    def get_nodes_to_recover(self, nodes):
+        """
+        Active nodes that are not in OGS.
+        """
+        if len(nodes) == 1:
+            return []
+
+        master = nodes[0]
+        qhosts = master.ssh.execute("qhost", source_profile=True)
+        qhosts = qhosts[3:]
+        missing = []
+        parsed_qhosts = {}
+        for line in qhosts:
+            line = filter(lambda x: len(x) > 0, line.split(" "))
+            parsed_qhosts[line[0]] = line[1:]
+        for node in nodes:
+            short_al = node.short_alias
+            # nodes missing from qhost
+            if short_al not in parsed_qhosts:
+                if node.is_master():
+                    assert(not self.master_is_exec_host)
+                else:
+                    missing.append(node)
+            elif parsed_qhosts[short_al][-1] == "-" and not node.is_master():
+                # nodes present but w/o stats
+                if node.is_up():
+                    try:
+                        node.ssh.execute("qhost", source_profile=True)
+                        log.warning("Restarting sge_execd over " + node.alias)
+                        node.ssh.execute(
+                            "pkill -9 sge_execd "
+                            "&& /opt/sge6/bin/linux-x64/sge_execd",
+                            source_profile=True)
+                    except RemoteCommandFailed:
+                        # normal -> means OGS doesn't run on the node
+                        # slow path
+                        log.debug("RemoteCommandFailed, "
+                                  "OGS likely not running remotely")
+                        missing.append(node)
+                    except socket.error:
+                        # socket closed by remote... try to add it back
+                        log.warning("socket.error", exc_info=True)
+                        missing.append(node)
+                else:
+                    missing.append(node)
+
+        return missing
 
     def run(self, nodes, master, user, user_shell, volumes):
         if not master.ssh.isdir(self.SGE_FRESH):
@@ -179,6 +239,94 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._user_shell = user_shell
         self._volumes = volumes
         self._setup_sge()
+
+    def recover(self, nodes, master, user, user_shell, volumes):
+        cmd = "ps -ef | grep sge_qmaster | grep -v grep | wc -l"
+        rez = int(master.ssh.execute(cmd)[0])
+        if rez == 0:
+            log.error("sge_qmaster is down")
+            cmd = "cd /opt/sge6/bin/linux-x64/ && ./sge_qmaster"
+            master.ssh.execute(cmd)
+
+    def clean_cluster(self, nodes, master, user, user_shell, volumes):
+        """
+        Run qhost to find nodes that are present in OGS but not in the cluster
+        in order to remove them.
+        """
+        self._master = master
+        self._nodes = nodes
+
+        qhosts = master.ssh.execute("qhost", source_profile=True)
+        qhosts = qhosts[3:]
+        qhosts = [line.split(' ')[0] for line in qhosts]
+
+        if len(qhosts) == 0:
+            log.info("Nothing to clean")
+
+        alive_nodes = [node.short_alias for node in nodes]
+
+        cleaned = []
+        # find dead hosts
+        for node_alias in qhosts:
+            if node_alias not in alive_nodes:
+                cleaned.append(node_alias)
+
+        # find jobs running in dead hosts
+        qstats_xml = self._master.ssh.execute("qstat -u \"*\" -xml",
+                                              source_profile=True)
+        qstats_xml[1:]  # remove first line
+        qstats_et = ET.fromstringlist(qstats_xml)
+        to_delete = []
+        to_repair = []
+        cleaned_queue = []  # not a lambda function to allow pickling
+        for c in cleaned:
+            cleaned_queue.append("all.q@" + c)
+        for job_list in qstats_et.find("queue_info").findall("job_list"):
+            if job_list.find("queue_name").text in cleaned_queue:
+                job_number = job_list.find("JB_job_number").text
+                to_delete.append(job_number)
+        for job_list in qstats_et.find("job_info").findall("job_list"):
+            if job_list.find("state").text == "Eqw":
+                job_number = job_list.find("JB_job_number").text
+                to_repair.append(job_number)
+        # delete the jobs
+        if to_delete:
+            log.info("Stopping jobs: " + str(to_delete))
+            self._master.ssh.execute("qdel -f " + " ".join(to_delete))
+            time.sleep(3)  # otherwise might provoke LOST QRSH if on last job
+        if to_repair:
+            log.error("Reseting jobs: " + str(to_repair))
+            self._master.ssh.execute("qmod -cj " + " ".join(to_repair),
+                                     ignore_exit_status=True)
+
+        # stuck qrsh issue
+        ps_wc = int(self._master.ssh.execute("ps -ef | grep qrsh | wc -l")[0])
+        qstat_wc = int(self._master.ssh.execute("qstat -u \"*\" | wc -l")[0])
+        if qstat_wc == 0 and ps_wc > 2:
+            log.error("LOST QRSH??")
+            log.error("pkill -9 qrsh")
+            self._master.ssh.execute("pkill -9 qrsh", ignore_exit_status=True)
+        # ----------------------------------
+
+        # delete the host config
+        for c in cleaned:
+            log.info("Cleaning node " + c)
+            if len(master.ssh.get_remote_file_lines("/etc/hosts", c)) == 0:
+                log.warn(c + " is missing from /etc/hosts, creating a dummy "
+                         "entry 1.1.1.1")
+                rfile = master.ssh.remote_file("/etc/hosts", 'a')
+                rfile.write("1.1.1.1 " + c + "\n")
+                rfile.close()
+
+            try:
+                self._remove_from_sge(DeadNode(c), only_clean_master=True)
+            except RemoteCommandFailed:
+                log.warning("Failed to remove node {} from sge."
+                            .format(c), exc_info=True)
+
+        # fix to allow pickling
+        self._master = None
+        self._nodes = None
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
@@ -194,6 +342,16 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._add_to_sge(node)
         self._create_sge_pe()
 
+        # fix to allow pickling
+        self._nodes = None
+        self._master = None
+        self._user = None
+        self._user_shell = None
+        self._volumes = None
+        if self._pool:
+            self._pool.shutdown()
+            self._pool = None
+
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
         self._master = master
@@ -203,3 +361,13 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         log.info("Removing %s from SGE" % node.alias)
         self._remove_from_sge(node)
         self._remove_nfs_exports(node)
+
+        # fix to allow pickling
+        self._nodes = None
+        self._master = None
+        self._user = None
+        self._user_shell = None
+        self._volumes = None
+        if self._pool:
+            self._pool.shutdown()
+            self._pool = None

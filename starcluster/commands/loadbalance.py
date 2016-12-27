@@ -103,13 +103,45 @@ class CmdLoadBalance(ClusterCompleter):
         parser.add_option("-K", "--kill-cluster", dest="kill_cluster",
                           action="store_true", default=False,
                           help="Terminate the cluster when the queue is empty")
+        parser.add_option(
+            "--reboot-interval", dest="reboot_interval", type="int",
+            default=10, help="Delay in minutes beyond which a node is "
+            "rebooted if it's still being unreachable via SSH. Defaults "
+            "to 10.")
+        parser.add_option(
+            "--num_reboot_restart", dest="n_reboot_restart", type="int",
+            default=False, help="Number of reboots after which a node "
+            "is restarted (stop/start). Helpfull in case the issue comes from "
+            "the hardware. If the node is a spot instance, it "
+            "will be terminated instead since it cannot be stopped. Defaults "
+            "to false.")
+        parser.add_option(
+            "--ignore-grp", dest="ignore_grp", action="store_true",
+            default=False,
+            help="if set, instances will not use the placement group")
+        parser.add_option(
+            "--instance-type", dest="instance_type", default=None,
+            help="If set, overrides which instance type newly added nodes "
+                 "will use")
+        parser.add_option(
+            "--spot-bid", dest="spot_bid", default=None,
+            help="If set, forces spot instances to be used and overrides "
+                 "the maximum price placed.")
 
     def execute(self, args):
         if not self.cfg.globals.enable_experimental:
             raise exception.ExperimentalFeature("The 'loadbalance' command")
         if len(args) != 1:
             self.parser.error("please specify a <cluster_tag>")
-        cluster_tag = args[0]
-        cluster = self.cm.get_cluster(cluster_tag)
-        lb = sge.SGELoadBalancer(**self.specified_options_dict)
-        lb.run(cluster)
+
+        try:
+            cluster_tag = args[0]
+            cluster = self.cm.get_cluster(cluster_tag)
+            cluster.recover(self.opts.reboot_interval,
+                            self.opts.n_reboot_restart)
+            lb = sge.SGELoadBalancer(**self.specified_options_dict)
+            lb.run(cluster)
+        except KeyboardInterrupt:
+            import traceback
+            # traceback.format_exc()
+            self.log.info(traceback.format_exc())

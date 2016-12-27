@@ -55,7 +55,7 @@ def create_sc_config_dirs():
     __makedirs(STARCLUSTER_LOG_DIR)
 
 
-VERSION = "0.95.6"
+VERSION = "0.9999"
 PID = os.getpid()
 TMP_DIR = tempfile.gettempdir()
 if os.path.exists("/tmp"):
@@ -300,12 +300,12 @@ CLUSTER_SETTINGS = {
     'cluster_size': (int, True, None, None, None),
     'cluster_user': (str, False, 'sgeadmin', None, None),
     'cluster_shell': (str, False, 'bash', AVAILABLE_SHELLS.keys(), None),
-    'subnet_id': (str, False, None, None, None),
     'public_ips': (bool, False, None, None, None),
     'master_image_id': (str, False, None, None, None),
     'master_instance_type': (str, False, None, INSTANCE_TYPES.keys(), None),
-    'node_image_id': (str, True, None, None, None),
-    'node_instance_type': (list, True, [], None, None),
+    'node_image_id': (str, False, None, None, None),
+    'node_instance_type': (list, False, [], None, None),
+    'node_instance_array': (list, False, [], None, None),
     'availability_zone': (str, False, None, None, None),
     'keyname': (str, True, None, None, None),
     'extends': (str, False, None, None, None),
@@ -317,4 +317,17 @@ CLUSTER_SETTINGS = {
     'force_spot_master': (bool, False, False, None, None),
     'disable_cloudinit': (bool, False, False, None, None),
     'dns_prefix': (bool, False, False, None, None),
+    'dns_suffix': (bool, False, False, None, None),
+    'subnet_ids': (list, False, [], None, None),
+    'impaired_threshold_sec': (int, False, 120, None, None)
 }
+
+NODE_SETTINGS = {
+    'size': (int, False, 0, None, None),
+    'spot_bid': (float, False, None, None, None),
+    'image_id': (str, True, None, None, None),
+    'instance_type': (str, True, None, INSTANCE_TYPES.keys(), None),
+    'selection_factor': (float, False, 1, None, None)
+}
+
+MASTER_CFG_FILE = '/etc/starcluster'  # vanilla improvements
