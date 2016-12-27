@@ -258,7 +258,7 @@ class DefaultClusterSetup(ClusterSetup):
         """
         log.info("Configuring passwordless ssh for root")
         master = self._master
-        nodes = nodes or self.nodes
+        nodes = nodes or self._nodes
         master.generate_key_for_user('root', auth_new_key=True,
                                      auth_conn_key=True)
         master.enable_passwordless_ssh('root', nodes)
