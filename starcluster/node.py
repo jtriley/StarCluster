@@ -91,6 +91,7 @@ class Node(object):
         self._groups = None
         self._ssh = None
         self._num_procs = None
+        self._rpcbind_service_name = None
         self._memory = None
         self._user_data = None
 
@@ -228,6 +229,22 @@ class Node(object):
                 self.ssh.execute(
                     'cat /proc/cpuinfo | grep processor | wc -l')[0])
         return self._num_procs
+
+    @property
+    def rpcbind_service_name(self):
+        """
+        Determine whether the system uses 'rpcbind' to name the RPC
+        service, or whether it uses the legacy 'portmap' name.
+        """
+        if not self._rpcbind_service_name:
+            try:
+                self.ssh.execute(
+                    'test -e /etc/init.d/rpcbind',
+                    raise_on_failure=True)
+                self._rpcbind_service_name = 'rpcbind'
+            except exception.SSHError:
+                self._rpcbind_service_name = 'portmap'
+        return self._rpcbind_service_name
 
     @property
     def memory(self):
@@ -702,7 +719,9 @@ class Node(object):
 
     def start_nfs_server(self):
         log.info("Starting NFS server on %s" % self.alias)
-        self.ssh.execute('/etc/init.d/portmap start', ignore_exit_status=True)
+        self.ssh.execute(
+            'service %s start' % self.rpcbind_service_name,
+            ignore_exit_status=True)
         self.ssh.execute('mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs/',
                          ignore_exit_status=True)
         EXPORTSD = '/etc/exports.d'
@@ -716,7 +735,7 @@ class Node(object):
         self.ssh.execute("mkdir -p %s" % DUMMY_EXPORT_DIR)
         with self.ssh.remote_file(DUMMY_EXPORT_FILE, 'w') as dummyf:
             dummyf.write(DUMMY_EXPORT_LINE)
-        self.ssh.execute('/etc/init.d/nfs start')
+        self.ssh.execute('service nfs start')
         self.ssh.execute('rm -f %s' % DUMMY_EXPORT_FILE)
         self.ssh.execute('rm -rf %s' % DUMMY_EXPORT_DIR)
         self.ssh.execute('exportfs -fra')
@@ -728,7 +747,9 @@ class Node(object):
         server_node - remote server node that is sharing the remote_paths
         remote_paths - list of remote paths to mount from server_node
         """
-        self.ssh.execute('/etc/init.d/portmap start')
+        self.ssh.execute(
+            'service %s start' % self.rpcbind_service_name,
+            ignore_exit_status=True)
         # TODO: move this fix for xterm somewhere else
         self.ssh.execute('mount -t devpts none /dev/pts',
                          ignore_exit_status=True)
