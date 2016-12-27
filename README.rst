@@ -7,10 +7,8 @@ StarCluster v0.95.6
 :Team: Software Tools for Academics and Researchers (http://star.mit.edu)
 :Homepage: http://star.mit.edu/cluster
 :License: LGPL
-.. image:: https://secure.travis-ci.org/jtriley/StarCluster.png?branch=develop
-  :target: https://secure.travis-ci.org/jtriley/StarCluster
-.. image:: https://pypip.in/d/StarCluster/badge.png
-  :target: https://crate.io/packages/StarCluster
+.. image:: https://secure.travis-ci.org/ricrogz/StarCluster.png?branch=develop
+  :target: https://secure.travis-ci.org/ricrogz/StarCluster
 
 Description:
 ============

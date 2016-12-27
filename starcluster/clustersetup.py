@@ -18,6 +18,7 @@
 """
 clustersetup.py
 """
+import os
 import posixpath
 
 from starcluster import utils
@@ -384,17 +385,35 @@ class DefaultClusterSetup(ClusterSetup):
 
     def _remove_from_etc_hosts(self, node):
         nodes = filter(lambda x: x.id != node.id, self.running_nodes)
+        master = None
+
         for n in nodes:
-            n.remove_from_etc_hosts([node])
+            if n.is_master():
+                master = n
+
+        master.remove_from_etc_hosts([node])
+        master.copy_remote_file_to_nodes('/etc/hosts', nodes)
 
     def _remove_nfs_exports(self, node):
         self._master.stop_exporting_fs_to_nodes([node])
 
     def _remove_from_known_hosts(self, node):
         nodes = filter(lambda x: x.id != node.id, self.running_nodes)
+        master = None
+
         for n in nodes:
-            n.remove_from_known_hosts('root', [node])
-            n.remove_from_known_hosts(self._user, [node])
+            if n.is_master():
+                master = n
+
+        master.remove_from_known_hosts('root', [node])
+        master.remove_from_known_hosts(self._user, [node])
+
+        user_homedir = os.path.expanduser('~' + self._user)
+        targets = [posixpath.join('/root', '.ssh', 'known_hosts'),
+                   posixpath.join(user_homedir, '.ssh', 'known_hosts'), ]
+
+        for target in targets:
+            master.copy_remote_file_to_nodes(target, nodes)
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes

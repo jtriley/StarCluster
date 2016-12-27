@@ -477,7 +477,7 @@ class EasyEC2(EasyAWS):
             if instance_type == 'm1.small' and img.architecture == "i386":
                 # Needed for m1.small + 32bit AMI (see gh-329)
                 instance_store = True
-            use_ephemeral = instance_type != 't1.micro'
+            use_ephemeral = instance_type != 't2.micro'
             bdmap = self.create_block_device_map(
                 add_ephemeral_drives=use_ephemeral,
                 num_ephemeral_drives=24,

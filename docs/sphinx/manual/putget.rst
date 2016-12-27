@@ -23,6 +23,11 @@ To copy files to a different cluster node, use the ``--node`` (``-n``) option::
 
     $ starcluster put mycluster --node node001 /local/path /remote/path
 
+To copy files to multiple cluster nodes, provide comma separated nodes to the
+``--multi`` (``-m``) option::
+
+    $ starcluster put mycluster --multi master,node001 /local/path /remote/path
+
 *********************************
 Copying Data from a Cluster (get)
 *********************************
