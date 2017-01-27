@@ -663,17 +663,22 @@ class Cluster(object):
         for p in self.permissions:
             perm = self.permissions.get(p)
             ip_protocol = perm.get('ip_protocol', 'tcp')
-            from_port = perm.get('from_port')
-            to_port = perm.get('to_port')
+            from_port = perm.get('from_port',1)
+            to_port = perm.get('to_port',65535)
             cidr_ip = perm.get('cidr_ip', static.WORLD_CIDRIP)
-            if not self.ec2.has_permission(sg, ip_protocol, from_port,
-                                           to_port, cidr_ip):
-                log.info("Opening %s port range %s-%s for CIDR %s" %
-                         (ip_protocol, from_port, to_port, cidr_ip))
-                sg.authorize(ip_protocol, from_port, to_port, cidr_ip)
+            src_sg = perm.get('src_sg', None)
+            if src_sg:
+                log.info("Opening connections from security group '%s'" % src_sg)
+                sg.authorize(src_group=self.ec2.get_security_group(src_sg))
             else:
-                log.info("Already open: %s port range %s-%s for CIDR %s" %
-                         (ip_protocol, from_port, to_port, cidr_ip))
+                if not self.ec2.has_permission(sg, ip_protocol, from_port,
+                                           to_port, cidr_ip):
+                    log.info("Opening %s port range %s-%s for CIDR %s" %
+                             (ip_protocol, from_port, to_port, cidr_ip))
+                    sg.authorize(ip_protocol, from_port, to_port, cidr_ip)
+                else:
+                    log.info("Already open: %s port range %s-%s for CIDR %s" %
+                             (ip_protocol, from_port, to_port, cidr_ip))
             includes_ssh = from_port <= ssh_port <= to_port
             open_to_world = cidr_ip == static.WORLD_CIDRIP
             if ip_protocol == 'tcp' and includes_ssh and not open_to_world:
