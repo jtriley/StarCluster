@@ -55,8 +55,6 @@ try:
             # Needed in order for pytest_cache to load properly
             # Alternate fix: import pytest_cache and pass to pytest.main
             import _pytest.config
-            pm = _pytest.config.get_plugin_manager()
-            pm.consider_setuptools_entrypoints()
             errno = pytest.main(self.test_args)
             sys.exit(errno)
 
