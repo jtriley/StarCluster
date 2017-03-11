@@ -114,6 +114,9 @@ INSTANCE_TYPES = {
     't2.micro': ['i386', 'x86_64'],
     't2.small': ['i386', 'x86_64'],
     't2.medium': ['i386', 'x86_64'],
+    't2.large': ['i386', 'x86_64'],
+    't2.xlarge': ['i386', 'x86_64'],
+    't2.2xlarge': ['i386', 'x86_64'],
     'm1.small': ['i386', 'x86_64'],
     'm1.medium': ['i386', 'x86_64'],
     'm1.large': ['x86_64'],
@@ -168,7 +171,7 @@ INSTANCE_TYPES = {
 
 T1_INSTANCE_TYPES = ['t1.micro']
 
-T2_INSTANCE_TYPES = ['t2.nano', 't2.micro', 't2.small', 't2.medium']
+T2_INSTANCE_TYPES = ['t2.nano', 't2.micro', 't2.small', 't2.medium', 't2.large', 't2.xlarge', 't2.2xlarge']
 
 SEC_GEN_TYPES = ['m3.medium', 'm3.large', 'm3.xlarge', 'm3.2xlarge']
 
