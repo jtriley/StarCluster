@@ -748,7 +748,7 @@ class Node(object):
                                           remote_paths))
         self.ssh.remove_lines_from_file('/etc/fstab', remote_paths_regex)
         fstab = self.ssh.remote_file('/etc/fstab', 'a')
-        mount_opts = 'rw,exec,noauto'
+        mount_opts = 'rw,exec,noauto,vers=3,rsize=8192,wsize=8192,acdirmin=5,acdirmax=8,hard,proto=tcp'
         for path in remote_paths:
             fstab.write('%s:%s %s nfs %s 0 0\n' %
                         (server_node.alias, path, path, mount_opts))
