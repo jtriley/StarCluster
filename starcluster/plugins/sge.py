@@ -152,6 +152,8 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._inst_sge(master, exec_host=self.master_is_exec_host)
         # set all.q shell to bash
         master.ssh.execute('qconf -mattr queue shell "/bin/bash" all.q')
+        # Re-run jobs automatically
+        master.ssh.execute('qconf -mattr queue rerun TRUE all.q')
         for node in self.nodes:
             self.pool.simple_job(self._add_to_sge, (node,), jobid=node.alias)
         self.pool.wait(numtasks=len(self.nodes))
