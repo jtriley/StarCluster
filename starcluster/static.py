@@ -163,7 +163,12 @@ INSTANCE_TYPES = {
     'd2.xlarge': ['x86_64'],
     'd2.2xlarge': ['x86_64'],
     'd2.4xlarge': ['x86_64'],
-    'd2.8xlarge': ['x86_64']
+    'd2.8xlarge': ['x86_64'],
+    'p2.xlarge': ['x86_64'],
+    'p2.8xlarge': ['x86_64'],
+    'p2.16xlarge': ['x86_64'],
+    'g2.2xlarge': ['x86_64'],
+    'g2.8xlarge': ['x86_64']
 }
 
 T1_INSTANCE_TYPES = ['t1.micro']
