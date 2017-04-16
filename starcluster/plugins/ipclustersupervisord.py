@@ -1,4 +1,4 @@
-# Copyright 2009-2014 Justin Riley
+# Copyright 2009-2013 Justin Riley
 #
 # This file is part of StarCluster.
 #
@@ -17,6 +17,7 @@
 
 """
 A starcluster plugin for running an IPython cluster
+using supervisord to watch processes and restart as necessary.
 (requires IPython 0.13+)
 """
 import json
@@ -67,12 +68,11 @@ def _start_engines(node, user, n_engines=None, kill_existing=False):
     are killed first.
 
     """
-    if n_engines is None:
-        n_engines = node.num_processors
     node.ssh.switch_user(user)
     if kill_existing:
+        node.ssh.execute("pkill -f supervisord", ignore_exit_status=True)
         node.ssh.execute("pkill -f ipengineapp", ignore_exit_status=True)
-    node.ssh.execute("ipcluster engines --n=%i --daemonize" % n_engines)
+    node.ssh.execute("supervisord -c /home/%s/.engine.conf" % user)
     node.ssh.switch_user('root')
 
 
@@ -93,7 +93,8 @@ class IPCluster(DefaultClusterSetup):
     """
     def __init__(self, enable_notebook=False, notebook_passwd=None,
                  notebook_directory=None, packer=None, n_engines_per_node=None,
-                 n_engines_master=None, log_level='INFO'):
+                 n_engines_master=None,
+                 hub_db_class='IPython.parallel.controller.dictdb.NoDB', log_level='INFO'):
         super(IPCluster, self).__init__()
         if isinstance(enable_notebook, basestring):
             self.enable_notebook = enable_notebook.lower().strip() == 'true'
@@ -102,6 +103,7 @@ class IPCluster(DefaultClusterSetup):
         self.notebook_passwd = notebook_passwd or utils.generate_passwd(16)
         self.notebook_directory = notebook_directory
 
+        self.hub_db_class = hub_db_class
         if n_engines_per_node is None:
             self.n_engines_per_node = None
         else:
@@ -120,7 +122,7 @@ class IPCluster(DefaultClusterSetup):
             self.packer = packer
 
     def _check_ipython_installed(self, node):
-        has_ipy = node.ssh.has_required(['ipython', 'ipcluster'])
+        has_ipy = node.ssh.has_required(['ipython', 'ipcluster','supervisord'])
         if not has_ipy:
             raise exception.PluginError("IPython is not installed!")
         return has_ipy
@@ -129,6 +131,8 @@ class IPCluster(DefaultClusterSetup):
         """Create cluster configuration files."""
         log.info("Writing IPython cluster config files")
         master.ssh.execute("rm -rf '%s'" % profile_dir)
+        master.ssh.execute("rm '.ipengine.conf'", ignore_exit_status=True)
+        master.ssh.execute("rm '.ipcontroller.conf'", ignore_exit_status=True)
         master.ssh.execute('ipython profile create')
         f = master.ssh.remote_file('%s/ipcontroller_config.py' % profile_dir)
         ssh_server = "@".join([user, master.public_dns_name])
@@ -137,6 +141,7 @@ class IPCluster(DefaultClusterSetup):
             "c.HubFactory.ip='%s'" % master.private_ip_address,
             "c.IPControllerApp.ssh_server='%s'" % ssh_server,
             "c.Application.log_level = '%s'" % self.log_level,
+            "c.HubFactory.db_class = '%s'" % self.hub_db_class,
             "",
         ]))
         f.close()
@@ -174,17 +179,54 @@ class IPCluster(DefaultClusterSetup):
             ]))
         # else: use the slow default JSON packer
         f.close()
+        log.info("Writing supervisord config files")
+        f = master.ssh.remote_file('/home/%s/.engine.conf' % user)
+        f.write('\n'.join([
+            "[supervisord]",
+            "logfile = /tmp/engine.log",
+            "loglevel = info",
+            "pidfile = /tmp/engine.pid",
+            "",
+            "[program:ipengine]",
+            "command=ipcluster engines --n=%i" % self.n_engines_per_node,
+            "directory=/home/%s" % user,
+            "user=%s" % user,
+            "autorestart=true",
+            "stdout_logfile=/home/sgeadmin/.ipython/profile_default/stdout_engine_%(host_node_name)s_%(process_num)s.log",
+            "stderr_logfile=/home/sgeadmin/.ipython/profile_default/stderr_engine_%(host_node_name)s_%(process_num)s.log",
+            "",
+        ]))
+        f.close()
+        f = master.ssh.remote_file('/home/%s/.controller.conf' % user)
+        f.write('\n'.join([
+            "[supervisord]",
+            "logfile = /tmp/ipcontroller.log",
+            "loglevel = info",
+            "pidfile = /tmp/ipcontroller.pid",
+            "",
+            "[program:ipcontroller]",
+            "command=ipcluster start --n=0 --delay=5",
+            "directory=/home/%s" % user,
+            "user=%s" % user,
+            "autorestart=true",
+            "stdout_logfile=/home/sgeadmin/.ipython/profile_default/stdout_controller_%(host_node_name)s_%(process_num)s.log",
+            "stderr_logfile=/home/sgeadmin/.ipython/profile_default/stderr_controller_%(host_node_name)s_%(process_num)s.log",
+            "",
+        ]))
+        f.close()
 
-    def _start_cluster(self, master, profile_dir):
+    def _start_cluster(self, master,user, profile_dir):
         if self.n_engines_master is None:
             self.n_engines_master = max(1, master.num_processors - 1)
 
-        log.info("Starting the IPython controller and %i engines on master"
-                 % self.n_engines_master)
+        log.info("Starting supervisord for ipcontroller on master")
+
+
+        master.ssh.execute("pkill -f ipcontrollerapp",
+                           ignore_exit_status=True)
         # cleanup existing connection files, to prevent their use
         master.ssh.execute("rm -f %s/security/*.json" % profile_dir)
-        master.ssh.execute("ipcluster start --n=%i --delay=5 --daemonize"
-                           % self.n_engines_master)
+        master.ssh.execute("supervisord -c /home/%s/.controller.conf" % user)
         # wait for JSON file to exist
         json_filename = '%s/security/ipcontroller-client.json' % profile_dir
         log.info("Waiting for JSON connector file...",
@@ -300,7 +342,7 @@ class IPCluster(DefaultClusterSetup):
         self._write_config(master, user, profile_dir)
         # Start the cluster and some engines on the master (leave 1
         # processor free to handle cluster house keeping)
-        cfile, n_engines_master = self._start_cluster(master, profile_dir)
+        cfile, n_engines_master = self._start_cluster(master, user, profile_dir)
         # Start engines on each of the non-master nodes
         non_master_nodes = [node for node in nodes if not node.is_master()]
 
@@ -350,7 +392,7 @@ class IPClusterStop(DefaultClusterSetup):
         master.ssh.execute("ipcluster stop", ignore_exit_status=True)
         time.sleep(2)
         log.info("Stopping IPython controller on %s", master.alias)
-        master.ssh.execute("pkill -f ipcontrollerapp",
+        master.ssh.execute("pkill -f ipcontroller",
                            ignore_exit_status=True)
         master.ssh.execute("pkill -f 'ipython notebook'",
                            ignore_exit_status=True)
@@ -362,7 +404,7 @@ class IPClusterStop(DefaultClusterSetup):
 
     def _stop_engines(self, node, user):
         node.ssh.switch_user(user)
-        node.ssh.execute("pkill -f ipengineapp", ignore_exit_status=True)
+        node.ssh.execute("pkill -f ipengine", ignore_exit_status=True)
         node.ssh.switch_user('root')
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
