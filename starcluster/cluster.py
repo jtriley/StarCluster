@@ -1353,7 +1353,7 @@ class Cluster(object):
     @property
     def pool(self):
         if not self._pool:
-            self._pool = threadpool.get_thread_pool(
+            self._pool = threadpool.ThreadPool(
                 size=self.num_threads, disable_threads=self.disable_threads)
         return self._pool
 

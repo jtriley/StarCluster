@@ -123,7 +123,7 @@ class Hadoop(clustersetup.ClusterSetup):
     @property
     def pool(self):
         if self._pool is None:
-            self._pool = threadpool.get_thread_pool(20, disable_threads=False)
+            self._pool = threadpool.ThreadPool(20, disable_threads=False)
         return self._pool
 
     def _get_java_home(self, node):

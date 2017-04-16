@@ -101,8 +101,8 @@ class DefaultClusterSetup(ClusterSetup):
     @property
     def pool(self):
         if not self._pool:
-            self._pool = threadpool.get_thread_pool(self._num_threads,
-                                                    self._disable_threads)
+            self._pool = threadpool.ThreadPool(self._num_threads,
+                                               self._disable_threads)
         return self._pool
 
     @property
