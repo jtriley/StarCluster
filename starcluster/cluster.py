@@ -16,6 +16,7 @@
 # along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import sys
 import re
 import time
 import string
@@ -431,7 +432,7 @@ class Cluster(object):
         self.plugins = self.load_plugins(plugins)
         self.userdata_scripts = userdata_scripts or []
         self.dns_prefix = dns_prefix and cluster_tag
-
+       
         self._cluster_group = None
         self._placement_group = None
         self._subnet = None
@@ -601,6 +602,7 @@ class Cluster(object):
                     raise
             if load_plugins:
                 self.plugins = self.load_plugins(master.get_plugins())
+                self.userdata_scripts = master.get_userdata_scripts()
             if load_volumes:
                 self.volumes = master.get_volumes()
         except exception.PluginError:
@@ -909,10 +911,13 @@ class Cluster(object):
                                             static.UD_VOLUMES_FNAME)
         udfiles = [alias_file, plugins_file, volumes_file]
         user_scripts = self.userdata_scripts or []
-        udfiles += [open(f) for f in user_scripts]
+        script_files = [open(f) for f in user_scripts]
+        udfiles += script_files
         use_cloudinit = not self.disable_cloudinit
         udata = userdata.bundle_userdata_files(udfiles,
                                                use_cloudinit=use_cloudinit)
+        for script_file in script_files:
+            script_file.close();
         log.debug('Userdata size in KB: %.2f' % utils.size_in_kb(udata))
         return udata
 
