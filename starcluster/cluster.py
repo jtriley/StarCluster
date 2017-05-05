@@ -755,6 +755,7 @@ class Cluster(object):
         states = ['pending', 'running', 'stopping', 'stopped']
         filters = {'instance-state-name': states,
                    'instance.group-name': self._security_group}
+        log.debug('enumerating EC2 instances in security group %s' % self._security_group)
         nodes = self.ec2.get_all_instances(filters=filters)
         # remove any cached nodes not in the current node list from EC2
         current_ids = [n.id for n in nodes]
@@ -782,12 +783,22 @@ class Cluster(object):
         log.debug('returning self._nodes = %s' % self._nodes)
         return self._nodes
 
-    def get_nodes_or_raise(self):
-        nodes = self.nodes
+    def get_nodes_or_raise(self, max_retries=60, retry_delay=5):
+        # Repeatedly try to get the nodes
+        nodes = []
+        for i in range(max_retries):
+            nodes = self.nodes
+            if not nodes:
+                log.debug('failed to find nodes - retrying in %d seconds' % retry_delay)
+            else:
+                break
+
+        # If we still don't have any nodes, we have no choice but to throw an exception
         if not nodes:
             filters = {'instance.group-name': self._security_group}
             terminated_nodes = self.ec2.get_all_instances(filters=filters)
             raise exception.NoClusterNodesFound(terminated_nodes)
+        
         return nodes
 
     def get_node(self, identifier, nodes=None):
