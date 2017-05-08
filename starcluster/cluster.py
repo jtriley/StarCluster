@@ -783,7 +783,7 @@ class Cluster(object):
         log.debug('returning self._nodes = %s' % self._nodes)
         return self._nodes
 
-    def get_nodes_or_raise(self, max_retries=60, retry_delay=5):
+    def get_nodes_or_raise(self, max_retries=600, retry_delay=5):
         # Repeatedly try to get the nodes
         nodes = []
         for i in range(max_retries):
@@ -796,10 +796,27 @@ class Cluster(object):
 
         # If we still don't have any nodes, we have no choice but to throw an exception
         if not nodes:
+            # Generate as much debugging info as possible
+            log.debug('failed to find nodes - printing detailed debugging results')
+            # Print all instances
+            all_nodes = self.ec2.get_all_instances()
+            log.debug('all nodes:\n%s' % str(all_nodes))
+            # Print all instances in the desired security group, queried by ID
+            secid = self.ec2.get_securityids_from_names([self._security_group])[0]
+            all_sc_id_nodes = self.ec2.get_all_instances(filters={'instance.group-id': secid})
+            log.debug('all nodes in security group ID %s:\n%s' % (secid, str(all_sc_id_nodes)))
+            # Print all instances in the desired security group, querired by name
+            all_sc_name_nodes = self.ec2.get_all_instances(filters={'instance.group-name': self._security_group})
+            log.debug('all nodes in security group name %s:\n%s' % (self._security_group, str(all_sc_name_nodes)))
+            # Print all instances with a state in the set {pending, running, stopping, stopped}
+            all_status_nodes = self.ec2.get_all_instances(filters={'instance-state-name': ['pending', 'running', 'stopping', 'stopped']})
+            log.debug('all nodes with valid state:\n%s' % str(all_status_nodes))           
+
+            # Throw an exception!
             filters = {'instance.group-name': self._security_group}
             terminated_nodes = self.ec2.get_all_instances(filters=filters)
-            raise exception.NoClusterNodesFound(terminated_nodes)
-        
+            raise exception.NoClusterNodesFound(terminated_nodes)    
+
         return nodes
 
     def get_node(self, identifier, nodes=None):
