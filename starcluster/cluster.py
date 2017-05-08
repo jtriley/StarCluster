@@ -790,6 +790,7 @@ class Cluster(object):
             nodes = self.nodes
             if not nodes:
                 log.debug('failed to find nodes - retrying in %d seconds' % retry_delay)
+                time.sleep(retry_delay)
             else:
                 break
 
