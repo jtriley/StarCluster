@@ -512,7 +512,9 @@ class EasyEC2(EasyAWS):
                              user_data=user_data,
                              block_device_map=block_device_map,
                              network_interfaces=network_interfaces)
+        log.debug("Shared keyword arguments for EC2 instances to request:\n%s" % str(shared_kwargs))
         if price:
+            log.debug("Requesting %d spot instances w/ launch_group=%s, security_group_ids=%s, and availability_zone_group=%s" % (count, str(launch_group), str(security_group_ids), str(availability_zone_group)))
             return self.request_spot_instances(
                 price, image_id,
                 count=count, launch_group=launch_group,
@@ -520,6 +522,7 @@ class EasyEC2(EasyAWS):
                 availability_zone_group=availability_zone_group,
                 **shared_kwargs)
         else:
+            log.debug("Running [%d, %d] EC2 instances in security group(s) %s" % (min_count, max_count, str(security_groups)))
             return self.run_instances(
                 image_id,
                 min_count=min_count, max_count=max_count,
@@ -555,6 +558,7 @@ class EasyEC2(EasyAWS):
                    progressbar.Bar(marker=progressbar.RotatingMarker()), ' ',
                    progressbar.Percentage(), ' ', ' ']
         log.info("Waiting for %s to propagate..." % obj_name)
+        log.debug("Waiting on propagation filter: %s" % str(filters))
         pbar = progressbar.ProgressBar(widgets=widgets,
                                        maxval=num_objs).start()
         try:

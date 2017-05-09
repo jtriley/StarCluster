@@ -284,14 +284,14 @@ PLUGIN_SETTINGS = {
 PERMISSION_SETTINGS = {
     # either you're specifying an ip-based rule
     'ip_protocol': (str, False, 'tcp', PROTOCOLS, None),
-    'from_port': (int, True, None, None, None),
-    'to_port': (int, True, None, None, None),
+    'from_port': (int, False, 1, None, None),
+    'to_port': (int, False, 65535, None, None),
     'cidr_ip': (str, False, '0.0.0.0/0', None, None),
     # or you're allowing full access to another security group
     # skip this for now...these two options are mutually exclusive to
     # the four settings above and source_group is  less commonly
     # used. address this when someone requests it.
-    # 'source_group': (str, False, None),
+    'src_sg': (str, False, None, None, None),
     # 'source_group_owner': (int, False, None),
 }
 

@@ -16,6 +16,7 @@
 # along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import sys
 import re
 import time
 import string
@@ -431,7 +432,7 @@ class Cluster(object):
         self.plugins = self.load_plugins(plugins)
         self.userdata_scripts = userdata_scripts or []
         self.dns_prefix = dns_prefix and cluster_tag
-
+       
         self._cluster_group = None
         self._placement_group = None
         self._subnet = None
@@ -601,6 +602,7 @@ class Cluster(object):
                     raise
             if load_plugins:
                 self.plugins = self.load_plugins(master.get_plugins())
+                self.userdata_scripts = master.get_userdata_scripts()
             if load_volumes:
                 self.volumes = master.get_volumes()
         except exception.PluginError:
@@ -663,17 +665,22 @@ class Cluster(object):
         for p in self.permissions:
             perm = self.permissions.get(p)
             ip_protocol = perm.get('ip_protocol', 'tcp')
-            from_port = perm.get('from_port')
-            to_port = perm.get('to_port')
+            from_port = perm.get('from_port',1)
+            to_port = perm.get('to_port',65535)
             cidr_ip = perm.get('cidr_ip', static.WORLD_CIDRIP)
-            if not self.ec2.has_permission(sg, ip_protocol, from_port,
-                                           to_port, cidr_ip):
-                log.info("Opening %s port range %s-%s for CIDR %s" %
-                         (ip_protocol, from_port, to_port, cidr_ip))
-                sg.authorize(ip_protocol, from_port, to_port, cidr_ip)
+            src_sg = perm.get('src_sg', None)
+            if src_sg:
+                log.info("Opening connections from security group '%s'" % src_sg)
+                sg.authorize(src_group=self.ec2.get_security_group(src_sg))
             else:
-                log.info("Already open: %s port range %s-%s for CIDR %s" %
-                         (ip_protocol, from_port, to_port, cidr_ip))
+                if not self.ec2.has_permission(sg, ip_protocol, from_port,
+                                           to_port, cidr_ip):
+                    log.info("Opening %s port range %s-%s for CIDR %s" %
+                             (ip_protocol, from_port, to_port, cidr_ip))
+                    sg.authorize(ip_protocol, from_port, to_port, cidr_ip)
+                else:
+                    log.info("Already open: %s port range %s-%s for CIDR %s" %
+                             (ip_protocol, from_port, to_port, cidr_ip))
             includes_ssh = from_port <= ssh_port <= to_port
             open_to_world = cidr_ip == static.WORLD_CIDRIP
             if ip_protocol == 'tcp' and includes_ssh and not open_to_world:
@@ -748,6 +755,7 @@ class Cluster(object):
         states = ['pending', 'running', 'stopping', 'stopped']
         filters = {'instance-state-name': states,
                    'instance.group-name': self._security_group}
+        log.debug('enumerating EC2 instances in security group %s' % self._security_group)
         nodes = self.ec2.get_all_instances(filters=filters)
         # remove any cached nodes not in the current node list from EC2
         current_ids = [n.id for n in nodes]
@@ -775,12 +783,40 @@ class Cluster(object):
         log.debug('returning self._nodes = %s' % self._nodes)
         return self._nodes
 
-    def get_nodes_or_raise(self):
-        nodes = self.nodes
+    def get_nodes_or_raise(self, max_retries=600, retry_delay=5):
+        # Repeatedly try to get the nodes
+        nodes = []
+        for i in range(max_retries):
+            nodes = self.nodes
+            if not nodes:
+                log.debug('failed to find nodes - retrying in %d seconds' % retry_delay)
+                time.sleep(retry_delay)
+            else:
+                break
+
+        # If we still don't have any nodes, we have no choice but to throw an exception
         if not nodes:
+            # Generate as much debugging info as possible
+            log.debug('failed to find nodes - printing detailed debugging results')
+            # Print all instances
+            all_nodes = self.ec2.get_all_instances()
+            log.debug('all nodes:\n%s' % str(all_nodes))
+            # Print all instances in the desired security group, queried by ID
+            secid = self.ec2.get_securityids_from_names([self._security_group])[0]
+            all_sc_id_nodes = self.ec2.get_all_instances(filters={'instance.group-id': secid})
+            log.debug('all nodes in security group ID %s:\n%s' % (secid, str(all_sc_id_nodes)))
+            # Print all instances in the desired security group, querired by name
+            all_sc_name_nodes = self.ec2.get_all_instances(filters={'instance.group-name': self._security_group})
+            log.debug('all nodes in security group name %s:\n%s' % (self._security_group, str(all_sc_name_nodes)))
+            # Print all instances with a state in the set {pending, running, stopping, stopped}
+            all_status_nodes = self.ec2.get_all_instances(filters={'instance-state-name': ['pending', 'running', 'stopping', 'stopped']})
+            log.debug('all nodes with valid state:\n%s' % str(all_status_nodes))           
+
+            # Throw an exception!
             filters = {'instance.group-name': self._security_group}
             terminated_nodes = self.ec2.get_all_instances(filters=filters)
-            raise exception.NoClusterNodesFound(terminated_nodes)
+            raise exception.NoClusterNodesFound(terminated_nodes)    
+
         return nodes
 
     def get_node(self, identifier, nodes=None):
@@ -904,10 +940,13 @@ class Cluster(object):
                                             static.UD_VOLUMES_FNAME)
         udfiles = [alias_file, plugins_file, volumes_file]
         user_scripts = self.userdata_scripts or []
-        udfiles += [open(f) for f in user_scripts]
+        script_files = [open(f) for f in user_scripts]
+        udfiles += script_files
         use_cloudinit = not self.disable_cloudinit
         udata = userdata.bundle_userdata_files(udfiles,
                                                use_cloudinit=use_cloudinit)
+        for script_file in script_files:
+            script_file.close();
         log.debug('Userdata size in KB: %.2f' % utils.size_in_kb(udata))
         return udata
 

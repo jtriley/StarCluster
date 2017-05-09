@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
 
+import os
+import sys
 import re
 import time
 import stat
@@ -186,6 +188,18 @@ class Node(object):
         volstxt = self.user_data.get(static.UD_VOLUMES_FNAME)
         payload = volstxt.split('\n', 2)[2]
         return utils.decode_uncompress_load(payload)
+
+    def get_userdata_scripts(self):
+        # Iterate over the user data dictionary
+        userdata_scripts = []
+        userdata_dict = self.user_data
+        for key, value in userdata_dict.iteritems():
+            shebang_line = value.split('\n', 1)[0]
+            if ("#!" in shebang_line) and ("#!/bin/false" not in shebang_line):
+                # {This item in the dictionary corresponds to a user script}
+                userdata_scripts.append(key);
+
+        return userdata_scripts
 
     def _remove_all_tags(self):
         tags = self.tags.keys()[:]

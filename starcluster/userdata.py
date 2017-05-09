@@ -16,6 +16,7 @@
 # along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import sys
 import re
 import time
 import gzip
@@ -28,10 +29,8 @@ from email import encoders
 from email.mime import base
 from email.mime import text
 from email.mime import multipart
-
 from starcluster import utils
 from starcluster import exception
-
 
 starts_with_mappings = {
     '#include': 'text/x-include-url',
@@ -56,8 +55,11 @@ def _get_type_from_fp(fp):
             return starts_with_mappings[sstr]
     raise exception.BaseException("invalid user data type: %s" % line)
 
+def _are_files_user_scripts(files):
+    script_type = starts_with_mappings['#!']
+    return [(_get_type_from_fp(fp) == script_type) for fp in files]
 
-def mp_userdata_from_files(files, compress=False, multipart_mime=None):
+def mp_userdata_from_files(files, is_user_script, compress=False, multipart_mime=None):
     outer = multipart_mime or multipart.MIMEMultipart()
     mtypes = []
     for i, fp in enumerate(files):
@@ -78,8 +80,10 @@ def mp_userdata_from_files(files, compress=False, multipart_mime=None):
             encoders.encode_base64(msg)
         # Set the filename parameter
         fname = getattr(fp, 'name', "sc_%d" % i)
-        msg.add_header('Content-Disposition', 'attachment',
-                       filename=os.path.basename(fname))
+        if is_user_script[i]:
+            msg.add_header('Content-Disposition', 'attachment', filename=fname)
+        else:
+            msg.add_header('Content-Disposition', 'attachment', filename=os.path.basename(fname))
         outer.attach(msg)
     userdata = outer.as_string()
     if compress:
@@ -116,7 +120,7 @@ for ti in tf:
 """
 
 
-def userdata_script_from_files(fileobjs, tar_fname=None, tar_file=None):
+def userdata_script_from_files(fileobjs, is_user_script, tar_fname=None, tar_file=None):
     tar_fname = tar_fname or 'sc_userdata.tar'
     if tar_file:
         tf = tar_file
@@ -129,7 +133,9 @@ def userdata_script_from_files(fileobjs, tar_fname=None, tar_file=None):
             ti = tf.gettarinfo(fileobj=f)
         else:
             ti = tarfile.TarInfo()
-        ti.name = os.path.basename(f.name)
+        ti.name = f.name
+        if not is_user_script[i]:
+            ti.name = os.path.basename(f.name)
         ti.mtime = time.time()
         if f.read(2) == '#!':
             ti.mode = 0755
@@ -173,22 +179,24 @@ def bundle_userdata_files(fileobjs, tar_fname=None, compress=True,
                           use_cloudinit=True):
     script_type = starts_with_mappings['#!']
     ignored_type = starts_with_mappings['#ignored']
+    is_user_script = _are_files_user_scripts(fileobjs)
     for i, fobj in enumerate(fileobjs):
         ftype = _get_type_from_fp(fobj)
         if ftype == ignored_type:
-            fileobjs[i] = utils.string_to_file("#!/bin/false\n" + fobj.read(),
-                                               fobj.name)
+            fileobjs[i] = utils.string_to_file("#!/bin/false\n" + fobj.read(), fobj.name)
             continue
         elif ftype != script_type:
             use_cloudinit = True
     if use_cloudinit:
         fileobjs += [utils.string_to_file('#cloud-config\ndisable_root: 0',
                                           'starcluster_cloud_config.txt')]
-        return mp_userdata_from_files(fileobjs, compress=compress)
+        is_user_script += [False]
+        return mp_userdata_from_files(fileobjs, is_user_script, compress=compress)
     else:
         fileobjs += [utils.string_to_file(ENABLE_ROOT_LOGIN_SCRIPT,
                                           'starcluster_enable_root_login.sh')]
-        return userdata_script_from_files(fileobjs, tar_fname=tar_fname)
+        is_user_script += [False]
+        return userdata_script_from_files(fileobjs, is_user_script, tar_fname=tar_fname)
 
 
 def unbundle_userdata(string, decompress=True):
@@ -209,10 +217,10 @@ def unbundle_userdata(string, decompress=True):
 def append_to_userdata(userdata_string, fileobjs, decompress=True):
     if userdata_string.startswith('#!'):
         tf = get_tar_from_userdata(userdata_string, mode='a')
-        return userdata_script_from_files(fileobjs, tar_file=tf)
+        return userdata_script_from_files(fileobjs, _are_files_user_scripts(fileobjs), tar_file=tf)
     else:
         mpmime = get_mp_from_userdata(userdata_string, decompress=decompress)
-        return mp_userdata_from_files(fileobjs, multipart_mime=mpmime,
+        return mp_userdata_from_files(fileobjs, _are_files_user_scripts(fileobjs), multipart_mime=mpmime,
                                       compress=decompress)
 
 
@@ -229,7 +237,7 @@ def remove_from_userdata(userdata_string, filenames, decompress=True):
         new_tf.close()
         tarstr.seek(0)
         new_tf = tarfile.TarFile(fileobj=tarstr, mode='r')
-        return userdata_script_from_files([], tar_file=new_tf)
+        return userdata_script_from_files([], [], tar_file=new_tf)
     else:
         mpmime = get_mp_from_userdata(userdata_string, decompress=decompress)
         msgs = []
@@ -238,7 +246,7 @@ def remove_from_userdata(userdata_string, filenames, decompress=True):
                 continue
             msgs.append(msg)
         mpmime.set_payload(msgs)
-        return mp_userdata_from_files([], multipart_mime=mpmime,
+        return mp_userdata_from_files([], [], multipart_mime=mpmime,
                                       compress=decompress)
 
 
