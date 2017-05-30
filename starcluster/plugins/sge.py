@@ -160,7 +160,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         for node in self.nodes:
             self.pool.simple_job(self._add_to_sge, (node,), jobid=node.alias)
         self.pool.wait(numtasks=len(self.nodes))
-        self._create_sge_pe()
+        self._create_sge_pe(name="orte")
         self._create_sge_pe(name="smp")
 
     def _remove_from_sge(self, node):
