@@ -384,12 +384,12 @@ class IPClusterRestartEngines(IPCluster):
         for node in nodes:
             if node.is_master() and (self.master_engines is not None):
                 n_engines = int(self.master_engines)
-            elif self.node_engines is not None: 
+            elif self.node_engines is not None:
                 n_engines = int(self.node_engines)
             elif node.is_master():
                 # and n_engines > 2: # XXX I'm not sure I understand this logic yet. 
-                n_engines = node.num_processors - 1 
-            else: 
+                n_engines = node.num_processors - 1
+            else:
                 n_engines = node.num_processors
             self.pool.simple_job(
                 _start_engines, (node, user, n_engines, True),
