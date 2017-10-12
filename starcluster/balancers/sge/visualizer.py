@@ -44,7 +44,7 @@ class SGEVisualizer(object):
         file = open(self.stats_file, 'r')
         for line in file:
             parts = line.rstrip().split(',')
-            a = [datetime.strptime(parts[0], '%Y-%m-%d %H:%M:%S.%f'),
+            a = [datetime.strptime(parts[0], '%Y-%m-%d %H:%M:%S.%f%z'),
                  int(parts[1]), int(parts[2]), int(parts[3]), int(parts[4]),
                  int(parts[5]), int(parts[6]), float(parts[7])]
             list.append(a)
