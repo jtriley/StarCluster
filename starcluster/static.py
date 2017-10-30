@@ -167,6 +167,9 @@ INSTANCE_TYPES = {
     'p2.xlarge': ['x86_64'],
     'p2.8xlarge': ['x86_64'],
     'p2.16xlarge': ['x86_64'],
+    'p3.2xlarge': ['x86_64'],
+    'p3.8xlarge': ['x86_64'],
+    'p3.16xlarge': ['x86_64'],
     'g2.2xlarge': ['x86_64'],
     'g2.8xlarge': ['x86_64']
 }
@@ -198,6 +201,7 @@ M4_COMPUTE_TYPES = ['c4.large', 'c4.xlarge', 'c4.2xlarge', 'c4.4xlarge',
                     'm4.4xlarge', 'm4.10xlarge', 'm4.16xlarge']
 
 GPU_COMPUTE_TYPES = ['p2.xlarge','p2.8xlarge','p2.16xlarge',
+                     'p3.2xlarge', 'p3.8xlarge', 'p3.16xlarge',
                      'g2.2xlarge','g2.8xlarge']
 
 I2_STORAGE_TYPES = ['i2.xlarge', 'i2.2xlarge', 'i2.4xlarge', 'i2.8xlarge']
