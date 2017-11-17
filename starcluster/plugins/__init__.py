@@ -25,6 +25,7 @@ __all__ = [
     'mycluster',
     'pkginstaller',
     'pypkginstaller',
+    'elasticip',
     'xvfb',
     'mpich2',
 ]
