@@ -1,3 +1,7 @@
+# Added by Daniel Treiman
+# From Charles Cadieu http://star.mit.edu/cluster/mlarchives/1376.html
+
+
 from starcluster.clustersetup import ClusterSetup 
 from starcluster.logger import log 
 
