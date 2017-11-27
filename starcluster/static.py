@@ -156,6 +156,12 @@ INSTANCE_TYPES = {
     'c4.2xlarge': ['x86_64'],
     'c4.4xlarge': ['x86_64'],
     'c4.8xlarge': ['x86_64'],
+    'c5.large': ['x86_64'],
+    'c5.xlarge': ['x86_64'],
+    'c5.2xlarge': ['x86_64'],
+    'c5.4xlarge': ['x86_64'],
+    'c5.9xlarge': ['x86_64'],
+    'c5.18xlarge': ['x86_64'],
     'i2.xlarge': ['x86_64'],
     'i2.2xlarge': ['x86_64'],
     'i2.4xlarge': ['x86_64'],
@@ -200,6 +206,9 @@ M4_COMPUTE_TYPES = ['c4.large', 'c4.xlarge', 'c4.2xlarge', 'c4.4xlarge',
                     'c4.8xlarge', 'm4.large', 'm4.xlarge', 'm4.2xlarge',
                     'm4.4xlarge', 'm4.10xlarge', 'm4.16xlarge']
 
+M5_COMPUTE_TYPES = ['c5.large', 'c5.xlarge', 'c5.2xlarge', 'c5.9xlarge',
+                    'c5.18xlarge']
+
 GPU_COMPUTE_TYPES = ['p2.xlarge','p2.8xlarge','p2.16xlarge',
                      'p3.2xlarge', 'p3.8xlarge', 'p3.16xlarge',
                      'g2.2xlarge','g2.8xlarge']
@@ -213,7 +222,7 @@ HVM_ONLY_TYPES = (CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES +
                   T2_INSTANCE_TYPES + DENSE_STORAGE_TYPES + GPU_COMPUTE_TYPES)
 
 HVM_TYPES = (HVM_ONLY_TYPES + HI_IO_TYPES + HI_STORAGE_TYPES + SEC_GEN_TYPES +
-             M3_COMPUTE_TYPES + M4_COMPUTE_TYPES)
+             M3_COMPUTE_TYPES + M4_COMPUTE_TYPES + M5_COMPUTE_TYPES)
 
 EBS_ONLY_TYPES = T1_INSTANCE_TYPES + T2_INSTANCE_TYPES
 
