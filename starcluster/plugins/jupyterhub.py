@@ -7,6 +7,9 @@ from starcluster.logger import log
 
 
 class JupyterhubPlugin(clustersetup.DefaultClusterSetup):
+    def __init__(self, development=False):
+        super(JupyterhubPlugin, self).__init__()
+        self.development = development
 
     def _add_jupyterhub_node(self, node):
         node.ssh.execute('sudo mkdir -p /run/user/1001/jupyter && sudo chmod -R ugo+rwx /run/user/1001')
@@ -17,7 +20,10 @@ class JupyterhubPlugin(clustersetup.DefaultClusterSetup):
         nodes = nodes or self.nodes
         log.info('Starting Jupyterhub server')
         self._add_jupyterhub_node(master)
-        master.ssh.execute('sudo systemctl start jupyterhub')
+        if self.development:
+            master.ssh.execute('sudo systemctl start jupyterhub_dev')
+        else:
+            master.ssh.execute('sudo systemctl start jupyterhub')
         log.info('Configuring Jupyter nodes')
         for node in nodes:
             self.pool.simple_job(self._add_jupyterhub_node, (node,),
