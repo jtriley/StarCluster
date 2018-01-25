@@ -237,7 +237,7 @@ class Node(object):
                 self._num_gpus = static.GPU_COUNTS[self.instance_type]
             else:
                 self._num_gpus = 0
-        self._num_gpus
+        return self._num_gpus
 
     @property
     def memory(self):
