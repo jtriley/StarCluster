@@ -59,7 +59,7 @@ class JupyterhubPlugin(clustersetup.DefaultClusterSetup):
             admin_whitelist=','.join([repr(u) for u in self.admin_whitelist]),
             queue=queue
         )
-        jupyterhub_conf.write(jupyterhub.juoyterhub_config_template % config_dict)
+        jupyterhub_conf.write(jupyterhub.jupyterhub_config_template % config_dict)
         jupyterhub_conf.close()
 
     def _setup_jupyterhub(self, master=None, nodes=None):
