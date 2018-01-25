@@ -67,7 +67,7 @@ class JupyterhubPlugin(clustersetup.DefaultClusterSetup):
         master = master or self._master
         nodes = nodes or self.nodes
         log.info('Creating /etc/jupyterhub/jupyterhub_conf.py')
-        self._write_jupyterhub_config(self, master)
+        self._write_jupyterhub_config(master)
         log.info('Starting Jupyterhub server')
         self._setup_jupyterhub_node(master)
         master.ssh.execute('sudo systemctl start jupyterhub')
