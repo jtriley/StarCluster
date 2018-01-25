@@ -10,7 +10,7 @@ class JupyterhubPlugin(clustersetup.DefaultClusterSetup):
     JUPYTERHUB_CONF = '/etc/jupyterhub/jupyterhub_conf.py'
     JUPYTERHUB_SERVICE = '/etc/systemd/system/jupyterhub.service'
 
-    def __init__(self, homedir='/', oauth_callback_url=None, client_id=None, client_secret=None,
+    def __init__(self, homedir='/', oauth_callback_url=None, oauth_client_id=None, oauth_client_secret=None,
                  hosted_domain=None, login_service=None, user_whitelist='', admin_whitelist='', queue=None, **kwargs):
         """Constructor.
 
@@ -27,8 +27,8 @@ class JupyterhubPlugin(clustersetup.DefaultClusterSetup):
         super(JupyterhubPlugin, self).__init__()
         self.homedir = homedir
         self.oauth_callback_url = oauth_callback_url
-        self.client_id = client_id
-        self.client_secret = client_secret
+        self.oauth_client_id = oauth_client_id
+        self.oauth_client_secret = oauth_client_secret
         self.hosted_domain = hosted_domain
         self.login_service = login_service
         self.user_whitelist = user_whitelist.split(',')
@@ -51,8 +51,8 @@ class JupyterhubPlugin(clustersetup.DefaultClusterSetup):
         config_dict = dict(
             homedir=repr(self.homedir),
             oauth_callback_url=repr(self.oauth_callback_url),
-            client_id=repr(self.client_id),
-            client_secret=repr(self.client_secret),
+            oauth_client_id=repr(self.oauth_client_id),
+            oauth_client_secret=repr(self.oauth_client_secret),
             hosted_domain=repr(self.hosted_domain),
             login_service=repr(self.login_service),
             user_whitelist=','.join([repr(u) for u in self.user_whitelist]),
