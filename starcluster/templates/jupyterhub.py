@@ -90,9 +90,9 @@ c.Spawner.environment = dict(
     XDG_RUNTIME_DIR='/run/user/1001'
 )
 c.Spawner.http_timeout = 120
-c.GridengineSpawner.batch_submit_cmd = 'sudo -u {username} -E /opt/sge6/bin/linux-x64/qsub'
-c.GridengineSpawner.batch_query_cmd = 'sudo -u {username} -E /opt/sge6/bin/linux-x64/qstat -xml'
-c.GridengineSpawner.batch_cancel_cmd = 'sudo -u {username} -E /opt/sge6/bin/linux-x64/qdel {job_id}'
+c.GridengineSpawner.batch_submit_cmd = 'sudo -u {username} -E /opt/sge6/bin/linux-x64/qsub %(queue)s'
+c.GridengineSpawner.batch_query_cmd = 'sudo -u {username} -E /opt/sge6/bin/linux-x64/qstat %(queue)s -xml'
+c.GridengineSpawner.batch_cancel_cmd = 'sudo -u {username} -E /opt/sge6/bin/linux-x64/qdel %(queue)s {job_id}'
 
 
 ## Path to SSL certificate file for the public facing interface of the proxy

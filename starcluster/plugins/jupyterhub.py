@@ -11,7 +11,7 @@ class JupyterhubPlugin(clustersetup.DefaultClusterSetup):
     JUPYTERHUB_SERVICE = '/etc/systemd/system/jupyterhub.service'
 
     def __init__(self, homedir='/', oauth_callback_url=None, client_id=None, client_secret=None,
-                 hosted_domain=None, login_service=None, user_whitelist='', admin_whitelist=''):
+                 hosted_domain=None, login_service=None, user_whitelist='', admin_whitelist='', queue=None, **kwargs):
         """Constructor.
 
         Args:
@@ -33,6 +33,7 @@ class JupyterhubPlugin(clustersetup.DefaultClusterSetup):
         self.login_service = login_service
         self.user_whitelist = user_whitelist.split(',')
         self.admin_whitelist = admin_whitelist.split(',')
+        self.queue = queue
 
     def _setup_jupyterhub_node(self, node):
         node.ssh.execute('sudo mkdir -p /run/user/1001/jupyter && sudo chmod -R ugo+rwx /run/user/1001')
@@ -44,6 +45,9 @@ class JupyterhubPlugin(clustersetup.DefaultClusterSetup):
         jupyterhub_service.close()
         # Write jupyterhub_conf.py
         jupyterhub_conf = node.ssh.remote_file(self.JUPYTERHUB_CONF, "w")
+        queue = ''
+        if self.queue:
+            queue = '-q ' + self.queue
         config_dict = dict(
             homedir=repr(self.homedir),
             oauth_callback_url=repr(self.oauth_callback_url),
@@ -52,17 +56,14 @@ class JupyterhubPlugin(clustersetup.DefaultClusterSetup):
             hosted_domain=repr(self.hosted_domain),
             login_service=repr(self.login_service),
             user_whitelist=','.join([repr(u) for u in self.user_whitelist]),
-            admin_whitelist=','.join([repr(u) for u in self.admin_whitelist])
+            admin_whitelist=','.join([repr(u) for u in self.admin_whitelist]),
+            queue=queue
         )
         jupyterhub_conf.write(jupyterhub.juoyterhub_config_template % config_dict)
         jupyterhub_conf.close()
 
     def _setup_jupyterhub(self, master=None, nodes=None):
         log.info('Setting up Jupyterhub environment')
-        if self.master_queue:
-            log.info('Configuring queue')
-            node.ssh.execute('qconf -aattr queue slots "[%s=%d]" all.q' %
-                             (node.alias, num_slots))
         master = master or self._master
         nodes = nodes or self.nodes
         log.info('Creating /etc/jupyterhub/jupyterhub_conf.py')
