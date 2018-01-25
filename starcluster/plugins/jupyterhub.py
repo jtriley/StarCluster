@@ -24,7 +24,7 @@ class JupyterhubPlugin(clustersetup.DefaultClusterSetup):
             user_whitelist
             admin_whitelist
         """
-        super(JupyterhubPlugin, self).__init__()
+        super(JupyterhubPlugin, self).__init__(**kwargs)
         self.homedir = homedir
         self.oauth_callback_url = oauth_callback_url
         self.oauth_client_id = oauth_client_id

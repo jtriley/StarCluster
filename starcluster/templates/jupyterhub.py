@@ -16,7 +16,7 @@
 # along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
 
 
-juoyterhub_config_template = """
+jupyterhub_config_template = """
 from oauthenticator.google import GoogleOAuthenticator
 from batchspawner import GridengineSpawner
 
