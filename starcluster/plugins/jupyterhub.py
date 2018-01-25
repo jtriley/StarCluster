@@ -36,7 +36,7 @@ class JupyterhubPlugin(clustersetup.DefaultClusterSetup):
         self.queue = queue
 
     def _setup_jupyterhub_node(self, node):
-        node.ssh.execute('sudo mkdir -p /run/user/1001/jupyter && sudo chmod -R ugo+rwx /run/user/1001')
+        node.ssh.execute('mkdir -p /run/user/1001/jupyter && chmod -R ugo+rwx /run/user/1001')
 
     def _write_jupyterhub_config(self, master):
         # Write jupyterhub.service
@@ -49,12 +49,12 @@ class JupyterhubPlugin(clustersetup.DefaultClusterSetup):
         if self.queue:
             queue = '-q ' + self.queue
         config_dict = dict(
-            homedir=repr(self.homedir),
-            oauth_callback_url=repr(self.oauth_callback_url),
-            oauth_client_id=repr(self.oauth_client_id),
-            oauth_client_secret=repr(self.oauth_client_secret),
-            hosted_domain=repr(self.hosted_domain),
-            login_service=repr(self.login_service),
+            homedir=self.homedir,
+            oauth_callback_url=self.oauth_callback_url,
+            oauth_client_id=self.oauth_client_id,
+            oauth_client_secret=self.oauth_client_secret,
+            hosted_domain=self.hosted_domain,
+            login_service=self.login_service,
             user_whitelist=','.join([repr(u) for u in self.user_whitelist]),
             admin_whitelist=','.join([repr(u) for u in self.admin_whitelist]),
             queue=queue
@@ -70,13 +70,13 @@ class JupyterhubPlugin(clustersetup.DefaultClusterSetup):
         self._write_jupyterhub_config(master)
         log.info('Starting Jupyterhub server')
         self._setup_jupyterhub_node(master)
-        master.ssh.execute('sudo systemctl start jupyterhub')
+        # Start jupyterhub process
+        master.ssh.execute('systemctl start jupyterhub')
         log.info('Configuring Jupyter nodes')
         for node in nodes:
             self.pool.simple_job(self._setup_jupyterhub_node, (node,),
                                  jobid=node.alias)
         self.pool.wait(numtasks=len(nodes))
-        # Start jupyterhub process
 
     def run(self, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
