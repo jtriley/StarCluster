@@ -23,6 +23,7 @@ __all__ = [
     'sge',
     'condor',
     'user_msgs',
+    'jupyterhub'
 ]
 
 _web_tmpl_loader = jinja2.Environment(loader=jinja2.PrefixLoader({
