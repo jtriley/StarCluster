@@ -230,6 +230,15 @@ class Node(object):
         return self._num_procs
 
     @property
+    def num_gpus(self):
+        if not self._num_gpus:
+            if self.instance_type in static.GPU_COUNTS:
+                self._num_gpus = static.GPU_COUNTS[self.instance_type]
+            else:
+                self._num_gpus = 0
+        self._num_gpus
+
+    @property
     def memory(self):
         if not self._memory:
             self._memory = float(
@@ -930,7 +939,8 @@ class Node(object):
         return self.instance.instance_type in static.CLUSTER_COMPUTE_TYPES
 
     def is_gpu_compute(self):
-        return self.instance.instance_type in static.CLUSTER_GPU_TYPES
+        return ((self.instance.instance_type in static.CLUSTER_GPU_TYPES) or
+                (self.instance.instance_type in static.GPU_COMPUTE_TYPES))
 
     def is_cluster_type(self):
         return self.instance.instance_type in static.HVM_ONLY_TYPES

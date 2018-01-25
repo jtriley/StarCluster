@@ -214,6 +214,18 @@ GPU_COMPUTE_TYPES = ['p2.xlarge','p2.8xlarge','p2.16xlarge',
                      'p3.2xlarge', 'p3.8xlarge', 'p3.16xlarge',
                      'g2.2xlarge','g2.8xlarge']
 
+GPU_COUNTS = {
+    'p2.xlarge': 1,
+    'p2.8xlarge': 8,
+    'p2.16xlarge': 16,
+    'p3.2xlarge': 1,
+    'p3.8xlarge': 4,
+    'p3.16xlarge': 8,
+    'g2.2xlarge': 2,
+    'g2.8xlarge': 4,
+    'cg1.4xlarge': 4
+}
+
 I2_STORAGE_TYPES = ['i2.xlarge', 'i2.2xlarge', 'i2.4xlarge', 'i2.8xlarge']
 
 DENSE_STORAGE_TYPES = ['d2.xlarge', 'd2.2xlarge', 'd2.4xlarge', 'd2.8xlarge']
