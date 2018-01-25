@@ -91,6 +91,7 @@ class Node(object):
         self._groups = None
         self._ssh = None
         self._num_procs = None
+        self._num_gpus = None
         self._memory = None
         self._user_data = None
 
