@@ -48,9 +48,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         if slots_per_host is not None:
             self.slots_per_host = int(slots_per_host)
         self.create_cpu_queue = create_cpu_queue
-        self.cpu_queue_created = False
         self.create_gpu_queue = create_gpu_queue
-        self.gpu_queue_created = False
         self.disable_default_queue = disable_default_queue
         super(SGEPlugin, self).__init__(**kwargs)
 
@@ -73,7 +71,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         node.ssh.execute('rm /etc/init.d/sge*', ignore_exit_status=True)
         self._inst_sge(node, exec_host=True)
 
-    def _create_sge_pe(self, name="orte", nodes=None, queue="all.q"):
+    def _create_sge_pe(self, name="orte", nodes=None, queue="all.q", queues_created=True):
         """
         Create or update an SGE parallel environment
 
@@ -104,17 +102,17 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             log.info("Adding parallel environment '%s' to queue '%s'" %
                      (name, queue))
             mssh.execute('qconf -mattr queue pe_list "%s" %s' % (name, queue))
-        if self.create_cpu_queue and self.cpu_queue_created:
+        if self.create_cpu_queue and queues_created:
             log.info("Adding parallel environment '%s' to queue 'cpu.q'" % name)
             mssh.execute('qconf -mattr queue pe_list "%s" cpu.q' % name)
-        if self.create_gpu_queue and self.gpu_queue_created:
+        if self.create_gpu_queue and queues_created:
             log.info("Adding parallel environment '%s' to queue 'gpu.q'" % name)
             mssh.execute('qconf -mattr queue pe_list "%s" gpu.q' % name)
         if self.disable_default_queue:
             log.info("Disabling %s" % queue)
             mssh.execute('qmod -d all.q')
 
-    def _inst_sge(self, node, exec_host=True):
+    def _inst_sge(self, node, exec_host=True, queues_created=True):
         self._setup_sge_profile(node)
         inst_sge = 'cd %s && TERM=rxvt ./%s ' % (self.SGE_ROOT, self.SGE_INST)
         if node.is_master():
@@ -129,10 +127,10 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
                 num_slots = _num_slots(node)
             node.ssh.execute("qconf -aattr hostgroup hostlist %s @allhosts" % node.alias)
             node.ssh.execute('qconf -aattr queue slots "[%s=%d]" all.q' % (node.alias, num_slots))
-            if self.create_cpu_queue and self.cpu_queue_created and not node.is_gpu_compute():
+            if self.create_cpu_queue and queues_created and not node.is_gpu_compute():
                 node.ssh.execute('qconf -aattr queue slots "[%s=%d]" cpu.q' % (node.alias, num_slots))
                 node.ssh.execute("qconf -aattr hostgroup hostlist %s @cpuhosts" % node.alias)
-            if self.create_gpu_queue and self.gpu_queue_created and node.is_gpu_compute():
+            if self.create_gpu_queue and queues_created and node.is_gpu_compute():
                 node.ssh.execute('qconf -aattr queue slots "[%s=%d]" gpu.q' % (node.alias, num_slots))
                 node.ssh.execute("qconf -aattr hostgroup hostlist %s @gpuhosts" % node.alias)
 
@@ -213,24 +211,22 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         sge_conf.write(conf)
         sge_conf.close()
         log.info("Installing Sun Grid Engine...")
-        self._inst_sge(master, exec_host=self.master_is_exec_host)
+        self._inst_sge(master, exec_host=self.master_is_exec_host, queues_created=False)
         # set all.q shell to bash
         master.ssh.execute('qconf -mattr queue shell "/bin/bash" all.q')
         for node in self.nodes:
             self.pool.simple_job(self._add_to_sge, (node,), jobid=node.alias)
         self.pool.wait(numtasks=len(self.nodes))
-        self._create_sge_pe()
+        self._create_sge_pe(queues_created=False)
         # Create queues if necessary.
         if self.create_cpu_queue:
             log.info("Creating CPU queue")
             cpu_nodes = [node for node in self._nodes if not node.is_gpu_compute()]
             self._create_queue('cpu', master, 10, cpu_nodes)
-            self.cpu_queue_created = True
         if self.create_gpu_queue:
             log.info("Creating GPU queue.")
             gpu_nodes = [node for node in self._nodes if node.is_gpu_compute()]
             self._create_queue('gpu', master, 20, gpu_nodes)
-            self.gpu_queue_created = True
 
     def _remove_from_sge(self, node):
         master = self._master
