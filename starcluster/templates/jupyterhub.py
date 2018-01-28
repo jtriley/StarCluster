@@ -32,8 +32,9 @@ c.GoogleOAuthenticator.oauth_callback_url = '%(oauth_callback_url)s'
 c.GoogleOAuthenticator.client_id = '%(oauth_client_id)s'
 c.GoogleOAuthenticator.client_secret = '%(oauth_client_secret)s'
 
-c.GoogleOAuthenticator.hosted_domain = %(hosted_domain)s
-c.GoogleOAuthenticator.login_service = %(login_service)s
+if %(hosted_domain)s is not None:
+    c.GoogleOAuthenticator.hosted_domain = %(hosted_domain)s
+    c.GoogleOAuthenticator.login_service = %(login_service)s
 
 ## Whether to shutdown the proxy when the Hub shuts down.
 c.JupyterHub.cleanup_proxy = True
