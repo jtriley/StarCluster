@@ -53,8 +53,8 @@ class JupyterhubPlugin(clustersetup.DefaultClusterSetup):
             oauth_callback_url=self.oauth_callback_url,
             oauth_client_id=self.oauth_client_id,
             oauth_client_secret=self.oauth_client_secret,
-            hosted_domain=self.hosted_domain,
-            login_service=self.login_service,
+            hosted_domain=repr(self.hosted_domain),
+            login_service=repr(self.login_service),
             user_whitelist=','.join([repr(u) for u in self.user_whitelist]),
             admin_whitelist=','.join([repr(u) for u in self.admin_whitelist]),
             queue=queue
