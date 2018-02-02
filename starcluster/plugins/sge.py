@@ -233,11 +233,11 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         master.ssh.execute('qconf -dattr hostgroup hostlist %s @allhosts' % node.alias)
         master.ssh.execute('qconf -purge queue slots all.q@%s' % node.alias)
         if self.create_cpu_queue and not node.is_gpu_compute():
-            master.ssh.execute('qconf -purge queue slots cpu.q@%s' % node.alias)
             master.ssh.execute('qconf -dattr hostgroup hostlist %s @cpuhosts' % node.alias)
+            master.ssh.execute('qconf -purge queue slots cpu.q@%s' % node.alias)
         if self.create_gpu_queue and node.is_gpu_compute():
-            master.ssh.execute('qconf -purge queue slots gpu.q@%s' % node.alias)
             master.ssh.execute('qconf -dattr hostgroup hostlist %s @gpuhosts' % node.alias)
+            master.ssh.execute('qconf -purge queue slots gpu.q@%s' % node.alias)
         master.ssh.execute('qconf -dconf %s' % node.alias)
         master.ssh.execute('qconf -de %s' % node.alias)
         node.ssh.execute('pkill -9 sge_execd')
