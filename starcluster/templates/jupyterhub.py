@@ -94,12 +94,12 @@ c.Spawner.environment = dict(
 c.Spawner.http_timeout = 120
 
 c.ProfilesSpawner.profiles = [
-    (u'CPU cluster', u'cpu_lab', GridengineSpawner, dict(
+    (u'General Purpose (1 CPU)', u'cpu_lab', GridengineSpawner, dict(
         batch_submit_cmd='sudo -u {username} -E /opt/sge6/bin/linux-x64/qsub -q cpu.q',
         batch_query_cmd='sudo -u {username} -E /opt/sge6/bin/linux-x64/qstat -q cpu.q -xml',
         batch_cancel_cmd='sudo -u {username} -E /opt/sge6/bin/linux-x64/qdel -q cpu.q {job_id}'
     )),
-    (u'GPU cluster', u'gpu_lab', GridengineSpawner, dict(
+    (u'High Performance (4 CPUs, 1 GPU)', u'gpu_lab', GridengineSpawner, dict(
         batch_submit_cmd='sudo -u {username} -E /opt/sge6/bin/linux-x64/qsub -q gpu.q',
         batch_query_cmd='sudo -u {username} -E /opt/sge6/bin/linux-x64/qstat -q gpu.q -xml',
         batch_cancel_cmd='sudo -u {username} -E /opt/sge6/bin/linux-x64/qdel -q gpu.q {job_id}'
