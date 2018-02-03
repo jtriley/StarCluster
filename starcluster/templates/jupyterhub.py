@@ -20,6 +20,11 @@ jupyterhub_config_template = """
 from oauthenticator.google import GoogleOAuthenticator
 from batchspawner import GridengineSpawner
 from wrapspawner import ProfilesSpawner
+import socket
+
+# Get hub IP address.  This is not the public IP, it is the private IP in the VPC which is visible to
+# all nodes in the cluster.
+hub_ip_address = socket.gethostbyname(socket.gethostname())
 
 ## Allow named single-user servers per user
 c.JupyterHub.allow_named_servers = True
@@ -50,13 +55,15 @@ c.JupyterHub.cookie_max_age_days = 14
 #  
 #  See `hub_connect_ip` for cases where the bind and connect address should
 #  differ.
-c.JupyterHub.hub_ip = '127.0.0.1'
+c.JupyterHub.hub_ip = hub_ip_address
 
 ## The port for the Hub process
 c.JupyterHub.hub_port = 8081
 
 ## The public facing ip of the whole application (the proxy)
 c.JupyterHub.ip = '127.0.0.1'
+
+# c.JupyterHub.hub_connect_ip = hub_ip_address
 
 ## Specify path to a logo image to override the Jupyter logo in the banner.
 #c.JupyterHub.logo_file = ''
@@ -93,16 +100,19 @@ c.Spawner.environment = dict(
 )
 c.Spawner.http_timeout = 120
 
+
 c.ProfilesSpawner.profiles = [
     (u'General Purpose (1 CPU)', u'cpu_lab', GridengineSpawner, dict(
         batch_submit_cmd='sudo -u {username} -E /opt/sge6/bin/linux-x64/qsub -q cpu.q',
         batch_query_cmd='sudo -u {username} -E /opt/sge6/bin/linux-x64/qstat -q cpu.q -xml',
-        batch_cancel_cmd='sudo -u {username} -E /opt/sge6/bin/linux-x64/qdel -q cpu.q {job_id}'
+        batch_cancel_cmd='sudo -u {username} -E /opt/sge6/bin/linux-x64/qdel -q cpu.q {job_id}',
+        hub_connect_ip=hub_ip_address
     )),
     (u'High Performance (4 CPUs, 1 GPU)', u'gpu_lab', GridengineSpawner, dict(
         batch_submit_cmd='sudo -u {username} -E /opt/sge6/bin/linux-x64/qsub -q gpu.q',
         batch_query_cmd='sudo -u {username} -E /opt/sge6/bin/linux-x64/qstat -q gpu.q -xml',
-        batch_cancel_cmd='sudo -u {username} -E /opt/sge6/bin/linux-x64/qdel -q gpu.q {job_id}'
+        batch_cancel_cmd='sudo -u {username} -E /opt/sge6/bin/linux-x64/qdel -q gpu.q {job_id}',
+        hub_connect_ip=hub_ip_address
     ))
 ]
 
@@ -157,18 +167,6 @@ c.ProfilesSpawner.profiles = [
 #  The JupyterHub proxy implementation should be able to send packets to this
 #  interface.
 #c.Spawner.ip = ''
-
-## Path to the notebook directory for the single-user server.
-#  
-#  The user sees a file listing of this directory when the notebook interface is
-#  started. The current interface does not easily allow browsing beyond the
-#  subdirectories in this directory's tree.
-#  
-#  `~` will be expanded to the home directory of the user, and {username} will be
-#  replaced with the name of the user.
-#  
-#  Note that this does *not* prevent users from accessing files outside of this
-#  path! They can do so with many other means.
 
 """
 
