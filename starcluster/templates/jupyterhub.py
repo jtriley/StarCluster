@@ -55,7 +55,8 @@ c.JupyterHub.cookie_max_age_days = 14
 #  
 #  See `hub_connect_ip` for cases where the bind and connect address should
 #  differ.
-c.JupyterHub.hub_ip = hub_ip_address
+#c.JupyterHub.hub_ip = hub_ip_address
+c.JupyterHub.hub_ip = '0.0.0.0'
 
 ## The port for the Hub process
 c.JupyterHub.hub_port = 8081
@@ -63,7 +64,7 @@ c.JupyterHub.hub_port = 8081
 ## The public facing ip of the whole application (the proxy)
 c.JupyterHub.ip = '127.0.0.1'
 
-# c.JupyterHub.hub_connect_ip = hub_ip_address
+c.JupyterHub.hub_connect_ip = hub_ip_address
 
 ## Specify path to a logo image to override the Jupyter logo in the banner.
 #c.JupyterHub.logo_file = ''
