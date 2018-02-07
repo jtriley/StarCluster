@@ -22,6 +22,7 @@ __all__ = [
     'ipcluster',
     'hadoop',
     'jupyterhub',
+    'observatory',
     'tmux',
     'mycluster',
     'pkginstaller',

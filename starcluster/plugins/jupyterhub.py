@@ -40,11 +40,11 @@ class JupyterhubPlugin(clustersetup.DefaultClusterSetup):
 
     def _write_jupyterhub_config(self, master):
         # Write jupyterhub.service
-        jupyterhub_service = master.ssh.remote_file(self.JUPYTERHUB_SERVICE, "w")
+        jupyterhub_service = master.ssh.remote_file(self.JUPYTERHUB_SERVICE, 'w')
         jupyterhub_service.write(jupyterhub.jupyterhub_service_template % dict(jupyterhub_config=self.JUPYTERHUB_CONF))
         jupyterhub_service.close()
         # Write jupyterhub_conf.py
-        jupyterhub_conf = master.ssh.remote_file(self.JUPYTERHUB_CONF, "w")
+        jupyterhub_conf = master.ssh.remote_file(self.JUPYTERHUB_CONF, 'w')
         queue = ''
         if self.queue:
             queue = '-q ' + self.queue
