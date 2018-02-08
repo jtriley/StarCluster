@@ -10,12 +10,13 @@ class JupyterhubPlugin(clustersetup.DefaultClusterSetup):
     JUPYTERHUB_CONF = '/etc/jupyterhub/jupyterhub_conf.py'
     JUPYTERHUB_SERVICE = '/etc/systemd/system/jupyterhub.service'
 
-    def __init__(self, homedir='/', oauth_callback_url=None, oauth_client_id=None, oauth_client_secret=None,
+    def __init__(self, homedir='/', notebook_dir=None, oauth_callback_url=None, oauth_client_id=None, oauth_client_secret=None,
                  hosted_domain=None, login_service=None, user_whitelist='', admin_whitelist='', queue=None, **kwargs):
         """Constructor.
 
         Args:
             homedir
+            notebook_dir
             oauth_callback_url
             client_id
             client_secret
@@ -26,6 +27,7 @@ class JupyterhubPlugin(clustersetup.DefaultClusterSetup):
         """
         super(JupyterhubPlugin, self).__init__(**kwargs)
         self.homedir = homedir
+        self.notebook_dir = homedir if notebook_dir is None else notebook_dir
         self.oauth_callback_url = oauth_callback_url
         self.oauth_client_id = oauth_client_id
         self.oauth_client_secret = oauth_client_secret
@@ -50,6 +52,7 @@ class JupyterhubPlugin(clustersetup.DefaultClusterSetup):
             queue = '-q ' + self.queue
         config_dict = dict(
             homedir=self.homedir,
+            notebook_dir=self.notebook_dir,
             oauth_callback_url=self.oauth_callback_url,
             oauth_client_id=self.oauth_client_id,
             oauth_client_secret=self.oauth_client_secret,

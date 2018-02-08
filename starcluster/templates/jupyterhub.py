@@ -20,6 +20,7 @@ jupyterhub_config_template = """
 from oauthenticator.google import GoogleOAuthenticator
 from batchspawner import GridengineSpawner
 from wrapspawner import ProfilesSpawner
+import os
 import socket
 
 # Get hub IP address.  This is not the public IP, it is the private IP in the VPC which is visible to
@@ -82,15 +83,15 @@ def _req_username_default(self):
     return 'sgeadmin'
 GridengineSpawner._req_username_default = _req_username_default
 
-# Monkey patches home directory default so all users get /ds as notebook root.
+# Monkey patches home directory default.
 def _req_homedir_default(self):
-    return '%(homedir)s'
+    return os.path.join('%(homedir)s', self.user.name)
 GridengineSpawner._req_homedir_default = _req_homedir_default
 
 c.JupyterHub.spawner_class = ProfilesSpawner
 
 c.Spawner.default_url = '/user/{username}/lab'
-c.Spawner.notebook_dir = '%(homedir)s'
+c.Spawner.notebook_dir = '%(notebook_dir)s'
 c.Spawner.environment = dict(
     SGE_ROOT='/opt/sge6',
     SGE_CELL='default',
