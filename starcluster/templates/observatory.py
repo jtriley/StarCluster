@@ -21,7 +21,7 @@ install_script= """
 
 /bin/mkdir -p /etc/starcluster
 
-/usr/local/bin/pip install git+https://github.com/dantreiman/StarCluster.git
+/usr/local/bin/pip install git+https://github.com/dantreiman/StarCluster.git --upgrade
 
 if [ -d /opt/starcluster-observatory ]
 then
