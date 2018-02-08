@@ -24,7 +24,6 @@ __all__ = [
     'jupyterhub',
     'observatory',
     'tmux',
-    'mycluster',
     'pkginstaller',
     'pypkginstaller',
     'elasticip',
