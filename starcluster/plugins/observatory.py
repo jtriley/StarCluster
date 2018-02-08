@@ -17,6 +17,15 @@ class ObservatoryPlugin(clustersetup.DefaultClusterSetup):
     API_SERVICE_PATH = '/etc/systemd/system/observatory_api.service'
     DASHBOARD_SERVICE_PATH = '/etc/systemd/system/observatory_dashboard.service'
 
+    def __init__(self, instance_types='p2.xlarge', **kwargs):
+        """Constructor.
+
+        Args:
+            instance_types
+        """
+        super(ObservatoryPlugin, self).__init__(**kwargs)
+        self.instance_types = instance_types
+
     def _install_server(self):
         """Installs observatory and services on master."""
         master = self._master
@@ -32,7 +41,7 @@ class ObservatoryPlugin(clustersetup.DefaultClusterSetup):
         api_service.write(observatory.api_service)
         api_service.close()
         dashboard_service = master.ssh.remote_file(self.DASHBOARD_SERVICE_PATH, 'w')
-        dashboard_service.write(observatory.dashboard_service)
+        dashboard_service.write(observatory.dashboard_service_template % (self.instance_types))
         dashboard_service.close()
 
     def _setup_observatory_master(self):

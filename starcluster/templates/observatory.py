@@ -50,7 +50,7 @@ WantedBy=multi-user.target
 """
 
 
-dashboard_service= """
+dashboard_service_template= """
 [Unit]
 Description=Observatory Dashboard
 
@@ -59,7 +59,7 @@ User=root
 Environment="PATH=/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
 Restart=on-failure
 WorkingDirectory=/opt/starcluster-observatory/src/dashboard
-ExecStart=/usr/bin/python3 /opt/starcluster-observatory/src/dashboard/dashboard-server.py
+ExecStart=/usr/bin/python3 /opt/starcluster-observatory/src/dashboard/dashboard-server.py --instance_types=%s
 
 [Install]
 WantedBy=multi-user.target
