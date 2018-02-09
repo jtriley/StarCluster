@@ -38,7 +38,8 @@ class ObservatoryPlugin(clustersetup.DefaultClusterSetup):
         # Install service definitions
         log.info('Configuring services')
         api_service = master.ssh.remote_file(self.API_SERVICE_PATH, 'w')
-        api_service.write(observatory.api_service)
+        cluster_name = master.alias.split('-')[0]  # Hack
+        api_service.write(observatory.api_service_template % (cluster_name))
         api_service.close()
         dashboard_service = master.ssh.remote_file(self.DASHBOARD_SERVICE_PATH, 'w')
         dashboard_service.write(observatory.dashboard_service_template % (self.instance_types))

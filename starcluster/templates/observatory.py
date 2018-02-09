@@ -34,7 +34,7 @@ fi
 """
 
 
-api_service= """
+api_service_template= """
 [Unit]
 Description=Observatory API
 
@@ -43,7 +43,7 @@ User=root
 Environment="PATH=/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
 Restart=on-failure
 WorkingDirectory=/opt/starcluster-observatory/src/api
-ExecStart=/usr/bin/python3 /opt/starcluster-observatory/src/api/api-server.py
+ExecStart=/usr/bin/python3 /opt/starcluster-observatory/src/api/api-server.py --cluster_name=%s
 
 [Install]
 WantedBy=multi-user.target
