@@ -6,7 +6,7 @@ from starcluster import clustersetup
 from starcluster.logger import log 
 
 
-class ElasticIPSetup(clustersetup.DefaultClusterSetup):
+class ElasticIPSetup(clustersetup.ClusterSetup):
     def __init__(self, elastic_ip=None):
         super(ElasticIPSetup, self).__init__()
         self.elastic_ip = elastic_ip 

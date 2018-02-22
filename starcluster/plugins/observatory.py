@@ -6,7 +6,7 @@ from starcluster.logger import log
 from starcluster.templates import observatory
 
 
-class ObservatoryPlugin(clustersetup.DefaultClusterSetup):
+class ObservatoryPlugin(clustersetup.ClusterSetup):
     """Installs and launches a starcluster GUI as a service.
 
     Prior to using this, a starcluster config must be installed at /etc/starcluster/config on the master AMI.
@@ -17,11 +17,11 @@ class ObservatoryPlugin(clustersetup.DefaultClusterSetup):
     API_SERVICE_PATH = '/etc/systemd/system/observatory_api.service'
     DASHBOARD_SERVICE_PATH = '/etc/systemd/system/observatory_dashboard.service'
 
-    def __init__(self, instance_types='p2.xlarge', **kwargs):
+    def __init__(self, instance_types='c4.large,p2.xlarge,p3.2xlarge', **kwargs):
         """Constructor.
 
         Args:
-            instance_types
+            instance_types (string) - Comma-separated list of approved instance types.
         """
         super(ObservatoryPlugin, self).__init__(**kwargs)
         self.instance_types = instance_types
