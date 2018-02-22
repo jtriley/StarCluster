@@ -97,3 +97,7 @@ class JupyterhubPlugin(clustersetup.DefaultClusterSetup):
         self._volumes = volumes
         log.info('Configuring %s for Jupyterhub' % node.alias)
         self._setup_jupyterhub_node(node)
+
+    # Overrides DefaultClusterSetup on_remove_node to prevent double-teardown of hosts and NFS.
+    def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
+        raise NotImplementedError('on_remove_node method not implemented')
