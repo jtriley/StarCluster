@@ -175,7 +175,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             queue_name='%s.q' % queue_name,
             host_group='@%shosts' % queue_name,
             seq_no=seq,
-            slots=max(slots, 1),  # A queue with zero slots can't have jobs submitted, so ensure we have at least one.
+            slots=slots,
         )
         queue_conf.write(sge.queue_template % queue_conf_dict)
         queue_conf.close()
