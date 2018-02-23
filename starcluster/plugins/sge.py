@@ -26,11 +26,11 @@ def _num_slots(node):
 
 
 class SGEPlugin(clustersetup.DefaultClusterSetup):
-    SGE_ROOT = "/opt/sge6"
-    SGE_FRESH = "/opt/sge6-fresh"
-    SGE_PROFILE = "/etc/profile.d/sge.sh"
-    SGE_INST = "inst_sge_sc"
-    SGE_CONF = "ec2_sge.conf"
+    SGE_ROOT = '/opt/sge6'
+    SGE_FRESH = '/opt/sge6-fresh'
+    SGE_PROFILE = '/etc/profile.d/sge.sh'
+    SGE_INST = 'inst_sge_sc'
+    SGE_CONF = 'ec2_sge.conf'
 
     def __init__(self, master_is_exec_host=True, slots_per_host=None, create_cpu_queue=False, create_gpu_queue=False,
                  disable_default_queue=False, **kwargs):
@@ -43,7 +43,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         :param disable_default_queue: Disable the default queue, all.q.
         :param kwargs:
         """
-        self.master_is_exec_host = str(master_is_exec_host).lower() == "true"
+        self.master_is_exec_host = str(master_is_exec_host).lower() == 'true'
         self.slots_per_host = None
         if slots_per_host is not None:
             self.slots_per_host = int(slots_per_host)
@@ -71,7 +71,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         node.ssh.execute('rm /etc/init.d/sge*', ignore_exit_status=True)
         self._inst_sge(node, exec_host=True)
 
-    def _create_sge_pe(self, name="orte", nodes=None, queue="all.q", queues_created=True):
+    def _create_sge_pe(self, name='orte', nodes=None, queue='all.q', queues_created=True):
         """
         Create or update an SGE parallel environment
 
@@ -95,9 +95,9 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             penv = mssh.remote_file("/tmp/pe.txt", "w")
             penv.write(sge.sge_pe_template % (name, pe_slots))
             penv.close()
-            mssh.execute("qconf -Ap %s" % penv.name)
+            mssh.execute('qconf -Ap %s' % penv.name)
         else:
-            mssh.execute("qconf -mattr pe slots %s %s" % (pe_slots, name))
+            mssh.execute('qconf -mattr pe slots %s %s' % (pe_slots, name))
         if queue:
             log.info("Adding parallel environment '%s' to queue '%s'" %
                      (name, queue))
@@ -125,14 +125,15 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             num_slots = self.slots_per_host
             if num_slots is None:
                 num_slots = _num_slots(node)
-            node.ssh.execute("qconf -aattr hostgroup hostlist %s @allhosts" % node.alias)
+            node.ssh.execute('qconf -aattr hostgroup hostlist %s @allhosts' % node.alias)
             node.ssh.execute('qconf -aattr queue slots "[%s=%d]" all.q' % (node.alias, num_slots))
             if self.create_cpu_queue and queues_created and not node.is_gpu_compute():
                 node.ssh.execute('qconf -aattr queue slots "[%s=%d]" cpu.q' % (node.alias, num_slots))
-                node.ssh.execute("qconf -aattr hostgroup hostlist %s @cpuhosts" % node.alias)
+                node.ssh.execute('qconf -aattr hostgroup hostlist %s @cpuhosts' % node.alias)
             if self.create_gpu_queue and queues_created and node.is_gpu_compute():
+                log.info('Adding node to gpu.q')
                 node.ssh.execute('qconf -aattr queue slots "[%s=%d]" gpu.q' % (node.alias, num_slots))
-                node.ssh.execute("qconf -aattr hostgroup hostlist %s @gpuhosts" % node.alias)
+                node.ssh.execute('qconf -aattr hostgroup hostlist %s @gpuhosts' % node.alias)
 
     def _sge_path(self, path):
         return posixpath.join(self.SGE_ROOT, path)
@@ -198,19 +199,19 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         # setup sge auto install file
         default_cell = self._sge_path('default')
         if master.ssh.isdir(default_cell):
-            log.info("Removing previous SGE installation...")
+            log.info('Removing previous SGE installation...')
             master.ssh.execute('rm -rf %s' % default_cell)
             master.ssh.execute('exportfs -fr')
         admin_hosts = ' '.join(map(lambda n: n.alias, self._nodes))
         submit_hosts = admin_hosts
         exec_hosts = admin_hosts
-        sge_conf = master.ssh.remote_file(self._sge_path(self.SGE_CONF), "w")
+        sge_conf = master.ssh.remote_file(self._sge_path(self.SGE_CONF), 'w')
         conf = sge.sgeinstall_template % dict(admin_hosts=admin_hosts,
                                               submit_hosts=submit_hosts,
                                               exec_hosts=exec_hosts)
         sge_conf.write(conf)
         sge_conf.close()
-        log.info("Installing Sun Grid Engine...")
+        log.info('Installing Sun Grid Engine...')
         self._inst_sge(master, exec_host=self.master_is_exec_host, queues_created=False)
         # set all.q shell to bash
         master.ssh.execute('qconf -mattr queue shell "/bin/bash" all.q')
@@ -220,13 +221,19 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._create_sge_pe(queues_created=False)
         # Create queues if necessary.
         if self.create_cpu_queue:
-            log.info("Creating CPU queue")
+            log.info('Creating CPU queue.')
             cpu_nodes = [node for node in self._nodes if not node.is_gpu_compute()]
             self._create_queue('cpu', master, 10, cpu_nodes)
         if self.create_gpu_queue:
-            log.info("Creating GPU queue.")
+            log.info('Creating GPU queue.')
             gpu_nodes = [node for node in self._nodes if node.is_gpu_compute()]
             self._create_queue('gpu', master, 20, gpu_nodes)
+            # Add master to GPU queue, but disable execution on it.
+            if not master.is_gpu_compute():
+                log.info('Disabling master node on gpu.q @gpuhosts')
+                node.ssh.execute('qconf -aattr queue slots "[%s=%d]" gpu.q' % (master.alias, 0))
+                node.ssh.execute('qconf -aattr hostgroup hostlist %s @gpuhosts' % master.alias)
+                node.ssh.execute('qmod -d gpu.q@%s' % master.alias)
 
     def _remove_from_sge(self, node):
         master = self._master
@@ -246,9 +253,9 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
 
     def run(self, nodes, master, user, user_shell, volumes):
         if not master.ssh.isdir(self.SGE_FRESH):
-            log.error("SGE is not installed on this AMI, skipping...")
+            log.error('SGE is not installed on this AMI, skipping...')
             return
-        log.info("Configuring SGE...")
+        log.info('Configuring SGE...')
         self._nodes = nodes
         self._master = master
         self._user = user
@@ -262,7 +269,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._user = user
         self._user_shell = user_shell
         self._volumes = volumes
-        log.info("Adding %s to SGE" % node.alias)
+        log.info('Adding %s to SGE' % node.alias)
         self._setup_nfs(nodes=[node], export_paths=[self.SGE_ROOT],
                         start_server=False)
         self._add_sge_admin_host(node)
@@ -276,6 +283,6 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._user = user
         self._user_shell = user_shell
         self._volumes = volumes
-        log.info("Removing %s from SGE" % node.alias)
+        log.info('Removing %s from SGE' % node.alias)
         self._remove_from_sge(node)
         self._remove_nfs_exports(node)
