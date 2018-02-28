@@ -73,13 +73,13 @@ class JupyterhubPlugin(clustersetup.DefaultClusterSetup):
         self._write_jupyterhub_config(master)
         log.info('Starting Jupyterhub server')
         self._setup_jupyterhub_node(master)
-        # Start jupyterhub process
-        master.ssh.execute('systemctl start jupyterhub')
         log.info('Configuring Jupyter nodes')
         for node in nodes:
             self.pool.simple_job(self._setup_jupyterhub_node, (node,),
                                  jobid=node.alias)
         self.pool.wait(numtasks=len(nodes))
+        # Start jupyterhub process
+        master.ssh.execute('systemctl start jupyterhub')
 
     def run(self, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
