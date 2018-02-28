@@ -50,6 +50,22 @@ WantedBy=multi-user.target
 """
 
 
+load_balancer_service_template= """
+[Unit]
+Description=Observatory Load Balancer
+
+[Service]
+User=root
+Environment="PATH=/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+Restart=on-failure
+WorkingDirectory=/opt/starcluster-observatory/src/loadbalancer
+ExecStart=/usr/bin/python3 /opt/starcluster-observatory/src/loadbalancer/lb-service.py
+
+[Install]
+WantedBy=multi-user.target
+"""
+
+
 dashboard_service_template= """
 [Unit]
 Description=Observatory Dashboard

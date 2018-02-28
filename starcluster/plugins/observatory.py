@@ -15,9 +15,10 @@ class ObservatoryPlugin(clustersetup.ClusterSetup):
     STARCLUSTER_CONFIG_DIR = '/etc/starcluster'
     INSTALLER_PATH = '/tmp/install_starcluster_observatory.bash'
     API_SERVICE_PATH = '/etc/systemd/system/observatory_api.service'
+    LOAD_BALANCER_SERVICE_PATH = '/etc/systemd/system/observatory_load_balancer.service'
     DASHBOARD_SERVICE_PATH = '/etc/systemd/system/observatory_dashboard.service'
 
-    def __init__(self, instance_types='c4.large,p2.xlarge,p3.2xlarge', **kwargs):
+    def __init__(self, instance_types='c4.large,p2.xlarge,p3.2xlarge', load_balance=True, **kwargs):
         """Constructor.
 
         Args:
@@ -25,6 +26,7 @@ class ObservatoryPlugin(clustersetup.ClusterSetup):
         """
         super(ObservatoryPlugin, self).__init__(**kwargs)
         self.instance_types = instance_types
+        self.load_balance = load_balance
 
     def _install_server(self):
         """Installs observatory and services on master."""
@@ -41,6 +43,11 @@ class ObservatoryPlugin(clustersetup.ClusterSetup):
         cluster_name = master.alias.split('-')[0]  # Hack
         api_service.write(observatory.api_service_template % (cluster_name))
         api_service.close()
+
+        load_balancer_service = master.ssh.remote_file(self.LOAD_BALANCER_SERVICE_PATH, 'w')
+        load_balancer_service.write(observatory.load_balancer_service_template)
+        load_balancer_service.close()
+
         dashboard_service = master.ssh.remote_file(self.DASHBOARD_SERVICE_PATH, 'w')
         dashboard_service.write(observatory.dashboard_service_template % (self.instance_types))
         dashboard_service.close()
@@ -51,6 +58,8 @@ class ObservatoryPlugin(clustersetup.ClusterSetup):
         # Start services
         log.info('Starting services')
         self._master.ssh.execute('systemctl start observatory_api && systemctl start observatory_dashboard')
+        if self.load_balance:
+            self._master.ssh.execute('systemctl start observatory_load_balancer')
 
     def run(self, nodes, master, user, user_shell, volumes):
         if not master.ssh.isdir(self.STARCLUSTER_CONFIG_DIR):
