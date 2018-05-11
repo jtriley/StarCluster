@@ -71,7 +71,7 @@ def checkPath(filename):
     """
     try:
         return check(file(filename, 'U').read() + '\n', filename)
-    except IOError, msg:
+    except IOError as msg:
         print >> sys.stderr, "%s: %s" % (filename, msg.args[1])
         return 1
 

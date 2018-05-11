@@ -133,7 +133,10 @@ class TemplateHandler(DocrootHandler):
             self.send_header('Content-type', content_type)
             self.end_headers()
             self.wfile.write(data)
-        except IOError, templates.TemplateNotFound:
+        except IOError:
+            self.send_error(404, 'File Not Found: %s' % self.path)
+            return
+        except templates.TemplateNotFound:
             self.send_error(404, 'File Not Found: %s' % self.path)
             return
 

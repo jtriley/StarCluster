@@ -365,7 +365,7 @@ class SGEStats(object):
             flat = ','.join(str(n) for n in bits) + '\n'
             f.write(flat)
             f.close()
-        except IOError, e:
+        except IOError as e:
             raise exception.BaseException(str(e))
 
 
@@ -489,7 +489,7 @@ class SGELoadBalancer(LoadBalancer):
                 else:
                     os.mkdir(directory)
                     log.info("Created single directory %s" % directory)
-            except IOError, e:
+            except IOError as e:
                 raise exception.BaseException(str(e))
 
     def get_remote_time(self):
@@ -649,7 +649,7 @@ class SGELoadBalancer(LoadBalancer):
             if self.plot_stats:
                 try:
                     self.visualizer.graph_all()
-                except IOError, e:
+                except IOError as e:
                     raise exception.BaseException(str(e))
             # evaluate if cluster should be terminated
             if self.kill_cluster:

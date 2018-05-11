@@ -130,7 +130,7 @@ class StarClusterConfig(object):
                 raise exception.ConfigError("url %s does not exist" % url)
             fp.name = url
             return fp
-        except IOError, e:
+        except IOError as e:
             raise exception.ConfigError(
                 "error loading config from url %s\n%s" % (url, e))
 
