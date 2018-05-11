@@ -50,7 +50,8 @@ copyright = u'2011, Software Tools for Academics and Researchers'
 #
 # The short X.Y version.
 static_mod = os.path.join('..', '..', 'starcluster', 'static.py')
-execfile(static_mod)
+exec(open(static_mod).read())
+
 version = VERSION
 # The full version, including alpha/beta/rc tags.
 release = VERSION

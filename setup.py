@@ -123,7 +123,7 @@ except ImportError:
 
 VERSION = 0.9999
 static = os.path.join('starcluster', 'static.py')
-execfile(static)  # pull VERSION from static.py
+exec(open(static).read())  # pull VERSION from static.py
 
 README = open('README.rst').read()
 
