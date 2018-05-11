@@ -224,6 +224,11 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             log.info('Creating CPU queue.')
             cpu_nodes = [node for node in self._nodes if not node.is_gpu_compute()]
             self._create_queue('cpu', master, 10, cpu_nodes)
+            # Add master to CPU queue, but disable execution on it.
+            log.info('Disabling master node on cpu.q @cpuhosts')
+            node.ssh.execute('qconf -aattr queue slots "[%s=%d]" cpu.q' % (master.alias, 0))
+            node.ssh.execute('qconf -aattr hostgroup hostlist %s @cpuhosts' % master.alias)
+            node.ssh.execute('qmod -d cpu.q@%s' % master.alias)
         if self.create_gpu_queue:
             log.info('Creating GPU queue.')
             gpu_nodes = [node for node in self._nodes if node.is_gpu_compute()]
