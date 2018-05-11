@@ -119,7 +119,7 @@ class Node(object):
             try:
                 raw = self._get_user_data()
                 self._user_data = userdata.unbundle_userdata(raw)
-            except IOError, e:
+            except IOError as e:
                 parent_cluster = self.parent_cluster
                 if self.parent_cluster:
                     raise exception.IncompatibleCluster(parent_cluster)
@@ -166,11 +166,11 @@ class Node(object):
             try:
                 mod = __import__(mod_path, fromlist=[klass_name])
                 plug = getattr(mod, klass_name)(*args, **kwargs)
-            except SyntaxError, e:
+            except SyntaxError as e:
                 raise exception.PluginSyntaxError(
                     "Plugin %s (%s) contains a syntax error at line %s" %
                     (klass_name, e.filename, e.lineno))
-            except ImportError, e:
+            except ImportError as e:
                 raise exception.PluginLoadError(
                     "Failed to import plugin %s: %s" %
                     (klass_name, e[0]))
@@ -1047,7 +1047,7 @@ class Node(object):
                 log.debug("determined instance %s's private ip to be %s" %
                           (self.id, private_ip))
                 self.instance.private_ip_address = private_ip
-            except Exception, e:
+            except Exception as e:
                 print e
                 return False
         return True
