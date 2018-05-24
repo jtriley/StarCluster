@@ -58,7 +58,10 @@ class CmdGet(ClusterCompleter):
         lpath = args[-1]
         rpaths = args[1:-1]
         cl = self.cm.get_cluster(ctag, load_receipt=False)
-        node = cl.get_node(self.opts.node)
+        node_name = self.opts.node
+        if node_name == 'master':
+            node_name = cl.master_node.alias
+        node = cl.get_node(node_name)
         if self.opts.user:
             node.ssh.switch_user(self.opts.user)
         for rpath in rpaths:
