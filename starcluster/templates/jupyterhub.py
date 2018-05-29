@@ -98,7 +98,8 @@ c.Spawner.environment = dict(
     SGE_EXECD_PORT='63232',
     SGE_QMASTER_PORT='63231',
     SGE_CLUSTER_NAME='starcluster',
-    XDG_RUNTIME_DIR='/run/user/1001'
+    XDG_RUNTIME_DIR='/run/user/1001',
+    JUPYTER_ENABLE_LAB='yes'
 )
 c.Spawner.http_timeout = 120
 
@@ -155,14 +156,6 @@ c.ProfilesSpawner.profiles = [
 ## Whitelist of environment variables for the single-user server to inherit from
 #  the JupyterHub process.
 #c.Spawner.env_keep = ['PATH', 'PYTHONPATH', 'CONDA_ROOT', 'CONDA_DEFAULT_ENV', 'VIRTUAL_ENV', 'LANG', 'LC_ALL']
-
-## Extra environment variables to set for the single-user server's process.
-#  
-#  Environment variables that end up in the single-user server's process come from 3 sources:
-#    - This `environment` configurable
-#    - The JupyterHub process' environment variables that are whitelisted in `env_keep`
-#    - Variables to establish contact between the single-user notebook and the hub (such as JUPYTERHUB_API_TOKEN)
-#c.Spawner.environment = {}
 
 ## The IP address (or hostname) the single-user server should listen on.
 #  
