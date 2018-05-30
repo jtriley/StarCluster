@@ -32,14 +32,15 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
     SGE_INST = 'inst_sge_sc'
     SGE_CONF = 'ec2_sge.conf'
 
-    def __init__(self, master_is_exec_host=True, slots_per_host=None, create_cpu_queue=False, create_gpu_queue=False,
-                 disable_default_queue=False, **kwargs):
+    def __init__(self, master_is_exec_host=True, slots_per_host=None, create_cpu_queue=False, create_mem_queue=False,
+                 create_gpu_queue=False, disable_default_queue=False, **kwargs):
         """Constructor:
 
         :param master_is_exec_host: Should jobs be run on the master node, or not.
         :param slots_per_host:  Slots per host, if None this will equal the number of CPUs.
         :param create_cpu_queue: Create cpu.q and automatically add CPU compute nodes to it.
         :param create_gpu_queue: Create gpu.q and automatically add GPU compute nodes to it.
+        :param create_mem_queue: Create mem.q and automatically add high memory compute nodes to it.
         :param disable_default_queue: Disable the default queue, all.q.
         :param kwargs:
         """
@@ -48,6 +49,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         if slots_per_host is not None:
             self.slots_per_host = int(slots_per_host)
         self.create_cpu_queue = create_cpu_queue
+        self.create_mem_queue = create_mem_queue
         self.create_gpu_queue = create_gpu_queue
         self.disable_default_queue = disable_default_queue
         super(SGEPlugin, self).__init__(**kwargs)
@@ -105,6 +107,9 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         if self.create_cpu_queue and queues_created:
             log.info("Adding parallel environment '%s' to queue 'cpu.q'" % name)
             mssh.execute('qconf -mattr queue pe_list "%s" cpu.q' % name)
+        if self.create_mem_queue and queues_created:
+            log.info("Adding parallel environment '%s' to queue 'mem.q'" % name)
+            mssh.execute('qconf -mattr queue pe_list "%s" mem.q' % name)
         if self.create_gpu_queue and queues_created:
             log.info("Adding parallel environment '%s' to queue 'gpu.q'" % name)
             mssh.execute('qconf -mattr queue pe_list "%s" gpu.q' % name)
@@ -130,6 +135,10 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             if self.create_cpu_queue and queues_created and not node.is_gpu_compute():
                 node.ssh.execute('qconf -aattr queue slots "[%s=%d]" cpu.q' % (node.alias, num_slots))
                 node.ssh.execute('qconf -aattr hostgroup hostlist %s @cpuhosts' % node.alias)
+            if self.create_mem_queue and queues_created and node.is_himem_compute():
+                log.info('Adding node to mem.q')
+                node.ssh.execute('qconf -aattr queue slots "[%s=%d]" mem.q' % (node.alias, num_slots))
+                node.ssh.execute('qconf -aattr hostgroup hostlist %s @memhosts' % node.alias)
             if self.create_gpu_queue and queues_created and node.is_gpu_compute():
                 log.info('Adding node to gpu.q')
                 node.ssh.execute('qconf -aattr queue slots "[%s=%d]" gpu.q' % (node.alias, num_slots))
@@ -230,6 +239,16 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
                 node.ssh.execute('qconf -aattr queue slots "[%s=%d]" cpu.q' % (master.alias, 0))
                 node.ssh.execute('qconf -aattr hostgroup hostlist %s @cpuhosts' % master.alias)
                 node.ssh.execute('qmod -d cpu.q@%s' % master.alias)
+        if self.create_mem_queue:
+            log.info('Creating MEM queue.')
+            mem_nodes = [node for node in self._nodes if not node.is_himem_compute()]
+            self._create_queue('mem', master, 10, mem_nodes)
+            # Add master to mem queue, but disable execution on it.
+            if not master.is_himem_compute():
+                log.info('Disabling master node on mem.q @memhosts')
+                node.ssh.execute('qconf -aattr queue slots "[%s=%d]" mem.q' % (master.alias, 0))
+                node.ssh.execute('qconf -aattr hostgroup hostlist %s @memhosts' % master.alias)
+                node.ssh.execute('qmod -d mem.q@%s' % master.alias)
         if self.create_gpu_queue:
             log.info('Creating GPU queue.')
             gpu_nodes = [node for node in self._nodes if node.is_gpu_compute()]
@@ -248,6 +267,9 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         if self.create_cpu_queue and not node.is_gpu_compute():
             master.ssh.execute('qconf -dattr hostgroup hostlist %s @cpuhosts' % node.alias)
             master.ssh.execute('qconf -purge queue slots cpu.q@%s' % node.alias)
+        if self.create_mem_queue and not node.is_himem_compute():
+            master.ssh.execute('qconf -dattr hostgroup hostlist %s @memhosts' % node.alias)
+            master.ssh.execute('qconf -purge queue slots mem.q@%s' % node.alias)
         if self.create_gpu_queue and node.is_gpu_compute():
             master.ssh.execute('qconf -dattr hostgroup hostlist %s @gpuhosts' % node.alias)
             master.ssh.execute('qconf -purge queue slots gpu.q@%s' % node.alias)

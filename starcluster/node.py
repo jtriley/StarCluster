@@ -943,6 +943,10 @@ class Node(object):
         return ((self.instance.instance_type in static.CLUSTER_GPU_TYPES) or
                 (self.instance.instance_type in static.GPU_COMPUTE_TYPES))
 
+    def is_himem_compute(self):
+        """Is this a high-memory instance suitable for HPC."""
+        return self.instance.instance_type in static.HIMEM_COMPUTE_TYPES
+
     def is_cluster_type(self):
         return self.instance.instance_type in static.HVM_ONLY_TYPES
 

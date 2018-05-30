@@ -210,6 +210,11 @@ M4_COMPUTE_TYPES = ['c4.large', 'c4.xlarge', 'c4.2xlarge', 'c4.4xlarge',
 M5_COMPUTE_TYPES = ['c5.large', 'c5.xlarge', 'c5.2xlarge', 'c5.9xlarge',
                     'c5.18xlarge']
 
+# HPC CPU type that also have high memory >60GB.
+HIMEM_COMPUTE_TYPES = ['r4.4xlarge', 'r4.8xlarge', 'r4.16xlarge',
+                       'x1.16xlarge', 'x1.32xlarge',
+                       'x1e.xlarge', 'x1e.2xlarge', 'x1e.4xlarge', 'x1e.8xlarge', 'x1e.16xlarge', 'x1e.32xlarge']
+
 GPU_COMPUTE_TYPES = ['p2.xlarge','p2.8xlarge','p2.16xlarge',
                      'p3.2xlarge', 'p3.8xlarge', 'p3.16xlarge',
                      'g2.2xlarge','g2.8xlarge']
