@@ -211,7 +211,9 @@ M5_COMPUTE_TYPES = ['c5.large', 'c5.xlarge', 'c5.2xlarge', 'c5.9xlarge',
                     'c5.18xlarge']
 
 # HPC CPU type that also have high memory >60GB.
-HIMEM_COMPUTE_TYPES = ['r4.4xlarge', 'r4.8xlarge', 'r4.16xlarge',
+HIMEM_COMPUTE_TYPES = ['c5.18xlarge',
+                       'm4.10xlarge', 'm4.16xlarge',
+                       'r4.4xlarge', 'r4.8xlarge', 'r4.16xlarge',
                        'x1.16xlarge', 'x1.32xlarge',
                        'x1e.xlarge', 'x1e.2xlarge', 'x1e.4xlarge', 'x1e.8xlarge', 'x1e.16xlarge', 'x1e.32xlarge']
 

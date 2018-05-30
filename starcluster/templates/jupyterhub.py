@@ -112,13 +112,13 @@ c.ProfilesSpawner.profiles = [
         batch_cancel_cmd='sudo -u {username} -E /opt/sge6/bin/linux-x64/qdel {job_id}',
         hub_connect_ip=hub_ip_address
     )),
-    (u'High Performance (4 CPUs, 1 GPU)', u'gpu_lab', GridengineSpawner, dict(
+    (u'GPU Compute (4 CPUs, 1 GPU)', u'gpu_lab', GridengineSpawner, dict(
         batch_submit_cmd='sudo -u {username} -E /opt/sge6/bin/linux-x64/qsub -q gpu.q',
         batch_query_cmd='sudo -u {username} -E /opt/sge6/bin/linux-x64/qstat -q gpu.q -xml',
         batch_cancel_cmd='sudo -u {username} -E /opt/sge6/bin/linux-x64/qdel {job_id}',
         hub_connect_ip=hub_ip_address
     )),
-    (u'High Memory (>60GB)', u'mem_lab', GridengineSpawner, dict(
+    (u'Large Memory CPU', u'mem_lab', GridengineSpawner, dict(
         batch_submit_cmd='sudo -u {username} -E /opt/sge6/bin/linux-x64/qsub -q mem.q',
         batch_query_cmd='sudo -u {username} -E /opt/sge6/bin/linux-x64/qstat -q mem.q -xml',
         batch_cancel_cmd='sudo -u {username} -E /opt/sge6/bin/linux-x64/qdel {job_id}',
