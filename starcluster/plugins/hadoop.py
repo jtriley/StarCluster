@@ -142,6 +142,9 @@ class Hadoop(clustersetup.ClusterSetup):
         return self.ubuntu_alt_cmd
 
     def _setup_hadoop_user(self, node, user):
+        # Creates hadoop group if not already exists.
+        node.ssh.execute('[ $(getent group hadoop) ] || groupadd hadoop')
+        # Creates hadoop user
         node.ssh.execute('gpasswd -a %s hadoop' % user)
 
     def _install_empty_conf(self, node):
