@@ -91,6 +91,9 @@ class CmdAddNode(ClusterCompleter):
             type="string", default=None, help="availability zone for "
             "new node(s) (e.g. us-east-1)")
         parser.add_option(
+            "-s", "--subnet", dest="subnet", action="store",
+            type="string", default=None, help="subnet ID, use with -z (--availability-zone)")
+        parser.add_option(
             "-b", "--bid", dest="spot_bid", action="store", type="float",
             default=None, help="spot bid for new node(s) (in $ per hour)")
         parser.add_option(
@@ -125,4 +128,4 @@ class CmdAddNode(ClusterCompleter):
                           image_id=self.opts.image_id,
                           instance_type=self.opts.instance_type,
                           zone=self.opts.zone, spot_bid=self.opts.spot_bid,
-                          no_create=self.opts.no_create)
+                          subnet=self.opts.subnet, no_create=self.opts.no_create)
