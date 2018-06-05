@@ -730,17 +730,17 @@ class EasyEC2(EasyAWS):
         return [name_id[gname] for gname in groupnames if gname in name_id]
 
     def get_all_instances(self, instance_ids=[], filters={}):
-        # little path to since vpc can't hadle filters with group-name
+        # little path to since vpc can't handle filters with group-name
         # TODO : dev Tue Apr 24 18:25:58 2012
         # should move all code to instance.group-id
-        if 'group-name' in filters:
-            groupname = filters['group-name']
+        if 'instance.group-name' in filters:
+            groupname = filters['instance.group-name']
             try:
                 secid = self.get_securityids_from_names([groupname])[0]
                 filters['instance.group-id'] = secid
             except IndexError:
                 return []  # Haven't created the security group in aws yet
-            del filters['group-name']
+            del filters['instance.group-name']
 
         reservations = self.conn.get_all_instances(instance_ids,
                                                    filters=filters)
