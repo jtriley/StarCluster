@@ -169,16 +169,16 @@ class ClusterManager(managers.Manager):
 
     def add_node(self, cluster_name, alias=None, no_create=False,
                  image_id=None, instance_type=None, zone=None,
-                 placement_group=None, spot_bid=None):
+                 placement_group=None, spot_bid=None, subnet=None):
         cl = self.get_cluster(cluster_name)
         return cl.add_node(alias=alias, image_id=image_id,
                            instance_type=instance_type, zone=zone,
                            placement_group=placement_group, spot_bid=spot_bid,
-                           no_create=no_create)
+                           subnet=subnet, no_create=no_create)
 
     def add_nodes(self, cluster_name, num_nodes, aliases=None, no_create=False,
                   image_id=None, instance_type=None, zone=None,
-                  placement_group=None, spot_bid=None):
+                  placement_group=None, spot_bid=None, subnet=None):
         """
         Add one or more nodes to cluster
         """
@@ -186,7 +186,7 @@ class ClusterManager(managers.Manager):
         return cl.add_nodes(num_nodes, aliases=aliases, image_id=image_id,
                             instance_type=instance_type, zone=zone,
                             placement_group=placement_group, spot_bid=spot_bid,
-                            no_create=no_create)
+                            subnet=subnet, no_create=no_create)
 
     def remove_node(self, cluster_name, alias=None, terminate=True,
                     force=False):
@@ -913,7 +913,7 @@ class Cluster(object):
 
     def create_nodes(self, aliases, image_id=None, instance_type=None,
                      zone=None, placement_group=None, spot_bid=None,
-                     force_flat=False):
+                     subnet=None, force_flat=False):
         """
         Convenience method for requesting instances with this cluster's
         settings. All settings (kwargs) except force_flat default to cluster
@@ -946,10 +946,14 @@ class Cluster(object):
                       placement=zone or getattr(self.zone, 'name', None),
                       user_data=user_data,
                       placement_group=placement_group)
-        if self.subnet_id:
+        subnet_id = subnet if subnet else self.subnet_id
+        if not zone is None:
+            del kwargs['placement_group']
+            del kwargs['availability_zone_group']
+        if subnet_id:
             netif = self.ec2.get_network_spec(
                 device_index=0, associate_public_ip_address=self.public_ips,
-                subnet_id=self.subnet_id, groups=[self.cluster_group.id])
+                subnet_id=subnet_id, groups=[self.cluster_group.id])
             kwargs.update(
                 network_interfaces=self.ec2.get_network_collection(netif))
         else:
@@ -958,7 +962,7 @@ class Cluster(object):
         if spot_bid:
             security_group_id = self.cluster_group.id
             for alias in aliases:
-                if not self.subnet_id:
+                if not subnet_id:
                     kwargs['security_group_ids'] = [security_group_id]
                 kwargs['user_data'] = self._get_cluster_userdata([alias])
                 resvs.extend(self.ec2.request_instances(image_id, **kwargs))
@@ -985,7 +989,7 @@ class Cluster(object):
 
     def add_node(self, alias=None, no_create=False, image_id=None,
                  instance_type=None, zone=None, placement_group=None,
-                 spot_bid=None):
+                 spot_bid=None, subnet=None):
         """
         Add a single node to this cluster
         """
@@ -993,11 +997,11 @@ class Cluster(object):
         return self.add_nodes(1, aliases=aliases, image_id=image_id,
                               instance_type=instance_type, zone=zone,
                               placement_group=placement_group,
-                              spot_bid=spot_bid, no_create=no_create)
+                              spot_bid=spot_bid, subnet=None, no_create=no_create)
 
     def add_nodes(self, num_nodes, aliases=None, image_id=None,
                   instance_type=None, zone=None, placement_group=None,
-                  spot_bid=None, no_create=False):
+                  spot_bid=None, subnet=None, no_create=False):
         """
         Add new nodes to this cluster
 
@@ -1030,7 +1034,7 @@ class Cluster(object):
             resp = self.create_nodes(aliases, image_id=image_id,
                                      instance_type=instance_type, zone=zone,
                                      placement_group=placement_group,
-                                     spot_bid=spot_bid)
+                                     subnet=subnet, spot_bid=spot_bid)
             if spot_bid or self.spot_bid:
                 self.ec2.wait_for_propagation(spot_requests=resp)
             else:
@@ -1391,8 +1395,7 @@ class Cluster(object):
         self.ec2.wait_for_propagation(
             instances=[s.instance_id for s in spots])
 
-    def wait_for_running_instances(self, nodes=None,
-                                   kill_pending_after_mins=15):
+    def wait_for_running_instances(self, nodes=None, kill_pending_after_mins=15):
         """
         Wait until all cluster nodes are in a 'running' state
         """
