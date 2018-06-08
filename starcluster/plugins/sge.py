@@ -172,7 +172,8 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         master.ssh.execute('qconf -de %s' % node.alias)
         node.ssh.execute('pkill -9 sge_execd')
         nodes = filter(lambda n: n.alias != node.alias, self._nodes)
-        self._create_sge_pe(nodes=nodes)
+        self._create_sge_pe(name="orte", nodes=nodes)
+        self._create_sge_pe(name="smp", nodes=nodes)
 
     def run(self, nodes, master, user, user_shell, volumes):
         if not master.ssh.isdir(self.SGE_FRESH):
@@ -198,7 +199,8 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._add_sge_admin_host(node)
         self._add_sge_submit_host(node)
         self._add_to_sge(node)
-        self._create_sge_pe()
+        self._create_sge_pe(name="orte")
+        self._create_sge_pe(name="smp")
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
