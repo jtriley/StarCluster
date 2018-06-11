@@ -99,7 +99,8 @@ c.Spawner.environment = dict(
     SGE_EXECD_PORT='63232',
     SGE_QMASTER_PORT='63231',
     SGE_CLUSTER_NAME='starcluster',
-    XDG_RUNTIME_DIR='/run/user/1001',
+#    XDG_RUNTIME_DIR='/run/user/1001',
+    XDG_RUNTIME_DIR=None,
     JUPYTER_ENABLE_LAB='yes'
 )
 c.Spawner.http_timeout = 120
