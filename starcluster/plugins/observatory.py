@@ -18,15 +18,26 @@ class ObservatoryPlugin(clustersetup.ClusterSetup):
     LOAD_BALANCER_SERVICE_PATH = '/etc/systemd/system/observatory_load_balancer.service'
     DASHBOARD_SERVICE_PATH = '/etc/systemd/system/observatory_dashboard.service'
 
-    def __init__(self, instance_types='c4.large,p2.xlarge,p3.2xlarge', load_balance=True, **kwargs):
+    def __init__(self, instance_types='c4.large,p2.xlarge,p3.2xlarge', load_balance=True,
+                 zones=None, subnets=None, **kwargs):
         """Constructor.
 
         Args:
             instance_types (string) - Comma-separated list of approved instance types.
+            load_balance (bool) - Comma-separated list of approved instance types.
+            zones (string) - Comma-separated list of availability zones approved for use.
+                             The first zone in the list should be the default.
+            subnets (string) - Comma-separated list of subnets, for use with zones.
+
         """
         super(ObservatoryPlugin, self).__init__(**kwargs)
         self.instance_types = instance_types
         self.load_balance = load_balance
+        self.zones = zones
+        self.subnets = subnets
+        print('instance_types: ', str(instance_types))
+        print('zones: ', str(zones))
+        print('subnets: ', str(subnets))
 
     def _install_server(self):
         """Installs observatory and services on master."""
@@ -48,8 +59,19 @@ class ObservatoryPlugin(clustersetup.ClusterSetup):
         load_balancer_service.write(observatory.load_balancer_service_template)
         load_balancer_service.close()
 
+        dashboard_extra_args = []
+        if not self.zones is None:
+            dashboard_extra_args.append('-z')
+            dashboard_extra_args.append(self.zones)
+        if not self.subnets is None:
+            dashboard_extra_args.append('-s')
+            dashboard_extra_args.append(self.subnets)
+
+        print('dashboard_extra_args: ', str(dashboard_extra_args))
+
         dashboard_service = master.ssh.remote_file(self.DASHBOARD_SERVICE_PATH, 'w')
-        dashboard_service.write(observatory.dashboard_service_template % (self.instance_types))
+        dashboard_service.write(observatory.dashboard_service_template %
+                                (self.instance_types, ' '.join(dashboard_extra_args)))
         dashboard_service.close()
 
     def _setup_observatory_master(self):

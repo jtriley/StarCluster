@@ -29,7 +29,7 @@ then
     cd /opt/starcluster-observatory/ && /usr/bin/git pull
 else
     # Clone latest stable version.
-    /usr/bin/git clone https://github.com/dantreiman/starcluster-observatory.git /opt/starcluster-observatory
+    /usr/bin/git clone -b launch_multiple_zones https://github.com/dantreiman/starcluster-observatory.git /opt/starcluster-observatory
 fi
 """
 
@@ -75,7 +75,7 @@ User=root
 Environment="PATH=/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
 Restart=on-failure
 WorkingDirectory=/opt/starcluster-observatory/src/dashboard
-ExecStart=/usr/bin/python3 /opt/starcluster-observatory/src/dashboard/dashboard-server.py --instance_types=%s
+ExecStart=/usr/bin/python3 /opt/starcluster-observatory/src/dashboard/dashboard-server.py --instance_types=%s %s
 
 [Install]
 WantedBy=multi-user.target
