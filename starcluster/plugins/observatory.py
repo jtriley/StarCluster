@@ -35,9 +35,6 @@ class ObservatoryPlugin(clustersetup.ClusterSetup):
         self.load_balance = load_balance
         self.zones = zones
         self.subnets = subnets
-        print('instance_types: ', str(instance_types))
-        print('zones: ', str(zones))
-        print('subnets: ', str(subnets))
 
     def _install_server(self):
         """Installs observatory and services on master."""
@@ -61,13 +58,11 @@ class ObservatoryPlugin(clustersetup.ClusterSetup):
 
         dashboard_extra_args = []
         if not self.zones is None:
-            dashboard_extra_args.append('-z')
+            dashboard_extra_args.append('--zones')
             dashboard_extra_args.append(self.zones)
         if not self.subnets is None:
-            dashboard_extra_args.append('-s')
+            dashboard_extra_args.append('--subnets')
             dashboard_extra_args.append(self.subnets)
-
-        print('dashboard_extra_args: ', str(dashboard_extra_args))
 
         dashboard_service = master.ssh.remote_file(self.DASHBOARD_SERVICE_PATH, 'w')
         dashboard_service.write(observatory.dashboard_service_template %
