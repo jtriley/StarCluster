@@ -29,7 +29,7 @@ then
     cd /opt/starcluster-observatory/ && /usr/bin/git pull
 else
     # Clone latest stable version.
-    /usr/bin/git clone -b launch_multiple_zones https://github.com/dantreiman/starcluster-observatory.git /opt/starcluster-observatory
+    /usr/bin/git clone https://github.com/dantreiman/starcluster-observatory.git /opt/starcluster-observatory
 fi
 """
 
