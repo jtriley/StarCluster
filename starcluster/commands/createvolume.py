@@ -16,6 +16,7 @@
 # along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import re
 
 from starcluster import node
 from starcluster import volume
@@ -141,6 +142,9 @@ class CmdCreateVolume(CmdBase):
         kwargs = self.specified_options_dict
         kwargs.update(dict(keypair=keypair, key_location=key_location,
                            host_instance=host_instance))
+        if 'image_id' not in kwargs.keys():
+            zone_short = re.match(".+-.+-[1-9]+", zone).group()
+            kwargs['image_id'] = static.BASE_AMI_64[zone_short]
         vc = volume.VolumeCreator(self.ec2, **kwargs)
         if host_instance:
             vc._validate_host_instance(host_instance, zone)

@@ -349,9 +349,9 @@ NODE_INSTANCE_TYPE = m1.small
 # [plugin xvfb]
 # SETUP_CLASS = starcluster.plugins.xvfb.XvfbSetup
 """ % {
-    'x86_ami': static.BASE_AMI_32,
-    'x86_64_ami': static.BASE_AMI_64,
-    'hvm_ami': static.BASE_AMI_HVM,
+    'x86_ami': static.BASE_AMI_32['us-east-1'],
+    'x86_64_ami': static.BASE_AMI_64['us-east-1'],
+    'hvm_ami': static.BASE_AMI_HVM['us-east-1'],
     'instance_types': ', '.join(static.INSTANCE_TYPES.keys()),
     'shells': ', '.join(static.AVAILABLE_SHELLS.keys()),
 }

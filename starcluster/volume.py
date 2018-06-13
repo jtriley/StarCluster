@@ -43,7 +43,7 @@ class VolumeCreator(cluster.Cluster):
     """
     def __init__(self, ec2_conn, spot_bid=None, keypair=None,
                  key_location=None, host_instance=None, device='/dev/sdz',
-                 image_id=static.BASE_AMI_32, instance_type="t1.micro",
+                 image_id=static.BASE_AMI_32['us-east-1'], instance_type="t1.micro",
                  shutdown_instance=False, detach_vol=False,
                  mkfs_cmd='mkfs.ext3 -F', resizefs_cmd='resize2fs', **kwargs):
         self._host_instance = host_instance
@@ -51,13 +51,14 @@ class VolumeCreator(cluster.Cluster):
         self._volume = None
         self._aws_block_device = device or '/dev/sdz'
         self._real_device = None
-        self._image_id = image_id or static.BASE_AMI_32
+        self._image_id = image_id or static.BASE_AMI_32['us-east-1']
         self._instance_type = instance_type or 'm1.small'
         self._shutdown = shutdown_instance
         self._detach_vol = detach_vol
         self._mkfs_cmd = mkfs_cmd
         self._resizefs_cmd = resizefs_cmd
         self._alias_tmpl = "volhost-%s"
+        self._snapshot = None
         super(VolumeCreator, self).__init__(
             ec2_conn=ec2_conn, spot_bid=spot_bid, keyname=keypair,
             key_location=key_location, cluster_tag=static.VOLUME_GROUP_NAME,
@@ -206,7 +207,7 @@ class VolumeCreator(cluster.Cluster):
         try:
             self.validate(size, zone, device)
             return True
-        except exception.BaseException, e:
+        except exception.BaseException as e:
             log.error(e.msg)
             return False
 

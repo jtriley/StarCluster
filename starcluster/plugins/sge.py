@@ -77,7 +77,12 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             pe_slots = self.slots_per_host * len(nodes)
         if not pe_exists:
             penv = mssh.remote_file("/tmp/pe.txt", "w")
-            penv.write(sge.sge_pe_template % (name, pe_slots))
+            if name == "orte":
+                template = sge.sge_orte_pe_template
+            elif name == "smp":
+                template = sge.sge_smp_pe_template
+            penv.write(template % (name, pe_slots))
+            #penv.write(sge.sge_pe_template % (name, pe_slots))
             penv.close()
             mssh.execute("qconf -Ap %s" % penv.name)
         else:
@@ -155,7 +160,8 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         for node in self.nodes:
             self.pool.simple_job(self._add_to_sge, (node,), jobid=node.alias)
         self.pool.wait(numtasks=len(self.nodes))
-        self._create_sge_pe()
+        self._create_sge_pe(name="orte")
+        self._create_sge_pe(name="smp")
 
     def _remove_from_sge(self, node):
         master = self._master
@@ -166,7 +172,8 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         master.ssh.execute('qconf -de %s' % node.alias)
         node.ssh.execute('pkill -9 sge_execd')
         nodes = filter(lambda n: n.alias != node.alias, self._nodes)
-        self._create_sge_pe(nodes=nodes)
+        self._create_sge_pe(name="orte", nodes=nodes)
+        self._create_sge_pe(name="smp", nodes=nodes)
 
     def run(self, nodes, master, user, user_shell, volumes):
         if not master.ssh.isdir(self.SGE_FRESH):
@@ -192,7 +199,8 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._add_sge_admin_host(node)
         self._add_sge_submit_host(node)
         self._add_to_sge(node)
-        self._create_sge_pe()
+        self._create_sge_pe(name="orte")
+        self._create_sge_pe(name="smp")
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes

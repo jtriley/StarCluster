@@ -81,9 +81,13 @@ AWS_DEBUG_FILE = os.path.join(STARCLUSTER_LOG_DIR, 'aws-debug.log')
 CRASH_FILE = os.path.join(STARCLUSTER_LOG_DIR, 'crash-report-%d.txt' % PID)
 
 # StarCluster BASE AMIs (us-east-1)
-BASE_AMI_32 = "ami-9bf9c9f2"
-BASE_AMI_64 = "ami-3393a45a"
-BASE_AMI_HVM = "ami-6b211202"
+BASE_AMI_32 = {'us-east-1': "ami-9bf9c9f2", 'us-west-1': "ami-52112317",
+               'us-west-2': "ami-b2badb82"}
+BASE_AMI_64 = {'us-east-1': "ami-3393a45a", 'us-west-1': "ami-56172513",
+               'us-west-2': "ami-04bedf34"}
+BASE_AMI_HVM = {'us-east-1': "ami-6b211202", 'us-west-1': "ami-06172543",
+                'us-west-2': "ami-80bedfb0"}
+
 
 SECURITY_GROUP_PREFIX = "@sc-"
 SECURITY_GROUP_TEMPLATE = SECURITY_GROUP_PREFIX + "%s"
@@ -138,6 +142,12 @@ INSTANCE_TYPES = {
     'r3.2xlarge': ['x86_64'],
     'r3.4xlarge': ['x86_64'],
     'r3.8xlarge': ['x86_64'],
+    'r4.large': ['x86_64'],
+    'r4.xlarge': ['x86_64'],
+    'r4.2xlarge': ['x86_64'],
+    'r4.4xlarge': ['x86_64'],
+    'r4.8xlarge': ['x86_64'],
+    'r4.16xlarge': ['x86_64'],
     'cc1.4xlarge': ['x86_64'],
     'cc2.8xlarge': ['x86_64'],
     'cg1.4xlarge': ['x86_64'],
@@ -156,6 +166,12 @@ INSTANCE_TYPES = {
     'c4.2xlarge': ['x86_64'],
     'c4.4xlarge': ['x86_64'],
     'c4.8xlarge': ['x86_64'],
+    'c5.large': ['x86_64'],
+    'c5.xlarge': ['x86_64'],
+    'c5.2xlarge': ['x86_64'],
+    'c5.4xlarge': ['x86_64'],
+    'c5.9xlarge': ['x86_64'],
+    'c5.18xlarge': ['x86_64'],
     'i2.xlarge': ['x86_64'],
     'i2.2xlarge': ['x86_64'],
     'i2.4xlarge': ['x86_64'],
@@ -179,11 +195,16 @@ CLUSTER_GPU_TYPES = ['g2.2xlarge', 'g2.8xlarge', 'cg1.4xlarge']
 CLUSTER_HIMEM_TYPES = ['cr1.8xlarge']
 
 HIMEM_TYPES = ['r3.large', 'r3.xlarge', 'r3.2xlarge', 'r3.4xlarge',
-               'r3.8xlarge']
+               'r3.8xlarge',
+               'r4.large', 'r4.xlarge', 'r4.2xlarge', 'r4.4xlarge',
+               'r4.8xlarge', 'r4.16xlarge']
 
 HI_IO_TYPES = ['hi1.4xlarge']
 
 HI_STORAGE_TYPES = ['hs1.8xlarge']
+
+C5_COMPUTE_TYPES = ['c5.large', 'c5.xlarge', 'c5.2xlarge', 'c5.4xlarge',
+                    'c5.9xlarge', 'c5.18xlarge']
 
 M3_COMPUTE_TYPES = ['c3.large', 'c3.xlarge', 'c3.2xlarge', 'c3.4xlarge',
                     'c3.8xlarge']
@@ -197,6 +218,7 @@ I2_STORAGE_TYPES = ['i2.xlarge', 'i2.2xlarge', 'i2.4xlarge', 'i2.8xlarge']
 DENSE_STORAGE_TYPES = ['d2.xlarge', 'd2.2xlarge', 'd2.4xlarge', 'd2.8xlarge']
 
 HVM_ONLY_TYPES = (CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES +
+                  C5_COMPUTE_TYPES +
                   CLUSTER_HIMEM_TYPES + I2_STORAGE_TYPES + HIMEM_TYPES +
                   T2_INSTANCE_TYPES + DENSE_STORAGE_TYPES)
 
