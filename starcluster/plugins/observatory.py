@@ -18,13 +18,13 @@ class ObservatoryPlugin(clustersetup.ClusterSetup):
     LOAD_BALANCER_SERVICE_PATH = '/etc/systemd/system/observatory_load_balancer.service'
     DASHBOARD_SERVICE_PATH = '/etc/systemd/system/observatory_dashboard.service'
 
-    def __init__(self, instance_types='c4.large,p2.xlarge,p3.2xlarge', load_balance=True,
+    def __init__(self, instance_types='c4.large,p2.xlarge,p3.2xlarge', load_balance=False,
                  zones=None, subnets=None, **kwargs):
         """Constructor.
 
         Args:
             instance_types (string) - Comma-separated list of approved instance types.
-            load_balance (bool) - Comma-separated list of approved instance types.
+            load_balance (bool) - Enable load balancer (experimental).
             zones (string) - Comma-separated list of availability zones approved for use.
                              The first zone in the list should be the default.
             subnets (string) - Comma-separated list of subnets, for use with zones.
@@ -52,9 +52,10 @@ class ObservatoryPlugin(clustersetup.ClusterSetup):
         api_service.write(observatory.api_service_template % (cluster_name))
         api_service.close()
 
-        load_balancer_service = master.ssh.remote_file(self.LOAD_BALANCER_SERVICE_PATH, 'w')
-        load_balancer_service.write(observatory.load_balancer_service_template)
-        load_balancer_service.close()
+        if self.load_balance:
+            load_balancer_service = master.ssh.remote_file(self.LOAD_BALANCER_SERVICE_PATH, 'w')
+            load_balancer_service.write(observatory.load_balancer_service_template)
+            load_balancer_service.close()
 
         dashboard_extra_args = []
         if not self.zones is None:
