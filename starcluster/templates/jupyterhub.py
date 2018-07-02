@@ -56,14 +56,13 @@ c.JupyterHub.cookie_max_age_days = 14
 #  
 #  See `hub_connect_ip` for cases where the bind and connect address should
 #  differ.
-#c.JupyterHub.hub_ip = hub_ip_address
-c.JupyterHub.hub_ip = '0.0.0.0'
+c.JupyterHub.hub_ip = hub_ip_address
 
 ## The port for the Hub process
 c.JupyterHub.hub_port = 8081
 
 ## The public facing ip of the whole application (the proxy)
-c.JupyterHub.ip = '127.0.0.1'
+c.JupyterHub.ip = hub_ip_address
 
 c.JupyterHub.hub_connect_ip = hub_ip_address
 
@@ -76,12 +75,6 @@ c.JupyterHub.hub_connect_ip = hub_ip_address
 ## The public facing port of the proxy
 c.JupyterHub.port = 8000
 
-
-# Monkey patches defaults to run all tasks as the same user.
-# TODO(dtreiman) create real users and permissions.
-def _req_username_default(self):
-    return 'sgeadmin'
-GridengineSpawner._req_username_default = _req_username_default
 
 # Monkey patches home directory default.
 def _req_homedir_default(self):
