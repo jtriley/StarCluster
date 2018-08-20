@@ -267,7 +267,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         if self.create_cpu_queue and not node.is_gpu_compute():
             master.ssh.execute('qconf -dattr hostgroup hostlist %s @cpuhosts' % node.alias)
             master.ssh.execute('qconf -purge queue slots cpu.q@%s' % node.alias)
-        if self.create_mem_queue and not node.is_himem_compute():
+        if self.create_mem_queue and node.is_himem_compute():
             master.ssh.execute('qconf -dattr hostgroup hostlist %s @memhosts' % node.alias)
             master.ssh.execute('qconf -purge queue slots mem.q@%s' % node.alias)
         if self.create_gpu_queue and node.is_gpu_compute():
