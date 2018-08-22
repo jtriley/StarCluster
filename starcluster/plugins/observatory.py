@@ -32,7 +32,7 @@ class ObservatoryPlugin(clustersetup.ClusterSetup):
         """
         super(ObservatoryPlugin, self).__init__(**kwargs)
         self.instance_types = instance_types
-        self.load_balance = load_balance
+        self.load_balance = (str(load_balance) == 'True')
         self.zones = zones
         self.subnets = subnets
 
