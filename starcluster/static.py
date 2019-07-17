@@ -163,6 +163,7 @@ INSTANCE_TYPES = {
     'c5.4xlarge': ['x86_64'],
     'c5.9xlarge': ['x86_64'],
     'c5.18xlarge': ['x86_64'],
+    'c5.24xlarge': ['x86_64'],
     'i2.xlarge': ['x86_64'],
     'i2.2xlarge': ['x86_64'],
     'i2.4xlarge': ['x86_64'],
@@ -208,10 +209,10 @@ M4_COMPUTE_TYPES = ['c4.large', 'c4.xlarge', 'c4.2xlarge', 'c4.4xlarge',
                     'm4.4xlarge', 'm4.10xlarge', 'm4.16xlarge']
 
 M5_COMPUTE_TYPES = ['c5.large', 'c5.xlarge', 'c5.2xlarge', 'c5.9xlarge',
-                    'c5.18xlarge']
+                    'c5.18xlarge', 'c5.24xlarge']
 
 # HPC CPU type that also have high memory >60GB.
-HIMEM_COMPUTE_TYPES = ['c5.18xlarge',
+HIMEM_COMPUTE_TYPES = ['c5.18xlarge', 'c5.24xlarge',
                        'm4.10xlarge', 'm4.16xlarge',
                        'r4.4xlarge', 'r4.8xlarge', 'r4.16xlarge',
                        'x1.16xlarge', 'x1.32xlarge',
