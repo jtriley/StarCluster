@@ -466,7 +466,7 @@ class EasyEC2(EasyAWS):
                           launch_group=None,
                           availability_zone_group=None, placement=None,
                           user_data=None, placement_group=None,
-                          block_device_map=None, subnet_id=None,
+                          block_device_map=None, root_volume_size=None, subnet_id=None,
                           network_interfaces=None):
         """
         Convenience method for running spot or flat-rate instances
@@ -498,6 +498,9 @@ class EasyEC2(EasyAWS):
                 # mapping when you dont own the AMI causes an error on launch
                 root.snapshot_id = None
                 root.delete_on_termination = True
+                if root_volume_size is not None:
+                    log.debug("Resizing root EBS volume to: %s" % str(root_volume_size))
+                    root.size = root_volume_size
                 # AWS API doesn't support any value for this flag for the root
                 # device of a new instance (see: boto#2587)
                 if hasattr(root, 'encrypted'):

@@ -97,6 +97,9 @@ class CmdAddNode(ClusterCompleter):
             "-b", "--bid", dest="spot_bid", action="store", type="float",
             default=None, help="spot bid for new node(s) (in $ per hour)")
         parser.add_option(
+            "-v", "--volume_size", dest="volume_size", action="store", type="int",
+            default=None, help="Root volume size (GB).  Defaults to AMI volume size if not specified.")
+        parser.add_option(
             "-x", "--no-create", dest="no_create", action="store_true",
             default=False, help="do not launch new EC2 instances when "
             "adding nodes (use existing instances instead)")
@@ -128,4 +131,5 @@ class CmdAddNode(ClusterCompleter):
                           image_id=self.opts.image_id,
                           instance_type=self.opts.instance_type,
                           zone=self.opts.zone, spot_bid=self.opts.spot_bid,
-                          subnet=self.opts.subnet, no_create=self.opts.no_create)
+                          subnet=self.opts.subnet, no_create=self.opts.no_create,
+                          root_volume_size=self.opts.volume_size)
