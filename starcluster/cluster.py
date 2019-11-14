@@ -174,7 +174,7 @@ class ClusterManager(managers.Manager):
         return cl.add_node(alias=alias, image_id=image_id,
                            instance_type=instance_type, zone=zone,
                            placement_group=placement_group, spot_bid=spot_bid,
-                           subnet=subnet, no_create=no_create, root_volume_size=None)
+                           subnet=subnet, no_create=no_create, root_volume_size=root_volume_size)
 
     def add_nodes(self, cluster_name, num_nodes, aliases=None, no_create=False,
                   image_id=None, instance_type=None, zone=None,
@@ -186,7 +186,7 @@ class ClusterManager(managers.Manager):
         return cl.add_nodes(num_nodes, aliases=aliases, image_id=image_id,
                             instance_type=instance_type, zone=zone,
                             placement_group=placement_group, spot_bid=spot_bid,
-                            subnet=subnet, no_create=no_create, root_volume_size=None)
+                            subnet=subnet, no_create=no_create, root_volume_size=root_volume_size)
 
     def remove_node(self, cluster_name, alias=None, terminate=True,
                     force=False):
