@@ -10,7 +10,7 @@ iptools==0.6.1
 optcomplete==1.2-devel
 iso8601==0.1.8
 # optional deps
-ipython==1.1.0 # needed for shell command
+ipython==7.16.3 # needed for shell command
 # required for git-hooks and check.py
 pep8==1.4.6
 pyflakes==0.7.3
